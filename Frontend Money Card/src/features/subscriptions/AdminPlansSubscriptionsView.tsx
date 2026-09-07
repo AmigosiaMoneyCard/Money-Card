@@ -66,13 +66,15 @@ export function AdminPlansSubscriptionsView() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Search & Filter for Organization Subscriptions
+  // Search & Filter for Organization Subscriptions & Global Toolbar
+  const [selectedOrgFilter, setSelectedOrgFilter] = useState<string>('ALL');
   const [orgSearchQuery, setOrgSearchQuery] = useState('');
   const [selectedPlanFilter, setSelectedPlanFilter] = useState<string>('ALL');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('ALL');
 
-  // Search for Plan Requests
+  // Search & Filter for Plan Requests
   const [requestSearchQuery, setRequestSearchQuery] = useState('');
+  const [requestStatusFilter, setRequestStatusFilter] = useState<string>('PENDING');
 
   // Sync activeTab when searchParams change
   useEffect(() => {
@@ -536,6 +538,8 @@ export function AdminPlansSubscriptionsView() {
   // Metrics
   const activeSubsCount = subscriptions.filter((s) => s.status === 'ACTIVE').length;
   const pendingRequestsCount = planRequests.filter((r) => r.status === 'PENDING').length;
+  const approvedRequestsCount = planRequests.filter((r) => r.status === 'APPROVED' || r.status === 'COMPLETED').length;
+  const rejectedRequestsCount = planRequests.filter((r) => r.status === 'REJECTED').length;
   const totalVerifiedRevenue = payments
     .filter((p) => p.status === 'SUCCESS')
     .reduce((sum, p) => sum + p.amount, 0);
@@ -546,43 +550,69 @@ export function AdminPlansSubscriptionsView() {
       const sub = subscriptions.find((s) => s.organizationId === org.id) || org.subscription;
       const plan = plans.find((p) => p.id === (sub?.planId || org.planId)) || org.plan;
 
+      const matchesOrg =
+        !selectedOrgFilter ||
+        selectedOrgFilter === 'ALL' ||
+        org.id === selectedOrgFilter;
+
       const matchesSearch =
         !orgSearchQuery.trim() ||
         org.name.toLowerCase().includes(orgSearchQuery.toLowerCase()) ||
         org.id.toLowerCase().includes(orgSearchQuery.toLowerCase());
 
       const matchesPlan =
+        !selectedPlanFilter ||
         selectedPlanFilter === 'ALL' ||
         plan?.id === selectedPlanFilter ||
         org.planId === selectedPlanFilter;
 
       const matchesStatus =
+        !selectedStatusFilter ||
         selectedStatusFilter === 'ALL' ||
         (sub?.status || org.status) === selectedStatusFilter;
 
-      return matchesSearch && matchesPlan && matchesStatus;
+      return matchesOrg && matchesSearch && matchesPlan && matchesStatus;
     });
-  }, [orgs, subscriptions, plans, orgSearchQuery, selectedPlanFilter, selectedStatusFilter]);
+  }, [orgs, subscriptions, plans, selectedOrgFilter, orgSearchQuery, selectedPlanFilter, selectedStatusFilter]);
 
-  // Pending Plan Change Requests Only (Exclusively showing requests awaiting Super Admin action)
-  const pendingRequestsList = useMemo(() => {
-    return planRequests.filter((r) => r.status === 'PENDING');
-  }, [planRequests]);
-
+  // Filtered & Sorted Plan Change & Renewal Requests
   const filteredAndSortedRequests = useMemo(() => {
-    return pendingRequestsList
+    return planRequests
       .filter((req) => {
+        // Cafeteria Filter
+        if (selectedOrgFilter && selectedOrgFilter !== 'ALL') {
+          if (req.organizationId !== selectedOrgFilter) return false;
+        }
+
+        // Plan Filter
+        if (selectedPlanFilter && selectedPlanFilter !== 'ALL') {
+          if (req.requestedPlanId !== selectedPlanFilter && req.currentPlanId !== selectedPlanFilter) {
+            return false;
+          }
+        }
+
+        // Status Filter
+        if (requestStatusFilter !== 'ALL') {
+          if (requestStatusFilter === 'APPROVED') {
+            if (req.status !== 'APPROVED' && req.status !== 'COMPLETED') return false;
+          } else if (req.status !== requestStatusFilter) {
+            return false;
+          }
+        }
+
+        // Search Filter
         if (!requestSearchQuery.trim()) return true;
         const q = requestSearchQuery.toLowerCase().trim();
         return (
           (req.organizationName || '').toLowerCase().includes(q) ||
           (req.requestedPlanName || '').toLowerCase().includes(q) ||
           (req.currentPlanName || '').toLowerCase().includes(q) ||
+          (req.adminNotes || '').toLowerCase().includes(q) ||
           req.id.toLowerCase().includes(q)
         );
       })
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [pendingRequestsList, requestSearchQuery]);
+  }, [planRequests, selectedOrgFilter, selectedPlanFilter, requestStatusFilter, requestSearchQuery]);
 
   // Selected Plan for Org Sub Modal (for real-time default vs override preview)
   const previewSelectedPlan = plans.find((p) => p.id === subFormPlanId) || plans[0];
@@ -774,14 +804,37 @@ export function AdminPlansSubscriptionsView() {
       render: (req: PlanChangeRequest) => (
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-2">
-            <Building2 className={`h-4 w-4 ${req.status === 'PENDING' ? 'text-amber-400' : 'text-violet-400'}`} />
+            <Building2
+              className={`h-4 w-4 ${
+                req.status === 'PENDING'
+                  ? 'text-amber-400'
+                  : req.status === 'APPROVED' || req.status === 'COMPLETED'
+                  ? 'text-emerald-400'
+                  : 'text-rose-400'
+              }`}
+            />
             <span className="font-bold text-slate-100">{req.organizationName || 'Organization'}</span>
             {req.status === 'PENDING' && (
               <span className="text-[10px] uppercase font-extrabold tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded">
                 Pending
               </span>
             )}
+            {(req.status === 'APPROVED' || req.status === 'COMPLETED') && (
+              <span className="text-[10px] uppercase font-extrabold tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.5 rounded">
+                Approved
+              </span>
+            )}
+            {req.status === 'REJECTED' && (
+              <span className="text-[10px] uppercase font-extrabold tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/40 px-1.5 py-0.5 rounded">
+                Rejected
+              </span>
+            )}
           </div>
+          {req.reason && (
+            <p className="text-[11px] text-slate-400 truncate max-w-xs" title={req.reason}>
+              Note: {req.reason}
+            </p>
+          )}
         </div>
       ),
     },
@@ -789,8 +842,18 @@ export function AdminPlansSubscriptionsView() {
       key: 'planTransition',
       header: 'Plan Request',
       render: (req: PlanChangeRequest) => (
-        <div>
-          <span className="font-bold text-slate-100">{req.requestedPlanName}</span>
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-1.5">
+            {req.currentPlanName && req.currentPlanName !== req.requestedPlanName ? (
+              <span className="text-xs text-slate-300 font-mono">
+                <span className="text-slate-400">{req.currentPlanName}</span>
+                <span className="text-slate-500 mx-1">→</span>
+                <span className="font-bold text-violet-300">{req.requestedPlanName}</span>
+              </span>
+            ) : (
+              <span className="font-bold text-slate-100">{req.requestedPlanName}</span>
+            )}
+          </div>
         </div>
       ),
     },
@@ -821,15 +884,13 @@ export function AdminPlansSubscriptionsView() {
             <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
             AWAITING APPROVAL
           </span>
+        ) : req.status === 'APPROVED' || req.status === 'COMPLETED' ? (
+          <Badge variant="success" className="bg-emerald-500/15 text-emerald-300 border-emerald-500/40 font-bold">
+            APPROVED
+          </Badge>
         ) : (
-          <Badge
-            variant={
-              req.status === 'APPROVED' || req.status === 'COMPLETED'
-                ? 'success'
-                : 'danger'
-            }
-          >
-            {req.status}
+          <Badge variant="danger" className="bg-rose-500/15 text-rose-300 border-rose-500/40 font-bold">
+            REJECTED
           </Badge>
         )
       ),
@@ -838,7 +899,14 @@ export function AdminPlansSubscriptionsView() {
       key: 'createdAt',
       header: 'Submitted Date',
       render: (req: PlanChangeRequest) => (
-        <span className="text-xs text-slate-400">{formatDate(req.createdAt)}</span>
+        <div className="flex flex-col text-xs text-slate-400">
+          <span>{formatDate(req.createdAt)}</span>
+          {req.adminNotes && (
+            <span className="text-[11px] text-slate-500 truncate max-w-xs" title={req.adminNotes}>
+              Note: {req.adminNotes}
+            </span>
+          )}
+        </div>
       ),
     },
     {
@@ -858,7 +926,14 @@ export function AdminPlansSubscriptionsView() {
               Review / Approve
             </Button>
           ) : (
-            <span className="text-xs text-slate-500">Reviewed</span>
+            <div className="text-right">
+              <span className="text-xs font-semibold text-slate-300">
+                {req.status === 'APPROVED' || req.status === 'COMPLETED' ? 'Approved & Applied' : 'Declined'}
+              </span>
+              <p className="text-[10px] text-slate-500">
+                {req.reviewedBy ? `By ${req.reviewedBy}` : 'Processed'}
+              </p>
+            </div>
           )}
         </div>
       ),
@@ -955,6 +1030,66 @@ export function AdminPlansSubscriptionsView() {
             Create Global Plan
           </Button>
         </div>
+      </div>
+
+      {/* ── Filter Toolbar (Cafeteria Scope, Plan & Subscription, Status, Refresh Data) ── */}
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Cafeteria Scope Filter */}
+          <div className="w-full sm:w-56">
+            <label className="mb-1 block text-[11px] font-medium text-slate-400">Cafeteria Scope</label>
+            <Select
+              id="plans-cafeteria-filter"
+              value={selectedOrgFilter}
+              onChange={(e) => setSelectedOrgFilter(e.target.value)}
+              options={[
+                { value: 'ALL', label: 'All Cafeterias' },
+                ...orgs.map((o) => ({ value: o.id, label: o.name })),
+              ]}
+            />
+          </div>
+
+          {/* Plan & Subscription Filter */}
+          <div className="w-full sm:w-56">
+            <label className="mb-1 block text-[11px] font-medium text-slate-400">Plan & Subscription</label>
+            <Select
+              id="plans-plan-filter"
+              value={selectedPlanFilter}
+              onChange={(e) => setSelectedPlanFilter(e.target.value)}
+              options={[
+                { value: 'ALL', label: 'All Plans & Subscriptions' },
+                ...plans.map((p) => ({ value: p.id, label: `${p.name} Plan` })),
+              ]}
+            />
+          </div>
+
+          {/* Subscription Status Filter */}
+          <div className="w-full sm:w-48">
+            <label className="mb-1 block text-[11px] font-medium text-slate-400">Subscription Status</label>
+            <Select
+              id="plans-status-filter"
+              value={selectedStatusFilter}
+              onChange={(e) => setSelectedStatusFilter(e.target.value)}
+              options={[
+                { value: 'ALL', label: 'All Statuses' },
+                { value: 'ACTIVE', label: 'Active' },
+                { value: 'RENEWAL_DUE', label: 'Renewal Due' },
+                { value: 'PENDING_PAYMENT', label: 'Pending Payment' },
+                { value: 'EXPIRED', label: 'Expired' },
+              ]}
+            />
+          </div>
+        </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => fetchUnifiedData()}
+          leftIcon={<RotateCcw className="h-4 w-4" />}
+          className="shrink-0 self-start lg:self-center"
+        >
+          Refresh Data
+        </Button>
       </div>
 
       {/* KPI Cards */}
@@ -1119,17 +1254,25 @@ export function AdminPlansSubscriptionsView() {
             </div>
           )}
 
-          {/* TAB 4: PLAN REQUESTS (PENDING ONLY) */}
+          {/* TAB 4: PLAN REQUESTS */}
           {activeTab === 'requests' && (
             <div className="space-y-6">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-100">Pending Plan Change Requests</h2>
+                  <h2 className="text-lg font-bold text-slate-100">
+                    {requestStatusFilter === 'APPROVED'
+                      ? 'Approved Plan Change Requests'
+                      : requestStatusFilter === 'REJECTED'
+                      ? 'Rejected Plan Change Requests'
+                      : requestStatusFilter === 'ALL'
+                      ? 'All Plan Change & Renewal Requests'
+                      : 'Pending Plan Change Requests'}
+                  </h2>
                 </div>
               </div>
 
               {/* Highlight Banner for Pending Requests */}
-              {pendingRequestsList.length > 0 && (
+              {pendingRequestsCount > 0 && requestStatusFilter === 'PENDING' && (
                 <div className="rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg shadow-amber-500/5">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
@@ -1138,7 +1281,7 @@ export function AdminPlansSubscriptionsView() {
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-bold text-slate-100">
-                          {pendingRequestsList.length} Request{pendingRequestsList.length > 1 ? 's' : ''} Awaiting Approval
+                          {pendingRequestsCount} Request{pendingRequestsCount > 1 ? 's' : ''} Awaiting Approval
                         </span>
                         <Badge variant="warning" className="text-[10px] font-bold">ATTENTION NEEDED</Badge>
                       </div>
@@ -1150,29 +1293,64 @@ export function AdminPlansSubscriptionsView() {
                 </div>
               )}
 
-              {/* Search Bar */}
+              {/* Search Bar with Status Filter Dropdown */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-                <div className="w-full sm:w-80">
-                  <Input
-                    placeholder="Search pending requests by cafeteria or plan..."
-                    value={requestSearchQuery}
-                    maxLength={30}
-                    onChange={(e) => setRequestSearchQuery(e.target.value)}
-                  />
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                  <div className="w-full sm:w-80">
+                    <Input
+                      placeholder="Search requests by cafeteria or plan..."
+                      value={requestSearchQuery}
+                      maxLength={30}
+                      onChange={(e) => setRequestSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  <div className="w-full sm:w-60">
+                    <Select
+                      value={requestStatusFilter}
+                      onChange={(e) => setRequestStatusFilter(e.target.value)}
+                      options={[
+                        { value: 'PENDING', label: `Pending Requests (${pendingRequestsCount})` },
+                        { value: 'APPROVED', label: `Approved Requests (${approvedRequestsCount})` },
+                        { value: 'ALL', label: `All Requests (${planRequests.length})` },
+                        { value: 'REJECTED', label: `Rejected Requests (${rejectedRequestsCount})` },
+                      ]}
+                    />
+                  </div>
                 </div>
-                <div className="text-xs text-slate-400 font-medium">
-                  Showing <span className="text-amber-400 font-bold">{filteredAndSortedRequests.length}</span> pending request{filteredAndSortedRequests.length === 1 ? '' : 's'}
+                <div className="text-xs text-slate-400 font-medium shrink-0">
+                  Showing{' '}
+                  <span className={requestStatusFilter === 'APPROVED' ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>
+                    {filteredAndSortedRequests.length}
+                  </span>{' '}
+                  {requestStatusFilter === 'ALL'
+                    ? 'total'
+                    : requestStatusFilter === 'PENDING'
+                    ? 'pending'
+                    : requestStatusFilter === 'APPROVED'
+                    ? 'approved'
+                    : 'rejected'}{' '}
+                  request{filteredAndSortedRequests.length === 1 ? '' : 's'}
                 </div>
               </div>
 
               {filteredAndSortedRequests.length === 0 ? (
                 <EmptyState
                   icon={<Inbox className="h-8 w-8 text-slate-500" />}
-                  title={requestSearchQuery ? "No matching pending requests" : "No pending plan requests"}
+                  title={
+                    requestSearchQuery
+                      ? 'No matching requests found'
+                      : requestStatusFilter === 'PENDING'
+                      ? 'No pending plan requests'
+                      : requestStatusFilter === 'APPROVED'
+                      ? 'No approved plan requests'
+                      : 'No plan requests found'
+                  }
                   description={
                     requestSearchQuery
-                      ? 'No pending requests match your search.'
-                      : 'All caught up! There are no cafeteria plan change requests currently awaiting approval.'
+                      ? 'No requests match your search query.'
+                      : requestStatusFilter === 'PENDING'
+                      ? 'All caught up! There are no cafeteria plan change requests currently awaiting approval.'
+                      : 'No requests found for the selected status.'
                   }
                 />
               ) : (
@@ -1181,7 +1359,18 @@ export function AdminPlansSubscriptionsView() {
                     data={filteredAndSortedRequests}
                     columns={requestColumns}
                     keyExtractor={(item: PlanChangeRequest) => item.id}
-                    rowClassName={() => 'bg-amber-500/[0.08] hover:bg-amber-500/[0.14] border-l-4 border-l-amber-500'}
+                    rowClassName={(item: PlanChangeRequest) => {
+                      if (item.status === 'PENDING') {
+                        return 'bg-amber-500/[0.08] hover:bg-amber-500/[0.14] border-l-4 border-l-amber-500';
+                      }
+                      if (item.status === 'APPROVED' || item.status === 'COMPLETED') {
+                        return 'bg-emerald-500/[0.03] hover:bg-emerald-500/[0.07] border-l-4 border-l-emerald-500/40';
+                      }
+                      if (item.status === 'REJECTED') {
+                        return 'bg-rose-500/[0.03] hover:bg-rose-500/[0.07] border-l-4 border-l-rose-500/40';
+                      }
+                      return '';
+                    }}
                   />
                 </Card>
               )}
