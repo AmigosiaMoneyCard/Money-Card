@@ -3,7 +3,7 @@ import { ErrorBoundary } from '@/components/ui';
 // Reusable shell layout for SUPER_ADMIN & ORG_ADMIN.
 // Staff operational UI and User Portal auth are strictly separate.
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { cn } from '@/utils';
 import { useAuth, useBranch, usePermissions } from '@/hooks';
@@ -54,12 +54,31 @@ const ICON_MAP: Record<string, React.ReactNode> = {
 export function DashboardLayout() {
   const navigate = useNavigate();
   const { user, isLoading } = useAuth();
-  const { currentBranch, branches, selectBranch } = useBranch();
+  const { currentBranch, branches, selectBranch, clearBranch } = useBranch();
   const { hasPermission } = usePermissions();
 
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [branchDropdownOpen, setBranchDropdownOpen] = useState(false);
+  const branchDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close branch dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        branchDropdownRef.current &&
+        !branchDropdownRef.current.contains(event.target as Node)
+      ) {
+        setBranchDropdownOpen(false);
+      }
+    }
+    if (branchDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [branchDropdownOpen]);
 
   const userRole = user?.role;
 
@@ -132,18 +151,20 @@ export function DashboardLayout() {
         </div>
 
         {/* Organization / Branch Context in Sidebar (Expanded view) */}
-        {(!sidebarCollapsed || mobileDrawerOpen) && userRole === 'ORG_ADMIN' && branches.length > 0 && (
+        {(!sidebarCollapsed || mobileDrawerOpen) && userRole === 'ORG_ADMIN' && (
           <div className="border-b border-slate-100 px-3 py-3">
-            <div className="relative">
+            <div className="relative" ref={branchDropdownRef}>
               <button
+                type="button"
+                id="sidebar-branch-selector"
                 onClick={() => setBranchDropdownOpen(!branchDropdownOpen)}
                 aria-expanded={branchDropdownOpen}
                 aria-label="Branch selector"
                 className="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 <Building2 className="h-4 w-4 shrink-0 text-emerald-600" />
-                <span className="flex-1 truncate text-left">
-                  {currentBranch?.name || 'Select Branch'}
+                <span className="flex-1 truncate text-left font-semibold text-slate-800">
+                  {currentBranch?.name || 'All Branches'}
                 </span>
                 <ChevronDown
                   className={cn(
@@ -154,9 +175,30 @@ export function DashboardLayout() {
               </button>
 
               {branchDropdownOpen && (
-                <div className="absolute left-0 right-0 top-full z-20 mt-1 rounded-xl border border-slate-200 bg-white py-1 shadow-xl">
+                <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-60 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-xl">
+                  {/* All Branches option */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearBranch();
+                      setBranchDropdownOpen(false);
+                    }}
+                    className={cn(
+                      'flex w-full items-center justify-between px-3 py-2 text-xs font-medium transition-colors',
+                      !currentBranch
+                        ? 'bg-emerald-50 text-emerald-700 font-semibold'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
+                    )}
+                  >
+                    <span className="truncate">All Branches</span>
+                    {!currentBranch && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 shrink-0" />
+                    )}
+                  </button>
+
                   {branches.map((branch) => (
                     <button
+                      type="button"
                       key={branch.id}
                       onClick={() => {
                         selectBranch(branch);

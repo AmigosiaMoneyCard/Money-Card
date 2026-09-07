@@ -50,7 +50,7 @@ interface ProductsPageProps {
 }
 
 export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}) {
-  const { currentBranch } = useBranch();
+  const { currentBranch, selectBranch } = useBranch();
   const { hasPermission } = usePermissions();
 
   const canViewProducts = hasPermission('PRODUCT_VIEW');
@@ -60,7 +60,11 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
 
   // Shared state
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [branchFilter, setBranchFilter] = useState<string>('ALL');
+  const [branchFilter, setBranchFilter] = useState<string>(currentBranch?.id || 'ALL');
+
+  useEffect(() => {
+    setBranchFilter(currentBranch ? currentBranch.id : 'ALL');
+  }, [currentBranch]);
 
   // Products & Inventory Data
   const [products, setProducts] = useState<ProductWithInventory[]>([]);
@@ -570,7 +574,10 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
           <div className="w-48">
             <Select
               value={branchFilter}
-              onChange={(e) => setBranchFilter(e.target.value)}
+              onChange={(e) => {
+                setBranchFilter(e.target.value);
+                selectBranch(e.target.value);
+              }}
               options={[
                 { value: 'ALL', label: 'All Branches' },
                 ...branches.map((b) => ({ value: b.id, label: b.name })),
