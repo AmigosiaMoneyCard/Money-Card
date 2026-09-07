@@ -123,15 +123,15 @@ export function QrResolutionPage() {
 
   return (
     <div className="py-8 space-y-6">
-      <Card className="border-rose-500/30 bg-slate-900/80">
+      <Card className="border-rose-200 bg-white shadow-sm">
         <div className="flex flex-col items-center text-center space-y-4 py-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-400">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
             <ShieldAlert className="h-7 w-7" />
           </div>
 
           <div className="space-y-1">
-            <h2 className="text-xl font-bold text-slate-100">{errorTitle}</h2>
-            <p className="text-sm text-slate-400 max-w-sm">{errorMessage}</p>
+            <h2 className="text-xl font-bold text-slate-900">{errorTitle}</h2>
+            <p className="text-sm text-slate-600 max-w-sm">{errorMessage}</p>
           </div>
 
           <div className="pt-2 flex items-center gap-3">

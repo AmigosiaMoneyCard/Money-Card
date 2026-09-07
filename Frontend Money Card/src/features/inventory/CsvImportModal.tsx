@@ -270,13 +270,13 @@ export function CsvImportModal({
             />
 
             {/* Template Download Prompt */}
-            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-3">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-200">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-800">
                     Official CSV Template
                   </h4>
-                  <p className="mt-1 text-xs text-slate-400">
+                  <p className="mt-1 text-xs text-slate-500">
                     Download the template, fill in your product/inventory data, then upload the completed CSV.
                   </p>
                 </div>
@@ -286,7 +286,7 @@ export function CsvImportModal({
                     variant="outline"
                     size="sm"
                     onClick={handleDownloadTemplate}
-                    leftIcon={<Download className="h-3.5 w-3.5 text-violet-400" />}
+                    leftIcon={<Download className="h-3.5 w-3.5 text-emerald-600" />}
                   >
                     Download CSV Template
                   </Button>
@@ -296,31 +296,31 @@ export function CsvImportModal({
                     onClick={handleDownloadCurrentData}
                     isLoading={isExportingCurrent}
                     disabled={isExportingCurrent}
-                    leftIcon={<FileDown className="h-3.5 w-3.5 text-indigo-400" />}
+                    leftIcon={<FileDown className="h-3.5 w-3.5 text-teal-600" />}
                   >
                     Download Current Data
                   </Button>
                 </div>
               </div>
 
-              <div className="rounded-lg bg-slate-950 px-3 py-2 border border-slate-800/80 font-mono text-[11px] text-slate-300 flex items-center justify-between">
-                <span>Header Schema: <strong className="text-violet-300">itemName,category,price</strong></span>
+              <div className="rounded-lg bg-white px-3 py-2 border border-slate-200 font-mono text-[11px] text-slate-700 flex items-center justify-between">
+                <span>Header Schema: <strong className="text-emerald-700">itemName,category,price</strong></span>
                 <span className="text-[10px] text-slate-500">M0 V10 Contract Compliant</span>
               </div>
             </div>
 
             {/* File Drop Area */}
-            <div className="relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-800 bg-slate-950/60 p-8 text-center transition-colors hover:border-violet-500/50">
+            <div className="relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 p-8 text-center transition-colors hover:border-emerald-500/50">
               <input
                 type="file"
                 accept=".csv,text/csv"
                 onChange={handleFileChange}
                 className="absolute inset-0 cursor-pointer opacity-0"
               />
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200">
                 <FileSpreadsheet className="h-6 w-6" />
               </div>
-              <p className="mt-3 text-sm font-semibold text-slate-200">
+              <p className="mt-3 text-sm font-semibold text-slate-800">
                 {file ? file.name : 'Click or drag CSV file here to upload'}
               </p>
               <p className="mt-1 text-xs text-slate-500">
@@ -349,11 +349,11 @@ export function CsvImportModal({
         {step === 'PREVIEW' && preview && (
           <div className="space-y-6">
             {/* Target Branch Confirmation Banner */}
-            <div className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950 px-3.5 py-2.5 text-xs">
-              <div className="flex items-center gap-2 text-slate-300">
-                <Building2 className="h-4 w-4 text-violet-400 shrink-0" />
+            <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs">
+              <div className="flex items-center gap-2 text-slate-700">
+                <Building2 className="h-4 w-4 text-emerald-600 shrink-0" />
                 <span>Target Branch:</span>
-                <strong className="text-white">
+                <strong className="text-slate-900">
                   {branches.find((b) => b.id === preview.branchId)?.name || preview.branchId}
                 </strong>
               </div>
@@ -362,24 +362,24 @@ export function CsvImportModal({
 
             {/* Validation Summary Metrics */}
             <div className="grid grid-cols-3 gap-3 text-xs">
-              <div className="rounded-lg border border-slate-800 bg-slate-950 p-3">
-                <span className="text-slate-400">Total Rows:</span>
-                <p className="mt-1 text-lg font-bold text-slate-100">{preview.totalRows}</p>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <span className="text-slate-500">Total Rows:</span>
+                <p className="mt-1 text-lg font-bold text-slate-900">{preview.totalRows}</p>
               </div>
 
-              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3">
-                <span className="text-emerald-400 font-medium">Valid Actions:</span>
-                <p className="mt-1 text-lg font-bold text-emerald-300">
-                  {preview.createsCount} <span className="text-xs font-normal text-slate-400">Creates</span> /{' '}
-                  {preview.updatesCount} <span className="text-xs font-normal text-slate-400">Updates</span>
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                <span className="text-emerald-700 font-medium">Valid Actions:</span>
+                <p className="mt-1 text-lg font-bold text-emerald-800">
+                  {preview.createsCount} <span className="text-xs font-normal text-slate-500">Creates</span> /{' '}
+                  {preview.updatesCount} <span className="text-xs font-normal text-slate-500">Updates</span>
                 </p>
               </div>
 
               <div
                 className={`rounded-lg border p-3 ${
                   preview.invalidRows.length > 0
-                    ? 'border-rose-500/30 bg-rose-500/10 text-rose-300'
-                    : 'border-slate-800 bg-slate-950 text-slate-400'
+                    ? 'border-rose-200 bg-rose-50 text-rose-700'
+                    : 'border-slate-200 bg-slate-50 text-slate-500'
                 }`}
               >
                 <span>Invalid / Rejected:</span>
@@ -391,15 +391,15 @@ export function CsvImportModal({
 
             {/* Validation Warnings / Error Banner */}
             {preview.invalidRows.length > 0 && (
-              <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 space-y-2">
-                <div className="flex items-center gap-2 text-xs font-semibold text-rose-400">
-                  <AlertTriangle className="h-4 w-4 shrink-0" />
+              <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 space-y-2">
+                <div className="flex items-center gap-2 text-xs font-semibold text-rose-700">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600" />
                   <span>Validation Errors Found (All-or-Nothing Import Blocked)</span>
                 </div>
-                <div className="max-h-28 overflow-y-auto space-y-1 text-xs text-rose-300">
+                <div className="max-h-28 overflow-y-auto space-y-1 text-xs text-rose-700">
                   {preview.invalidRows.map((err, idx) => (
                     <div key={idx} className="flex items-center gap-2">
-                      <span className="font-mono text-slate-400">Row {err.rowNumber}:</span>
+                      <span className="font-mono text-slate-500">Row {err.rowNumber}:</span>
                       <span>{err.reason}</span>
                     </div>
                   ))}
@@ -409,12 +409,12 @@ export function CsvImportModal({
 
             {/* Valid Rows Action Preview */}
             <div className="space-y-2">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                 Action Preview (Same-Name Update / New Create)
               </h4>
-              <div className="max-h-52 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950">
+              <div className="max-h-52 overflow-y-auto rounded-lg border border-slate-200 bg-white">
                 <table className="w-full text-left text-xs">
-                  <thead className="border-b border-slate-800 bg-slate-900/60 font-semibold text-slate-400">
+                  <thead className="border-b border-slate-200 bg-slate-50 font-semibold text-slate-600">
                     <tr>
                       <th className="p-2.5">Row</th>
                       <th className="p-2.5">Item Name</th>
@@ -423,12 +423,12 @@ export function CsvImportModal({
                       <th className="p-2.5 text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60">
+                  <tbody className="divide-y divide-slate-200">
                     {preview.validRows.map((row) => (
-                      <tr key={row.rowNumber} className="hover:bg-slate-900/30">
+                      <tr key={row.rowNumber} className="hover:bg-slate-50">
                         <td className="p-2.5 font-mono text-slate-500">#{row.rowNumber}</td>
-                        <td className="p-2.5 font-semibold text-slate-200">{row.itemName}</td>
-                        <td className="p-2.5 text-slate-300">
+                        <td className="p-2.5 font-semibold text-slate-800">{row.itemName}</td>
+                        <td className="p-2.5 text-slate-700">
                           <div className="flex flex-wrap gap-1">
                             {(Array.isArray(row.category) ? row.category : [row.category]).map((c) => (
                               <Badge key={c} variant="outline" className="text-[10px]">
@@ -437,7 +437,7 @@ export function CsvImportModal({
                             ))}
                           </div>
                         </td>
-                        <td className="p-2.5 font-mono text-violet-300">
+                        <td className="p-2.5 font-mono text-emerald-700 font-bold">
                           {formatCurrency(row.price)}
                         </td>
                         <td className="p-2.5 text-right">

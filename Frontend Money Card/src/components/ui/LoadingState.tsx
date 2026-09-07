@@ -16,7 +16,7 @@ const spinnerSizes = {
 
 export function LoadingSpinner({ size = 'md', className }: LoadingSpinnerProps) {
   return (
-    <Loader2 className={cn('animate-spin text-violet-400', spinnerSizes[size], className)} />
+    <Loader2 className={cn('animate-spin text-emerald-600', spinnerSizes[size], className)} />
   );
 }
 
@@ -31,10 +31,10 @@ export function LoadingState({ message = 'Loading...', className }: LoadingState
   return (
     <div className={cn('flex flex-col items-center justify-center gap-4 py-16', className)}>
       <div className="relative">
-        <div className="absolute inset-0 animate-ping rounded-full bg-violet-500/20" />
+        <div className="absolute inset-0 animate-ping rounded-full bg-emerald-500/20" />
         <LoadingSpinner size="lg" />
       </div>
-      <p className="text-sm font-medium text-slate-400">{message}</p>
+      <p className="text-sm font-medium text-slate-600">{message}</p>
     </div>
   );
 }
@@ -50,10 +50,10 @@ export function LoadingOverlay({ isVisible, message }: LoadingOverlayProps) {
   if (!isVisible) return null;
 
   return (
-    <div className="absolute inset-0 z-40 flex items-center justify-center rounded-xl bg-slate-950/60 backdrop-blur-sm">
+    <div className="absolute inset-0 z-40 flex items-center justify-center rounded-xl bg-white/80 backdrop-blur-xs">
       <div className="flex flex-col items-center gap-3">
         <LoadingSpinner size="lg" />
-        {message && <p className="text-sm font-medium text-slate-300">{message}</p>}
+        {message && <p className="text-sm font-medium text-slate-700">{message}</p>}
       </div>
     </div>
   );

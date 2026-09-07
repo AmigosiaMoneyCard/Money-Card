@@ -80,14 +80,47 @@ export const mockAnalyticsHandlers = {
       ? mockStore.branches.filter((b) => b.organizationId === targetOrgId).map((b) => b.id)
       : null;
 
-    const activeSessionsCount = mockStore.sessions.filter((s) => {
+    const activeSessions = mockStore.sessions.filter((s) => {
       if (s.status !== 'ACTIVE') return false;
       if (branchId && branchId !== 'ALL' && s.branchId !== branchId) return false;
       if (targetBranchIds && !targetBranchIds.includes(s.branchId)) return false;
       if (currentUser.role === 'STAFF' && !currentUser.assignedBranchIds.includes(s.branchId))
         return false;
       return true;
+    });
+
+    const activeSessionsCount = activeSessions.length;
+
+    // 1. Zero balance active cards count
+    const zeroBalanceActiveCardsCount = activeSessions.filter((s) => Number(s.balance) === 0).length;
+
+    // 2. Closed / settled cards count
+    const closedCardsCount = mockStore.sessions.filter((s) => {
+      if (s.status !== 'SETTLED') return false;
+      if (branchId && branchId !== 'ALL' && s.branchId !== branchId) return false;
+      if (targetBranchIds && !targetBranchIds.includes(s.branchId)) return false;
+      if (currentUser.role === 'STAFF' && !currentUser.assignedBranchIds.includes(s.branchId))
+        return false;
+      return true;
     }).length;
+
+    // 3. Already active card recharges & repeat top-ups count
+    const activeSessionIds = new Set(activeSessions.map((s) => s.id));
+    const activeSessionsRechargeMap = new Map<string, number>();
+    for (const t of mockStore.transactions) {
+      if (activeSessionIds.has(t.sessionId) && (t.type === 'RECHARGE' || String(t.type).includes('RECHARGE'))) {
+        activeSessionsRechargeMap.set(t.sessionId, (activeSessionsRechargeMap.get(t.sessionId) || 0) + 1);
+      }
+    }
+
+    let activeCardsRechargeCount = 0;
+    let reRechargedCardsCount = 0;
+    activeSessionsRechargeMap.forEach((count) => {
+      activeCardsRechargeCount += count;
+      if (count > 1) {
+        reRechargedCardsCount += (count - 1);
+      }
+    });
 
     const activeCardsCount = mockStore.cards.filter((c) => {
       if (c.status !== 'ACTIVE' && c.status !== 'AVAILABLE') return false;
@@ -173,6 +206,10 @@ export const mockAnalyticsHandlers = {
       activeCardsCount,
       lowStockItemsCount,
       branchPerformance,
+      activeCardsRechargeCount,
+      reRechargedCardsCount,
+      closedCardsCount,
+      zeroBalanceActiveCardsCount,
     });
   },
 
@@ -274,7 +311,7 @@ export const mockAnalyticsHandlers = {
       return orgBranchIds.includes(i.branchId);
     });
 
-    const productDemand: ProductDemandMetric[] = orgProducts.map((p, idx) => {
+    let productDemand: ProductDemandMetric[] = orgProducts.map((p, idx) => {
       // Find matching inventory items to calculate stock status
       const pInv = orgInventory.filter((i) => i.productId === p.id);
       const totalQty = pInv.reduce((sum, item) => sum + item.quantity, 0);
@@ -305,6 +342,17 @@ export const mockAnalyticsHandlers = {
     // Sort product demand by quantity sold descending
     productDemand.sort((a, b) => b.quantitySold - a.quantitySold);
 
+    const filterCategory = filter?.category || filter?.categoryId;
+    if (filterCategory && filterCategory !== 'ALL') {
+      const targetLower = filterCategory.toLowerCase();
+      productDemand = productDemand.filter((p) => {
+        const cats = (p.category || '').split(/[,|;]/).map((c) => c.trim().toLowerCase());
+        return cats.some(
+          (c) => c === targetLower || c.replace(/s$/, '') === targetLower.replace(/s$/, '')
+        );
+      });
+    }
+
     // 3. Peak vs Non-Peak Comparison
     let peakTransactions = 0;
     let offPeakTransactions = 0;
@@ -316,6 +364,13 @@ export const mockAnalyticsHandlers = {
       if (b.totalVolume > maxHourBucket.totalVolume) {
         maxHourBucket = b;
       }
+    }
+
+    for (const b of hourlyBuckets) {
+      const isStandardPeak = (b.hour >= 12 && b.hour <= 15) || (b.hour >= 19 && b.hour <= 21);
+      const isDynamicPeak = maxHourBucket.totalVolume > 0 && b.hour === maxHourBucket.hour;
+      b.isPeak = isStandardPeak || isDynamicPeak;
+
       if (b.isPeak) {
         peakTransactions += b.transactionCount;
         peakVolume += b.totalVolume;

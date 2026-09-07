@@ -137,9 +137,9 @@ export function ActivateAccountPage() {
     return (
       <Card padding="lg" className="text-center">
         <div className="flex flex-col items-center justify-center py-10">
-          <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
-          <h3 className="mt-4 text-base font-semibold text-slate-100">Verifying Invitation Link</h3>
-          <p className="mt-1 text-xs text-slate-400">Validating your one-time activation token...</p>
+          <Loader2 className="h-10 w-10 animate-spin text-emerald-600" />
+          <h3 className="mt-4 text-base font-semibold text-slate-900">Verifying Invitation Link</h3>
+          <p className="mt-1 text-xs text-slate-500">Validating your one-time activation token...</p>
         </div>
       </Card>
     );
@@ -150,23 +150,23 @@ export function ActivateAccountPage() {
     return (
       <Card padding="lg">
         <div className="space-y-4 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-600 border border-rose-200">
             <AlertCircle className="h-6 w-6" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-100">Activation Link Invalid</h2>
-            <p className="mt-2 text-sm text-slate-400">
+            <h2 className="text-lg font-bold text-slate-900">Activation Link Invalid</h2>
+            <p className="mt-2 text-sm text-slate-500">
               {tokenError || 'This activation link has expired or has already been used.'}
             </p>
           </div>
-          <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-4 text-left text-xs text-slate-400 space-y-2">
-            <p className="font-semibold text-slate-300">Need a new invitation?</p>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-left text-xs text-slate-600 space-y-2">
+            <p className="font-semibold text-slate-800">Need a new invitation?</p>
             <p>Please contact your Organization Administrator or Platform Manager to trigger a fresh invitation link.</p>
           </div>
           <div className="pt-2">
             <Link
               to="/login"
-              className="inline-flex items-center text-sm font-medium text-emerald-400 hover:text-emerald-300"
+              className="inline-flex items-center text-sm font-medium text-emerald-600 hover:text-emerald-700"
             >
               Return to Sign In <ArrowRight className="ml-1.5 h-4 w-4" />
             </Link>
@@ -181,16 +181,16 @@ export function ActivateAccountPage() {
     return (
       <Card padding="lg" className="text-center">
         <div className="flex flex-col items-center justify-center py-6 space-y-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">
             <CheckCircle2 className="h-6 w-6" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-100">Account Activated Successfully!</h2>
-            <p className="mt-1 text-sm text-slate-400">
-              Welcome aboard, <strong className="text-slate-200">{invitee.name}</strong>. Redirecting you to your dashboard...
+            <h2 className="text-lg font-bold text-slate-900">Account Activated Successfully!</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Welcome aboard, <strong className="text-slate-800">{invitee.name}</strong>. Redirecting you to your dashboard...
             </p>
           </div>
-          <Loader2 className="h-5 w-5 animate-spin text-emerald-500" />
+          <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
         </div>
       </Card>
     );
@@ -201,35 +201,35 @@ export function ActivateAccountPage() {
     <Card padding="lg">
       <form onSubmit={handleSubmit} noValidate className="space-y-6">
         <div>
-          <div className="flex items-center gap-2 text-emerald-400 mb-1">
+          <div className="flex items-center gap-2 text-emerald-600 mb-1">
             <ShieldCheck className="h-5 w-5" />
             <span className="text-xs font-bold uppercase tracking-wider">Account Activation</span>
           </div>
-          <h2 className="text-xl font-bold text-slate-100">
+          <h2 className="text-xl font-bold text-slate-900">
             Welcome to {invitee.organizationName || 'Money Card'}
           </h2>
-          <p className="mt-1 text-sm text-slate-400">
-            Hi <strong className="text-slate-200">{invitee.name}</strong> ({invitee.email}), please choose a secure password to complete your account setup.
+          <p className="mt-1 text-sm text-slate-500">
+            Hi <strong className="text-slate-800">{invitee.name}</strong> ({invitee.email}), please choose a secure password to complete your account setup.
           </p>
         </div>
 
         {invitee.organizationName && (
-          <div className="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900/60 p-3">
+          <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
             <Building2 className="h-5 w-5 text-slate-400" />
             <div>
-              <div className="text-xs font-medium text-slate-400">Assigned Organization</div>
-              <div className="text-sm font-semibold text-slate-200">{invitee.organizationName}</div>
+              <div className="text-xs font-medium text-slate-500">Assigned Organization</div>
+              <div className="text-sm font-semibold text-slate-800">{invitee.organizationName}</div>
             </div>
           </div>
         )}
 
         {submitError && (
           <div
-            className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3"
+            className="flex items-start gap-2.5 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3"
             role="alert"
           >
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
-            <p className="text-sm text-rose-300">{submitError}</p>
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+            <p className="text-sm text-rose-800 font-medium">{submitError}</p>
           </div>
         )}
 
@@ -251,27 +251,27 @@ export function ActivateAccountPage() {
           />
 
           {/* Realtime password requirements checklist */}
-          <div className="rounded-lg border border-slate-800/80 bg-slate-950/60 p-3.5 space-y-2 text-xs">
-            <p className="font-semibold text-slate-300">Password Security Requirements:</p>
-            <div className="grid grid-cols-2 gap-2 text-slate-400">
-              <div className={`flex items-center gap-1.5 ${hasMinLength ? 'text-emerald-400' : ''}`}>
-                {hasMinLength ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5 text-slate-600" />}
+          <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3.5 space-y-2 text-xs">
+            <p className="font-semibold text-slate-800">Password Security Requirements:</p>
+            <div className="grid grid-cols-2 gap-2 text-slate-600">
+              <div className={`flex items-center gap-1.5 ${hasMinLength ? 'text-emerald-700 font-medium' : ''}`}>
+                {hasMinLength ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <X className="h-3.5 w-3.5 text-slate-400" />}
                 <span>8+ Characters</span>
               </div>
-              <div className={`flex items-center gap-1.5 ${hasUppercase ? 'text-emerald-400' : ''}`}>
-                {hasUppercase ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5 text-slate-600" />}
+              <div className={`flex items-center gap-1.5 ${hasUppercase ? 'text-emerald-700 font-medium' : ''}`}>
+                {hasUppercase ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <X className="h-3.5 w-3.5 text-slate-400" />}
                 <span>Uppercase Letter</span>
               </div>
-              <div className={`flex items-center gap-1.5 ${hasLowercase ? 'text-emerald-400' : ''}`}>
-                {hasLowercase ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5 text-slate-600" />}
+              <div className={`flex items-center gap-1.5 ${hasLowercase ? 'text-emerald-700 font-medium' : ''}`}>
+                {hasLowercase ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <X className="h-3.5 w-3.5 text-slate-400" />}
                 <span>Lowercase Letter</span>
               </div>
-              <div className={`flex items-center gap-1.5 ${hasNumber ? 'text-emerald-400' : ''}`}>
-                {hasNumber ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5 text-slate-600" />}
+              <div className={`flex items-center gap-1.5 ${hasNumber ? 'text-emerald-700 font-medium' : ''}`}>
+                {hasNumber ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <X className="h-3.5 w-3.5 text-slate-400" />}
                 <span>Number (0-9)</span>
               </div>
-              <div className={`flex items-center gap-1.5 col-span-2 ${hasSpecial ? 'text-emerald-400' : ''}`}>
-                {hasSpecial ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5 text-slate-600" />}
+              <div className={`flex items-center gap-1.5 col-span-2 ${hasSpecial ? 'text-emerald-700 font-medium' : ''}`}>
+                {hasSpecial ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <X className="h-3.5 w-3.5 text-slate-400" />}
                 <span>Special Symbol (!@#$%^&*...)</span>
               </div>
             </div>

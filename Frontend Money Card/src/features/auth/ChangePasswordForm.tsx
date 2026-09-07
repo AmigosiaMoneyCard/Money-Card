@@ -138,30 +138,30 @@ export function ChangePasswordForm() {
     <Card padding="md">
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
         <div>
-          <h3 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
-            <KeyRound className="h-5 w-5 text-violet-400" />
+          <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+            <KeyRound className="h-5 w-5 text-emerald-600" />
             Change Password
           </h3>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Update your organization account password. Must meet strict security policy standards.
           </p>
         </div>
 
         {isSuccess && (
-          <div className="flex items-start gap-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
-            <p className="text-sm text-emerald-300 font-medium">Password changed successfully.</p>
+          <div className="flex items-start gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+            <p className="text-sm text-emerald-800 font-medium">Password changed successfully.</p>
           </div>
         )}
 
         {apiError && (
           <div
-            className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3"
+            className="flex items-start gap-2.5 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3"
             role="alert"
             aria-live="assertive"
           >
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
-            <p className="text-sm text-rose-300">{apiError}</p>
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+            <p className="text-sm text-rose-800 font-medium">{apiError}</p>
           </div>
         )}
 
@@ -182,7 +182,7 @@ export function ChangePasswordForm() {
             <button
               type="button"
               onClick={() => setShowCurrentPw(!showCurrentPw)}
-              className="hover:text-slate-200 transition-colors focus:outline-none"
+              className="hover:text-slate-700 transition-colors focus:outline-none"
               tabIndex={-1}
               aria-label={showCurrentPw ? 'Hide password' : 'Show password'}
             >
@@ -211,7 +211,7 @@ export function ChangePasswordForm() {
             <button
               type="button"
               onClick={() => setShowNewPw(!showNewPw)}
-              className="hover:text-slate-200 transition-colors focus:outline-none"
+              className="hover:text-slate-700 transition-colors focus:outline-none"
               tabIndex={-1}
               aria-label={showNewPw ? 'Hide password' : 'Show password'}
             >
@@ -227,10 +227,10 @@ export function ChangePasswordForm() {
         {strengthMeta && (
           <div className="space-y-1 -mt-2">
             <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-400">Password Strength:</span>
+              <span className="text-slate-500">Password Strength:</span>
               <span className={`font-semibold ${strengthMeta.text}`}>{strengthMeta.label}</span>
             </div>
-            <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+            <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
               <div
                 className={`h-full ${strengthMeta.color} transition-all duration-300`}
                 style={{ width: strengthMeta.width }}
@@ -255,7 +255,7 @@ export function ChangePasswordForm() {
             <button
               type="button"
               onClick={() => setShowConfirmPw(!showConfirmPw)}
-              className="hover:text-slate-200 transition-colors focus:outline-none"
+              className="hover:text-slate-700 transition-colors focus:outline-none"
               tabIndex={-1}
               aria-label={showConfirmPw ? 'Hide password' : 'Show password'}
             >
@@ -268,27 +268,27 @@ export function ChangePasswordForm() {
         />
 
         {/* Live Password Requirements & Suggestions Box */}
-        <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4 text-xs space-y-3">
+        <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-xs space-y-3">
           <div className="flex items-center justify-between">
-            <span className="font-semibold text-slate-300 flex items-center gap-1.5">
-              <ShieldCheck className="h-4 w-4 text-violet-400" />
+            <span className="font-semibold text-slate-800 flex items-center gap-1.5">
+              <ShieldCheck className="h-4 w-4 text-emerald-600" />
               Password Requirements
             </span>
             <span className="text-[11px] text-slate-500">All rules must be satisfied</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-slate-400">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-slate-500">
             {rules.map((r) => (
               <div
                 key={r.id}
                 className={`flex items-center gap-2 transition-colors ${
-                  r.met ? 'text-emerald-400 font-medium' : 'text-slate-400'
+                  r.met ? 'text-emerald-700 font-medium' : 'text-slate-500'
                 }`}
               >
                 {r.met ? (
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                 ) : (
-                  <div className="h-1.5 w-1.5 rounded-full bg-slate-600 shrink-0 ml-1 mr-1" />
+                  <div className="h-1.5 w-1.5 rounded-full bg-slate-300 shrink-0 ml-1 mr-1" />
                 )}
                 <span>{r.label}</span>
               </div>

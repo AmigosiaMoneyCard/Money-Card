@@ -12,3 +12,4 @@ export { Breadcrumbs } from './Breadcrumbs';
 export { ProfileMenu } from './ProfileMenu';
 
 export { ErrorBoundary } from './ErrorBoundary';
+export { PullToRefresh } from './PullToRefresh';

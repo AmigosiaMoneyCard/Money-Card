@@ -89,13 +89,23 @@ export function buildOrgAnalyticsJsPdf({
     doc.text(kpi.val, x + 3, 71);
   });
 
+  // Card Lifecycle Highlights
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(71, 85, 105);
+  doc.text(
+    `Card Lifecycle: Active Recharges: ${analytics.activeCardsRechargeCount ?? 0}  |  Closed Cards: ${analytics.closedCardsCount ?? 0}  |  Zero Balance Active: ${analytics.zeroBalanceActiveCardsCount ?? 0}`,
+    margin + 1,
+    80,
+  );
+
   // Section 2: Branch Comparison Table
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(15, 23, 42);
-  doc.text('2. Branch Performance Comparison', margin, 84);
+  doc.text('2. Branch Performance Comparison', margin, 86);
 
-  const tableY = 88;
+  const tableY = 90;
   doc.setFillColor(241, 245, 249);
   doc.setDrawColor(203, 213, 225);
   doc.rect(margin, tableY, contentWidth, 7, 'FD');
@@ -648,7 +658,7 @@ export function buildPlatformAnalyticsJsPdf(params: GeneratePlatformAnalyticsPdf
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
-    doc.setTextColor(124, 58, 237); // Violet
+    doc.setTextColor(5, 150, 105); // Emerald-600
     doc.text(`${formatCurrency(plan.price)}/${plan.billingInterval.toLowerCase()}`, px + 3, planBoxY + 17);
   });
 

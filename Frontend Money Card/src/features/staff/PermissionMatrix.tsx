@@ -138,14 +138,14 @@ export function PermissionMatrix({
   return (
     <div className="space-y-4">
       {/* ── Top Dropdown & Accordion Toolbar ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-xl border border-slate-800 bg-slate-900/60 p-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
         <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-violet-400 shrink-0" />
-          <span className="text-xs font-semibold text-slate-400">Category View:</span>
+          <Filter className="h-4 w-4 text-emerald-600 shrink-0" />
+          <span className="text-xs font-semibold text-slate-600">Category View:</span>
           <select
             value={activeCategoryFilter}
             onChange={(e) => setActiveCategoryFilter(e.target.value)}
-            className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-slate-200 font-medium focus:border-violet-500 focus:outline-none cursor-pointer"
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 font-medium focus:border-emerald-600 focus:outline-hidden cursor-pointer"
           >
             <option value="ALL">All Categories ({PERMISSION_GROUPS.length})</option>
             {PERMISSION_GROUPS.map((g) => (
@@ -160,15 +160,15 @@ export function PermissionMatrix({
           <button
             type="button"
             onClick={expandAll}
-            className="text-slate-400 hover:text-slate-200 font-medium px-2 py-1 rounded hover:bg-slate-800/60 transition-colors"
+            className="text-slate-500 hover:text-slate-700 font-medium px-2 py-1 rounded hover:bg-slate-100 transition-colors cursor-pointer"
           >
             Expand All
           </button>
-          <span className="text-slate-700">|</span>
+          <span className="text-slate-300">|</span>
           <button
             type="button"
             onClick={collapseAll}
-            className="text-slate-400 hover:text-slate-200 font-medium px-2 py-1 rounded hover:bg-slate-800/60 transition-colors"
+            className="text-slate-500 hover:text-slate-700 font-medium px-2 py-1 rounded hover:bg-slate-100 transition-colors cursor-pointer"
           >
             Collapse All
           </button>
@@ -184,7 +184,7 @@ export function PermissionMatrix({
         return (
           <div
             key={group.id}
-            className="rounded-xl border border-slate-800 bg-slate-900/40 transition-all overflow-hidden"
+            className="rounded-xl border border-slate-200 bg-white shadow-xs transition-all overflow-hidden"
           >
             {/* Category Header (Click to toggle Dropdown) */}
             <div
@@ -197,22 +197,22 @@ export function PermissionMatrix({
                   toggleGroupOpen(group.id);
                 }
               }}
-              className="flex items-center justify-between p-4 cursor-pointer select-none hover:bg-slate-800/30 transition-colors"
+              className="flex items-center justify-between p-4 cursor-pointer select-none hover:bg-slate-50 transition-colors"
             >
               <div className="flex items-center gap-2.5">
                 <button
                   type="button"
                   aria-label={isOpen ? 'Collapse category' : 'Expand category'}
-                  className="text-slate-400 hover:text-slate-200 p-0.5 rounded"
+                  className="text-slate-400 hover:text-slate-600 p-0.5 rounded"
                 >
                   {isOpen ? (
-                    <ChevronDown className="h-4 w-4 text-violet-400 transition-transform" />
+                    <ChevronDown className="h-4 w-4 text-emerald-600 transition-transform" />
                   ) : (
                     <ChevronRight className="h-4 w-4 text-slate-400 transition-transform" />
                   )}
                 </button>
                 {group.icon}
-                <h4 className="text-sm font-semibold text-slate-100">{group.title}</h4>
+                <h4 className="text-sm font-semibold text-slate-900">{group.title}</h4>
                 <Badge
                   variant={selectedCount > 0 ? 'info' : 'outline'}
                   className="text-[10px] ml-1 font-mono"
@@ -228,7 +228,7 @@ export function PermissionMatrix({
                     e.stopPropagation();
                     toggleCategory(group);
                   }}
-                  className="text-xs font-medium text-violet-400 hover:text-violet-300 px-2 py-1 rounded hover:bg-violet-500/10 focus:outline-none transition-colors"
+                  className="text-xs font-medium text-emerald-600 hover:text-emerald-700 px-2 py-1 rounded hover:bg-emerald-50 focus:outline-hidden transition-colors cursor-pointer"
                 >
                   {allSelected ? 'Clear Category' : 'Select All'}
                 </button>
@@ -237,7 +237,7 @@ export function PermissionMatrix({
 
             {/* Collapsible Dropdown Content Grid */}
             {isOpen && (
-              <div className="border-t border-slate-800/80 p-4 pt-3 bg-slate-950/20">
+              <div className="border-t border-slate-200 p-4 pt-3 bg-slate-50/50">
                 <div className="grid gap-2.5 sm:grid-cols-2">
                   {group.permissions.map((perm) => {
                     const active = isSelected(perm.key, perm.linkedKeys);
@@ -249,29 +249,29 @@ export function PermissionMatrix({
                           key={perm.key}
                           className={`flex items-start gap-2.5 rounded-lg border p-3 text-xs transition-colors ${
                             active
-                              ? 'border-violet-500/30 bg-violet-500/10 text-slate-100'
-                              : 'border-slate-800/50 bg-slate-950/40 text-slate-500 opacity-60'
+                              ? 'border-emerald-200 bg-emerald-50 text-slate-900'
+                              : 'border-slate-200 bg-slate-100/60 text-slate-400 opacity-60'
                           }`}
                         >
                           <div
                             className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
                               active
-                                ? 'border-violet-500 bg-violet-600 text-white'
-                                : 'border-slate-700 bg-slate-900'
+                                ? 'border-emerald-600 bg-emerald-600 text-white'
+                                : 'border-slate-300 bg-white'
                             }`}
                           >
                             {active && <Check className="h-3 w-3" />}
                           </div>
                           <div className="space-y-0.5">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <p className="font-mono text-xs font-medium text-slate-200">{perm.label}</p>
+                              <p className="font-mono text-xs font-medium text-slate-800">{perm.label}</p>
                               {perm.prerequisite && (
-                                <span className="text-[10px] text-amber-400/90 font-mono">
+                                <span className="text-[10px] text-amber-700 font-mono">
                                   (Needs {perm.prerequisite})
                                 </span>
                               )}
                             </div>
-                            <p className="text-[11px] text-slate-400">{perm.description}</p>
+                            <p className="text-[11px] text-slate-500">{perm.description}</p>
                           </div>
                         </div>
                       );
@@ -286,31 +286,31 @@ export function PermissionMatrix({
                         aria-checked={active}
                         className={`group flex w-full cursor-pointer items-start gap-3 rounded-xl border p-3 text-xs text-left transition-all select-none ${
                           active
-                            ? 'border-violet-500/40 bg-violet-500/15 text-slate-100 shadow-sm'
-                            : 'border-slate-800/80 bg-slate-950/60 text-slate-300 hover:border-slate-700 hover:bg-slate-900/60'
+                            ? 'border-emerald-300 bg-emerald-50/70 text-slate-900 shadow-xs'
+                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                         }`}
                       >
                         <div
                           className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border mt-0.5 transition-colors ${
                             active
-                              ? 'border-violet-500 bg-violet-600 text-white shadow'
-                              : 'border-slate-700 bg-slate-900 group-hover:border-slate-600'
+                              ? 'border-emerald-600 bg-emerald-600 text-white shadow-xs'
+                              : 'border-slate-300 bg-white group-hover:border-slate-400'
                           }`}
                         >
                           {active && <Check className="h-3 w-3" />}
                         </div>
                         <div className="space-y-1 flex-1">
                           <div className="flex items-center justify-between gap-1 flex-wrap">
-                            <span className="font-mono text-xs font-bold text-slate-100">
+                            <span className="font-mono text-xs font-bold text-slate-900">
                               {perm.label}
                             </span>
                             {missingPrereq && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
                                 Auto-enables {perm.prerequisite}
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px] text-slate-400 leading-snug">{perm.description}</p>
+                          <p className="text-[11px] text-slate-500 leading-snug">{perm.description}</p>
                         </div>
                       </button>
                     );

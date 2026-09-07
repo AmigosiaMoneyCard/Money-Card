@@ -295,11 +295,11 @@ export function AdminPlansView() {
       header: 'Plan Name',
       render: (plan: Plan) => (
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500/10 text-violet-400">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
             <ShieldCheck className="h-4 w-4" />
           </div>
           <div>
-            <p className="font-semibold text-slate-100">{plan.name}</p>
+            <p className="font-semibold text-slate-900">{plan.name}</p>
             <p className="text-xs text-slate-500 font-mono">{plan.id}</p>
           </div>
         </div>
@@ -309,7 +309,7 @@ export function AdminPlansView() {
       key: 'price',
       header: 'Price / Interval',
       render: (plan: Plan) => (
-        <span className="font-mono text-sm font-bold text-violet-300">
+        <span className="font-mono text-sm font-bold text-emerald-700">
           {formatCurrency(plan.price)} / {plan.billingInterval.toLowerCase()}
         </span>
       ),
@@ -318,7 +318,7 @@ export function AdminPlansView() {
       key: 'limits',
       header: 'Technical Limits',
       render: (plan: Plan) => (
-        <div className="text-xs text-slate-300 space-y-0.5 font-mono">
+        <div className="text-xs text-slate-600 space-y-0.5 font-mono">
           <p>Branches: {plan.branchLimit}</p>
           <p>Staff: {plan.staffLimit} | Cards: {plan.cardLimit}</p>
         </div>
@@ -328,20 +328,38 @@ export function AdminPlansView() {
       key: 'entitlements',
       header: 'Entitlements',
       render: (plan: Plan) => (
-        <div className="flex flex-wrap gap-1 text-[11px]">
-          <Badge variant="outline">{plan.inventoryLevel} Inv</Badge>
-          <Badge variant="outline">{plan.analyticsLevel} Analytics</Badge>
-          <Badge variant="outline">{plan.supportLevel} Support</Badge>
+        <div className="flex flex-wrap gap-1 max-w-xs">
+          <Badge variant="outline" className="text-[10px]">
+            Inv: {plan.inventoryLevel}
+          </Badge>
+          <Badge variant="outline" className="text-[10px]">
+            Rep: {plan.reportsLevel}
+          </Badge>
+          <Badge variant="outline" className="text-[10px]">
+            Ana: {plan.analyticsLevel}
+          </Badge>
+          {plan.multiBranchEnabled && (
+            <Badge variant="success" className="text-[10px]">
+              Multi-Branch
+            </Badge>
+          )}
         </div>
       ),
     },
-
+    {
+      key: 'status',
+      header: 'Status',
+      render: (plan: Plan) => (
+        <Badge variant={plan.status === 'ACTIVE' ? 'success' : 'danger'}>
+          {plan.status}
+        </Badge>
+      ),
+    },
     {
       key: 'actions',
       header: 'Actions',
-      className: 'text-right',
       render: (plan: Plan) => (
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="sm"
@@ -350,9 +368,8 @@ export function AdminPlansView() {
           >
             Edit
           </Button>
-
           <Button
-            variant={plan.status === 'ACTIVE' ? 'ghost' : 'outline'}
+            variant="ghost"
             size="sm"
             onClick={() => handleToggleStatus(plan)}
             leftIcon={<Power className="h-3.5 w-3.5" />}
@@ -370,8 +387,8 @@ export function AdminPlansView() {
       key: 'organizationId',
       header: 'Organization',
       render: (sub: Subscription) => (
-        <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
-          <Building2 className="h-4 w-4 text-violet-400" />
+        <div className="flex items-center gap-2 text-xs font-semibold text-slate-800">
+          <Building2 className="h-4 w-4 text-emerald-600" />
           <span>{sub.organizationId}</span>
         </div>
       ),
@@ -405,7 +422,7 @@ export function AdminPlansView() {
       key: 'renewalDate',
       header: 'Renewal Date',
       render: (sub: Subscription) => (
-        <span className="text-xs text-slate-400">{formatDate(sub.renewalDate)}</span>
+        <span className="text-xs text-slate-500">{formatDate(sub.renewalDate)}</span>
       ),
     },
   ];
@@ -416,14 +433,14 @@ export function AdminPlansView() {
       key: 'id',
       header: 'Payment ID',
       render: (pay: SubscriptionPayment) => (
-        <span className="font-mono text-xs font-bold text-slate-200">PAY-#{pay.id.slice(0, 8).toUpperCase()}</span>
+        <span className="font-mono text-xs font-bold text-slate-800">PAY-#{pay.id.slice(0, 8).toUpperCase()}</span>
       ),
     },
     {
       key: 'amount',
       header: 'Amount',
       render: (pay: SubscriptionPayment) => (
-        <span className="font-mono text-sm font-bold text-violet-300">
+        <span className="font-mono text-sm font-bold text-emerald-700">
           {formatCurrency(pay.amount)}
         </span>
       ),
@@ -432,7 +449,7 @@ export function AdminPlansView() {
       key: 'paymentMethod',
       header: 'Gateway / Method',
       render: (pay: SubscriptionPayment) => (
-        <span className="text-xs text-slate-300">{pay.paymentMethod}</span>
+        <span className="text-xs text-slate-600">{pay.paymentMethod}</span>
       ),
     },
     {
@@ -448,37 +465,41 @@ export function AdminPlansView() {
       key: 'createdAt',
       header: 'Date',
       render: (pay: SubscriptionPayment) => (
-        <span className="text-xs text-slate-400">{formatDate(pay.createdAt)}</span>
+        <span className="text-xs text-slate-500">{formatDate(pay.createdAt)}</span>
       ),
     },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header Bar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">Super Admin Plan & Subscriptions Oversight</h1>
-          <p className="mt-1 text-sm text-slate-400">
-            Configure commercial subscription plans, manage technical limits, and audit platform billing history.
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Platform Plans & Subscriptions</h1>
+          <p className="mt-1 text-xs text-slate-500">
+            Catalog governance, billing cycle tiers, and enterprise customer subscriptions.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="primary" onClick={handleOpenCreate} leftIcon={<Plus className="h-4 w-4" />}>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="primary"
+            onClick={handleOpenCreate}
+            leftIcon={<Plus className="h-4 w-4" />}
+          >
             Create New Plan
           </Button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
         <button
           onClick={() => setActiveTab('PLANS')}
-          className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-colors ${
+          className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-colors cursor-pointer ${
             activeTab === 'PLANS'
-              ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <Layers className="h-4 w-4" />
@@ -487,10 +508,10 @@ export function AdminPlansView() {
 
         <button
           onClick={() => setActiveTab('SUBSCRIPTIONS')}
-          className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-colors ${
+          className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-colors cursor-pointer ${
             activeTab === 'SUBSCRIPTIONS'
-              ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <CreditCard className="h-4 w-4" />
@@ -499,10 +520,10 @@ export function AdminPlansView() {
 
         <button
           onClick={() => setActiveTab('PAYMENTS')}
-          className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-colors ${
+          className={`flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-colors cursor-pointer ${
             activeTab === 'PAYMENTS'
-              ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              : 'text-slate-500 hover:text-slate-800'
           }`}
         >
           <Receipt className="h-4 w-4" />

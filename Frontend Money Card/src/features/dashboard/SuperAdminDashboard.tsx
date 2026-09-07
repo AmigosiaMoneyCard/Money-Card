@@ -178,11 +178,11 @@ export function SuperAdminDashboard() {
       header: 'Cafeteria',
       render: (org: OrganizationOverview) => (
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
             <Building2 className="h-4 w-4" />
           </div>
           <div>
-            <p className="font-semibold text-slate-100">{org.name}</p>
+            <p className="font-semibold text-slate-900">{org.name}</p>
           </div>
         </div>
       ),
@@ -200,7 +200,7 @@ export function SuperAdminDashboard() {
       key: 'plan',
       header: 'Plan',
       render: (org: OrganizationOverview) => (
-        <Badge variant="outline" className="text-violet-300 border-violet-500/30">
+        <Badge variant="outline" className="text-emerald-700 border-emerald-200 bg-emerald-50">
           {org.plan?.name || 'Standard'}
         </Badge>
       ),
@@ -209,7 +209,7 @@ export function SuperAdminDashboard() {
       key: 'createdAt',
       header: 'Joined',
       render: (org: OrganizationOverview) => (
-        <span className="text-xs text-slate-400">{formatDate(org.createdAt)}</span>
+        <span className="text-xs text-slate-500">{formatDate(org.createdAt)}</span>
       ),
     },
     {
@@ -218,7 +218,7 @@ export function SuperAdminDashboard() {
       render: (_org: OrganizationOverview) => (
         <button
           onClick={() => navigate('/organizations')}
-          className="text-xs font-semibold text-violet-400 hover:text-violet-300 hover:underline inline-flex items-center gap-1"
+          className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 hover:underline inline-flex items-center gap-1"
         >
           <span>Open</span>
           <ArrowRight className="h-3.5 w-3.5" />
@@ -232,10 +232,10 @@ export function SuperAdminDashboard() {
       {/* ── 1. Header ────────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-600/20 text-violet-400">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
             <Sparkles className="h-5 w-5" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-100">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Welcome back, Super Admin 👋
           </h1>
         </div>
@@ -253,20 +253,20 @@ export function SuperAdminDashboard() {
 
       {/* ── 2. Action Needed (Most Prominent Section) ────────────────────── */}
       {pendingRequests.length > 0 ? (
-        <div className="rounded-2xl border-2 border-amber-500/50 bg-gradient-to-r from-amber-500/20 via-slate-900 to-amber-500/10 p-5 shadow-lg shadow-amber-500/10">
+        <div className="rounded-2xl border-2 border-amber-300 bg-amber-50/90 p-5 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-start sm:items-center gap-3.5">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-400">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
                 <AlertTriangle className="h-6 w-6" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-base font-bold text-slate-100">
+                  <span className="text-base font-bold text-slate-900">
                     Action Needed: {pendingRequests.length} Request{pendingRequests.length > 1 ? 's' : ''} Awaiting Approval
                   </span>
                   <Badge variant="warning" className="text-[10px] font-bold">URGENT</Badge>
                 </div>
-                <p className="text-xs text-slate-300 mt-1">
+                <p className="text-xs text-slate-600 mt-1">
                   {pendingRequests.some((r) => r.requestType === 'RENEWAL')
                     ? `${pendingRequests[0]?.organizationName || 'A cafeteria'} requested plan renewal. Tap to approve.`
                     : 'Cafeterias submitted plan changes requiring your approval.'}
@@ -279,41 +279,41 @@ export function SuperAdminDashboard() {
               size="md"
               onClick={() => navigate('/subscriptions?tab=requests')}
               rightIcon={<ArrowRight className="h-4 w-4" />}
-              className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-5 shrink-0 shadow-md shadow-amber-500/25"
+              className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-5 shrink-0 shadow-xs shadow-amber-500/20"
             >
               Review Requests
             </Button>
           </div>
         </div>
       ) : (
-        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 flex items-center justify-between gap-3">
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
-            <span className="text-sm font-semibold text-emerald-200">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+            <span className="text-sm font-semibold text-emerald-900">
               Action Needed: All caught up! No pending approvals right now.
             </span>
           </div>
-          <span className="text-xs text-emerald-400/80 font-medium">All systems normal</span>
+          <span className="text-xs text-emerald-700 font-medium">All systems normal</span>
         </div>
       )}
 
       {/* ── 3. Quick Actions ──────────────────────────────────────────────── */}
       <div>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
             Quick Actions
           </h2>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <button
             onClick={() => navigate('/organizations')}
-            className="group flex flex-col sm:flex-row items-center sm:items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/80 p-4 text-center sm:text-left transition-all hover:border-violet-500/50 hover:bg-slate-900 hover:shadow-md hover:shadow-violet-500/10"
+            className="group flex flex-col sm:flex-row items-center sm:items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-center sm:text-left transition-all hover:border-emerald-500/50 hover:shadow-md hover:shadow-emerald-500/10 shadow-xs cursor-pointer"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-500/15 text-violet-400 group-hover:scale-105 transition-transform">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 group-hover:scale-105 transition-transform">
               <PlusCircle className="h-5 w-5" />
             </div>
             <div>
-              <span className="text-sm font-bold text-slate-100 group-hover:text-violet-300 transition-colors">
+              <span className="text-sm font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
                 Add Cafeteria
               </span>
             </div>
@@ -321,13 +321,13 @@ export function SuperAdminDashboard() {
 
           <button
             onClick={() => navigate('/subscriptions?tab=requests')}
-            className="group flex flex-col sm:flex-row items-center sm:items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/80 p-4 text-center sm:text-left transition-all hover:border-amber-500/50 hover:bg-slate-900 hover:shadow-md hover:shadow-amber-500/10"
+            className="group flex flex-col sm:flex-row items-center sm:items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-center sm:text-left transition-all hover:border-amber-500/50 hover:shadow-md hover:shadow-amber-500/10 shadow-xs cursor-pointer"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/15 text-amber-400 group-hover:scale-105 transition-transform">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600 group-hover:scale-105 transition-transform">
               <Bell className="h-5 w-5" />
             </div>
             <div>
-              <span className="text-sm font-bold text-slate-100 group-hover:text-amber-300 transition-colors">
+              <span className="text-sm font-bold text-slate-900 group-hover:text-amber-600 transition-colors">
                 Review Requests
               </span>
             </div>
@@ -335,13 +335,13 @@ export function SuperAdminDashboard() {
 
           <button
             onClick={() => navigate('/plans')}
-            className="group flex flex-col sm:flex-row items-center sm:items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/80 p-4 text-center sm:text-left transition-all hover:border-indigo-500/50 hover:bg-slate-900 hover:shadow-md hover:shadow-indigo-500/10"
+            className="group flex flex-col sm:flex-row items-center sm:items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-center sm:text-left transition-all hover:border-teal-500/50 hover:shadow-md hover:shadow-teal-500/10 shadow-xs cursor-pointer"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-400 group-hover:scale-105 transition-transform">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-50 text-teal-600 group-hover:scale-105 transition-transform">
               <Layers className="h-5 w-5" />
             </div>
             <div>
-              <span className="text-sm font-bold text-slate-100 group-hover:text-indigo-300 transition-colors">
+              <span className="text-sm font-bold text-slate-900 group-hover:text-teal-600 transition-colors">
                 Manage Plans
               </span>
             </div>
@@ -349,13 +349,13 @@ export function SuperAdminDashboard() {
 
           <button
             onClick={() => navigate('/analytics')}
-            className="group flex flex-col sm:flex-row items-center sm:items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/80 p-4 text-center sm:text-left transition-all hover:border-sky-500/50 hover:bg-slate-900 hover:shadow-md hover:shadow-sky-500/10"
+            className="group flex flex-col sm:flex-row items-center sm:items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-center sm:text-left transition-all hover:border-sky-500/50 hover:shadow-md hover:shadow-sky-500/10 shadow-xs cursor-pointer"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-50 text-sky-400 group-hover:scale-105 transition-transform">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-50 text-sky-600 group-hover:scale-105 transition-transform">
               <BarChart3 className="h-5 w-5" />
             </div>
             <div>
-              <span className="text-sm font-bold text-slate-100 group-hover:text-sky-300 transition-colors">
+              <span className="text-sm font-bold text-slate-900 group-hover:text-sky-600 transition-colors">
                 View Reports
               </span>
             </div>
@@ -370,11 +370,11 @@ export function SuperAdminDashboard() {
       ) : (
         <div className="space-y-6">
           {/* ── Filter Toolbar (Cafeteria Scope, Time Window, Refresh Data) ── */}
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap items-center gap-3">
               {/* Cafeteria Scope Filter */}
               <div className="w-full sm:w-56">
-                <label className="mb-1 block text-[11px] font-medium text-slate-400">Cafeteria Scope</label>
+                <label className="mb-1 block text-[11px] font-medium text-slate-600">Cafeteria Scope</label>
                 <Select
                   id="dashboard-cafeteria-filter"
                   value={selectedOrgId}
@@ -388,7 +388,7 @@ export function SuperAdminDashboard() {
 
               {/* Time Window Filter */}
               <div className="w-full sm:w-48">
-                <label className="mb-1 block text-[11px] font-medium text-slate-400">Time Window</label>
+                <label className="mb-1 block text-[11px] font-medium text-slate-600">Time Window</label>
                 <Select
                   id="dashboard-preset-filter"
                   value={datePreset}
@@ -409,21 +409,21 @@ export function SuperAdminDashboard() {
               {datePreset === 'custom' && (
                 <div className="flex flex-wrap items-end gap-2">
                   <div>
-                    <label className="mb-1 block text-[11px] font-medium text-slate-400">Start Date</label>
+                    <label className="mb-1 block text-[11px] font-medium text-slate-600">Start Date</label>
                     <input
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 focus:border-violet-500 focus:outline-none [color-scheme:dark]"
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[11px] font-medium text-slate-400">End Date</label>
+                    <label className="mb-1 block text-[11px] font-medium text-slate-600">End Date</label>
                     <input
                       type="date"
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
-                      className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 focus:border-violet-500 focus:outline-none [color-scheme:dark]"
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
                     />
                   </div>
                 </div>
@@ -447,63 +447,63 @@ export function SuperAdminDashboard() {
             <StatCard
               label="Cafeterias"
               value={`${activeOrgsCount} Active`}
-              icon={<Building2 className="h-5 w-5 text-violet-400" />}
+              icon={<Building2 className="h-5 w-5 text-emerald-600" />}
             />
 
             <StatCard
               label="Sales"
               value={formatCurrency(analytics?.totalPurchaseVolume || 0)}
-              icon={<TrendingUp className="h-5 w-5 text-emerald-400" />}
+              icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
             />
 
             <StatCard
               label="Active Cards"
               value={(analytics?.activeCardsCount || 0).toLocaleString()}
-              icon={<CreditCard className="h-5 w-5 text-sky-400" />}
+              icon={<CreditCard className="h-5 w-5 text-sky-600" />}
             />
 
             <StatCard
               label="Orders"
               value={(analytics?.totalTransactions || 0).toLocaleString()}
-              icon={<ShoppingBag className="h-5 w-5 text-indigo-400" />}
+              icon={<ShoppingBag className="h-5 w-5 text-teal-600" />}
             />
           </div>
 
           {/* ── 6. Business Overview (Renamed from Financial & Operational Breakdown) ── */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm overflow-hidden">
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
             <button
               onClick={() => setIsDetailedView((prev) => !prev)}
-              className="w-full flex items-center justify-between p-4 sm:p-5 text-left hover:bg-slate-900/80 transition-colors"
+              className="w-full flex items-center justify-between p-4 sm:p-5 text-left hover:bg-slate-50 transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
                   <BarChart3 className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-100">
+                  <h3 className="text-sm font-bold text-slate-900">
                     Business Overview ({selectedOrgName})
                   </h3>
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-xs font-semibold text-violet-400">
+              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600">
                 <span>{isDetailedView ? 'Hide Details' : 'Show Details'}</span>
                 {isDetailedView ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </div>
             </button>
 
             {isDetailedView && (
-              <div className="p-5 pt-0 space-y-5 border-t border-slate-800/80">
+              <div className="p-5 pt-0 space-y-5 border-t border-slate-200">
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 pt-4">
                   <StatCard
                     label="Money Added to Cards"
                     value={formatCurrency(analytics?.totalRechargeVolume || 0)}
-                    icon={<TrendingUp className="h-5 w-5 text-violet-400" />}
+                    icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
                   />
 
                   <StatCard
                     label="Customer Refunds"
                     value={formatCurrency(analytics?.totalRefundVolume || 0)}
-                    icon={<Receipt className="h-5 w-5 text-rose-400" />}
+                    icon={<Receipt className="h-5 w-5 text-rose-600" />}
                   />
 
                   <StatCard
@@ -511,13 +511,13 @@ export function SuperAdminDashboard() {
                     value={formatCurrency(
                       Math.max(0, (analytics?.totalPurchaseVolume || 0) - (analytics?.totalRefundVolume || 0))
                     )}
-                    icon={<Receipt className="h-5 w-5 text-teal-400" />}
+                    icon={<Receipt className="h-5 w-5 text-teal-600" />}
                   />
 
                   <StatCard
                     label="Active Sessions"
                     value={analytics?.activeSessionsCount || 0}
-                    icon={<Clock className="h-5 w-5 text-amber-400" />}
+                    icon={<Clock className="h-5 w-5 text-amber-600" />}
                   />
                 </div>
 
@@ -525,7 +525,7 @@ export function SuperAdminDashboard() {
                 {analytics?.branchPerformance && analytics.branchPerformance.length > 0 && (
                   <div className="space-y-3 pt-3">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
                         Branch Breakdown
                       </h4>
                       <span className="text-xs text-slate-500 font-mono">
@@ -533,9 +533,9 @@ export function SuperAdminDashboard() {
                       </span>
                     </div>
 
-                    <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950">
-                      <table className="w-full text-left text-xs text-slate-300">
-                        <thead className="border-b border-slate-800 bg-slate-900/60 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                      <table className="w-full text-left text-xs text-slate-600">
+                        <thead className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
                           <tr>
                             <th className="px-4 py-3">Location</th>
                             <th className="px-4 py-3">Status</th>
@@ -545,28 +545,28 @@ export function SuperAdminDashboard() {
                             <th className="px-4 py-3 text-right">Orders</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800/60">
+                        <tbody className="divide-y divide-slate-200/80">
                           {analytics.branchPerformance.map((bp) => (
-                            <tr key={bp.branchId} className="hover:bg-slate-900/40 transition-colors">
-                              <td className="px-4 py-3 font-semibold text-slate-100 flex items-center gap-2">
-                                <Building2 className="h-3.5 w-3.5 text-violet-400 shrink-0" />
+                            <tr key={bp.branchId} className="hover:bg-slate-50 transition-colors">
+                              <td className="px-4 py-3 font-semibold text-slate-900 flex items-center gap-2">
+                                <Building2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                                 <span>{bp.branchName}</span>
                               </td>
                               <td className="px-4 py-3">
                                 <Badge variant={bp.status === 'ACTIVE' ? 'success' : 'danger'}>
-                                  {bp.status === 'ACTIVE' ? 'Open' : 'Closed'}
+                                   {bp.status === 'ACTIVE' ? 'Open' : 'Closed'}
                                 </Badge>
                               </td>
-                              <td className="px-4 py-3 text-right font-medium text-emerald-400">
+                              <td className="px-4 py-3 text-right font-medium text-emerald-600">
                                 {formatCurrency(bp.purchaseVolume)}
                               </td>
-                              <td className="px-4 py-3 text-right font-medium text-violet-300">
+                              <td className="px-4 py-3 text-right font-medium text-teal-600">
                                 {formatCurrency(bp.rechargeVolume)}
                               </td>
-                              <td className="px-4 py-3 text-right font-medium text-rose-400">
+                              <td className="px-4 py-3 text-right font-medium text-rose-600">
                                 {formatCurrency(bp.refundVolume)}
                               </td>
-                              <td className="px-4 py-3 text-right font-medium text-slate-200">
+                              <td className="px-4 py-3 text-right font-medium text-slate-800">
                                 {bp.transactionCount.toLocaleString()}
                               </td>
                             </tr>
@@ -595,16 +595,16 @@ export function SuperAdminDashboard() {
                   return (
                     <div
                       key={plan.id}
-                      className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 p-4 transition-all hover:border-violet-500/40"
+                      className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 transition-all hover:border-emerald-500/40 shadow-xs"
                     >
                       <div className="space-y-1">
-                        <span className="text-sm font-bold text-slate-100">{plan.name}</span>
-                        <p className="text-xs font-semibold text-emerald-400">
+                        <span className="text-sm font-bold text-slate-900">{plan.name}</span>
+                        <p className="text-xs font-semibold text-emerald-600">
                           {formatCurrency(plan.price)} <span className="text-[10px] text-slate-500 font-normal">/ {plan.billingInterval.toLowerCase()}</span>
                         </p>
                       </div>
                       <div className="text-right">
-                        <Badge variant="outline" className="font-bold text-violet-300 border-violet-500/30">
+                        <Badge variant="outline" className="font-bold text-emerald-700 border-emerald-200 bg-emerald-50">
                           {count} Cafeteria{count !== 1 ? 's' : ''}
                         </Badge>
                       </div>
@@ -619,7 +619,7 @@ export function SuperAdminDashboard() {
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
-                <h2 className="text-lg font-bold text-slate-100">
+                <h2 className="text-lg font-bold text-slate-900">
                   Cafeterias
                 </h2>
               </div>
@@ -627,18 +627,18 @@ export function SuperAdminDashboard() {
               <div className="flex items-center gap-3">
                 {/* Search Cafeterias */}
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                   <input
                     type="text"
                     value={searchOrgTerm}
                     onChange={(e) => setSearchOrgTerm(e.target.value)}
                     placeholder="Search cafeteria..."
-                    className="rounded-xl border border-slate-800 bg-slate-900 pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:border-violet-500 focus:outline-none"
+                    className="rounded-xl border border-slate-300 bg-white pl-8 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
                   />
                   {searchOrgTerm && (
                     <button
                       onClick={() => setSearchOrgTerm('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                     >
                       <X className="h-3 w-3" />
                     </button>

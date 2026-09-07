@@ -29,6 +29,10 @@ export interface AnalyticsOverview {
   activeCardsCount: number;
   lowStockItemsCount: number;
   branchPerformance?: BranchPerformanceMetric[];
+  activeCardsRechargeCount?: number;
+  reRechargedCardsCount?: number;
+  closedCardsCount?: number;
+  zeroBalanceActiveCardsCount?: number;
 }
 
 export interface AnalyticsFilter {
@@ -37,6 +41,7 @@ export interface AnalyticsFilter {
   startDate?: string;
   endDate?: string;
   categoryId?: string;
+  category?: string;
 }
 
 export interface AnalyticsExportResponseData {

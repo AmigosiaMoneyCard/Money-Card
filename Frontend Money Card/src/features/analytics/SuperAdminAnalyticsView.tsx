@@ -292,12 +292,11 @@ export function SuperAdminAnalyticsView() {
       header: 'Organization',
       render: (org: OrganizationOverview) => (
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500/10 text-violet-400">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
             <Building2 className="h-4 w-4" />
           </div>
           <div>
-            <p className="font-semibold text-slate-100">{org.name}</p>
-            
+            <p className="font-semibold text-slate-900">{org.name}</p>
           </div>
         </div>
       ),
@@ -306,7 +305,7 @@ export function SuperAdminAnalyticsView() {
       key: 'plan',
       header: 'Subscribed Plan',
       render: (org: OrganizationOverview) => (
-        <Badge variant="outline" className="border-violet-500/30 text-violet-300">
+        <Badge variant="outline" className="border-emerald-200 text-emerald-700 bg-emerald-50/50">
           {org.plan?.name || 'Standard'}
         </Badge>
       ),
@@ -324,7 +323,7 @@ export function SuperAdminAnalyticsView() {
       key: 'usage',
       header: 'Quota Utilization',
       render: (org: OrganizationOverview) => (
-        <span className="text-xs text-slate-300 font-mono">
+        <span className="text-xs text-slate-600 font-mono">
           {org.usage?.branchCount ?? 0} Branches • {org.usage?.staffCount ?? 0} Staff • {org.usage?.cardCount ?? 0} Cards
         </span>
       ),
@@ -336,15 +335,7 @@ export function SuperAdminAnalyticsView() {
       {/* Header Bar with View PDF and Download PDF buttons */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-100">Platform Analytics</h1>
-            <Badge variant="outline" className="border-violet-500/30 text-violet-300">
-              Super Admin Scope
-            </Badge>
-          </div>
-          <p className="mt-1 text-sm text-slate-400">
-            Global platform metrics across all organizations, subscription plans, and POS transactions.
-          </p>
+          <h1 className="text-2xl font-bold text-slate-900">Platform Analytics</h1>
         </div>
 
         {/* Action Buttons: [ View PDF ] and [ Download PDF ] */}
@@ -388,11 +379,11 @@ export function SuperAdminAnalyticsView() {
       ) : analytics ? (
         <div className="space-y-8">
           {/* ── Filter Toolbar (Cafeteria Scope, Time Window, Refresh Data) ── */}
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap items-center gap-3">
               {/* Cafeteria Scope Filter */}
               <div className="w-full sm:w-56">
-                <label className="mb-1 block text-[11px] font-medium text-slate-400">Cafeteria Scope</label>
+                <label className="mb-1 block text-[11px] font-medium text-slate-600">Cafeteria Scope</label>
                 <Select
                   id="analytics-cafeteria-filter"
                   value={selectedOrgId}
@@ -406,7 +397,7 @@ export function SuperAdminAnalyticsView() {
 
               {/* Time Window Filter */}
               <div className="w-full sm:w-48">
-                <label className="mb-1 block text-[11px] font-medium text-slate-400">Time Window</label>
+                <label className="mb-1 block text-[11px] font-medium text-slate-600">Time Window</label>
                 <Select
                   id="analytics-preset-filter"
                   value={datePreset}
@@ -427,21 +418,21 @@ export function SuperAdminAnalyticsView() {
               {datePreset === 'custom' && (
                 <div className="flex flex-wrap items-end gap-2">
                   <div>
-                    <label className="mb-1 block text-[11px] font-medium text-slate-400">Start Date</label>
+                    <label className="mb-1 block text-[11px] font-medium text-slate-600">Start Date</label>
                     <input
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 focus:border-violet-500 focus:outline-none"
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none shadow-sm"
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[11px] font-medium text-slate-400">End Date</label>
+                    <label className="mb-1 block text-[11px] font-medium text-slate-600">End Date</label>
                     <input
                       type="date"
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
-                      className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 focus:border-violet-500 focus:outline-none"
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none shadow-sm"
                     />
                   </div>
                 </div>
@@ -464,25 +455,25 @@ export function SuperAdminAnalyticsView() {
             <StatCard
               label="Total Organizations"
               value={orgs.length}
-              icon={<Building2 className="h-5 w-5 text-violet-400" />}
+              icon={<Building2 className="h-5 w-5 text-emerald-600" />}
             />
 
             <StatCard
               label="Active Subscriptions"
               value={activeOrgsCount}
-              icon={<Layers className="h-5 w-5 text-emerald-400" />}
+              icon={<Layers className="h-5 w-5 text-emerald-600" />}
             />
 
             <StatCard
               label="Gateway Subscription Revenue"
               value={formatCurrency(totalGatewayRevenue)}
-              icon={<Receipt className="h-5 w-5 text-emerald-400" />}
+              icon={<Receipt className="h-5 w-5 text-emerald-600" />}
             />
 
             <StatCard
               label="Platform POS Volume"
               value={formatCurrency(analytics.totalPurchaseVolume)}
-              icon={<TrendingUp className="h-5 w-5 text-sky-400" />}
+              icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
             />
           </div>
 
@@ -490,25 +481,25 @@ export function SuperAdminAnalyticsView() {
             <StatCard
               label="Wallet Recharges"
               value={formatCurrency(analytics.totalRechargeVolume)}
-              icon={<CreditCard className="h-5 w-5 text-indigo-400" />}
+              icon={<CreditCard className="h-5 w-5 text-emerald-600" />}
             />
 
             <StatCard
               label="Total Transactions"
               value={analytics.totalTransactions.toLocaleString()}
-              icon={<BarChart3 className="h-5 w-5 text-amber-400" />}
+              icon={<BarChart3 className="h-5 w-5 text-emerald-600" />}
             />
 
             <StatCard
               label="Active Sessions"
               value={analytics.activeSessionsCount.toLocaleString()}
-              icon={<Clock className="h-5 w-5 text-cyan-400" />}
+              icon={<Clock className="h-5 w-5 text-emerald-600" />}
             />
           </div>
 
           {/* Section 1: Tenant Organizations Summary */}
           <div className="space-y-4">
-            <h2 className="text-lg font-bold text-slate-100">Platform Organizations Performance</h2>
+            <h2 className="text-lg font-bold text-slate-900">Platform Organizations Performance</h2>
             <Card padding="none">
               <DataTable<OrganizationOverview>
                 data={selectedOrgId ? orgs.filter((o) => o.id === selectedOrgId) : orgs}
@@ -520,18 +511,18 @@ export function SuperAdminAnalyticsView() {
 
           {/* Section 2: Catalog Plans Overview */}
           <div className="space-y-4">
-            <h2 className="text-lg font-bold text-slate-100">Subscription Plans Distribution</h2>
+            <h2 className="text-lg font-bold text-slate-900">Subscription Plans Distribution</h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {plans.map((plan) => {
                 const count = orgs.filter((o) => o.plan?.id === plan.id || o.plan?.name === plan.name).length;
                 return (
-                  <div key={plan.id} className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-2">
+                  <div key={plan.id} className="rounded-xl border border-slate-200 bg-white p-4 space-y-2 shadow-sm">
                     <div className="flex justify-between items-center">
-                      <span className="font-bold text-slate-100">{plan.name}</span>
+                      <span className="font-bold text-slate-900">{plan.name}</span>
                       <Badge variant="outline">{count} Tenants</Badge>
                     </div>
-                    <p className="font-mono text-lg font-bold text-violet-300">
-                      {formatCurrency(plan.price)} <span className="text-xs text-slate-400 font-normal">/{plan.billingInterval.toLowerCase()}</span>
+                    <p className="font-mono text-lg font-bold text-emerald-600">
+                      {formatCurrency(plan.price)} <span className="text-xs text-slate-500 font-normal">/{plan.billingInterval.toLowerCase()}</span>
                     </p>
                   </div>
                 );
@@ -555,16 +546,16 @@ export function SuperAdminAnalyticsView() {
         size="xl"
       >
         <div className="space-y-4">
-          <div className="flex items-center justify-between rounded-lg bg-slate-900 px-4 py-2 text-xs text-slate-400 border border-slate-800">
+          <div className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-2 text-xs text-slate-600 border border-slate-200">
             <div className="flex flex-wrap items-center gap-2">
-              <FileText className="h-4 w-4 text-violet-400" />
+              <FileText className="h-4 w-4 text-emerald-600" />
               <span>Full 3-Page Publication PDF with Complete Metrics, Tables, and Financial Ledgers</span>
             </div>
-            <span className="font-mono text-emerald-400">PDF-1.3 Standard</span>
+            <span className="font-mono text-emerald-600">PDF-1.3 Standard</span>
           </div>
 
           {pdfPreviewUrl && (
-            <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950 shadow-2xl">
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-lg">
               <iframe
                 src={`${pdfPreviewUrl}#toolbar=0`}
                 className="w-full h-[70vh] rounded-lg"

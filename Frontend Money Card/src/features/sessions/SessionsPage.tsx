@@ -22,7 +22,6 @@ import {
   Badge,
   Modal,
   ModalFooter,
-  StatCard,
   LoadingState,
   EmptyState,
   ErrorState,
@@ -48,7 +47,6 @@ import {
   Lock,
   Unlock,
   FileText,
-  CheckCircle2,
 } from 'lucide-react';
 
 // ─── Customer Session Record Model ──────────────────────────────────
@@ -94,7 +92,7 @@ export function SessionsPage() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [sessionTxns, setSessionTxns] = useState<Transaction[]>([]);
   const [isLoadingTxns, setIsLoadingTxns] = useState(false);
-  const [detailTab, setDetailTab] = useState<'overview' | 'timeline' | 'purchases' | 'recharges' | 'card_status'>('overview');
+  const [detailTab, setDetailTab] = useState<'overview' | 'timeline'>('overview');
 
   // ─── Unblock Card State & Permission ──────────────────────────────
   const canUnblock = hasPermission('CARD_UNBLOCK');
@@ -344,30 +342,6 @@ export function SessionsPage() {
     });
   }, [blockedCardItems, searchQuery, branchFilter, dateRangeFilter]);
 
-  // ─── KPI Metrics (Business Logic) ────────────────────────────────
-  const activeCount = useMemo(
-    () => customerHistoryItems.filter((i) => i.sessionStatus === 'ACTIVE').length,
-    [customerHistoryItems],
-  );
-
-  const availableCardsCount = useMemo(
-    () => rawCards.filter((c) => c.status === 'AVAILABLE' && !c.activeSession).length,
-    [rawCards],
-  );
-
-  const blockedCardsCount = useMemo(
-    () => rawCards.filter((c) => c.status === 'BLOCKED').length,
-    [rawCards],
-  );
-
-  const totalActiveBalance = useMemo(
-    () =>
-      customerHistoryItems
-        .filter((i) => i.sessionStatus === 'ACTIVE')
-        .reduce((sum, i) => sum + i.balance, 0),
-    [customerHistoryItems],
-  );
-
   // ─── Unblock Action Handler ──────────────────────────────────────
   const handleConfirmUnblock = async () => {
     if (!selectedCardToUnblock) return;
@@ -410,13 +384,6 @@ export function SessionsPage() {
     }
   };
 
-  // ─── Card Events for Selected Session Card ───────────────────────
-  const selectedCardEvents = useMemo(() => {
-    if (!selectedItem) return [];
-    return historyEvents.filter(
-      (e) => e.cardId === selectedItem.cardId || e.physicalCardNumber === selectedItem.physicalCardNumber,
-    );
-  }, [selectedItem, historyEvents]);
 
   // ─── Permission Guard ────────────────────────────────────────────
   if (!hasPermission('SESSION_VIEW')) {
@@ -440,7 +407,7 @@ export function SessionsPage() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-100 dark:text-slate-100">
+              <span className="font-bold text-slate-900">
                 {item.customerName || 'Walk-in Customer'}
               </span>
               <button
@@ -449,7 +416,7 @@ export function SessionsPage() {
                   e.stopPropagation();
                   handleOpenDetails(item);
                 }}
-                className="p-1 rounded-md text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/15 border border-slate-700/60 hover:border-emerald-500/30 transition-colors cursor-pointer"
+                className="p-1 rounded-md text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 transition-colors cursor-pointer"
                 title="View customer session details"
                 aria-label={`View session for ${item.customerName || 'Walk-in Customer'}`}
               >
@@ -457,7 +424,7 @@ export function SessionsPage() {
               </button>
             </div>
             {item.customerPhone && (
-              <p className="text-xs text-slate-300 dark:text-slate-300 font-medium flex items-center gap-1 mt-0.5">
+              <p className="text-xs text-slate-500 font-medium flex items-center gap-1 mt-0.5">
                 <Phone className="h-3 w-3 text-slate-400" />
                 {item.customerPhone}
               </p>
@@ -471,8 +438,8 @@ export function SessionsPage() {
       header: 'Card Number',
       render: (item: CustomerHistoryItem) => (
         <div className="flex items-center gap-2">
-          <CreditCard className="h-4 w-4 text-emerald-400" />
-          <span className="font-mono font-bold text-slate-100 dark:text-slate-100">
+          <CreditCard className="h-4 w-4 text-emerald-600" />
+          <span className="font-mono font-bold text-slate-900">
             {item.physicalCardNumber}
           </span>
         </div>
@@ -491,7 +458,7 @@ export function SessionsPage() {
       key: 'balance',
       header: 'Balance',
       render: (item: CustomerHistoryItem) => (
-        <span className="font-mono font-bold text-slate-100 dark:text-slate-100">
+        <span className="font-mono font-bold text-slate-900">
           {formatCurrency(item.balance)}
         </span>
       ),
@@ -500,8 +467,8 @@ export function SessionsPage() {
       key: 'branchName',
       header: 'Branch',
       render: (item: CustomerHistoryItem) => (
-        <span className="text-sm font-medium text-slate-200 dark:text-slate-200 flex items-center gap-1.5">
-          <Building2 className="h-3.5 w-3.5 text-slate-300" />
+        <span className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
+          <Building2 className="h-3.5 w-3.5 text-slate-500" />
           {item.branchName}
         </span>
       ),
@@ -510,7 +477,7 @@ export function SessionsPage() {
       key: 'startedAt',
       header: 'Issued At',
       render: (item: CustomerHistoryItem) => (
-        <span className="text-xs font-medium text-slate-200 dark:text-slate-200">
+        <span className="text-xs font-medium text-slate-500">
           {formatDate(item.startedAt)}
         </span>
       ),
@@ -524,8 +491,8 @@ export function SessionsPage() {
       header: 'Card Number',
       render: (card: any) => (
         <div className="flex items-center gap-2">
-          <ShieldAlert className="h-4 w-4 text-rose-400" />
-          <span className="font-mono font-bold text-slate-100 dark:text-slate-100">
+          <ShieldAlert className="h-4 w-4 text-rose-500" />
+          <span className="font-mono font-bold text-slate-900">
             {card.physicalCardNumber}
           </span>
         </div>
@@ -536,15 +503,15 @@ export function SessionsPage() {
       header: 'Customer / Holder',
       render: (card: any) => (
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/20 text-rose-300 font-bold text-xs">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-700 font-bold text-xs border border-rose-200">
             {card.customerName ? card.customerName.charAt(0).toUpperCase() : <User className="h-3.5 w-3.5" />}
           </div>
           <div>
-            <p className="font-bold text-slate-100 dark:text-slate-100 text-sm">
+            <p className="font-bold text-slate-900 text-sm">
               {card.customerName || 'Unassigned / General Card'}
             </p>
             {card.customerPhone && (
-              <p className="text-xs text-slate-300 dark:text-slate-300">{card.customerPhone}</p>
+              <p className="text-xs text-slate-500">{card.customerPhone}</p>
             )}
           </div>
         </div>
@@ -567,7 +534,7 @@ export function SessionsPage() {
         const displayReason = formatBlockedCardMessage(card.reason, card.performedByName);
         return (
           <span
-            className="text-xs text-rose-300 font-medium max-w-xs truncate block"
+            className="text-xs text-rose-700 font-medium max-w-xs truncate block"
             title={displayReason}
           >
             {displayReason || 'Card Blocked'}
@@ -579,7 +546,7 @@ export function SessionsPage() {
       key: 'performedByName',
       header: 'Blocked By',
       render: (card: any) => (
-        <span className="text-sm font-semibold text-slate-100 dark:text-slate-100">
+        <span className="text-sm font-semibold text-slate-900">
           {card.performedByName || 'Staff Member'}
         </span>
       ),
@@ -588,8 +555,8 @@ export function SessionsPage() {
       key: 'branchName',
       header: 'Branch',
       render: (card: any) => (
-        <span className="text-xs font-medium text-slate-200 dark:text-slate-200 flex items-center gap-1">
-          <Building2 className="h-3.5 w-3.5 text-slate-400" />
+        <span className="text-xs font-medium text-slate-700 flex items-center gap-1">
+          <Building2 className="h-3.5 w-3.5 text-slate-500" />
           {card.branchName}
         </span>
       ),
@@ -598,7 +565,7 @@ export function SessionsPage() {
       key: 'blockedAt',
       header: 'Blocked At',
       render: (card: any) => (
-        <span className="text-xs font-medium text-slate-200 dark:text-slate-200">
+        <span className="text-xs font-medium text-slate-500">
           {formatDate(card.blockedAt)}
         </span>
       ),
@@ -612,7 +579,7 @@ export function SessionsPage() {
           <Button
             variant="outline"
             size="sm"
-            className="text-xs py-1 px-2.5 border-slate-700 text-emerald-400 hover:border-emerald-500 hover:text-emerald-300 hover:bg-emerald-500/10 transition-colors"
+            className="text-xs py-1 px-2.5 border-slate-300 text-emerald-700 hover:border-emerald-500 hover:text-emerald-800 hover:bg-emerald-50 transition-colors"
             onClick={() => {
               setSelectedCardToUnblock(card);
               setShowUnblockModal(true);
@@ -630,7 +597,7 @@ export function SessionsPage() {
       {/* ─── Header ───────────────────────────────────────────────── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Customer History & Audit Trail
           </h1>
         </div>
@@ -648,38 +615,14 @@ export function SessionsPage() {
         </div>
       </div>
 
-      {/* ─── Top Stats ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Active Customer Sessions"
-          value={activeCount}
-          icon={<Wallet className="h-5 w-5 text-emerald-600" />}
-        />
-        <StatCard
-          title="Active Floating Balance"
-          value={formatCurrency(totalActiveBalance)}
-          icon={<CreditCard className="h-5 w-5 text-blue-600" />}
-        />
-        <StatCard
-          title="Available Cards Ready for Issue"
-          value={availableCardsCount}
-          icon={<CheckCircle2 className="h-5 w-5 text-emerald-400" />}
-        />
-        <StatCard
-          title="Currently Blocked Cards"
-          value={blockedCardsCount}
-          icon={<ShieldAlert className="h-5 w-5 text-rose-600" />}
-        />
-      </div>
-
       {/* ─── Navigation Tabs ──────────────────────────────────────── */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800">
+      <div className="flex border-b border-slate-200">
         <button
           onClick={() => setActiveTab('sessions')}
           className={`flex items-center gap-2 border-b-2 px-5 py-3 text-sm font-bold transition-all ${
             activeTab === 'sessions'
-              ? 'border-emerald-600 text-emerald-600 dark:border-emerald-400 dark:text-emerald-400'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+              ? 'border-emerald-600 text-emerald-600'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
           <FileText className="h-4 w-4" />
@@ -690,8 +633,8 @@ export function SessionsPage() {
           onClick={() => setActiveTab('card_events')}
           className={`flex items-center gap-2 border-b-2 px-5 py-3 text-sm font-bold transition-all ${
             activeTab === 'card_events'
-              ? 'border-rose-600 text-rose-600 dark:border-rose-400 dark:text-rose-400'
-              : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+              ? 'border-rose-600 text-rose-600'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
           <ShieldAlert className="h-4 w-4" />
@@ -700,7 +643,7 @@ export function SessionsPage() {
       </div>
 
       {/* ─── Filter Bar ───────────────────────────────────────────── */}
-      <UiCard padding="md" className="border-slate-800 bg-slate-900/60">
+      <UiCard padding="md" className="border-slate-200 bg-white shadow-sm">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {/* Search Bar (30 char limit) */}
           <div className="relative">
@@ -711,7 +654,7 @@ export function SessionsPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value.slice(0, 30))}
               maxLength={30}
-              className="w-full rounded-lg border border-slate-700 bg-slate-900/80 pl-9 pr-3 py-2.5 text-sm text-slate-100 placeholder-slate-500 transition-all focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/20"
+              className="w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 transition-all focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-sm"
             />
           </div>
 
@@ -727,7 +670,7 @@ export function SessionsPage() {
               ]}
             />
           ) : (
-            <div className="flex items-center justify-center px-3 py-2 rounded-lg bg-rose-950/30 border border-rose-500/30 text-xs font-bold text-rose-300">
+            <div className="flex items-center justify-center px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-xs font-bold text-rose-700">
               <span className="flex h-2 w-2 rounded-full bg-rose-500 animate-pulse mr-2" />
               <span>Currently Blocked Cards</span>
             </div>
@@ -868,10 +811,10 @@ export function SessionsPage() {
         >
           <div className="space-y-4">
             {/* Customer & Card Summary Banner */}
-            <div className="flex items-center justify-between rounded-xl bg-slate-50 p-4 dark:bg-slate-900">
+            <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-200 p-4">
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase">Customer Profile</p>
-                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                <h3 className="text-base font-bold text-slate-900">
                   {selectedItem.customerName || 'Walk-in Customer'}
                 </h3>
                 {selectedItem.customerPhone && (
@@ -890,7 +833,7 @@ export function SessionsPage() {
             </div>
 
             {/* Modal Detail Tabs */}
-            <div className="flex border-b border-slate-200 dark:border-slate-800 text-sm">
+            <div className="flex border-b border-slate-200 text-sm">
               <button
                 onClick={() => setDetailTab('overview')}
                 className={`px-4 py-2 font-semibold border-b-2 ${
@@ -911,42 +854,32 @@ export function SessionsPage() {
               >
                 Transactions ({sessionTxns.length})
               </button>
-              <button
-                onClick={() => setDetailTab('card_status')}
-                className={`px-4 py-2 font-semibold border-b-2 ${
-                  detailTab === 'card_status'
-                    ? 'border-rose-600 text-rose-600'
-                    : 'border-transparent text-slate-500'
-                }`}
-              >
-                Card Audit Events ({selectedCardEvents.length})
-              </button>
             </div>
 
             {/* Detail Tab Contents */}
             {detailTab === 'overview' && (
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                   <p className="text-xs text-slate-500">Physical Card</p>
-                  <p className="font-mono font-bold text-slate-900 dark:text-slate-100">
+                  <p className="font-mono font-bold text-slate-900">
                     {selectedItem.physicalCardNumber}
                   </p>
                 </div>
-                <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                   <p className="text-xs text-slate-500">Branch Location</p>
-                  <p className="font-semibold text-slate-900 dark:text-slate-100">
+                  <p className="font-semibold text-slate-900">
                     {selectedItem.branchName}
                   </p>
                 </div>
-                <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                   <p className="text-xs text-slate-500">Session Started</p>
-                  <p className="text-slate-900 dark:text-slate-100">
+                  <p className="text-slate-900">
                     {formatDate(selectedItem.startedAt)}
                   </p>
                 </div>
-                <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                   <p className="text-xs text-slate-500">Settled At</p>
-                  <p className="text-slate-900 dark:text-slate-100">
+                  <p className="text-slate-900">
                     {selectedItem.settledAt ? formatDate(selectedItem.settledAt) : 'Still Active'}
                   </p>
                 </div>
@@ -974,7 +907,7 @@ export function SessionsPage() {
                     if (isPurchase) {
                       if (items.length > 0) {
                         title = items
-                          .map((i) => `${i.quantity > 1 ? `${i.quantity}× ` : ''}${i.name}`)
+                          .map((i) => `${i.quantity}× ${i.name}`)
                           .join(', ');
                       } else {
                         title = 'POS Purchase';
@@ -993,16 +926,16 @@ export function SessionsPage() {
                     return (
                       <div
                         key={tx.id}
-                        className="flex items-start justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
+                        className="flex items-start justify-between p-3 rounded-lg border border-slate-200 text-sm hover:border-slate-300 hover:bg-slate-50/50 transition-colors"
                       >
                         <div className="flex items-start gap-2.5 flex-1 min-w-0 pr-3">
                           <div
                             className={`p-2 rounded-lg shrink-0 mt-0.5 ${
                               isPurchase
-                                ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400'
+                                ? 'bg-rose-50 text-rose-600'
                                 : isRecharge
-                                ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400'
-                                : 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400'
+                                ? 'bg-emerald-50 text-emerald-600'
+                                : 'bg-amber-50 text-amber-600'
                             }`}
                           >
                             {isPurchase ? (
@@ -1014,33 +947,9 @@ export function SessionsPage() {
                             )}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="font-semibold text-slate-900 dark:text-slate-100 leading-snug break-words">
+                            <p className="font-semibold text-slate-900 leading-snug break-words">
                               {title}
                             </p>
-
-                            {/* What all they bought chips / line item breakdown */}
-                            {isPurchase && items.length > 0 && (
-                              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                                {items.map((item, idx) => (
-                                  <span
-                                    key={idx}
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
-                                  >
-                                    <span>{item.quantity}× {item.name}</span>
-                                    {item.total !== undefined ? (
-                                      <span className="text-slate-400 dark:text-slate-500 font-mono">
-                                        ({formatCurrency(item.total)})
-                                      </span>
-                                    ) : item.unitPrice !== undefined ? (
-                                      <span className="text-slate-400 dark:text-slate-500 font-mono">
-                                        (@{formatCurrency(item.unitPrice)})
-                                      </span>
-                                    ) : null}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-
                             <p className="text-xs text-slate-500 mt-1">{formatDate(tx.createdAt)}</p>
                           </div>
                         </div>
@@ -1048,8 +957,8 @@ export function SessionsPage() {
                           <p
                             className={`font-mono font-bold ${
                               isRecharge
-                                ? 'text-emerald-600 dark:text-emerald-400'
-                                : 'text-slate-900 dark:text-slate-100'
+                                ? 'text-emerald-600'
+                                : 'text-slate-900'
                             }`}
                           >
                             {isRecharge ? '+' : '-'}{formatCurrency(tx.amount)}
@@ -1061,48 +970,6 @@ export function SessionsPage() {
                       </div>
                     );
                   })}
-                </div>
-              )
-            )}
-
-            {detailTab === 'card_status' && (
-              selectedCardEvents.length === 0 ? (
-                <EmptyState
-                  icon={<ShieldCheck className="h-6 w-6 text-emerald-500" />}
-                  title="No Status Interventions"
-                  description="This card has not had any manual block/unblock actions performed by staff."
-                />
-              ) : (
-                <div className="max-h-72 overflow-y-auto space-y-2">
-                  {selectedCardEvents.map((e) => (
-                    <div
-                      key={e.id}
-                      className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-sm space-y-1"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold ${
-                            e.action === 'CARD_BLOCKED'
-                              ? 'bg-rose-100 text-rose-800'
-                              : 'bg-emerald-100 text-emerald-800'
-                          }`}
-                        >
-                          {e.action === 'CARD_BLOCKED' ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
-                          {e.action === 'CARD_BLOCKED' ? 'Card Blocked' : 'Card Unblocked'}
-                        </span>
-                        <span className="text-xs text-slate-400">{formatDate(e.createdAt)}</span>
-                      </div>
-                      <p className="text-xs text-slate-600 dark:text-slate-300">
-                        Performed by: <strong>{e.performedByName}</strong>
-                      </p>
-                      {e.reason && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400 italic">
-                          <strong className="text-slate-600 dark:text-slate-300 not-italic">Reason:</strong>{' '}
-                          {formatBlockedCardMessage(e.reason, e.performedByName)}
-                        </p>
-                      )}
-                    </div>
-                  ))}
                 </div>
               )
             )}

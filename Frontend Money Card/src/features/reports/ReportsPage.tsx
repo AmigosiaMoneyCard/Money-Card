@@ -224,11 +224,11 @@ export function ReportsPage() {
       header: 'Official Report Title',
       render: (report: ReportItem) => (
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500/10 text-violet-400">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
             <FileText className="h-4 w-4" />
           </div>
           <div>
-            <p className="font-semibold text-slate-100">{report.title}</p>
+            <p className="font-semibold text-slate-900">{report.title}</p>
             
           </div>
         </div>
@@ -238,7 +238,7 @@ export function ReportsPage() {
       key: 'type',
       header: 'Report Category',
       render: (report: ReportItem) => (
-        <Badge variant="outline" className="text-violet-300 border-violet-500/30">
+        <Badge variant="outline" className="text-emerald-700 border-emerald-200 bg-emerald-50">
           {report.type}
         </Badge>
       ),
@@ -247,7 +247,7 @@ export function ReportsPage() {
       key: 'format',
       header: 'Format',
       render: () => (
-        <Badge variant="outline" className="text-rose-300 border-rose-500/30">
+        <Badge variant="outline" className="text-rose-700 border-rose-200 bg-rose-50">
           PDF ONLY
         </Badge>
       ),
@@ -256,7 +256,7 @@ export function ReportsPage() {
       key: 'generatedAt',
       header: 'Generated Date',
       render: (report: ReportItem) => (
-        <span className="text-xs text-slate-400">{formatDate(report.generatedAt)}</span>
+        <span className="text-xs text-slate-500">{formatDate(report.generatedAt)}</span>
       ),
     },
     {
@@ -295,8 +295,8 @@ export function ReportsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-100">Official Reports Catalog</h1>
-            <Badge variant="outline" className="text-violet-300 border-violet-500/30">
+            <h1 className="text-2xl font-bold text-slate-900">Official Reports Catalog</h1>
+            <Badge variant="outline" className="text-emerald-700 border-emerald-200 bg-emerald-50">
               12+ Formal Reports
             </Badge>
           </div>
@@ -311,14 +311,14 @@ export function ReportsPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         {/* Search */}
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             placeholder="Search report titles..."
             value={searchQuery}
             maxLength={30}
             onChange={(e) => setSearchQuery(e.target.value.slice(0, 30))}
-            className="w-full rounded-lg border border-slate-800 bg-slate-900/60 pl-10 pr-4 py-2 text-sm text-slate-100 placeholder-slate-500 transition-colors focus:border-violet-500 focus:outline-none"
+            className="w-full rounded-lg border border-slate-300 bg-white pl-10 pr-4 py-2 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
           />
         </div>
 
@@ -370,14 +370,14 @@ export function ReportsPage() {
       >
         {previewReport && (
           <div className="space-y-4 max-h-[66vh] overflow-y-auto pr-1">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <div>
-                <span className="text-xs text-slate-400">Category & Target Branch</span>
-                <p className="text-sm font-semibold text-slate-200">
+                <span className="text-xs text-slate-500">Category & Target Branch</span>
+                <p className="text-sm font-semibold text-slate-900">
                   {previewReport.type} — {branchFilter === 'ALL' ? 'All Branches' : branches.find((b) => b.id === branchFilter)?.name || branchFilter}
                 </p>
               </div>
-              <Badge variant="outline" className="text-rose-300 border-rose-500/30">
+              <Badge variant="outline" className="text-rose-700 border-rose-200 bg-rose-50">
                 PDF Export Ready
               </Badge>
             </div>
@@ -390,12 +390,12 @@ export function ReportsPage() {
                 {previewReport.type === 'FINANCIAL' && (
                   <div className="space-y-3">
                     <div className="grid gap-3 sm:grid-cols-3">
-                      <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 space-y-0.5">
-                        <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                          <TrendingUp className="h-3 w-3 text-emerald-400" />
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-0.5">
+                        <span className="text-[11px] text-slate-500 flex items-center gap-1">
+                          <TrendingUp className="h-3 w-3 text-emerald-600" />
                           Purchase Revenue
                         </span>
-                        <p className="font-mono text-base font-bold text-emerald-300">
+                        <p className="font-mono text-base font-bold text-emerald-700">
                           {formatCurrency(
                             previewData.transactions
                               .filter((t) => t.type === 'PURCHASE')
@@ -404,12 +404,12 @@ export function ReportsPage() {
                         </p>
                       </div>
 
-                      <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 space-y-0.5">
-                        <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                          <CreditCard className="h-3 w-3 text-violet-400" />
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-0.5">
+                        <span className="text-[11px] text-slate-500 flex items-center gap-1">
+                          <CreditCard className="h-3 w-3 text-teal-600" />
                           Recharge Deposits
                         </span>
-                        <p className="font-mono text-base font-bold text-violet-300">
+                        <p className="font-mono text-base font-bold text-teal-700">
                           {formatCurrency(
                             previewData.transactions
                               .filter((t) => t.type === 'RECHARGE')
@@ -418,23 +418,23 @@ export function ReportsPage() {
                         </p>
                       </div>
 
-                      <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 space-y-0.5">
-                        <span className="text-[11px] text-slate-400">Ledger Records</span>
-                        <p className="font-mono text-base font-bold text-slate-100">
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-0.5">
+                        <span className="text-[11px] text-slate-500">Ledger Records</span>
+                        <p className="font-mono text-base font-bold text-slate-900">
                           {previewData.transactions.length} txns sampled
                         </p>
                       </div>
                     </div>
 
-                    <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-                      <p className="text-xs font-semibold text-slate-300 mb-2">Sample Transaction Log</p>
-                      <div className="divide-y divide-slate-800/80 text-xs">
+                    <div className="rounded-xl border border-slate-200 bg-white p-3">
+                      <p className="text-xs font-semibold text-slate-800 mb-2">Sample Transaction Log</p>
+                      <div className="divide-y divide-slate-200 text-xs">
                         {previewData.transactions.slice(0, 5).map((t) => (
-                          <div key={t.id} className="flex justify-between py-1.5 text-slate-400">
-                            <span className="font-mono text-slate-300">TXN-#{t.id.slice(0, 8).toUpperCase()}</span>
+                          <div key={t.id} className="flex justify-between py-1.5 text-slate-600">
+                            <span className="font-mono text-slate-700">TXN-#{t.id.slice(0, 8).toUpperCase()}</span>
                             <Badge variant={t.type === 'PURCHASE' ? 'success' : 'outline'}>{t.type}</Badge>
-                            <span className="font-mono font-medium text-slate-200">{formatCurrency(t.amount)}</span>
-                            <span className="text-[11px]">{new Date(t.createdAt).toLocaleDateString()}</span>
+                            <span className="font-mono font-medium text-slate-800">{formatCurrency(t.amount)}</span>
+                            <span className="text-[11px] text-slate-500">{new Date(t.createdAt).toLocaleDateString()}</span>
                           </div>
                         ))}
                       </div>
@@ -445,28 +445,28 @@ export function ReportsPage() {
                 {/* Inventory Report Preview */}
                 {previewReport.type === 'INVENTORY' && (
                   <div className="space-y-3">
-                    <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 flex justify-between items-center">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 flex justify-between items-center">
                       <div>
-                        <span className="text-xs text-slate-400">Total Catalog Items</span>
-                        <p className="font-mono text-lg font-bold text-slate-100">{previewData.inventory.length} products</p>
+                        <span className="text-xs text-slate-500">Total Catalog Items</span>
+                        <p className="font-mono text-lg font-bold text-slate-900">{previewData.inventory.length} products</p>
                       </div>
                       <div className="text-right">
-                        <span className="text-xs text-slate-400">Low Stock Warnings</span>
-                        <p className="font-mono text-lg font-bold text-rose-400">
+                        <span className="text-xs text-slate-500">Low Stock Warnings</span>
+                        <p className="font-mono text-lg font-bold text-rose-600">
                           {previewData.inventory.filter((i) => i.quantity < 10).length} items
                         </p>
                       </div>
                     </div>
 
-                    <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-                      <p className="text-xs font-semibold text-slate-300 mb-2">Stock Inventory Sample</p>
-                      <div className="divide-y divide-slate-800/80 text-xs">
+                    <div className="rounded-xl border border-slate-200 bg-white p-3">
+                      <p className="text-xs font-semibold text-slate-800 mb-2">Stock Inventory Sample</p>
+                      <div className="divide-y divide-slate-200 text-xs">
                         {previewData.inventory.slice(0, 5).map((i) => (
-                          <div key={i.id} className="flex justify-between py-1.5 text-slate-400">
-                            <span className="font-medium text-slate-200">{i.itemName}</span>
+                          <div key={i.id} className="flex justify-between py-1.5 text-slate-600">
+                            <span className="font-medium text-slate-800">{i.itemName}</span>
                             <Badge variant="outline">{i.category}</Badge>
-                            <span className="font-mono text-emerald-300">{formatCurrency(i.price)}</span>
-                            <span className="font-mono font-bold text-slate-300">{i.quantity} in stock</span>
+                            <span className="font-mono text-emerald-700 font-bold">{formatCurrency(i.price)}</span>
+                            <span className="font-mono font-bold text-slate-700">{i.quantity} in stock</span>
                           </div>
                         ))}
                       </div>
@@ -477,37 +477,37 @@ export function ReportsPage() {
                 {/* Audit Report Preview */}
                 {previewReport.type !== 'FINANCIAL' && previewReport.type !== 'INVENTORY' && (
                   <div className="space-y-3">
-                    <div className="rounded-xl border border-slate-800 bg-slate-950 p-3 flex justify-between items-center">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 flex justify-between items-center">
                       <div>
-                        <span className="text-xs text-slate-400">Audited Sessions</span>
-                        <p className="font-mono text-lg font-bold text-slate-100">{previewData.sessions.length} sessions</p>
+                        <span className="text-xs text-slate-500">Audited Sessions</span>
+                        <p className="font-mono text-lg font-bold text-slate-900">{previewData.sessions.length} sessions</p>
                       </div>
                       <div className="text-right">
-                        <span className="text-xs text-slate-400">Active Wallets</span>
-                        <p className="font-mono text-lg font-bold text-sky-400">
+                        <span className="text-xs text-slate-500">Active Wallets</span>
+                        <p className="font-mono text-lg font-bold text-sky-700">
                           {previewData.sessions.filter((s) => s.status === 'ACTIVE').length} active
                         </p>
                       </div>
                     </div>
 
-                    <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-                      <p className="text-xs font-semibold text-slate-300 mb-2">Sample Card Session & Wallet Ledger</p>
-                      <div className="divide-y divide-slate-800/80 text-xs">
+                    <div className="rounded-xl border border-slate-200 bg-white p-3">
+                      <p className="text-xs font-semibold text-slate-800 mb-2">Sample Card Session & Wallet Ledger</p>
+                      <div className="divide-y divide-slate-200 text-xs">
                         {previewData.sessions.slice(0, 6).map((s) => {
                           const cardNum = s.physicalCardNumber || (s.cardId?.startsWith('MC-') ? s.cardId : `MC-${s.cardId ? s.cardId.replace(/-/g, '').slice(0, 6).toUpperCase() : '105'}`);
                           const shortSessId = `SESSION-#${s.id.replace(/-/g, '').slice(0, 8).toUpperCase()}`;
 
                           return (
-                            <div key={s.id} className="flex items-center justify-between py-2 text-slate-400">
+                            <div key={s.id} className="flex items-center justify-between py-2 text-slate-600">
                               <div className="flex items-center gap-3">
                                 <div>
-                                  <span className="font-mono font-bold text-violet-300">{cardNum}</span>
+                                  <span className="font-mono font-bold text-emerald-700">{cardNum}</span>
                                   <p className="text-[10px] text-slate-500 font-mono">{shortSessId}</p>
                                 </div>
                               </div>
                               <Badge variant={s.status === 'ACTIVE' ? 'success' : 'outline'}>{s.status}</Badge>
                               <div className="text-right">
-                                <span className="font-mono font-bold text-emerald-400">
+                                <span className="font-mono font-bold text-emerald-700">
                                   {formatCurrency(s.balance)}
                                 </span>
                                 <p className="text-[10px] text-slate-500">{new Date(s.createdAt).toLocaleDateString()}</p>

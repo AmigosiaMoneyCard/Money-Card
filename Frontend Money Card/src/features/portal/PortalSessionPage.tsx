@@ -109,14 +109,14 @@ export function PortalSessionPage() {
     return (
       <div className="py-8 space-y-6">
         <EmptyState
-          icon={<QrCode className="h-8 w-8 text-violet-400" />}
+          icon={<QrCode className="h-8 w-8 text-emerald-600" />}
           title="No Active Card Session"
           description="Scan the QR code on your physical Money Card to view live session balance and transaction history."
         />
         <div className="flex justify-center">
           <button
             onClick={() => navigate('/c/qr_token_mc001_8a7b9c')}
-            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-violet-500/25 transition-all hover:scale-105 hover:from-violet-500 hover:to-indigo-500"
+            className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/25 transition-all hover:bg-emerald-500"
           >
             <CreditCard className="h-4 w-4" />
             <span>Demo: Scan Sample Card MC-001</span>
@@ -149,15 +149,15 @@ export function PortalSessionPage() {
   return (
     <div className="space-y-6">
       {/* Session Hero Card */}
-      <Card padding="lg" className="relative overflow-hidden border-violet-500/30 bg-gradient-to-br from-slate-900 via-slate-900/90 to-violet-950/40">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+      <Card padding="lg" className="relative overflow-hidden border-emerald-200 bg-gradient-to-br from-white via-white to-emerald-50/40 shadow-md">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/20 text-violet-300">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
               <CreditCard className="h-5 w-5" />
             </div>
             <div>
-              <span className="text-xs text-slate-400">Card Number</span>
-              <p className="font-mono text-lg font-bold text-slate-100">
+              <span className="text-xs text-slate-500">Card Number</span>
+              <p className="font-mono text-lg font-bold text-slate-900">
                 {sessionDetail.cardDisplayNumber}
               </p>
             </div>
@@ -170,13 +170,13 @@ export function PortalSessionPage() {
 
         {/* Live Balance Section */}
         <div className="py-6 text-center">
-          <span className="text-xs font-medium uppercase tracking-wider text-slate-400">
+          <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
             {isClosed ? 'Final Settled Balance' : 'Current Wallet Balance'}
           </span>
-          <h2 className="mt-1 font-mono text-4xl font-extrabold text-violet-300">
+          <h2 className="mt-1 font-mono text-4xl font-extrabold text-emerald-600">
             {formatCurrency(sessionDetail.currentBalance)}
           </h2>
-          <p className="mt-2 flex items-center justify-center gap-1.5 text-xs text-slate-400">
+          <p className="mt-2 flex items-center justify-center gap-1.5 text-xs text-slate-600">
             <Building2 className="h-3.5 w-3.5 text-slate-500" />
             <span>{sessionDetail.branchDisplayName}</span>
           </p>
@@ -184,9 +184,9 @@ export function PortalSessionPage() {
 
         {/* Closed Session Warning Banner */}
         {isClosed && (
-          <div className="rounded-lg border border-slate-800 bg-slate-950/80 p-3 text-xs text-slate-400 space-y-1">
-            <div className="flex items-center gap-2 font-semibold text-slate-300">
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 space-y-1">
+            <div className="flex items-center gap-2 font-semibold text-slate-900">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
               <span>Session Settled & Closed</span>
             </div>
             <p>
@@ -196,15 +196,15 @@ export function PortalSessionPage() {
         )}
 
         {/* Footer info & Exit action */}
-        <div className="mt-4 flex items-center justify-between border-t border-slate-800/80 pt-4 text-xs text-slate-400">
+        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4 text-xs text-slate-500">
           <span className="flex items-center gap-1">
-            <Clock className="h-3.5 w-3.5 text-slate-500" />
+            <Clock className="h-3.5 w-3.5 text-slate-400" />
             Started: {formatDate(sessionDetail.startedAt)}
           </span>
 
           <button
             onClick={handleExitSession}
-            className="flex items-center gap-1 text-slate-400 hover:text-slate-200 transition-colors"
+            className="flex items-center gap-1 text-slate-500 hover:text-slate-800 transition-colors"
           >
             <LogOut className="h-3.5 w-3.5" />
             Exit Session
@@ -216,19 +216,19 @@ export function PortalSessionPage() {
       <div className="grid grid-cols-2 gap-4">
         <Link
           to="/portal/transactions"
-          className="flex flex-col items-center justify-center rounded-xl border border-slate-800 bg-slate-900/60 p-4 text-center transition-all hover:border-violet-500/50 hover:bg-slate-900"
+          className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm transition-all hover:border-emerald-500/50 hover:bg-emerald-50/20"
         >
-          <History className="h-6 w-6 text-violet-400 mb-2" />
-          <span className="text-sm font-semibold text-slate-200">Transaction History</span>
+          <History className="h-6 w-6 text-emerald-600 mb-2" />
+          <span className="text-sm font-semibold text-slate-900">Transaction History</span>
           <span className="mt-0.5 text-xs text-slate-500">View recharges & purchases</span>
         </Link>
 
         <Link
           to="/portal/receipts"
-          className="flex flex-col items-center justify-center rounded-xl border border-slate-800 bg-slate-900/60 p-4 text-center transition-all hover:border-violet-500/50 hover:bg-slate-900"
+          className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm transition-all hover:border-emerald-500/50 hover:bg-emerald-50/20"
         >
-          <Receipt className="h-6 w-6 text-emerald-400 mb-2" />
-          <span className="text-sm font-semibold text-slate-200">Purchase Receipts</span>
+          <Receipt className="h-6 w-6 text-emerald-600 mb-2" />
+          <span className="text-sm font-semibold text-slate-900">Purchase Receipts</span>
           <span className="mt-0.5 text-xs text-slate-500">Itemized purchase details</span>
         </Link>
       </div>

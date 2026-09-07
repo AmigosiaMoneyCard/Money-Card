@@ -46,17 +46,17 @@ export function DataTable<T>({
     ((item: any) => String(item?.id ?? item?.key ?? item?._id ?? JSON.stringify(item)));
 
   return (
-    <div className={cn('relative w-full overflow-x-auto scrollbar-thin scrollbar-thumb-slate-800', className)}>
+    <div className={cn('relative w-full overflow-x-auto scrollbar-thin scrollbar-thumb-slate-300', className)}>
       <table className="w-full text-left border-collapse min-w-[580px] sm:min-w-full">
         <thead>
-          <tr className="border-b border-slate-800 bg-slate-900/40">
+          <tr className="border-b border-slate-200 bg-slate-50/80">
             {columns.map((col, idx) => {
               const colKey = col.key || col.accessorKey || col.id || `col_${idx}`;
               return (
                 <th
                   key={colKey}
                   className={cn(
-                    'px-3 sm:px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-200 select-none whitespace-nowrap',
+                    'px-3 sm:px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-700 select-none whitespace-nowrap',
                     col.className,
                   )}
                 >
@@ -66,7 +66,7 @@ export function DataTable<T>({
             })}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-800/50">
+        <tbody className="divide-y divide-slate-200/80">
           {data.map((item) => (
             <tr
               key={getKey(item)}
@@ -74,8 +74,8 @@ export function DataTable<T>({
               className={cn(
                 'transition-colors',
                 onRowClick
-                  ? 'cursor-pointer hover:bg-slate-800/30 active:bg-slate-800/50'
-                  : 'hover:bg-slate-800/20',
+                  ? 'cursor-pointer hover:bg-slate-50 active:bg-slate-100/80'
+                  : 'hover:bg-slate-50/60',
                 rowClassName?.(item),
               )}
             >
@@ -94,7 +94,7 @@ export function DataTable<T>({
                 return (
                   <td
                     key={colKey}
-                    className={cn('px-3 sm:px-4 py-3.5 text-xs sm:text-sm text-slate-100 dark:text-slate-100 font-medium', col.className)}
+                    className={cn('px-3 sm:px-4 py-3.5 text-xs sm:text-sm text-slate-800 font-medium', col.className)}
                   >
                     {renderedContent}
                   </td>

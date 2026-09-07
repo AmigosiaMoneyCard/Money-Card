@@ -68,7 +68,27 @@ export const mockCardsHandlers = {
     const page = params?.page || 1;
     const limit = params?.limit || 20;
     const total = cards.length;
-    const items = cards.slice((page - 1) * limit, page * limit);
+    const items = cards.slice((page - 1) * limit, page * limit).map((c) => {
+      const activeSession = mockStore.sessions.find(
+        (s) => s.cardId === c.id && s.status === 'ACTIVE',
+      );
+      return {
+        ...c,
+        activeSession: activeSession
+          ? {
+              id: activeSession.id,
+              balance: activeSession.balance,
+              branchId: activeSession.branchId,
+              branchName: 'Main Cafeteria',
+              sessionCardNumber: activeSession.sessionCardNumber || `${c.physicalCardNumber || 'MC'}_${activeSession.cycleNumber || 1}`,
+              cycleNumber: activeSession.cycleNumber || 1,
+              customerName: activeSession.customerName || null,
+              customerPhone: activeSession.customerPhone || null,
+              issuedAt: activeSession.startedAt || activeSession.createdAt,
+            }
+          : undefined,
+      };
+    });
 
     return createMockSuccess({
       items,

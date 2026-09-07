@@ -152,7 +152,7 @@ function StaffActionMenu({
         variant="outline"
         size="sm"
         onClick={handleToggle}
-        className="flex items-center gap-1.5 text-xs py-1 px-2.5 bg-slate-900 border-slate-700 hover:border-violet-500 text-slate-200"
+        className="flex items-center gap-1.5 text-xs py-1 px-2.5 bg-white border border-slate-300 hover:border-emerald-500 text-slate-700 shadow-xs"
       >
         <MoreVertical className="h-3.5 w-3.5 text-slate-400" />
         <span>Actions</span>
@@ -169,7 +169,7 @@ function StaffActionMenu({
               left: `${menuPosition.left}px`,
               zIndex: 9999,
             }}
-            className="w-52 rounded-xl border border-slate-700/80 bg-slate-900 p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
+            className="w-52 rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
           >
             {/* Resend Activation Invite if Pending */}
             {canManage && staff.status === 'PENDING_ACTIVATION' && (
@@ -180,7 +180,7 @@ function StaffActionMenu({
                   onResendInvite();
                 }}
                 disabled={resendingId === staff.id}
-                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 transition-colors cursor-pointer text-left"
+                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-amber-600 hover:bg-amber-50 hover:text-amber-700 transition-colors cursor-pointer text-left"
               >
                 <Send className="h-4 w-4" />
                 <span>{resendingId === staff.id ? 'Sending Invite...' : 'Resend Invite'}</span>
@@ -194,9 +194,9 @@ function StaffActionMenu({
                 setIsOpen(false);
                 onEditOrView();
               }}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer text-left"
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer text-left"
             >
-              {canManage ? <Edit2 className="h-4 w-4 text-violet-400" /> : <Eye className="h-4 w-4 text-violet-400" />}
+              {canManage ? <Edit2 className="h-4 w-4 text-emerald-600" /> : <Eye className="h-4 w-4 text-emerald-600" />}
               <span>{canManage ? 'Edit / Details' : 'View Details'}</span>
             </button>
 
@@ -207,9 +207,9 @@ function StaffActionMenu({
                 setIsOpen(false);
                 onPermissions();
               }}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer text-left"
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer text-left"
             >
-              <ShieldCheck className="h-4 w-4 text-indigo-400" />
+              <ShieldCheck className="h-4 w-4 text-teal-600" />
               <span>{canManage ? 'Permissions' : 'View Permissions'}</span>
             </button>
 
@@ -220,9 +220,9 @@ function StaffActionMenu({
                 setIsOpen(false);
                 onBranches();
               }}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer text-left"
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer text-left"
             >
-              <Building2 className="h-4 w-4 text-sky-400" />
+              <Building2 className="h-4 w-4 text-sky-600" />
               <span>Branch Access</span>
             </button>
 
@@ -234,14 +234,14 @@ function StaffActionMenu({
                   setIsOpen(false);
                   onSecurity();
                 }}
-                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer text-left"
+                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer text-left"
               >
-                <Key className="h-4 w-4 text-amber-400" />
+                <Key className="h-4 w-4 text-amber-500" />
                 <span>Change Password</span>
               </button>
             )}
 
-            {canManage && <div className="my-1 border-t border-slate-800" />}
+            {canManage && <div className="my-1 border-t border-slate-200" />}
 
             {/* Status Toggle */}
             {canManage && (
@@ -892,12 +892,12 @@ export function StaffPage() {
       header: 'Staff Member',
       render: (staff: Staff) => (
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400 font-bold text-sm">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 font-bold text-sm border border-emerald-200">
             {staff.name.charAt(0).toUpperCase()}
           </div>
           <div>
-            <p className="font-semibold text-slate-100">{staff.name}</p>
-            <p className="text-xs text-slate-400">{staff.email}</p>
+            <p className="font-semibold text-slate-900">{staff.name}</p>
+            <p className="text-xs text-slate-500">{staff.email}</p>
           </div>
         </div>
       ),
@@ -907,7 +907,7 @@ export function StaffPage() {
       header: 'Status',
       render: (staff: Staff) => (
         staff.status === 'PENDING_ACTIVATION' ? (
-          <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-400 border border-amber-500/30">
+          <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 border border-amber-200">
             Pending Activation
           </span>
         ) : (
@@ -927,11 +927,11 @@ export function StaffPage() {
 
         return (
           <div className="space-y-1">
-            <span className="text-xs font-semibold text-slate-300">
+            <span className="text-xs font-semibold text-slate-700">
               {staff.assignedBranchIds.length} branch(es)
             </span>
             {assignedNames.length > 0 && (
-              <p className="max-w-[180px] truncate text-[11px] text-slate-400">
+              <p className="max-w-[180px] truncate text-[11px] text-slate-500">
                 {assignedNames.join(', ')}
               </p>
             )}
@@ -947,7 +947,7 @@ export function StaffPage() {
         const isSupervisor = staff.permissions.includes('INVENTORY_MANAGE') || staff.permissions.includes('PRODUCT_MANAGE');
         const roleLabel = isManager ? 'Manager / Admin' : isSupervisor ? 'Branch Supervisor' : 'Cashier / POS';
         return (
-          <span className="font-semibold text-xs text-slate-200">{roleLabel}</span>
+          <span className="font-semibold text-xs text-slate-700">{roleLabel}</span>
         );
       },
     },
@@ -955,7 +955,7 @@ export function StaffPage() {
       key: 'createdAt',
       header: 'Created',
       render: (staff: Staff) => (
-        <span className="text-xs text-slate-400">{formatDate(staff.createdAt)}</span>
+        <span className="text-xs text-slate-500">{formatDate(staff.createdAt)}</span>
       ),
     },
     {
@@ -986,7 +986,7 @@ export function StaffPage() {
       {/* Header Bar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">Staff Management</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Staff Management</h1>
         </div>
 
         {canManage && (
@@ -1002,19 +1002,19 @@ export function StaffPage() {
 
       {/* Plan Resource Usage Indicator */}
       {orgOverview?.usage && (
-        <Card padding="sm" className="bg-slate-900/40">
+        <Card padding="sm" className="bg-slate-50 border border-slate-200">
           <div className="flex items-center justify-between text-xs font-medium">
-            <span className="text-slate-400">
+            <span className="text-slate-600">
               Staff Usage ({orgOverview.plan?.name || 'Active Plan'}):
             </span>
-            <span className="text-slate-200">
-              <strong className="text-violet-400">{orgOverview.usage.staffCount}</strong> /{' '}
+            <span className="text-slate-800">
+              <strong className="text-emerald-600">{orgOverview.usage.staffCount}</strong> /{' '}
               {orgOverview.usage.staffLimit} staff accounts created
             </span>
           </div>
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
             <div
-              className="h-full bg-violet-500 transition-all duration-300"
+              className="h-full bg-emerald-600 transition-all duration-300"
               style={{
                 width: `${Math.min(
                   (orgOverview.usage.staffCount / orgOverview.usage.staffLimit) * 100,
@@ -1029,20 +1029,20 @@ export function StaffPage() {
       {/* Search & Refresh */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             placeholder="Search staff by name or email..."
             value={searchQuery}
             maxLength={30}
             onChange={(e) => setSearchQuery(e.target.value.slice(0, 30))}
-            className="w-full rounded-lg border border-slate-800 bg-slate-900/60 pl-10 pr-10 py-2 text-sm text-slate-100 placeholder-slate-500 transition-colors focus:border-violet-500 focus:outline-none"
+            className="w-full rounded-lg border border-slate-300 bg-white pl-10 pr-10 py-2 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
               aria-label="Clear search"
             >
               <X className="h-4 w-4" />
@@ -1105,14 +1105,14 @@ export function StaffPage() {
           )}
 
           {/* Horizontal Navigation Tabs */}
-          <div className="flex border-b border-slate-800 overflow-x-auto gap-2">
+          <div className="flex border-b border-slate-200 overflow-x-auto gap-2">
             <button
               type="button"
               onClick={() => setStaffTab('overview')}
               className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
                 staffTab === 'overview'
-                  ? 'border-violet-500 text-violet-300 font-semibold'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
+                  ? 'border-emerald-600 text-emerald-700 font-semibold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               <User className="h-4 w-4" />
@@ -1124,8 +1124,8 @@ export function StaffPage() {
               onClick={() => setStaffTab('permissions')}
               className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
                 staffTab === 'permissions'
-                  ? 'border-violet-500 text-violet-300 font-semibold'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
+                  ? 'border-emerald-600 text-emerald-700 font-semibold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               <ShieldCheck className="h-4 w-4" />
@@ -1140,8 +1140,8 @@ export function StaffPage() {
               onClick={() => setStaffTab('branches')}
               className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
                 staffTab === 'branches'
-                  ? 'border-violet-500 text-violet-300 font-semibold'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
+                  ? 'border-emerald-600 text-emerald-700 font-semibold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               <Building2 className="h-4 w-4" />
@@ -1156,8 +1156,8 @@ export function StaffPage() {
               onClick={() => setStaffTab('security')}
               className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
                 staffTab === 'security'
-                  ? 'border-violet-500 text-violet-300 font-semibold'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
+                  ? 'border-emerald-600 text-emerald-700 font-semibold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               <Lock className="h-4 w-4" />
@@ -1172,8 +1172,8 @@ export function StaffPage() {
               <div className="space-y-6">
                 {/* Metric Summary Cards */}
                 <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3.5 space-y-1">
-                    <span className="text-xs text-slate-400">Account Status</span>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1">
+                    <span className="text-xs text-slate-500">Account Status</span>
                     <div className="flex items-center gap-2 pt-1">
                       <Badge variant={selectedStaff?.status === 'ACTIVE' ? 'success' : 'danger'}>
                         {selectedStaff?.status}
@@ -1181,24 +1181,24 @@ export function StaffPage() {
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3.5 space-y-1">
-                    <span className="text-xs text-slate-400">Assigned Branches</span>
-                    <p className="font-mono text-sm font-bold text-slate-200 pt-1">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1">
+                    <span className="text-xs text-slate-500">Assigned Branches</span>
+                    <p className="font-mono text-sm font-bold text-slate-800 pt-1">
                       {formBranchIds.length} branch(es)
                     </p>
                   </div>
 
-                  <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3.5 space-y-1">
-                    <span className="text-xs text-slate-400">Granted Permissions</span>
-                    <p className="font-mono text-sm font-bold text-violet-300 pt-1">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1">
+                    <span className="text-xs text-slate-500">Granted Permissions</span>
+                    <p className="font-mono text-sm font-bold text-emerald-700 pt-1">
                       {formPermissions.length} / 20 permissions
                     </p>
                   </div>
                 </div>
 
                 {/* Account Details & Edit Fields */}
-                <div className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/40 p-4">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                     Staff Profile Information
                   </h4>
 
@@ -1223,14 +1223,14 @@ export function StaffPage() {
                     />
                   </div>
 
-                  <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t border-slate-800 text-xs">
+                  <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t border-slate-200 text-xs">
                     <div>
-                      <span className="text-slate-400">Staff ID:</span>
-                      <p className="font-mono font-semibold text-slate-300">STAFF-#{selectedStaff?.id.slice(0, 8).toUpperCase()}</p>
+                      <span className="text-slate-500">Staff ID:</span>
+                      <p className="font-mono font-semibold text-slate-700">STAFF-#{selectedStaff?.id.slice(0, 8).toUpperCase()}</p>
                     </div>
                     <div>
-                      <span className="text-slate-400">Created Date:</span>
-                      <p className="font-semibold text-slate-300">
+                      <span className="text-slate-500">Created Date:</span>
+                      <p className="font-semibold text-slate-700">
                         {selectedStaff?.createdAt ? formatDate(selectedStaff.createdAt) : 'N/A'}
                       </p>
                     </div>
@@ -1238,11 +1238,11 @@ export function StaffPage() {
                 </div>
 
                 {/* Quick Security & Password Summary */}
-                <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+                <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Lock className="h-4 w-4 text-violet-400" />
-                      <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                      <Lock className="h-4 w-4 text-emerald-600" />
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Security & Credentials
                       </h4>
                     </div>
@@ -1250,7 +1250,7 @@ export function StaffPage() {
                       <button
                         type="button"
                         onClick={() => setStaffTab('security')}
-                        className="text-xs text-violet-400 hover:text-violet-300 font-medium"
+                        className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
                       >
                         Change Password →
                       </button>
@@ -1292,15 +1292,15 @@ export function StaffPage() {
                             'BRANCH_MANAGE',
                           ])
                         }
-                        className="text-xs text-violet-400 hover:text-violet-300 font-medium"
+                        className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
                       >
                         Select All (20)
                       </button>
-                      <span className="text-slate-700">|</span>
+                      <span className="text-slate-300">|</span>
                       <button
                         type="button"
                         onClick={() => setFormPermissions([])}
-                        className="text-xs text-slate-400 hover:text-slate-300 font-medium"
+                        className="text-xs text-slate-500 hover:text-slate-700 font-medium"
                       >
                         Clear All
                       </button>
@@ -1327,15 +1327,15 @@ export function StaffPage() {
                       <button
                         type="button"
                         onClick={() => setFormBranchIds(branches.map((b) => b.id))}
-                        className="text-xs text-violet-400 hover:text-violet-300 font-medium"
+                        className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
                       >
                         Select All
                       </button>
-                      <span className="text-slate-700">|</span>
+                      <span className="text-slate-300">|</span>
                       <button
                         type="button"
                         onClick={() => setFormBranchIds([])}
-                        className="text-xs text-slate-400 hover:text-slate-300 font-medium"
+                        className="text-xs text-slate-500 hover:text-slate-700 font-medium"
                       >
                         Clear All
                       </button>
@@ -1362,23 +1362,23 @@ export function StaffPage() {
                         disabled={!canManage}
                         className={`flex w-full cursor-pointer items-center justify-between rounded-xl border p-3.5 text-xs text-left transition-all select-none ${!canManage ? "pointer-events-none opacity-80" : ""} ${
                           isAssigned
-                            ? 'border-violet-500/40 bg-violet-500/15 text-slate-100'
-                            : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700'
+                            ? 'border-emerald-500 bg-emerald-50 text-slate-900'
+                            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
                         }`}
                       >
                         <div className="flex items-center gap-3">
                           <div
                             className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${
                               isAssigned
-                                ? 'border-violet-500 bg-violet-600 text-white'
-                                : 'border-slate-700 bg-slate-900'
+                                ? 'border-emerald-600 bg-emerald-600 text-white'
+                                : 'border-slate-300 bg-slate-100'
                             }`}
                           >
                             {isAssigned && <Check className="h-3.5 w-3.5" />}
                           </div>
                           <div>
-                            <p className="font-semibold text-slate-200">{b.name}</p>
-                            <span className="text-[11px] text-slate-400">{b.name}</span>
+                            <p className="font-semibold text-slate-800">{b.name}</p>
+                            <span className="text-[11px] text-slate-500">{b.name}</span>
                           </div>
                         </div>
 
@@ -1399,21 +1399,21 @@ export function StaffPage() {
               <div className="space-y-5">
 
                 {passwordChangeError && (
-                  <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
-                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
+                  <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
                     <span>{passwordChangeError}</span>
                   </div>
                 )}
 
                 {passwordChangeSuccess && (
-                  <div className="flex items-start gap-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+                  <div className="flex items-start gap-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
                     <span>{passwordChangeSuccess}</span>
                   </div>
                 )}
 
-                <div className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/40 p-4">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                     Change Password
                   </h4>
 
@@ -1435,7 +1435,7 @@ export function StaffPage() {
                       <button
                         type="button"
                         onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute right-3 top-8 text-slate-400 hover:text-slate-200 focus:outline-none"
+                        className="absolute right-3 top-8 text-slate-400 hover:text-slate-600 focus:outline-none"
                         tabIndex={-1}
                       >
                         {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -1459,7 +1459,7 @@ export function StaffPage() {
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-8 text-slate-400 hover:text-slate-200 focus:outline-none"
+                        className="absolute right-3 top-8 text-slate-400 hover:text-slate-600 focus:outline-none"
                         tabIndex={-1}
                       >
                         {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -1468,25 +1468,25 @@ export function StaffPage() {
                   </div>
 
                   {/* Password requirements checklist */}
-                  <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3 text-xs space-y-1.5">
-                    <span className="font-semibold text-slate-400">Password Requirements:</span>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-slate-400">
-                      <div className={`flex items-center gap-1.5 ${formNewPassword.length >= 8 ? 'text-emerald-400 font-medium' : ''}`}>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs space-y-1.5">
+                    <span className="font-semibold text-slate-600">Password Requirements:</span>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-slate-600">
+                      <div className={`flex items-center gap-1.5 ${formNewPassword.length >= 8 ? 'text-emerald-600 font-medium' : ''}`}>
                         <span className="text-xs">•</span> At least 8 characters
                       </div>
-                      <div className={`flex items-center gap-1.5 ${/[A-Z]/.test(formNewPassword) ? 'text-emerald-400 font-medium' : ''}`}>
+                      <div className={`flex items-center gap-1.5 ${/[A-Z]/.test(formNewPassword) ? 'text-emerald-600 font-medium' : ''}`}>
                         <span className="text-xs">•</span> One uppercase letter [A-Z]
                       </div>
-                      <div className={`flex items-center gap-1.5 ${/[a-z]/.test(formNewPassword) ? 'text-emerald-400 font-medium' : ''}`}>
+                      <div className={`flex items-center gap-1.5 ${/[a-z]/.test(formNewPassword) ? 'text-emerald-600 font-medium' : ''}`}>
                         <span className="text-xs">•</span> One lowercase letter [a-z]
                       </div>
-                      <div className={`flex items-center gap-1.5 ${/[0-9]/.test(formNewPassword) ? 'text-emerald-400 font-medium' : ''}`}>
+                      <div className={`flex items-center gap-1.5 ${/[0-9]/.test(formNewPassword) ? 'text-emerald-600 font-medium' : ''}`}>
                         <span className="text-xs">•</span> One number [0-9]
                       </div>
-                      <div className={`flex items-center gap-1.5 ${/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(formNewPassword) ? 'text-emerald-400 font-medium' : ''}`}>
+                      <div className={`flex items-center gap-1.5 ${/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(formNewPassword) ? 'text-emerald-600 font-medium' : ''}`}>
                         <span className="text-xs">•</span> One special character (!@#$)
                       </div>
-                      <div className={`flex items-center gap-1.5 ${formNewPassword && formNewPassword === formConfirmPassword ? 'text-emerald-400 font-medium' : ''}`}>
+                      <div className={`flex items-center gap-1.5 ${formNewPassword && formNewPassword === formConfirmPassword ? 'text-emerald-600 font-medium' : ''}`}>
                         <span className="text-xs">•</span> Passwords match
                       </div>
                     </div>
@@ -1552,14 +1552,14 @@ export function StaffPage() {
           )}
 
           {/* Horizontal Step Tabs */}
-          <div className="flex border-b border-slate-800 overflow-x-auto gap-2">
+          <div className="flex border-b border-slate-200 overflow-x-auto gap-2">
             <button
               type="button"
               onClick={() => setAddTab('basic')}
               className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
                 addTab === 'basic'
-                  ? 'border-violet-500 text-violet-300 font-semibold'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
+                  ? 'border-emerald-600 text-emerald-700 font-semibold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               <User className="h-4 w-4" />
@@ -1574,8 +1574,8 @@ export function StaffPage() {
               onClick={() => setAddTab('branches')}
               className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
                 addTab === 'branches'
-                  ? 'border-violet-500 text-violet-300 font-semibold'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
+                  ? 'border-emerald-600 text-emerald-700 font-semibold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               <Building2 className="h-4 w-4" />
@@ -1590,8 +1590,8 @@ export function StaffPage() {
               onClick={() => setAddTab('permissions')}
               className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
                 addTab === 'permissions'
-                  ? 'border-violet-500 text-violet-300 font-semibold'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
+                  ? 'border-emerald-600 text-emerald-700 font-semibold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               <ShieldCheck className="h-4 w-4" />
@@ -1654,7 +1654,7 @@ export function StaffPage() {
                   rightElement={
                     <button
                       type="button"
-                      className="text-slate-400 hover:text-slate-200 transition-colors p-1 flex items-center justify-center focus:outline-none"
+                      className="text-slate-400 hover:text-slate-600 transition-colors p-1 flex items-center justify-center focus:outline-none"
                       onClick={() => setShowPassword((prev) => !prev)}
                       title={showPassword ? "Hide password" : "Show password"}
                     >
@@ -1664,52 +1664,52 @@ export function StaffPage() {
                 />
 
                 {/* Initial Password requirements checklist */}
-                <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3 text-xs space-y-1.5">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-slate-300 flex items-center gap-1.5">
-                      <ShieldCheck className="h-3.5 w-3.5 text-violet-400" />
+                    <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
                       Password Requirements:
                     </span>
                     <span className="text-[11px] text-slate-500">All rules required</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-slate-400 pt-0.5">
-                    <div className={`flex items-center gap-1.5 transition-colors ${formPassword.length >= 8 ? 'text-emerald-400 font-medium' : ''}`}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-slate-600 pt-0.5">
+                    <div className={`flex items-center gap-1.5 transition-colors ${formPassword.length >= 8 ? 'text-emerald-600 font-medium' : ''}`}>
                       {formPassword.length >= 8 ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                       ) : (
-                        <span className="text-slate-600 text-xs">•</span>
+                        <span className="text-slate-400 text-xs">•</span>
                       )}
                       <span>At least 8 characters</span>
                     </div>
-                    <div className={`flex items-center gap-1.5 transition-colors ${/[A-Z]/.test(formPassword) ? 'text-emerald-400 font-medium' : ''}`}>
+                    <div className={`flex items-center gap-1.5 transition-colors ${/[A-Z]/.test(formPassword) ? 'text-emerald-600 font-medium' : ''}`}>
                       {/[A-Z]/.test(formPassword) ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                       ) : (
-                        <span className="text-slate-600 text-xs">•</span>
+                        <span className="text-slate-400 text-xs">•</span>
                       )}
                       <span>One uppercase letter [A-Z]</span>
                     </div>
-                    <div className={`flex items-center gap-1.5 transition-colors ${/[a-z]/.test(formPassword) ? 'text-emerald-400 font-medium' : ''}`}>
+                    <div className={`flex items-center gap-1.5 transition-colors ${/[a-z]/.test(formPassword) ? 'text-emerald-600 font-medium' : ''}`}>
                       {/[a-z]/.test(formPassword) ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                       ) : (
-                        <span className="text-slate-600 text-xs">•</span>
+                        <span className="text-slate-400 text-xs">•</span>
                       )}
                       <span>One lowercase letter [a-z]</span>
                     </div>
-                    <div className={`flex items-center gap-1.5 transition-colors ${/[0-9]/.test(formPassword) ? 'text-emerald-400 font-medium' : ''}`}>
+                    <div className={`flex items-center gap-1.5 transition-colors ${/[0-9]/.test(formPassword) ? 'text-emerald-600 font-medium' : ''}`}>
                       {/[0-9]/.test(formPassword) ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                       ) : (
-                        <span className="text-slate-600 text-xs">•</span>
+                        <span className="text-slate-400 text-xs">•</span>
                       )}
                       <span>One number [0-9]</span>
                     </div>
-                    <div className={`flex items-center gap-1.5 transition-colors sm:col-span-2 ${/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(formPassword) ? 'text-emerald-400 font-medium' : ''}`}>
+                    <div className={`flex items-center gap-1.5 transition-colors sm:col-span-2 ${/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(formPassword) ? 'text-emerald-600 font-medium' : ''}`}>
                       {/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(formPassword) ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                       ) : (
-                        <span className="text-slate-600 text-xs">•</span>
+                        <span className="text-slate-400 text-xs">•</span>
                       )}
                       <span>One special character (!@#$%^&*...)</span>
                     </div>
@@ -1717,7 +1717,7 @@ export function StaffPage() {
                 </div>
 
                 {orgOverview?.usage && (
-                  <p className="text-xs text-slate-400 pt-2">
+                  <p className="text-xs text-slate-500 pt-2">
                     Active subscription allows up to {orgOverview.usage.staffLimit} staff accounts (
                     {orgOverview.usage.staffLimit - orgOverview.usage.staffCount} slots available).
                   </p>
@@ -1729,22 +1729,22 @@ export function StaffPage() {
             {addTab === 'branches' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between pb-2">
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-500">
                     Assign this staff member to one or more physical branches.
                   </p>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => setFormBranchIds(branches.map((b) => b.id))}
-                      className="text-xs text-violet-400 hover:text-violet-300 font-medium"
+                      className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
                     >
                       Select All ({branches.length})
                     </button>
-                    <span className="text-slate-600">•</span>
+                    <span className="text-slate-300">•</span>
                     <button
                       type="button"
                       onClick={() => setFormBranchIds([])}
-                      className="text-xs text-slate-400 hover:text-slate-300 font-medium"
+                      className="text-xs text-slate-500 hover:text-slate-700 font-medium"
                     >
                       Clear All
                     </button>
@@ -1769,23 +1769,23 @@ export function StaffPage() {
                         aria-checked={isAssigned}
                         className={`flex w-full cursor-pointer items-center justify-between rounded-xl border p-3.5 text-xs text-left transition-all select-none ${
                           isAssigned
-                            ? 'border-violet-500/40 bg-violet-500/15 text-slate-100'
-                            : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700'
+                            ? 'border-emerald-500 bg-emerald-50 text-slate-900'
+                            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
                         }`}
                       >
                         <div className="flex items-center gap-3">
                           <div
                             className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${
                               isAssigned
-                                ? 'border-violet-500 bg-violet-600 text-white'
-                                : 'border-slate-700 bg-slate-900'
+                                ? 'border-emerald-600 bg-emerald-600 text-white'
+                                : 'border-slate-300 bg-slate-100'
                             }`}
                           >
                             {isAssigned && <Check className="h-3.5 w-3.5" />}
                           </div>
                           <div>
-                            <p className="font-semibold text-slate-200">{b.name}</p>
-                            <span className="text-[11px] text-slate-400">{b.name}</span>
+                            <p className="font-semibold text-slate-800">{b.name}</p>
+                            <span className="text-[11px] text-slate-500">{b.name}</span>
                           </div>
                         </div>
 
@@ -1803,10 +1803,10 @@ export function StaffPage() {
             {addTab === 'permissions' && (
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
                     Choose a Staff Role Preset
                   </h4>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-xs text-slate-500 mt-0.5">
                     Select a pre-configured role to automatically assign the right permissions.
                   </p>
                 </div>
@@ -1830,25 +1830,25 @@ export function StaffPage() {
                     }}
                     className={`flex flex-col justify-between p-4 rounded-xl border text-left transition-all cursor-pointer select-none ${
                       formPermissions.length === 8 && formPermissions.includes('PURCHASE') && !formPermissions.includes('PRODUCT_MANAGE')
-                        ? 'border-emerald-500 bg-emerald-500/10 ring-1 ring-emerald-500'
-                        : 'border-slate-800 bg-slate-950/60 hover:border-slate-700'
+                        ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500'
+                        : 'border-slate-200 bg-white hover:border-slate-300'
                     }`}
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                           Recommended
                         </span>
                         {formPermissions.length === 8 && formPermissions.includes('PURCHASE') && !formPermissions.includes('PRODUCT_MANAGE') && (
-                          <Check className="h-4 w-4 text-emerald-400" />
+                          <Check className="h-4 w-4 text-emerald-600" />
                         )}
                       </div>
-                      <h5 className="font-bold text-sm text-slate-100">Cashier / POS</h5>
-                      <p className="text-[11px] text-slate-400 mt-1">
+                      <h5 className="font-bold text-sm text-slate-900">Cashier / POS</h5>
+                      <p className="text-[11px] text-slate-500 mt-1">
                         Card issuing, recharge, customer checkout, and sales at counter.
                       </p>
                     </div>
-                    <span className="text-[11px] font-mono text-emerald-400 mt-3">
+                    <span className="text-[11px] font-mono text-emerald-600 font-semibold mt-3">
                       8 permissions
                     </span>
                   </button>
@@ -1878,25 +1878,25 @@ export function StaffPage() {
                     }}
                     className={`flex flex-col justify-between p-4 rounded-xl border text-left transition-all cursor-pointer select-none ${
                       formPermissions.length === 16 && formPermissions.includes('INVENTORY_MANAGE') && !formPermissions.includes('STAFF_MANAGE')
-                        ? 'border-amber-500 bg-amber-500/10 ring-1 ring-amber-500'
-                        : 'border-slate-800 bg-slate-950/60 hover:border-slate-700'
+                        ? 'border-amber-500 bg-amber-50 ring-1 ring-amber-500'
+                        : 'border-slate-200 bg-white hover:border-slate-300'
                     }`}
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
                           Branch Lead
                         </span>
                         {formPermissions.length === 16 && formPermissions.includes('INVENTORY_MANAGE') && !formPermissions.includes('STAFF_MANAGE') && (
-                          <Check className="h-4 w-4 text-amber-400" />
+                          <Check className="h-4 w-4 text-amber-600" />
                         )}
                       </div>
-                      <h5 className="font-bold text-sm text-slate-100">Supervisor</h5>
-                      <p className="text-[11px] text-slate-400 mt-1">
+                      <h5 className="font-bold text-sm text-slate-900">Supervisor</h5>
+                      <p className="text-[11px] text-slate-500 mt-1">
                         Cashier duties + stock counting, menu pricing, and branch/staff directory view.
                       </p>
                     </div>
-                    <span className="text-[11px] font-mono text-amber-400 mt-3">
+                    <span className="text-[11px] font-mono text-amber-600 font-semibold mt-3">
                       16 permissions
                     </span>
                   </button>
@@ -1930,36 +1930,36 @@ export function StaffPage() {
                     }}
                     className={`flex flex-col justify-between p-4 rounded-xl border text-left transition-all cursor-pointer select-none ${
                       formPermissions.length === 20
-                        ? 'border-violet-500 bg-violet-500/10 ring-1 ring-violet-500'
-                        : 'border-slate-800 bg-slate-950/60 hover:border-slate-700'
+                        ? 'border-emerald-600 bg-emerald-50 ring-1 ring-emerald-600'
+                        : 'border-slate-200 bg-white hover:border-slate-300'
                     }`}
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
                           Full Access
                         </span>
                         {formPermissions.length === 20 && (
-                          <Check className="h-4 w-4 text-violet-400" />
+                          <Check className="h-4 w-4 text-emerald-600" />
                         )}
                       </div>
-                      <h5 className="font-bold text-sm text-slate-100">Manager / Admin</h5>
-                      <p className="text-[11px] text-slate-400 mt-1">
+                      <h5 className="font-bold text-sm text-slate-900">Manager / Admin</h5>
+                      <p className="text-[11px] text-slate-500 mt-1">
                         Full access to manage team members, branch settings, and all operations.
                       </p>
                     </div>
-                    <span className="text-[11px] font-mono text-violet-400 mt-3">
+                    <span className="text-[11px] font-mono text-emerald-700 font-semibold mt-3">
                       All 20 permissions
                     </span>
                   </button>
                 </div>
 
                 {/* Collapsible Advanced Permissions Toggle */}
-                <div className="pt-2 border-t border-slate-800/80">
+                <div className="pt-2 border-t border-slate-200">
                   <button
                     type="button"
                     onClick={() => setShowAdvancedPerms(!showAdvancedPerms)}
-                    className="flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors"
+                    className="flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-slate-800 transition-colors"
                   >
                     <span>{showAdvancedPerms ? '▼ Hide individual permissions' : '▶ Customize individual permissions (optional)'}</span>
                     <Badge variant="outline" className="text-[10px]">
@@ -1968,7 +1968,7 @@ export function StaffPage() {
                   </button>
 
                   {showAdvancedPerms && (
-                    <div className="mt-3 pt-3 border-t border-slate-800/60">
+                    <div className="mt-3 pt-3 border-t border-slate-200">
                       <PermissionMatrix
                         selectedPermissions={formPermissions}
                         onChange={setFormPermissions}
@@ -2052,18 +2052,18 @@ export function StaffPage() {
       >
         <div className="space-y-4 py-2">
           {modalApiError && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
+            <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
               <span>{modalApiError}</span>
             </div>
           )}
 
-          <p className="text-sm text-slate-300">
+          <p className="text-sm text-slate-700">
             Are you sure you want to{' '}
-            <strong className="text-white">
+            <strong className="text-slate-900">
               {selectedStaff?.status === 'ACTIVE' ? 'deactivate' : 'activate'}
             </strong>{' '}
-            the staff member <span className="text-violet-400 font-semibold">{selectedStaff?.name}</span>?
+            the staff member <span className="text-emerald-700 font-semibold">{selectedStaff?.name}</span>?
           </p>
 
           <ModalFooter>
@@ -2091,8 +2091,8 @@ export function StaffPage() {
       >
         <div className="space-y-4">
           {modalApiError && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+            <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-700">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-500 mt-0.5" />
               <div className="space-y-1">
                 <p className="font-semibold">Action Blocked</p>
                 <p>{modalApiError}</p>
@@ -2100,11 +2100,11 @@ export function StaffPage() {
             </div>
           )}
 
-          <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4 space-y-2">
-            <p className="text-sm text-slate-200 font-medium">
-              Are you sure you want to remove <span className="text-violet-300 font-bold font-mono">{selectedStaff?.name}</span> ({selectedStaff?.email})?
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-2">
+            <p className="text-sm text-slate-800 font-medium">
+              Are you sure you want to remove <span className="text-emerald-700 font-bold font-mono">{selectedStaff?.name}</span> ({selectedStaff?.email})?
             </p>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-slate-600 leading-relaxed">
               If this staff member has never processed sessions or transactions, their account will be permanently removed. If historical transaction records exist, their access will be safely deactivated and tokens revoked, preserving all "Performed By" audit history.
             </p>
           </div>

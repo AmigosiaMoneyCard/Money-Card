@@ -42,14 +42,14 @@ export function Breadcrumbs() {
 
   return (
     <nav aria-label="Breadcrumb" className="flex items-center text-sm font-medium">
-      <ol className="flex items-center gap-1.5 text-slate-400">
+      <ol className="flex items-center gap-1.5 text-slate-500">
         <li>
           <Link
             to="/dashboard"
-            className="flex items-center gap-1 transition-colors hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:rounded"
+            className="flex items-center gap-1 transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:rounded"
             title="Dashboard Home"
           >
-            <Home className="h-4 w-4 shrink-0 text-slate-500" />
+            <Home className="h-4 w-4 shrink-0 text-slate-400" />
             <span className="sr-only">Dashboard</span>
           </Link>
         </li>
@@ -59,10 +59,10 @@ export function Breadcrumbs() {
 
           return (
             <li key={item.path} className="flex items-center gap-1.5">
-              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-600" />
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400" />
               {isLast ? (
                 <span
-                  className="font-semibold text-slate-200"
+                  className="font-semibold text-slate-900"
                   aria-current="page"
                 >
                   {item.label}
@@ -70,7 +70,7 @@ export function Breadcrumbs() {
               ) : (
                 <Link
                   to={item.path}
-                  className="transition-colors hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:rounded"
+                  className="transition-colors hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:rounded"
                 >
                   {item.label}
                 </Link>

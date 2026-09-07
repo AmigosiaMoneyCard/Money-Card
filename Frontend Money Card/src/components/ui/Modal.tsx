@@ -57,7 +57,7 @@ export function Modal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity duration-300"
+        className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-300"
         onClick={closeOnOverlay ? onClose : undefined}
         aria-hidden="true"
       />
@@ -68,25 +68,25 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={title ? 'modal-title' : undefined}
         className={cn(
-          'relative z-10 w-full max-h-[92vh] flex flex-col rounded-xl border border-slate-800 bg-slate-900 shadow-2xl shadow-black/60 transition-all duration-300',
+          'relative z-10 w-full max-h-[92vh] flex flex-col rounded-xl border border-slate-200 bg-white shadow-2xl transition-all duration-300',
           'animate-in fade-in zoom-in-95',
           sizeStyles[size],
         )}
       >
         {/* Header */}
         {(title || description) && (
-          <div className="shrink-0 flex items-start justify-between border-b border-slate-800 px-4 py-3 sm:px-6 sm:py-4">
+          <div className="shrink-0 flex items-start justify-between border-b border-slate-200 px-4 py-3 sm:px-6 sm:py-4">
             <div className="min-w-0 pr-3">
               {title && (
-                <h2 id="modal-title" className="text-base sm:text-lg font-semibold text-slate-100 truncate">
+                <h2 id="modal-title" className="text-base sm:text-lg font-semibold text-slate-900 truncate">
                   {title}
                 </h2>
               )}
-              {description && <p className="mt-0.5 text-xs sm:text-sm text-slate-400">{description}</p>}
+              {description && <p className="mt-0.5 text-xs sm:text-sm text-slate-500">{description}</p>}
             </div>
             <button
               onClick={onClose}
-              className="shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200"
+              className="shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
               aria-label="Close"
             >
               <X className="h-5 w-5" />
@@ -114,7 +114,7 @@ export function ModalFooter({ children, className }: ModalFooterProps) {
   return (
     <div
       className={cn(
-        'shrink-0 flex flex-wrap sm:flex-nowrap items-center justify-end gap-2 sm:gap-3 border-t border-slate-800 px-4 py-3 sm:px-6 sm:py-4 mt-2',
+        'shrink-0 flex flex-wrap sm:flex-nowrap items-center justify-end gap-2 sm:gap-3 border-t border-slate-200 px-4 py-3 sm:px-6 sm:py-4 mt-2',
         className,
       )}
     >

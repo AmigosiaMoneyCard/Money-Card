@@ -56,7 +56,7 @@ export const PERMISSION_GROUPS: PermissionCategoryConfig[] = [
   {
     id: 'cards',
     title: 'Cards Management',
-    icon: React.createElement(CreditCard, { className: 'h-4 w-4 text-violet-400' }),
+    icon: React.createElement(CreditCard, { className: 'h-4 w-4 text-emerald-600' }),
     permissions: [
       { key: 'CARD_VIEW', label: 'CARD_VIEW', description: 'View card balances and card list (Prerequisite for all card actions)' },
       { key: 'CARD_ISSUE', label: 'CARD_ISSUE', description: 'Issue new cards to users (Requires CARD_VIEW)', prerequisite: 'CARD_VIEW' },
@@ -73,7 +73,7 @@ export const PERMISSION_GROUPS: PermissionCategoryConfig[] = [
   {
     id: 'sessions',
     title: 'Sessions & Operations',
-    icon: React.createElement(Clock, { className: 'h-4 w-4 text-violet-400' }),
+    icon: React.createElement(Clock, { className: 'h-4 w-4 text-emerald-600' }),
     permissions: [
       { key: 'RECHARGE', label: 'RECHARGE', description: 'Recharge card balance with cash/UPI' },
       { key: 'PURCHASE', label: 'PURCHASE', description: 'Allows staff to add products to cart and checkout' },
@@ -84,7 +84,7 @@ export const PERMISSION_GROUPS: PermissionCategoryConfig[] = [
   {
     id: 'products',
     title: 'Menu & Inventory',
-    icon: React.createElement(Package, { className: 'h-4 w-4 text-violet-400' }),
+    icon: React.createElement(Package, { className: 'h-4 w-4 text-emerald-600' }),
     permissions: [
       {
         key: 'PRODUCT_VIEW',
@@ -104,7 +104,7 @@ export const PERMISSION_GROUPS: PermissionCategoryConfig[] = [
   {
     id: 'admin_analytics',
     title: 'Branches, Staff, Analytics & Reports',
-    icon: React.createElement(ShieldCheck, { className: 'h-4 w-4 text-violet-400' }),
+    icon: React.createElement(ShieldCheck, { className: 'h-4 w-4 text-emerald-600' }),
     permissions: [
       {
         key: 'BRANCH_VIEW',

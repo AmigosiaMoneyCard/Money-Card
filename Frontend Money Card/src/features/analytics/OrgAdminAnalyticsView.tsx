@@ -36,6 +36,8 @@ import {
   Download,
   Layers,
   ArrowUpDown,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 
 type DatePreset = 'today' | 'last7' | 'last30' | 'thisMonth' | 'custom';
@@ -334,8 +336,8 @@ export function OrgAdminAnalyticsView() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-100">Organization Analytics</h1>
-            <Badge variant="outline" className="text-violet-300 border-violet-500/30">
+            <h1 className="text-2xl font-bold text-slate-900">Organization Analytics</h1>
+            <Badge variant="outline" className="border-emerald-200 text-emerald-700 bg-emerald-50/50">
               Organization Scope
             </Badge>
           </div>
@@ -367,11 +369,11 @@ export function OrgAdminAnalyticsView() {
       </div>
 
       {/* Filter Toolbar */}
-      <div className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-3">
           {/* Branch Scope Filter */}
           <div className="w-full sm:w-52">
-            <label className="mb-1 block text-[11px] font-medium text-slate-400">Branch Scope</label>
+            <label className="mb-1 block text-[11px] font-medium text-slate-600">Branch Scope</label>
             <Select
               id="analytics-branch-filter"
               value={branchFilter}
@@ -385,7 +387,7 @@ export function OrgAdminAnalyticsView() {
 
           {/* Date Preset Filter */}
           <div className="w-full sm:w-44">
-            <label className="mb-1 block text-[11px] font-medium text-slate-400">Time Window</label>
+            <label className="mb-1 block text-[11px] font-medium text-slate-600">Time Window</label>
             <Select
               id="analytics-preset-filter"
               value={datePreset}
@@ -404,21 +406,21 @@ export function OrgAdminAnalyticsView() {
           {datePreset === 'custom' && (
             <div className="flex items-end gap-2">
               <div>
-                <label className="mb-1 block text-[11px] font-medium text-slate-400">Start Date</label>
+                <label className="mb-1 block text-[11px] font-medium text-slate-600">Start Date</label>
                 <input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 focus:border-violet-500 focus:outline-none"
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none shadow-sm"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-[11px] font-medium text-slate-400">End Date</label>
+                <label className="mb-1 block text-[11px] font-medium text-slate-600">End Date</label>
                 <input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 focus:border-violet-500 focus:outline-none"
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none shadow-sm"
                 />
               </div>
               <Button
@@ -455,67 +457,145 @@ export function OrgAdminAnalyticsView() {
             <StatCard
               label="Total POS Revenue"
               value={formatCurrency(analytics.totalPurchaseVolume)}
-              icon={<TrendingUp className="h-5 w-5 text-emerald-400" />}
+              icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
             />
 
             <StatCard
               label="Wallet Recharges"
               value={formatCurrency(analytics.totalRechargeVolume)}
-              icon={<CreditCard className="h-5 w-5 text-violet-400" />}
+              icon={<CreditCard className="h-5 w-5 text-emerald-600" />}
             />
 
             <StatCard
               label="Total Transactions"
               value={analytics.totalTransactions.toLocaleString()}
-              icon={<BarChart3 className="h-5 w-5 text-sky-400" />}
+              icon={<BarChart3 className="h-5 w-5 text-emerald-600" />}
             />
 
             <StatCard
               label="Active Card Sessions"
               value={analytics.activeSessionsCount.toLocaleString()}
-              icon={<Layers className="h-5 w-5 text-amber-400" />}
+              icon={<Layers className="h-5 w-5 text-emerald-600" />}
             />
+          </div>
+
+          {/* Card Lifecycle & Activity (Active Card Recharges, Closed Cards, Zero Balance Cards) */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-slate-900">Card Lifecycle & Activity</h2>
+              <span className="text-xs text-slate-500 font-medium">Real-time card circulation and session status</span>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              {/* Box 1: Already active card how many times it got recharged */}
+              <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    Active Card Recharges
+                  </span>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                    <RefreshCw className="h-4 w-4" />
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <p className="font-mono text-2xl font-bold text-slate-900">
+                    {(analytics.activeCardsRechargeCount ?? 0).toLocaleString()}{' '}
+                    <span className="text-xs font-normal text-slate-500">
+                      {(analytics.activeCardsRechargeCount ?? 0) === 1 ? 'Recharge' : 'Recharges'}
+                    </span>
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {(analytics.reRechargedCardsCount ?? 0) > 0
+                      ? `${analytics.reRechargedCardsCount} repeat top-up${(analytics.reRechargedCardsCount ?? 0) === 1 ? '' : 's'} on active cards`
+                      : 'Total times active cards were recharged'}
+                  </p>
+                </div>
+              </Card>
+
+              {/* Box 2: How many cards got closed */}
+              <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    Closed Cards
+                  </span>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                    <CheckCircle2 className="h-4 w-4" />
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <p className="font-mono text-2xl font-bold text-slate-900">
+                    {(analytics.closedCardsCount ?? 0).toLocaleString()}{' '}
+                    <span className="text-xs font-normal text-slate-500">
+                      {(analytics.closedCardsCount ?? 0) === 1 ? 'Card' : 'Cards'}
+                    </span>
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Completed & settled card sessions
+                  </p>
+                </div>
+              </Card>
+
+              {/* Box 3: Active cards but Zero balance */}
+              <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    Active Cards (Zero Balance)
+                  </span>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                    <AlertCircle className="h-4 w-4" />
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <p className="font-mono text-2xl font-bold text-amber-700">
+                    {(analytics.zeroBalanceActiveCardsCount ?? 0).toLocaleString()}{' '}
+                    <span className="text-xs font-normal text-slate-500">
+                      {(analytics.zeroBalanceActiveCardsCount ?? 0) === 1 ? 'Card' : 'Cards'}
+                    </span>
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Currently in use with ₹0 unspent balance
+                  </p>
+                </div>
+              </Card>
+            </div>
           </div>
 
           {/* Section 1: Financial Streams Breakdown */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Card padding="md" className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                   Cash Recharges
                 </span>
-                <DollarSign className="h-4 w-4 text-emerald-400" />
+                <DollarSign className="h-4 w-4 text-emerald-600" />
               </div>
-              <p className="font-mono text-2xl font-bold text-slate-100">
+              <p className="font-mono text-2xl font-bold text-slate-900">
                 {formatCurrency(cashRechargeEstimate)}
               </p>
-              
             </Card>
 
             <Card padding="md" className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                   UPI Recharges
                 </span>
-                <CreditCard className="h-4 w-4 text-violet-400" />
+                <CreditCard className="h-4 w-4 text-emerald-600" />
               </div>
-              <p className="font-mono text-2xl font-bold text-slate-100">
+              <p className="font-mono text-2xl font-bold text-slate-900">
                 {formatCurrency(upiRechargeEstimate)}
               </p>
-              
             </Card>
 
             <Card padding="md" className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                   Total Returns / Refunds
                 </span>
-                <ArrowUpDown className="h-4 w-4 text-rose-400" />
+                <ArrowUpDown className="h-4 w-4 text-rose-600" />
               </div>
-              <p className="font-mono text-2xl font-bold text-slate-100">
+              <p className="font-mono text-2xl font-bold text-slate-900">
                 {formatCurrency(analytics.totalRefundVolume ?? 0)}
               </p>
-              
             </Card>
           </div>
 
@@ -523,12 +603,12 @@ export function OrgAdminAnalyticsView() {
           <div className="space-y-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-lg font-bold text-slate-100">Branch Performance Comparison</h2>
+                <h2 className="text-lg font-bold text-slate-900">Branch Performance Comparison</h2>
               </div>
 
               {/* Sorting Metric Selector */}
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">Sort By:</span>
+                <span className="text-xs text-slate-600">Sort By:</span>
                 <Select
                   id="branch-sort-metric"
                   value={sortBy}
@@ -547,23 +627,23 @@ export function OrgAdminAnalyticsView() {
 
             {/* Top Branch Insight Banner */}
             {topBranch && (
-              <div className="flex items-center justify-between rounded-xl border border-violet-500/20 bg-violet-500/5 p-4">
+              <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/10 text-violet-400">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
                     <Building2 className="h-5 w-5" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-100">{topBranch.branchName}</span>
-                      <Badge variant="info" className="text-[10px]">
+                      <span className="font-bold text-slate-900">{topBranch.branchName}</span>
+                      <Badge variant="success" className="text-[10px]">
                         Top Performing Branch
                       </Badge>
                     </div>
                   </div>
                 </div>
                 <div className="hidden sm:block text-right font-mono">
-                  <span className="text-xs text-slate-400">POS Revenue</span>
-                  <p className="text-sm font-bold text-emerald-400">
+                  <span className="text-xs text-slate-500">POS Revenue</span>
+                  <p className="text-sm font-bold text-emerald-600">
                     {formatCurrency(topBranch.purchaseVolume)}
                   </p>
                 </div>
@@ -574,7 +654,7 @@ export function OrgAdminAnalyticsView() {
             <Card padding="none">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="border-b border-slate-800 bg-slate-900/80 text-[11px] font-semibold text-slate-400">
+                  <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-600">
                     <tr>
                       <th className="py-3.5 pl-4 pr-3">Branch</th>
                       <th className="px-3 py-3.5 text-right">Transactions</th>
@@ -586,7 +666,7 @@ export function OrgAdminAnalyticsView() {
                       <th className="py-3.5 pl-3 pr-4 text-center">Details</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60 font-mono text-slate-300">
+                  <tbody className="divide-y divide-slate-100 font-mono text-slate-700">
                     {sortedBranchComparison.length === 0 ? (
                       <tr>
                         <td colSpan={8} className="py-8 text-center text-xs text-slate-500 font-sans">
@@ -597,9 +677,9 @@ export function OrgAdminAnalyticsView() {
                       sortedBranchComparison.map((metric) => (
                         <tr
                           key={metric.branchId}
-                          className="transition-colors hover:bg-slate-800/30"
+                          className="transition-colors hover:bg-slate-50/80"
                         >
-                          <td className="py-3 pl-4 pr-3 font-sans font-semibold text-slate-100">
+                          <td className="py-3 pl-4 pr-3 font-sans font-semibold text-slate-900">
                             <div className="flex items-center gap-2">
                               <span>{metric.branchName}</span>
                               {metric.status === 'INACTIVE' && (
@@ -610,13 +690,13 @@ export function OrgAdminAnalyticsView() {
                             </div>
                           </td>
                           <td className="px-3 py-3 text-right">{metric.transactionCount}</td>
-                          <td className="px-3 py-3 text-right text-emerald-400">
+                          <td className="px-3 py-3 text-right text-emerald-600 font-semibold">
                             {formatCurrency(metric.purchaseVolume)}
                           </td>
-                          <td className="px-3 py-3 text-right text-violet-400">
+                          <td className="px-3 py-3 text-right text-emerald-600 font-semibold">
                             {formatCurrency(metric.rechargeVolume)}
                           </td>
-                          <td className="px-3 py-3 text-right font-bold text-slate-100">
+                          <td className="px-3 py-3 text-right font-bold text-slate-900">
                             {formatCurrency(metric.totalRevenue)}
                           </td>
                           <td className="px-3 py-3 text-right">{metric.activeSessionsCount}</td>
@@ -626,7 +706,7 @@ export function OrgAdminAnalyticsView() {
                               variant="ghost"
                               size="sm"
                               onClick={() => setSelectedBranchDetail(metric)}
-                              leftIcon={<Eye className="h-3.5 w-3.5 text-slate-400" />}
+                              leftIcon={<Eye className="h-3.5 w-3.5 text-slate-500" />}
                             >
                               View
                             </Button>
@@ -656,16 +736,16 @@ export function OrgAdminAnalyticsView() {
         size="xl"
       >
         <div className="space-y-4">
-          <div className="flex items-center justify-between rounded-lg bg-slate-900 px-4 py-2 text-xs text-slate-400 border border-slate-800">
+          <div className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-2 text-xs text-slate-600 border border-slate-200">
             <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-violet-400" />
+              <FileText className="h-4 w-4 text-emerald-600" />
               <span>Verified Organization Scope Report</span>
             </div>
-            <span className="font-mono text-emerald-400">PDF-1.3 Standard</span>
+            <span className="font-mono text-emerald-600">PDF-1.3 Standard</span>
           </div>
 
           {pdfPreviewUrl && (
-            <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950 shadow-2xl">
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-lg">
               <iframe
                 src={`${pdfPreviewUrl}#toolbar=0`}
                 className="w-full h-[70vh] rounded-lg"
@@ -709,30 +789,30 @@ export function OrgAdminAnalyticsView() {
         >
           <div className="space-y-4 text-xs">
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg border border-slate-800 bg-slate-950 p-3">
-                <span className="text-slate-400">Total Revenue</span>
-                <p className="font-mono text-lg font-bold text-slate-100">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <span className="text-slate-500">Total Revenue</span>
+                <p className="font-mono text-lg font-bold text-slate-900">
                   {formatCurrency(selectedBranchDetail.totalRevenue)}
                 </p>
               </div>
-              <div className="rounded-lg border border-slate-800 bg-slate-950 p-3">
-                <span className="text-slate-400">Transactions</span>
-                <p className="font-mono text-lg font-bold text-slate-100">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <span className="text-slate-500">Transactions</span>
+                <p className="font-mono text-lg font-bold text-slate-900">
                   {selectedBranchDetail.transactionCount}
                 </p>
               </div>
-              <div className="rounded-lg border border-slate-800 bg-slate-950 p-3">
-                <span className="text-slate-400">POS Purchases</span>
-                <p className="font-mono text-base font-semibold text-emerald-400">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <span className="text-slate-500">POS Purchases</span>
+                <p className="font-mono text-base font-semibold text-emerald-600">
                   {formatCurrency(selectedBranchDetail.purchaseVolume)}
                 </p>
                 <span className="text-[10px] text-slate-500">
                   {selectedBranchDetail.purchaseCount} items billed
                 </span>
               </div>
-              <div className="rounded-lg border border-slate-800 bg-slate-950 p-3">
-                <span className="text-slate-400">Wallet Recharges</span>
-                <p className="font-mono text-base font-semibold text-violet-400">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <span className="text-slate-500">Wallet Recharges</span>
+                <p className="font-mono text-base font-semibold text-emerald-600">
                   {formatCurrency(selectedBranchDetail.rechargeVolume)}
                 </p>
                 <span className="text-[10px] text-slate-500">
@@ -741,9 +821,9 @@ export function OrgAdminAnalyticsView() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-slate-800 bg-slate-950 p-3 space-y-2">
-              <span className="font-semibold text-slate-300">Session & Inventory Health</span>
-              <div className="grid grid-cols-2 gap-2 text-slate-400 font-mono">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+              <span className="font-semibold text-slate-900">Session & Inventory Health</span>
+              <div className="grid grid-cols-2 gap-2 text-slate-600 font-mono">
                 <div>Active Sessions: {selectedBranchDetail.activeSessionsCount}</div>
                 <div>Settled Sessions: {selectedBranchDetail.settledSessionsCount}</div>
                 <div>Products Sold: {selectedBranchDetail.productsSoldCount}</div>

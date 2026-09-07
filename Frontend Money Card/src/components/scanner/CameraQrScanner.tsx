@@ -202,15 +202,15 @@ export function CameraQrScanner({
       </div>
 
       {/* Camera Controls Bar */}
-      <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+      <div className="flex items-center justify-between text-xs text-slate-500 px-1">
         <div className="flex items-center gap-2">
-          <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-          <span className="font-medium text-slate-300">Live Optical Scanner</span>
+          <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+          <span className="font-medium text-slate-700">Live Optical Scanner</span>
           {availableCameras.length > 1 && (
             <button
               type="button"
               onClick={handleSwitchCamera}
-              className="flex items-center gap-1 text-[11px] text-emerald-400 hover:text-emerald-300 ml-2 px-2 py-0.5 rounded bg-slate-800 border border-slate-700"
+              className="flex items-center gap-1 text-[11px] text-emerald-700 hover:text-emerald-800 ml-2 px-2 py-0.5 rounded bg-slate-100 border border-slate-200"
             >
               <SwitchCamera className="h-3 w-3" />
               <span>Switch Camera</span>
@@ -223,7 +223,7 @@ export function CameraQrScanner({
             variant="ghost"
             size="sm"
             onClick={() => onToggleActive(false)}
-            className="text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 py-1 px-2.5 h-auto"
+            className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 py-1 px-2.5 h-auto"
           >
             <CameraOff className="h-3.5 w-3.5 mr-1" /> Close Camera
           </Button>

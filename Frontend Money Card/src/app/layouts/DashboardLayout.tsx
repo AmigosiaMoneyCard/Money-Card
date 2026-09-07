@@ -7,7 +7,7 @@ import { useState, useMemo } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { cn } from '@/utils';
 import { useAuth, useBranch, usePermissions } from '@/hooks';
-import { Breadcrumbs, ProfileMenu, LoadingState } from '@/components/ui';
+import { Breadcrumbs, ProfileMenu, LoadingState, PullToRefresh } from '@/components/ui';
 import { NAVIGATION_ITEMS } from '@/config/navigation';
 import {
   LayoutDashboard,
@@ -88,11 +88,11 @@ export function DashboardLayout() {
   }
 
   return (
-    <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden">
+    <div className="flex h-screen bg-slate-50 text-slate-900 overflow-hidden">
       {/* ── Mobile Overlay ── */}
       {mobileDrawerOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-xs lg:hidden"
           onClick={() => setMobileDrawerOpen(false)}
           aria-hidden="true"
         />
@@ -102,20 +102,20 @@ export function DashboardLayout() {
       <aside
         aria-label="Main Navigation"
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-slate-800/60 bg-slate-950 transition-all duration-300 lg:static lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-slate-200 bg-white transition-all duration-300 lg:static lg:translate-x-0 shadow-xs',
           mobileDrawerOpen ? 'translate-x-0 w-64' : '-translate-x-full lg:translate-x-0',
           sidebarCollapsed ? 'lg:w-20' : 'lg:w-64',
         )}
       >
         {/* Brand / Logo Header */}
-        <div className="flex h-16 items-center gap-3 border-b border-slate-800/60 px-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 font-bold text-white shadow-lg shadow-violet-500/25">
+        <div className="flex h-16 items-center gap-3 border-b border-slate-100 px-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 font-bold text-white shadow-xs shadow-emerald-500/25">
             MC
           </div>
           {(!sidebarCollapsed || mobileDrawerOpen) && (
             <div className="flex flex-col min-w-0">
-              <span className="text-base font-bold text-slate-100 truncate">Money Card</span>
-              <span className="text-[11px] text-slate-400 font-medium truncate">
+              <span className="text-base font-bold text-slate-900 truncate">Money Card</span>
+              <span className="text-[11px] text-slate-500 font-medium truncate">
                 {userRole === 'SUPER_ADMIN' ? 'Platform Control' : 'Admin Portal'}
               </span>
             </div>
@@ -124,7 +124,7 @@ export function DashboardLayout() {
           {/* Mobile close button */}
           <button
             onClick={() => setMobileDrawerOpen(false)}
-            className="ml-auto rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200 lg:hidden"
+            className="ml-auto rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 lg:hidden"
             aria-label="Close navigation sidebar"
           >
             <X className="h-5 w-5" />
@@ -133,15 +133,15 @@ export function DashboardLayout() {
 
         {/* Organization / Branch Context in Sidebar (Expanded view) */}
         {(!sidebarCollapsed || mobileDrawerOpen) && userRole === 'ORG_ADMIN' && branches.length > 0 && (
-          <div className="border-b border-slate-800/60 px-3 py-3">
+          <div className="border-b border-slate-100 px-3 py-3">
             <div className="relative">
               <button
                 onClick={() => setBranchDropdownOpen(!branchDropdownOpen)}
                 aria-expanded={branchDropdownOpen}
                 aria-label="Branch selector"
-                className="flex w-full items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-xs font-medium text-slate-300 transition-colors hover:border-slate-700 hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+                className="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
-                <Building2 className="h-4 w-4 shrink-0 text-violet-400" />
+                <Building2 className="h-4 w-4 shrink-0 text-emerald-600" />
                 <span className="flex-1 truncate text-left">
                   {currentBranch?.name || 'Select Branch'}
                 </span>
@@ -154,7 +154,7 @@ export function DashboardLayout() {
               </button>
 
               {branchDropdownOpen && (
-                <div className="absolute left-0 right-0 top-full z-20 mt-1 rounded-xl border border-slate-800 bg-slate-900 py-1 shadow-2xl backdrop-blur-md">
+                <div className="absolute left-0 right-0 top-full z-20 mt-1 rounded-xl border border-slate-200 bg-white py-1 shadow-xl">
                   {branches.map((branch) => (
                     <button
                       key={branch.id}
@@ -165,13 +165,13 @@ export function DashboardLayout() {
                       className={cn(
                         'flex w-full items-center justify-between px-3 py-2 text-xs font-medium transition-colors',
                         currentBranch?.id === branch.id
-                          ? 'bg-violet-500/15 text-violet-300'
-                          : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200',
+                          ? 'bg-emerald-50 text-emerald-700 font-semibold'
+                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
                       )}
                     >
                       <span className="truncate">{branch.name}</span>
                       {currentBranch?.id === branch.id && (
-                        <span className="h-1.5 w-1.5 rounded-full bg-violet-400 shrink-0" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 shrink-0" />
                       )}
                     </button>
                   ))}
@@ -193,10 +193,10 @@ export function DashboardLayout() {
                 onClick={() => setMobileDrawerOpen(false)}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500',
+                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
                     isActive
-                      ? 'bg-gradient-to-r from-violet-500/20 to-indigo-500/20 text-violet-300 font-semibold border-l-2 border-violet-500'
-                      : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200',
+                      ? 'bg-emerald-50 text-emerald-700 font-semibold border-l-2 border-emerald-600'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
                     sidebarCollapsed && !mobileDrawerOpen && 'justify-center px-2',
                   )
                 }
@@ -212,10 +212,10 @@ export function DashboardLayout() {
         </nav>
 
         {/* Sidebar Footer — Desktop Collapse Toggle */}
-        <div className="hidden lg:flex border-t border-slate-800/60 p-3">
+        <div className="hidden lg:flex border-t border-slate-100 p-3">
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             title={sidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
             aria-label={sidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
           >
@@ -234,11 +234,11 @@ export function DashboardLayout() {
       {/* ── Main Workspace Area ── */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top Bar */}
-        <header className="relative z-30 flex h-16 shrink-0 items-center gap-3 border-b border-slate-800/60 bg-slate-950/80 px-4 backdrop-blur-md lg:px-6">
+        <header className="relative z-30 flex h-16 shrink-0 items-center gap-3 border-b border-slate-200 bg-white/80 px-4 backdrop-blur-md lg:px-6">
           {/* Mobile Drawer Trigger */}
           <button
             onClick={() => setMobileDrawerOpen(true)}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-200 lg:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800 lg:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             aria-label="Open navigation menu"
           >
             <Menu className="h-5 w-5" />
@@ -254,11 +254,11 @@ export function DashboardLayout() {
                 navigate('/dashboard');
               }
             }}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-900/80 px-3 py-1.5 text-xs font-semibold text-slate-300 transition-all hover:border-violet-500/50 hover:bg-slate-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 shadow-sm group"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-all hover:border-emerald-500/50 hover:bg-emerald-50/50 hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 shadow-xs group"
             title="Go back"
             aria-label="Go back to previous page"
           >
-            <ArrowLeft className="h-3.5 w-3.5 text-slate-400 group-hover:text-violet-400 group-hover:-translate-x-0.5 transition-all" />
+            <ArrowLeft className="h-3.5 w-3.5 text-slate-400 group-hover:text-emerald-600 group-hover:-translate-x-0.5 transition-all" />
             <span>Back</span>
           </button>
 
@@ -270,10 +270,10 @@ export function DashboardLayout() {
           <div className="flex-1" />
 
           {/* Organization Context Badge */}
-          <div className="hidden md:flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-1.5 text-xs font-medium text-slate-300">
-            <Shield className="h-3.5 w-3.5 text-violet-400 shrink-0" />
-            <span className="text-slate-400">Org:</span>
-            <span className="font-semibold text-slate-200 truncate max-w-[140px]">
+          <div className="hidden md:flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700">
+            <Shield className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+            <span className="text-slate-500">Org:</span>
+            <span className="font-semibold text-slate-800 truncate max-w-[140px]">
               {orgContextLabel}
             </span>
           </div>
@@ -283,7 +283,10 @@ export function DashboardLayout() {
         </header>
 
         {/* Page Content Viewport */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6" id="main-content">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6 overscroll-contain" id="main-content">
+          {/* Mobile Scroll-Down Pull To Refresh */}
+          <PullToRefresh />
+
           {/* Mobile Breadcrumb (shown on small screens) */}
           <div className="mb-4 sm:hidden">
             <Breadcrumbs />

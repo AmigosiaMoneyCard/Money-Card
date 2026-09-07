@@ -328,7 +328,7 @@ export function OrgAdminDashboard() {
       {/* Header Bar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">Organization Dashboard</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Organization Dashboard</h1>
         </div>
       </div>
 
@@ -338,21 +338,21 @@ export function OrgAdminDashboard() {
           <button
             type="button"
             onClick={() => navigate('/cards')}
-            className="group flex flex-col justify-between p-5 rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900/90 to-slate-950 hover:from-slate-900 hover:to-emerald-950/20 hover:border-emerald-500/50 transition-all text-left shadow-lg cursor-pointer"
+            className="group flex flex-col justify-between p-5 rounded-2xl border border-slate-200 bg-white hover:border-emerald-500/50 hover:shadow-md transition-all text-left shadow-xs cursor-pointer"
           >
             <div className="flex items-center justify-between mb-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:scale-110 transition-transform">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 group-hover:scale-110 transition-transform">
                 <CreditCard className="h-6 w-6" />
               </div>
-              <span className="text-xs font-semibold text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+              <span className="text-xs font-semibold text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
                 Open <ArrowRight className="h-3.5 w-3.5" />
               </span>
             </div>
             <div>
-              <h3 className="font-bold text-slate-100 group-hover:text-emerald-300 transition-colors">
+              <h3 className="font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
                 Issue & Register Cards
               </h3>
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-xs text-slate-500">
                 Scan or assign new smart cards to customers
               </p>
             </div>
@@ -363,21 +363,21 @@ export function OrgAdminDashboard() {
           <button
             type="button"
             onClick={() => navigate('/staff')}
-            className="group flex flex-col justify-between p-5 rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900/90 to-slate-950 hover:from-slate-900 hover:to-violet-950/20 hover:border-violet-500/50 transition-all text-left shadow-lg cursor-pointer"
+            className="group flex flex-col justify-between p-5 rounded-2xl border border-slate-200 bg-white hover:border-emerald-500/50 hover:shadow-md transition-all text-left shadow-xs cursor-pointer"
           >
             <div className="flex items-center justify-between mb-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400 group-hover:scale-110 transition-transform">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 group-hover:scale-110 transition-transform">
                 <Users className="h-6 w-6" />
               </div>
-              <span className="text-xs font-semibold text-violet-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+              <span className="text-xs font-semibold text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
                 Open <ArrowRight className="h-3.5 w-3.5" />
               </span>
             </div>
             <div>
-              <h3 className="font-bold text-slate-100 group-hover:text-violet-300 transition-colors">
+              <h3 className="font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
                 Add Team Member
               </h3>
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-xs text-slate-500">
                 Invite cashiers and branch supervisors
               </p>
             </div>
@@ -388,21 +388,21 @@ export function OrgAdminDashboard() {
           <button
             type="button"
             onClick={() => navigate('/products')}
-            className="group flex flex-col justify-between p-5 rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900/90 to-slate-950 hover:from-slate-900 hover:to-teal-950/20 hover:border-teal-500/50 transition-all text-left shadow-lg cursor-pointer"
+            className="group flex flex-col justify-between p-5 rounded-2xl border border-slate-200 bg-white hover:border-teal-500/50 hover:shadow-md transition-all text-left shadow-xs cursor-pointer"
           >
             <div className="flex items-center justify-between mb-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-500/10 text-teal-400 group-hover:scale-110 transition-transform">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50 text-teal-600 group-hover:scale-110 transition-transform">
                 <ShoppingBag className="h-6 w-6" />
               </div>
-              <span className="text-xs font-semibold text-teal-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+              <span className="text-xs font-semibold text-teal-600 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
                 Open <ArrowRight className="h-3.5 w-3.5" />
               </span>
             </div>
             <div>
-              <h3 className="font-bold text-slate-100 group-hover:text-teal-300 transition-colors">
+              <h3 className="font-bold text-slate-900 group-hover:text-teal-600 transition-colors">
                 Add Menu Item
               </h3>
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-xs text-slate-500">
                 Create food items and prices for POS checkout
               </p>
             </div>
@@ -412,21 +412,21 @@ export function OrgAdminDashboard() {
         <button
           type="button"
           onClick={() => navigate('/sessions')}
-          className="group flex flex-col justify-between p-5 rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900/90 to-slate-950 hover:from-slate-900 hover:to-amber-950/20 hover:border-amber-500/50 transition-all text-left shadow-lg cursor-pointer"
+          className="group flex flex-col justify-between p-5 rounded-2xl border border-slate-200 bg-white hover:border-amber-500/50 hover:shadow-md transition-all text-left shadow-xs cursor-pointer"
         >
           <div className="flex items-center justify-between mb-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400 group-hover:scale-110 transition-transform">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-600 group-hover:scale-110 transition-transform">
               <BarChart3 className="h-6 w-6" />
             </div>
-            <span className="text-xs font-semibold text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+            <span className="text-xs font-semibold text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
               Open <ArrowRight className="h-3.5 w-3.5" />
             </span>
           </div>
           <div>
-            <h3 className="font-bold text-slate-100 group-hover:text-amber-300 transition-colors">
+            <h3 className="font-bold text-slate-900 group-hover:text-amber-600 transition-colors">
               Today's Activity & Sales
             </h3>
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-slate-500">
               Inspect active cards, orders, and settlements
             </p>
           </div>
@@ -434,7 +434,7 @@ export function OrgAdminDashboard() {
       </div>
 
       {/* Secondary Tools Strip */}
-      <div className="flex flex-wrap items-center gap-2 border-t border-slate-800/80 pt-3">
+      <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3">
         <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 mr-1">More Tools:</span>
         {hasPermission('BRANCH_MANAGE') && (
           <Button
@@ -468,31 +468,31 @@ export function OrgAdminDashboard() {
 
       {/* ─── Getting Started Checklist (Interactive Setup Guide) ─── */}
       {showSetupChecklist && (
-        <Card className="border-violet-500/30 bg-gradient-to-br from-slate-900 via-slate-900/90 to-violet-950/20 p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+        <Card className="border-emerald-200 bg-gradient-to-br from-white via-emerald-50/20 to-teal-50/30 p-5 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
             <div>
               <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-violet-400" />
-                <h3 className="font-bold text-slate-100 text-base">
+                <Sparkles className="h-5 w-5 text-emerald-600" />
+                <h3 className="font-bold text-slate-900 text-base">
                   Getting Started Checklist
                 </h3>
                 <Badge variant="warning" className="text-xs font-semibold">
                   {completedStepsCount} of {setupSteps.length} Steps
                 </Badge>
               </div>
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-xs text-slate-500">
                 Complete these initial steps to get your cafeteria operations fully running.
               </p>
             </div>
             <div className="flex items-center gap-3">
               <div className="w-full sm:w-48 space-y-1">
-                <div className="flex justify-between text-xs font-medium text-slate-300">
+                <div className="flex justify-between text-xs font-medium text-slate-600">
                   <span>Setup Progress</span>
-                  <span className="font-bold text-violet-400">{setupPercent}%</span>
+                  <span className="font-bold text-emerald-600">{setupPercent}%</span>
                 </div>
-                <div className="h-2 w-full rounded-full bg-slate-800 overflow-hidden">
+                <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-violet-500 to-emerald-400 transition-all duration-500"
+                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-500"
                     style={{ width: `${setupPercent}%` }}
                   />
                 </div>
@@ -503,7 +503,7 @@ export function OrgAdminDashboard() {
                   storage.set(setupDismissedKey, true);
                   setIsDismissed(true);
                 }}
-                className="text-slate-400 hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-800/80 transition-colors shrink-0"
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors shrink-0"
                 title="Dismiss setup checklist"
                 aria-label="Dismiss setup checklist"
               >
@@ -518,23 +518,23 @@ export function OrgAdminDashboard() {
                 key={step.id}
                 className={`flex items-start justify-between p-3.5 rounded-xl border transition-all ${
                   step.completed
-                    ? 'border-emerald-500/20 bg-emerald-500/5 text-slate-300'
-                    : 'border-slate-800 bg-slate-950/60 hover:border-slate-700 text-slate-200'
+                    ? 'border-emerald-200 bg-emerald-50/60 text-slate-700'
+                    : 'border-slate-200 bg-white hover:border-slate-300 text-slate-800'
                 }`}
               >
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5">
                     {step.completed ? (
-                      <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                      <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                     ) : (
-                      <div className="h-5 w-5 rounded-full border-2 border-slate-600 flex items-center justify-center text-[10px] text-slate-400 font-bold" />
+                      <div className="h-5 w-5 rounded-full border-2 border-slate-300 flex items-center justify-center text-[10px] text-slate-400 font-bold" />
                     )}
                   </div>
                   <div>
-                    <p className={`text-xs font-bold ${step.completed ? 'text-emerald-300 line-through' : 'text-slate-100'}`}>
+                    <p className={`text-xs font-bold ${step.completed ? 'text-emerald-800 line-through' : 'text-slate-900'}`}>
                       {step.title}
                     </p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">{step.description}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">{step.description}</p>
                   </div>
                 </div>
 
@@ -542,7 +542,7 @@ export function OrgAdminDashboard() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="shrink-0 text-xs py-1 px-2.5 ml-2 border-violet-500/40 text-violet-300 hover:bg-violet-500/10"
+                    className="shrink-0 text-xs py-1 px-2.5 ml-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
                     onClick={() => navigate(step.path)}
                   >
                     {step.actionLabel}
@@ -585,55 +585,55 @@ export function OrgAdminDashboard() {
               {/* Progress bars */}
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {/* Branches */}
-                <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-2">
+                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-2">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1.5 text-slate-300">
-                      <Building2 className="h-4 w-4 text-violet-400" />
+                    <span className="flex items-center gap-1.5 text-slate-600">
+                      <Building2 className="h-4 w-4 text-emerald-600" />
                       Branches
                     </span>
-                    <span className="font-mono font-bold text-slate-100">
+                    <span className="font-mono font-bold text-slate-900">
                       {branchUsage} / {branchLimit}
                     </span>
                   </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-900">
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
                     <div
-                      className="h-full bg-violet-500 transition-all duration-300"
+                      className="h-full bg-emerald-600 transition-all duration-300"
                       style={{ width: `${Math.min((branchUsage / branchLimit) * 100, 100)}%` }}
                     />
                   </div>
                 </div>
 
                 {/* Staff Accounts */}
-                <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-2">
+                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-2">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1.5 text-slate-300">
-                      <Users className="h-4 w-4 text-indigo-400" />
+                    <span className="flex items-center gap-1.5 text-slate-600">
+                      <Users className="h-4 w-4 text-teal-600" />
                       Staff Accounts
                     </span>
-                    <span className="font-mono font-bold text-slate-100">
+                    <span className="font-mono font-bold text-slate-900">
                       {staffUsage} / {staffLimit}
                     </span>
                   </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-900">
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
                     <div
-                      className="h-full bg-indigo-500 transition-all duration-300"
+                      className="h-full bg-teal-600 transition-all duration-300"
                       style={{ width: `${Math.min((staffUsage / staffLimit) * 100, 100)}%` }}
                     />
                   </div>
                 </div>
 
                 {/* Active Cards Fleet Total */}
-                <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-2">
+                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-2">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1.5 text-slate-300">
-                      <CreditCard className="h-4 w-4 text-sky-400" />
+                    <span className="flex items-center gap-1.5 text-slate-600">
+                      <CreditCard className="h-4 w-4 text-sky-600" />
                       Active Cards
                     </span>
-                    <span className="font-mono font-bold text-slate-100">
+                    <span className="font-mono font-bold text-slate-900">
                       {cardUsage} / {cardLimit}
                     </span>
                   </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-900">
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
                     <div
                       className="h-full bg-sky-500 transition-all duration-300"
                       style={{ width: `${Math.min((cardUsage / cardLimit) * 100, 100)}%` }}
@@ -642,13 +642,13 @@ export function OrgAdminDashboard() {
                 </div>
 
                 {/* Monthly Transactions */}
-                <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-2">
+                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-2">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1.5 text-slate-300">
-                      <BarChart3 className="h-4 w-4 text-emerald-400" />
+                    <span className="flex items-center gap-1.5 text-slate-600">
+                      <BarChart3 className="h-4 w-4 text-emerald-600" />
                       Monthly Transactions
                     </span>
-                    <span className="font-mono font-bold text-emerald-400">
+                    <span className="font-mono font-bold text-emerald-700">
                       {txnUsage.toLocaleString()}
                     </span>
                   </div>
@@ -658,18 +658,18 @@ export function OrgAdminDashboard() {
           </Card>
 
           {/* ── UNIFIED FILTERED METRICS BOX (Date Filter Toolbar + 4 Operational Stat Cards) ── */}
-          <Card className="border-slate-800/80 bg-slate-900/50 backdrop-blur-sm">
+          <Card>
             <CardHeader
               title="Sales & Operations Overview"
             />
 
             <CardContent className="space-y-5">
               {/* Filter Toolbar (Branch Scope, Time Window, Refresh Data) */}
-              <div className="flex flex-col gap-3 rounded-xl border border-slate-800/80 bg-slate-950/60 p-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-wrap items-center gap-3">
                   {/* Branch Scope Filter */}
                   <div className="w-full sm:w-52">
-                    <label className="mb-1 block text-[11px] font-medium text-slate-400">Branch Scope</label>
+                    <label className="mb-1 block text-[11px] font-medium text-slate-600">Branch Scope</label>
                     <Select
                       id="dashboard-branch-filter"
                       value={currentBranch?.id || ''}
@@ -691,7 +691,7 @@ export function OrgAdminDashboard() {
 
                   {/* Time Window Filter */}
                   <div className="w-full sm:w-44">
-                    <label className="mb-1 block text-[11px] font-medium text-slate-400">Time Window</label>
+                    <label className="mb-1 block text-[11px] font-medium text-slate-600">Time Window</label>
                     <Select
                       id="dashboard-preset-filter"
                       value={datePreset}
@@ -712,21 +712,21 @@ export function OrgAdminDashboard() {
                   {datePreset === 'custom' && (
                     <div className="flex items-end gap-2">
                       <div>
-                        <label className="mb-1 block text-[11px] font-medium text-slate-400">Start Date</label>
+                        <label className="mb-1 block text-[11px] font-medium text-slate-600">Start Date</label>
                         <input
                           type="date"
                           value={startDate}
                           onChange={(e) => setStartDate(e.target.value)}
-                          className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 focus:border-violet-500 focus:outline-none [color-scheme:dark]"
+                          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-[11px] font-medium text-slate-400">End Date</label>
+                        <label className="mb-1 block text-[11px] font-medium text-slate-600">End Date</label>
                         <input
                           type="date"
                           value={endDate}
                           onChange={(e) => setEndDate(e.target.value)}
-                          className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 focus:border-violet-500 focus:outline-none [color-scheme:dark]"
+                          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
                         />
                       </div>
                     </div>
@@ -753,25 +753,25 @@ export function OrgAdminDashboard() {
                 <StatCard
                   label="Purchase Sales Volume"
                   value={formatCurrency(analytics?.totalPurchaseVolume || 0)}
-                  icon={<ShoppingBag className="h-5 w-5 text-emerald-400" />}
+                  icon={<ShoppingBag className="h-5 w-5 text-emerald-600" />}
                 />
 
                 <StatCard
                   label="Card Wallet Recharges"
                   value={formatCurrency(analytics?.totalRechargeVolume || 0)}
-                  icon={<TrendingUp className="h-5 w-5 text-violet-400" />}
+                  icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
                 />
 
                 <StatCard
                   label={startDate || endDate ? "Cards Issued in Period" : "Active Cards Issued"}
                   value={filteredCardsIssuedCount}
-                  icon={<CreditCard className="h-5 w-5 text-sky-400" />}
+                  icon={<CreditCard className="h-5 w-5 text-sky-600" />}
                 />
 
                 <StatCard
                   label="Low Stock Alert Items"
                   value={lowStockCount}
-                  icon={<AlertTriangle className="h-5 w-5 text-amber-400" />}
+                  icon={<AlertTriangle className="h-5 w-5 text-amber-600" />}
                 />
               </div>
             </CardContent>
