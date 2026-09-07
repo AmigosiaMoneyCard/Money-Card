@@ -5,12 +5,12 @@ import { cn } from '@/utils';
 type BadgeVariant = 'default' | 'success' | 'warning' | 'danger' | 'info' | 'outline';
 
 const variantStyles: Record<BadgeVariant, string> = {
-  default: 'bg-slate-800 text-slate-300 border-slate-700',
-  success: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-  warning: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-  danger: 'bg-rose-500/15 text-rose-400 border-rose-500/30',
-  info: 'bg-sky-500/15 text-sky-400 border-sky-500/30',
-  outline: 'bg-transparent text-slate-400 border-slate-600',
+  default: 'bg-slate-100 text-slate-700 border-slate-200',
+  success: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  warning: 'bg-amber-50 text-amber-700 border-amber-200',
+  danger: 'bg-rose-50 text-rose-700 border-rose-200',
+  info: 'bg-sky-50 text-sky-700 border-sky-200',
+  outline: 'bg-transparent text-slate-600 border-slate-300',
 };
 
 interface BadgeProps {
@@ -40,11 +40,11 @@ export function Badge({
       {dot && (
         <span
           className={cn('h-1.5 w-1.5 rounded-full', {
-            'bg-slate-400': variant === 'default' || variant === 'outline',
-            'bg-emerald-400': variant === 'success',
-            'bg-amber-400': variant === 'warning',
-            'bg-rose-400': variant === 'danger',
-            'bg-sky-400': variant === 'info',
+            'bg-slate-500': variant === 'default' || variant === 'outline',
+            'bg-emerald-600': variant === 'success',
+            'bg-amber-600': variant === 'warning',
+            'bg-rose-600': variant === 'danger',
+            'bg-sky-600': variant === 'info',
           })}
         />
       )}

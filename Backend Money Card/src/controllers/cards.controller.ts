@@ -536,7 +536,7 @@ export async function unblockCard(req: Request, res: Response) {
   const { updatedCard, auditEvent } = await prisma.$transaction(async (tx) => {
     const updated = await tx.card.update({
       where: { id: card.id },
-      data: { status: CardStatus.AVAILABLE },
+      data: { status: activeSession ? CardStatus.ACTIVE : CardStatus.AVAILABLE },
     });
 
     const event = await tx.customerHistoryEvent.create({

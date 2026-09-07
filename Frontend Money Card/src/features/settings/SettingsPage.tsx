@@ -57,8 +57,8 @@ function SuperAdminSettingsView({
       {/* Header */}
       <div>
         <div className="flex items-center gap-3">
-          <SettingsIcon className="h-7 w-7 text-violet-400" />
-          <h1 className="text-2xl font-bold text-slate-100">Super Admin Account Settings</h1>
+          <SettingsIcon className="h-7 w-7 text-emerald-600" />
+          <h1 className="text-2xl font-bold text-slate-900">Super Admin Account Settings</h1>
         </div>
       </div>
 
@@ -68,22 +68,22 @@ function SuperAdminSettingsView({
           title="Platform Administrator Profile"
         />
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
-            <div className="flex items-center gap-2 text-sm text-slate-400">
-              <UserCheck className="h-4 w-4 text-violet-400" />
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+            <div className="flex items-center gap-2 text-sm text-slate-600">
+              <UserCheck className="h-4 w-4 text-emerald-600" />
               <span>Full Name</span>
             </div>
-            <span className="text-sm font-bold text-slate-100">{user?.name || 'Platform Admin'}</span>
+            <span className="text-sm font-bold text-slate-900">{user?.name || 'Platform Admin'}</span>
           </div>
 
-          <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
-            <span className="text-sm text-slate-400">Email Address</span>
-            <span className="text-sm font-mono font-medium text-slate-200">{user?.email}</span>
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+            <span className="text-sm text-slate-600">Email Address</span>
+            <span className="text-sm font-mono font-medium text-slate-800">{user?.email}</span>
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-sm text-slate-400">Assigned Platform Role</span>
-            <Badge variant="outline" className="border-violet-500/30 text-violet-300">
+            <span className="text-sm text-slate-600">Assigned Platform Role</span>
+            <Badge variant="outline" className="border-emerald-200 text-emerald-700 bg-emerald-50/50">
               {user?.role || 'SUPER_ADMIN'}
             </Badge>
           </div>
@@ -93,8 +93,8 @@ function SuperAdminSettingsView({
       {/* Account Security */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <KeyRound className="h-5 w-5 text-violet-400" />
-          <h2 className="text-lg font-semibold text-slate-100">Account Security & Password</h2>
+          <KeyRound className="h-5 w-5 text-emerald-600" />
+          <h2 className="text-lg font-semibold text-slate-900">Account Security & Password</h2>
         </div>
         <ChangePasswordForm />
       </div>
@@ -206,8 +206,8 @@ function OrgAdminSettingsView() {
       {/* Header */}
       <div>
         <div className="flex items-center gap-3">
-          <SettingsIcon className="h-7 w-7 text-violet-400" />
-          <h1 className="text-2xl font-bold text-slate-100">Organization Settings</h1>
+          <SettingsIcon className="h-7 w-7 text-emerald-600" />
+          <h1 className="text-2xl font-bold text-slate-900">Organization Settings</h1>
         </div>
       </div>
 
@@ -217,25 +217,25 @@ function OrgAdminSettingsView() {
           title="Organization Identity"
         />
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
-            <span className="text-sm font-medium text-slate-400">Organization Name</span>
-            <span className="text-sm font-bold text-slate-100">{orgData?.name}</span>
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+            <span className="text-sm font-medium text-slate-600">Organization Name</span>
+            <span className="text-sm font-bold text-slate-900">{orgData?.name}</span>
           </div>
-          <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
-            <span className="text-sm font-medium text-slate-400">Organization ID</span>
-            <code className="rounded bg-slate-950 px-2 py-0.5 text-xs text-violet-400 border border-slate-800">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+            <span className="text-sm font-medium text-slate-600">Organization ID</span>
+            <code className="rounded bg-slate-100 px-2 py-0.5 text-xs text-emerald-700 border border-slate-200">
               ORG-#{orgData?.id?.slice(0, 8).toUpperCase()}
             </code>
           </div>
-          <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
-            <span className="text-sm font-medium text-slate-400">Account Status</span>
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+            <span className="text-sm font-medium text-slate-600">Account Status</span>
             <Badge variant={orgData?.status === 'ACTIVE' ? 'success' : 'danger'}>
               {orgData?.status}
             </Badge>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-400">Created Date</span>
-            <span className="text-xs text-slate-300">
+            <span className="text-sm font-medium text-slate-600">Created Date</span>
+            <span className="text-xs text-slate-600">
               {orgData?.createdAt ? formatDate(orgData.createdAt) : 'N/A'}
             </span>
           </div>
@@ -250,8 +250,8 @@ function OrgAdminSettingsView() {
         <CardContent>
           <form onSubmit={handleSaveSettings} noValidate className="space-y-4 max-w-lg">
             {apiError && (
-              <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
+              <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
                 <span>{apiError}</span>
               </div>
             )}
@@ -286,8 +286,8 @@ function OrgAdminSettingsView() {
       {/* Account Security Section */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <KeyRound className="h-5 w-5 text-violet-400" />
-          <h2 className="text-lg font-semibold text-slate-100">Account Security</h2>
+          <KeyRound className="h-5 w-5 text-emerald-600" />
+          <h2 className="text-lg font-semibold text-slate-900">Account Security</h2>
         </div>
         <ChangePasswordForm />
       </div>

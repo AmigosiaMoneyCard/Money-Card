@@ -60,6 +60,65 @@ function getPeakPresetDates(preset: TimeWindowPreset): { startDate: string; endD
   return { startDate: '', endDate: endStr };
 }
 
+export const STANDARD_FOOD_CATEGORIES = [
+  'Veg',
+  'Non-Veg',
+  'Beverage',
+  'Fast Food',
+  'Snack',
+  'Main Course',
+  'Starter',
+  'Rice',
+  'Curry',
+  'Bread',
+  'Salad',
+  'Soup',
+  'Sandwich',
+  'Bakery',
+  'Dessert',
+  'Breakfast',
+  'Lunch',
+  'Dinner',
+];
+
+/**
+ * Safely extracts an array of category string tags from any raw format
+ * (string with comma/pipe/semicolon delimiters, string array, or undefined).
+ */
+export function extractProductCategories(rawCategory: unknown): string[] {
+  if (!rawCategory) return [];
+  if (Array.isArray(rawCategory)) {
+    return rawCategory
+      .flatMap((c) => extractProductCategories(c))
+      .map((c) => c.trim())
+      .filter(Boolean);
+  }
+  if (typeof rawCategory === 'string') {
+    return rawCategory
+      .split(/[,|;]/)
+      .map((c) => c.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+/**
+ * Checks whether a product matches the selected category accurately.
+ * Prevents false positives like "Non-Veg" matching when selecting "Veg".
+ */
+export function matchesFoodCategory(productCategories: string[], selectedCategory: string): boolean {
+  if (!selectedCategory || selectedCategory === 'ALL') return true;
+  const target = selectedCategory.trim().toLowerCase();
+
+  return productCategories.some((cat) => {
+    const c = cat.trim().toLowerCase();
+    if (c === target) return true;
+    // Handle pluralization differences like "Beverages" vs "Beverage", "Snacks" vs "Snack"
+    if (c.replace(/s$/, '') === target.replace(/s$/, '')) return true;
+    return false;
+  });
+}
+
 export function PeakPage() {
   const { currentBranch } = useBranch();
 
@@ -171,10 +230,13 @@ export function PeakPage() {
       const doc = buildPeakDemandJsPdf({
         data: {
           ...data,
-          productDemand,
+          productDemand: filteredProducts,
         },
         selectedBranchName,
-        dateRangeLabel,
+        dateRangeLabel:
+          selectedCategory !== 'ALL'
+            ? `${dateRangeLabel} (Category: ${selectedCategory})`
+            : dateRangeLabel,
         organizationName: 'Money Card Cafeteria',
       });
 
@@ -195,37 +257,41 @@ export function PeakPage() {
     return data.productDemand
       .filter((p) => !p.productName.toLowerCase().includes('temp delete'))
       .map((p) => {
-        const cleanedCats = (p.category || '')
-          .split(',')
-          .map((c) => c.trim())
-          .filter((c) => c.toLowerCase() !== 'fast food');
+        const cats = extractProductCategories(p.category);
         return {
           ...p,
-          category: cleanedCats.length > 0 ? cleanedCats.join(', ') : 'General Food',
+          category: cats.length > 0 ? cats.join(', ') : 'General Food',
+          _categoryList: cats.length > 0 ? cats : ['General Food'],
         };
       });
   }, [data?.productDemand]);
 
   const categories = useMemo(() => {
-    if (!productDemand) return [];
     const set = new Set<string>();
+
+    // 1. Dynamic categories from loaded product demand records
     productDemand.forEach((p) => {
-      p.category.split(',').forEach((c) => {
-        const trimmed = c.trim();
-        if (trimmed && trimmed.toLowerCase() !== 'fast food') {
-          set.add(trimmed);
+      const cats = (p as any)._categoryList || extractProductCategories(p.category);
+      cats.forEach((c: string) => {
+        if (c && c.toLowerCase() !== 'general food') {
+          set.add(c);
         }
       });
     });
-    return Array.from(set);
+
+    // 2. Standard food categories so all options are selectable in the filter dropdown
+    STANDARD_FOOD_CATEGORIES.forEach((cat) => set.add(cat));
+
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [productDemand]);
 
   const filteredProducts = useMemo(() => {
     if (!productDemand) return [];
     if (selectedCategory === 'ALL') return productDemand;
-    return productDemand.filter((p) =>
-      p.category.toLowerCase().includes(selectedCategory.toLowerCase())
-    );
+    return productDemand.filter((p) => {
+      const cats = (p as any)._categoryList || extractProductCategories(p.category);
+      return matchesFoodCategory(cats, selectedCategory);
+    });
   }, [productDemand, selectedCategory]);
 
   // Columns for Product Demand Table
@@ -235,12 +301,12 @@ export function PeakPage() {
       header: 'Product / Food Item',
       render: (p: ProductDemandMetric) => (
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10 text-violet-400">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
             <ShoppingBag className="h-4 w-4" />
           </div>
           <div>
-            <p className="font-semibold text-slate-100">{p.productName}</p>
-            <span className="text-[11px] text-slate-400">{p.category}</span>
+            <p className="font-semibold text-slate-900">{p.productName}</p>
+            <span className="text-[11px] text-slate-500">{p.category}</span>
           </div>
         </div>
       ),
@@ -249,7 +315,7 @@ export function PeakPage() {
       key: 'quantitySold',
       header: 'Total Units Sold',
       render: (p: ProductDemandMetric) => (
-        <span className="font-mono text-sm font-bold text-slate-100">
+        <span className="font-mono text-sm font-bold text-slate-900">
           {p.quantitySold.toLocaleString()} units
         </span>
       ),
@@ -259,7 +325,7 @@ export function PeakPage() {
       key: 'revenue',
       header: 'Gross Revenue',
       render: (p: ProductDemandMetric) => (
-        <span className="font-mono text-sm font-bold text-violet-300">
+        <span className="font-mono text-sm font-bold text-emerald-600">
           {formatCurrency(p.revenue)}
         </span>
       ),
@@ -289,8 +355,8 @@ export function PeakPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-100">Peak & Demand Analytics</h1>
-            <Badge variant="warning" className="gap-1 bg-amber-500/10 text-amber-300 border-amber-500/30">
+            <h1 className="text-2xl font-bold text-slate-900">Peak & Demand Analytics</h1>
+            <Badge variant="warning" className="gap-1 bg-amber-500/10 text-amber-600 border-amber-500/30">
               <Flame className="h-3 w-3" />
               Live Demand
             </Badge>
@@ -311,11 +377,11 @@ export function PeakPage() {
       </div>
 
       {/* ── Filter Toolbar ── */}
-      <div className="flex flex-col gap-4 rounded-xl border border-slate-800 bg-slate-900/60 p-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:flex-row lg:items-end lg:justify-between">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 flex-1">
           {/* Branch Scope Filter */}
           <div>
-            <label className="text-xs font-semibold text-slate-400 block mb-1.5">Branch Scope</label>
+            <label className="text-xs font-semibold text-slate-600 block mb-1.5">Branch Scope</label>
             <Select
               id="peak-branch-scope"
               value={selectedBranchId}
@@ -329,7 +395,7 @@ export function PeakPage() {
 
           {/* Time Window Selector */}
           <div>
-            <label className="text-xs font-semibold text-slate-400 block mb-1.5">Time Window</label>
+            <label className="text-xs font-semibold text-slate-600 block mb-1.5">Time Window</label>
             <Select
               id="peak-time-window"
               value={selectedDateRange}
@@ -345,7 +411,7 @@ export function PeakPage() {
 
           {/* Food Category Filter */}
           <div>
-            <label className="text-xs font-semibold text-slate-400 block mb-1.5">Food Category</label>
+            <label className="text-xs font-semibold text-slate-600 block mb-1.5">Food Category</label>
             <Select
               id="peak-food-category"
               value={selectedCategory}
@@ -382,26 +448,24 @@ export function PeakPage() {
             <StatCard
               label="Busiest Peak Hour"
               value={data.comparison.busiestHour}
-              icon={<Clock className="h-5 w-5 text-amber-400" />}
+              icon={<Clock className="h-5 w-5 text-amber-600" />}
             />
             <StatCard
               label="Peak Hours Volume"
               value={formatCurrency(data.comparison.peakVolume)}
-              icon={<Flame className="h-5 w-5 text-rose-400" />}
+              icon={<Flame className="h-5 w-5 text-rose-600" />}
             />
             <StatCard
               label="Peak Transactions"
               value={data.comparison.peakTransactions.toLocaleString()}
-              icon={<TrendingUp className="h-5 w-5 text-violet-400" />}
+              icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
             />
             <StatCard
               label="Busiest Branch"
               value={data.comparison.busiestBranchName}
-              icon={<Building2 className="h-5 w-5 text-sky-400" />}
+              icon={<Building2 className="h-5 w-5 text-sky-600" />}
             />
           </div>
-
-
 
           {/* ── Section 1: 24-Hour Activity Heatmap / Bar Distribution ── */}
           <Card>
@@ -435,14 +499,14 @@ export function PeakPage() {
                       <div
                         className={`w-full rounded-t transition-all duration-300 ${
                           hasActivity
-                            ? 'bg-gradient-to-t from-violet-600 to-indigo-400 hover:from-violet-500 hover:to-indigo-300 shadow-sm shadow-indigo-500/20'
-                            : 'bg-slate-800/40 hover:bg-slate-700/50'
+                            ? 'bg-gradient-to-t from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 shadow-sm shadow-emerald-500/20'
+                            : 'bg-slate-100 hover:bg-slate-200'
                         }`}
                         style={{ height: `${heightPct}%` }}
                       />
 
                       {/* Hour Label */}
-                      <span className="mt-2 text-[9px] font-mono text-slate-400 rotate-45 sm:rotate-0">
+                      <span className="mt-2 text-[9px] font-mono text-slate-500 rotate-45 sm:rotate-0">
                         {hour.hour % 3 === 0 ? hour.hourLabel.replace(':00', 'h') : ''}
                       </span>
                     </div>
@@ -451,21 +515,21 @@ export function PeakPage() {
               </div>
 
               {/* Legend & Summary */}
-              <div className="flex flex-wrap items-center justify-between border-t border-slate-800 pt-4 text-xs">
-                <div className="flex items-center gap-4 text-slate-400">
+              <div className="flex flex-wrap items-center justify-between border-t border-slate-200 pt-4 text-xs">
+                <div className="flex items-center gap-4 text-slate-600">
                   <span className="flex items-center gap-1.5">
-                    <span className="h-3 w-3 rounded bg-gradient-to-t from-violet-600 to-indigo-400 inline-block" />
+                    <span className="h-3 w-3 rounded bg-gradient-to-t from-emerald-600 to-teal-500 inline-block" />
                     Hourly Transaction Volume
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <span className="h-3 w-3 rounded bg-slate-800/40 inline-block" />
+                    <span className="h-3 w-3 rounded bg-slate-100 border border-slate-200 inline-block" />
                     Zero Activity Window
                   </span>
                 </div>
-                <div className="flex items-center gap-3 text-slate-400 font-mono text-[11px]">
-                  <span>Busiest Hour: <strong className="text-violet-300">{data.comparison.busiestHour}</strong></span>
+                <div className="flex items-center gap-3 text-slate-600 font-mono text-[11px]">
+                  <span>Busiest Hour: <strong className="text-emerald-600">{data.comparison.busiestHour}</strong></span>
                   <span>•</span>
-                  <span>Busiest Day: <strong className="text-slate-200">{data.busiestDay || 'Friday'}</strong></span>
+                  <span>Busiest Day: <strong className="text-slate-800">{data.busiestDay || 'Friday'}</strong></span>
                 </div>
               </div>
             </CardContent>
@@ -474,8 +538,13 @@ export function PeakPage() {
           {/* ── Section 2: Food / Product Demand Analysis ── */}
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div>
-                <h2 className="text-lg font-bold text-slate-100">Top Food & Item Demand</h2>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h2 className="text-lg font-bold text-slate-900">Top Food & Item Demand</h2>
+                {selectedCategory !== 'ALL' && (
+                  <Badge variant="info" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs">
+                    Filtered: {selectedCategory} ({filteredProducts.length})
+                  </Badge>
+                )}
               </div>
 
               {selectedCategory !== 'ALL' && (

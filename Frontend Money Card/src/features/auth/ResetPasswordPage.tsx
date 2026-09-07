@@ -78,18 +78,18 @@ export function ResetPasswordPage() {
     return (
       <Card padding="lg">
         <div className="space-y-5 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10">
-            <ShieldAlert className="h-8 w-8 text-amber-400" />
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 border border-amber-200">
+            <ShieldAlert className="h-8 w-8 text-amber-600" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-slate-100">Invalid reset link</h2>
-            <p className="mt-2 text-sm text-slate-400">
+            <h2 className="text-xl font-semibold text-slate-900">Invalid reset link</h2>
+            <p className="mt-2 text-sm text-slate-500">
               This password reset link is invalid or has expired. Please request a new one.
             </p>
           </div>
           <Link
             to="/forgot-password"
-            className="inline-flex items-center gap-2 text-sm text-violet-400 transition-colors hover:text-violet-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:rounded"
+            className="inline-flex items-center gap-2 text-sm font-medium text-emerald-600 transition-colors hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:rounded"
           >
             Request new reset link
           </Link>
@@ -102,18 +102,18 @@ export function ResetPasswordPage() {
     return (
       <Card padding="lg">
         <div className="space-y-5 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/10">
-            <CheckCircle2 className="h-8 w-8 text-emerald-400" />
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 border border-emerald-200">
+            <CheckCircle2 className="h-8 w-8 text-emerald-600" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-slate-100">Password reset successful</h2>
-            <p className="mt-2 text-sm text-slate-400">
+            <h2 className="text-xl font-semibold text-slate-900">Password reset successful</h2>
+            <p className="mt-2 text-sm text-slate-500">
               Your password has been updated. You can now sign in with your new password.
             </p>
           </div>
           <Link
             to="/login"
-            className="inline-flex items-center gap-2 text-sm text-violet-400 transition-colors hover:text-violet-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:rounded"
+            className="inline-flex items-center gap-2 text-sm font-medium text-emerald-600 transition-colors hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:rounded"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to sign in
@@ -127,18 +127,18 @@ export function ResetPasswordPage() {
     <Card padding="lg">
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-slate-100">Reset your password</h2>
-          <p className="mt-1 text-sm text-slate-400">Enter your new password below.</p>
+          <h2 className="text-xl font-semibold text-slate-900">Reset your password</h2>
+          <p className="mt-1 text-sm text-slate-500">Enter your new password below.</p>
         </div>
 
         {apiError && (
           <div
-            className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3"
+            className="flex items-start gap-2.5 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3"
             role="alert"
             aria-live="assertive"
           >
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
-            <p className="text-sm text-rose-300">{apiError}</p>
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+            <p className="text-sm text-rose-800 font-medium">{apiError}</p>
           </div>
         )}
 
@@ -192,7 +192,7 @@ export function ResetPasswordPage() {
         <div className="text-center">
           <Link
             to="/login"
-            className="inline-flex items-center gap-2 text-sm text-violet-400 transition-colors hover:text-violet-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:rounded"
+            className="inline-flex items-center gap-2 text-sm font-medium text-emerald-600 transition-colors hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:rounded"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to sign in

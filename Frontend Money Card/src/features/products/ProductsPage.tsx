@@ -82,7 +82,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
 
   // Create Product Form State
   const [formItemName, setFormItemName] = useState('');
-  const [formCategories, setFormCategories] = useState<string[]>(['Veg']);
+  const [formCategories, setFormCategories] = useState<string[]>([]);
   const [formPrice, setFormPrice] = useState('');
   const [formBranchId, setFormBranchId] = useState('');
   const [formStockQty, setFormStockQty] = useState('0');
@@ -225,7 +225,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
   // ─── Handlers: Add Product ────────────────────────────────────────────────
   const handleOpenCreate = () => {
     setFormItemName('');
-    setFormCategories(['Veg']);
+    setFormCategories([]);
     setFormPrice('');
     setFormBranchId(currentBranch?.id || branches[0]?.id || '');
     setFormStockQty('0');
@@ -408,9 +408,9 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
       className: 'min-w-[180px]',
       render: (p: UnifiedProductItem) => (
         <div className="flex flex-col">
-          <span className="font-semibold text-slate-100 text-sm">{p.itemName}</span>
+          <span className="font-semibold text-slate-900 text-sm">{p.itemName}</span>
           {p.branchName && (
-            <span className="text-[11px] text-slate-400 mt-0.5">🏪 {p.branchName}</span>
+            <span className="text-[11px] text-slate-500 mt-0.5">🏪 {p.branchName}</span>
           )}
         </div>
       ),
@@ -430,27 +430,27 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
         return (
           <div className="flex flex-wrap items-center gap-1.5">
             {isVeg && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                 🟢 Veg
               </span>
             )}
             {isNonVeg && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/30">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
                 🔴 Non-Veg
               </span>
             )}
             {isBeverage && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/30">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200">
                 ☕ Drink
               </span>
             )}
             {otherCategories.map((cat) => (
-              <span key={cat} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700">
+              <span key={cat} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
                 {cat}
               </span>
             ))}
             {!isVeg && !isNonVeg && !isBeverage && otherCategories.length === 0 && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700">
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
                 Food
               </span>
             )}
@@ -463,7 +463,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
       header: 'Price',
       className: 'whitespace-nowrap',
       render: (p: UnifiedProductItem) => (
-        <span className="font-mono text-sm font-bold text-violet-300">
+        <span className="font-mono text-sm font-bold text-emerald-700">
           {formatCurrency(p.price)}
         </span>
       ),
@@ -475,20 +475,20 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
       render: (p: UnifiedProductItem) => {
         if (p.quantity === 0) {
           return (
-            <span className="inline-flex items-center font-bold text-rose-400 bg-rose-500/10 px-2.5 py-0.5 rounded-full border border-rose-500/30 text-xs">
+            <span className="inline-flex items-center font-bold text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200 text-xs">
               Out of stock (0)
             </span>
           );
         }
         if (p.quantity < 10) {
           return (
-            <span className="inline-flex items-center font-bold text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/30 text-xs">
+            <span className="inline-flex items-center font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200 text-xs">
               Low: {p.quantity} units
             </span>
           );
         }
         return (
-          <span className="inline-flex items-center font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/30 text-xs">
+          <span className="inline-flex items-center font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 text-xs">
             {p.quantity} in stock
           </span>
         );
@@ -514,7 +514,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
             <Button
               variant="outline"
               size="sm"
-              className="text-xs py-1 px-2.5 border-slate-700 text-slate-200 hover:border-violet-500 hover:text-white"
+              className="text-xs py-1 px-2.5 border-slate-200 text-slate-700 hover:border-emerald-500 hover:text-emerald-700"
               onClick={() => handleOpenAdjust(p)}
               leftIcon={<Sliders className="h-3.5 w-3.5" />}
               title="Adjust Stock"
@@ -541,7 +541,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
               variant="ghost"
               size="sm"
               onClick={() => handleOpenDeleteProduct(p)}
-              className="text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 p-1.5"
+              className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5"
               title="Archive/Delete product"
             >
               <Trash2 className="h-4 w-4" />
@@ -562,7 +562,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
       {/* ─── Page Header & Global Controls ─── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">Menu</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Menu</h1>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -593,56 +593,56 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
       {/* ─── Unified Summary Metric Cards (5-Card Grid) ─── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <Card className="flex items-center gap-3 p-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/10 text-violet-400 shrink-0">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 shrink-0">
             <Package className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-xs text-slate-400">Total Products</p>
-            <p className="text-lg font-bold text-slate-100">{metrics.totalProducts}</p>
+            <p className="text-xs text-slate-500">Total Products</p>
+            <p className="text-lg font-bold text-slate-900">{metrics.totalProducts}</p>
           </div>
         </Card>
 
         <Card className="flex items-center gap-3 p-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 shrink-0">
             <TrendingUp className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-xs text-slate-400">Active for Sale</p>
-            <p className="text-lg font-bold text-emerald-400">{metrics.activeProducts}</p>
+            <p className="text-xs text-slate-500">Active for Sale</p>
+            <p className="text-lg font-bold text-emerald-700">{metrics.activeProducts}</p>
           </div>
         </Card>
 
         <Card className="flex items-center gap-3 p-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10 text-blue-400 shrink-0">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sky-50 text-sky-700 shrink-0">
             <Layers className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-xs text-slate-400">Units in Stock</p>
-            <p className="text-lg font-bold text-blue-400">{metrics.totalUnits}</p>
+            <p className="text-xs text-slate-500">Units in Stock</p>
+            <p className="text-lg font-bold text-sky-700">{metrics.totalUnits}</p>
           </div>
         </Card>
 
         <Card className="flex items-center gap-3 p-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-400 shrink-0">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-50 text-teal-700 shrink-0">
             <Package className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-xs text-slate-400">Stock Valuation</p>
-            <p className="text-lg font-bold text-indigo-300">
+            <p className="text-xs text-slate-500">Stock Valuation</p>
+            <p className="text-lg font-bold text-teal-700">
               {formatCurrency(metrics.totalValuation)}
             </p>
           </div>
         </Card>
 
         <Card className="flex items-center gap-3 p-4 col-span-2 sm:col-span-1">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400 shrink-0">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-700 shrink-0">
             <AlertTriangle className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-xs text-slate-400">Stock Alerts</p>
-            <p className="text-lg font-bold text-amber-400">
+            <p className="text-xs text-slate-500">Stock Alerts</p>
+            <p className="text-lg font-bold text-amber-700">
               {metrics.lowStock + metrics.outOfStock}{' '}
-              <span className="text-[11px] font-normal text-slate-400">
+              <span className="text-[11px] font-normal text-slate-500">
                 ({metrics.outOfStock} out)
               </span>
             </p>
@@ -653,15 +653,15 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
       {/* ─── Search & Filters Control Bar ─── */}
       <Card className="p-4 space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-xs font-semibold text-slate-300">
+          <span className="text-xs font-semibold text-slate-700">
             Menu Catalog & Live Branch Stock
           </span>
-          <span className="text-xs text-slate-400">
-            Showing <strong className="text-slate-200">{filteredProducts.length}</strong> of {unifiedProducts.length} products
+          <span className="text-xs text-slate-500">
+            Showing <strong className="text-slate-800">{filteredProducts.length}</strong> of {unifiedProducts.length} products
           </span>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 pt-3 border-t border-slate-800/60">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 pt-3 border-t border-slate-200">
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
             <Input
@@ -743,7 +743,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
             columns={productColumns}
             keyExtractor={(item) => item.id}
             rowClassName={(item) =>
-              item.status !== 'ACTIVE' ? 'opacity-70 bg-slate-950/20' : undefined
+              item.status !== 'ACTIVE' ? 'opacity-70 bg-slate-50' : undefined
             }
           />
         )}
@@ -758,15 +758,15 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
       >
         <form onSubmit={handleCreateProductSubmit} className="space-y-4">
           {modalApiError && (
-            <div className="flex items-center gap-2 rounded-lg bg-rose-500/10 p-3 text-sm text-rose-400 border border-rose-500/20">
-              <AlertCircle className="h-4 w-4 shrink-0" />
+            <div className="flex items-center gap-2 rounded-lg bg-rose-500/10 p-3 text-sm text-rose-700 border border-rose-500/20">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-500" />
               <span>{modalApiError}</span>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Product Name <span className="text-rose-400">*</span>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Product Name <span className="text-rose-500">*</span>
             </label>
             <Input
               placeholder="e.g. Chicken Roll, Veg Burger"
@@ -778,22 +778,17 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Categories & Attributes <span className="text-rose-400">*</span>
-            </label>
             <CategorySelector
               selectedCategories={formCategories}
               onChange={(cats) => setFormCategories(cats)}
+              error={formErrors.categories}
             />
-            {formErrors.categories && (
-              <p className="mt-1 text-xs text-rose-400">{formErrors.categories}</p>
-            )}
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Selling Price (₹) <span className="text-rose-400">*</span>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Selling Price (₹) <span className="text-rose-500">*</span>
               </label>
               <Input
                 type="number"
@@ -807,8 +802,8 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Initial Branch <span className="text-rose-400">*</span>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Initial Branch <span className="text-rose-500">*</span>
               </label>
               <Select
                 value={formBranchId}
@@ -821,7 +816,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Initial Stock Quantity (Units)
               </label>
               <Input
@@ -835,7 +830,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Status
               </label>
               <Select
@@ -869,23 +864,23 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
       >
         <form onSubmit={handleAdjustSubmit} className="space-y-4">
           {modalApiError && (
-            <div className="flex items-center gap-2 rounded-lg bg-rose-500/10 p-3 text-sm text-rose-400 border border-rose-500/20">
-              <AlertCircle className="h-4 w-4 shrink-0" />
+            <div className="flex items-center gap-2 rounded-lg bg-rose-500/10 p-3 text-sm text-rose-700 border border-rose-500/20">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-500" />
               <span>{modalApiError}</span>
             </div>
           )}
 
           {selectedInventory && (
-            <div className="rounded-lg bg-slate-800/60 p-3 border border-slate-700">
-              <p className="font-semibold text-slate-100">{selectedInventory.productName}</p>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Branch: <span className="text-slate-200">{selectedInventory.branchName}</span> • Current: <span className="text-emerald-400 font-bold">{selectedInventory.quantity} units</span>
+            <div className="rounded-lg bg-slate-50 p-3 border border-slate-200">
+              <p className="font-semibold text-slate-900">{selectedInventory.productName}</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Branch: <span className="text-slate-800">{selectedInventory.branchName}</span> • Current: <span className="text-emerald-700 font-bold">{selectedInventory.quantity} units</span>
               </p>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
               New Stock Quantity (Units)
             </label>
             <Input
@@ -943,8 +938,8 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
       >
         <div className="space-y-4">
           {modalApiError && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+            <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-700">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-500 mt-0.5" />
               <div className="space-y-1">
                 <p className="font-semibold">Action Failed</p>
                 <p>{modalApiError}</p>
@@ -952,11 +947,11 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
             </div>
           )}
 
-          <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4 space-y-2">
-            <p className="text-sm text-slate-200 font-medium">
-              Are you sure you want to delete <span className="text-violet-300 font-bold font-mono">{selectedProductToDelete?.itemName}</span>?
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-2">
+            <p className="text-sm text-slate-800 font-medium">
+              Are you sure you want to delete <span className="text-emerald-700 font-bold font-mono">{selectedProductToDelete?.itemName}</span>?
             </p>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-slate-600 leading-relaxed">
               This product will be archived and hidden from POS sale menus. All historical receipts, purchase items, and past financial reports will continue to safely preserve this product's name and accounting history.
             </p>
           </div>

@@ -32,7 +32,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className="flex flex-col gap-1.5">
         {label && (
-          <label htmlFor={selectId} className="text-sm font-medium text-slate-300">
+          <label htmlFor={selectId} className="text-sm font-medium text-slate-700">
             {label}
           </label>
         )}
@@ -41,11 +41,11 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             ref={ref}
             id={selectId}
             className={cn(
-              'w-full appearance-none rounded-lg border bg-slate-900/50 px-3.5 py-2.5 pr-10 text-sm text-slate-100 transition-all duration-200',
-              'border-slate-700 focus:border-violet-500 focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20',
-              'hover:border-slate-600',
+              'w-full appearance-none rounded-lg border bg-white px-3.5 py-2.5 pr-10 text-sm text-slate-900 transition-all duration-200 shadow-xs',
+              'border-slate-300 focus:border-emerald-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20',
+              'hover:border-slate-400',
               error && 'border-rose-500 focus:border-rose-500 focus:ring-rose-500/20',
-              'disabled:cursor-not-allowed disabled:opacity-50',
+              'disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-slate-50',
               className,
             )}
             {...props}
@@ -60,14 +60,14 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
                 <optgroup
                   key={group.label}
                   label={group.label}
-                  className="bg-slate-900 font-semibold text-violet-400"
+                  className="bg-white font-semibold text-emerald-700"
                 >
                   {group.options.map((option) => (
                     <option
                       key={option.value}
                       value={option.value}
                       disabled={option.disabled}
-                      className="bg-slate-900 text-slate-100 font-normal"
+                      className="bg-white text-slate-900 font-normal"
                     >
                       {option.label}
                     </option>
@@ -76,15 +76,15 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
               ))
             ) : (
               options.map((option) => (
-                <option key={option.value} value={option.value} disabled={option.disabled}>
+                <option key={option.value} value={option.value} disabled={option.disabled} className="bg-white text-slate-900">
                   {option.label}
                 </option>
               ))
             )}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         </div>
-        {error && <p className="text-xs text-rose-400">{error}</p>}
+        {error && <p className="text-xs text-rose-500 font-medium">{error}</p>}
         {hint && !error && <p className="text-xs text-slate-500">{hint}</p>}
       </div>
     );

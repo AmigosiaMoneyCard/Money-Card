@@ -20,7 +20,7 @@ const PRODUCT_CATEGORY_GROUPS: CategoryGroupConfig[] = [
   {
     id: 'food_type',
     title: 'Food Type',
-    icon: <Utensils className="h-4 w-4 text-emerald-400" />,
+    icon: <Utensils className="h-4 w-4 text-emerald-600" />,
     options: [
       { value: 'Veg', label: 'Veg' },
       { value: 'Non-Veg', label: 'Non-Veg' },
@@ -33,7 +33,7 @@ const PRODUCT_CATEGORY_GROUPS: CategoryGroupConfig[] = [
   {
     id: 'meal_type',
     title: 'Meal Type',
-    icon: <Clock className="h-4 w-4 text-violet-400" />,
+    icon: <Clock className="h-4 w-4 text-teal-600" />,
     options: [
       { value: 'Breakfast', label: 'Breakfast' },
       { value: 'Lunch', label: 'Lunch' },
@@ -46,7 +46,7 @@ const PRODUCT_CATEGORY_GROUPS: CategoryGroupConfig[] = [
   {
     id: 'food_category',
     title: 'Food Category',
-    icon: <Layers className="h-4 w-4 text-amber-400" />,
+    icon: <Layers className="h-4 w-4 text-amber-600" />,
     options: [
       { value: 'Main Course', label: 'Main Course' },
       { value: 'Starter', label: 'Starter' },
@@ -63,7 +63,7 @@ const PRODUCT_CATEGORY_GROUPS: CategoryGroupConfig[] = [
   {
     id: 'dietary_attributes',
     title: 'Dietary / Product Attributes',
-    icon: <Sparkles className="h-4 w-4 text-rose-400" />,
+    icon: <Sparkles className="h-4 w-4 text-rose-500" />,
     options: [
       { value: 'Spicy', label: 'Spicy' },
       { value: 'Mild', label: 'Mild' },
@@ -111,32 +111,32 @@ export function CategorySelector({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-          Categories & Attributes <span className="text-rose-400">*</span>
+        <label className="text-xs font-semibold text-slate-700">
+          Categories & Attributes <span className="text-rose-500">*</span>
         </label>
-        <span className="text-xs text-slate-400 font-medium">
+        <span className="text-xs text-slate-500 font-medium">
           {selectedCategories.length} selected
         </span>
       </div>
 
       {/* Selected Summary Chips */}
       <div className="space-y-1.5">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
           Selected Summary:
         </span>
         {selectedCategories.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5 rounded-lg border border-slate-800 bg-slate-950 p-2.5 min-h-[38px] items-center">
+          <div className="flex flex-wrap gap-1.5 rounded-lg border border-slate-200 bg-slate-50 p-2.5 min-h-[38px] items-center">
             {selectedCategories.map((cat) => (
               <span
                 key={cat}
-                className="inline-flex items-center gap-1 rounded-md bg-violet-500/15 border border-violet-500/30 px-2.5 py-1 text-xs text-violet-200 font-medium"
+                className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-xs text-emerald-800 font-medium"
               >
                 <span>{cat}</span>
                 {!disabled && (
                   <button
                     type="button"
                     onClick={() => handleRemove(cat)}
-                    className="rounded p-0.5 text-violet-400 hover:text-violet-100 hover:bg-violet-500/20 transition-colors"
+                    className="rounded p-0.5 text-emerald-600 hover:text-emerald-900 hover:bg-emerald-100 transition-colors"
                     title={`Remove ${cat}`}
                   >
                     <X className="h-3 w-3" />
@@ -146,7 +146,7 @@ export function CategorySelector({
             ))}
           </div>
         ) : (
-          <div className="rounded-lg border border-slate-800/80 bg-slate-950/40 p-2.5 text-xs text-slate-500 italic">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-xs text-slate-500 italic">
             No categories or attributes selected yet. Select one or more options below.
           </div>
         )}
@@ -163,20 +163,20 @@ export function CategorySelector({
               key={group.id}
               className={`rounded-xl border p-3.5 transition-all ${
                 groupSelectedCount > 0
-                  ? 'border-violet-500/40 bg-slate-900/60'
-                  : 'border-slate-800 bg-slate-900/30'
+                  ? 'border-emerald-500/50 bg-emerald-50/30'
+                  : 'border-slate-200 bg-white'
               }`}
             >
               {/* Group Header */}
-              <div className="flex items-center justify-between border-b border-slate-800/80 pb-2 mb-2.5">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2 mb-2.5">
                 <div className="flex items-center gap-2">
                   {group.icon}
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-200">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-800">
                     {group.title}
                   </h4>
                 </div>
                 {groupSelectedCount > 0 && (
-                  <Badge variant="outline" className="text-[10px] border-violet-500/30 text-violet-300">
+                  <Badge variant="outline" className="text-[10px] border-emerald-200 text-emerald-700 bg-emerald-50">
                     {groupSelectedCount} selected
                   </Badge>
                 )}
@@ -192,8 +192,8 @@ export function CategorySelector({
                       key={option.value}
                       className={`flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 text-xs transition-all ${
                         active
-                          ? 'border-violet-500/50 bg-violet-500/20 text-slate-100 ring-1 ring-violet-500/30'
-                          : 'border-slate-800/90 bg-slate-950/70 text-slate-300 hover:border-slate-700 hover:bg-slate-900/60'
+                          ? 'border-emerald-500 bg-emerald-50 text-slate-900 ring-1 ring-emerald-500'
+                          : 'border-slate-200 bg-slate-50/50 text-slate-700 hover:border-slate-300 hover:bg-white'
                       } ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
                     >
                       <input
@@ -206,13 +206,13 @@ export function CategorySelector({
                       <div
                         className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
                           active
-                            ? 'border-violet-500 bg-violet-600 text-white'
-                            : 'border-slate-700 bg-slate-900'
+                            ? 'border-emerald-600 bg-emerald-600 text-white'
+                            : 'border-slate-300 bg-white'
                         }`}
                       >
                         {active && <Check className="h-3 w-3" />}
                       </div>
-                      <span className={`truncate ${active ? 'font-semibold text-white' : ''}`}>
+                      <span className={`truncate ${active ? 'font-semibold text-emerald-950' : ''}`}>
                         {option.label}
                       </span>
                     </label>
@@ -224,7 +224,7 @@ export function CategorySelector({
         })}
       </div>
 
-      {error && <p className="text-xs text-rose-400 mt-1">{error}</p>}
+      {error && <p className="text-xs text-rose-500 mt-1">{error}</p>}
     </div>
   );
 }

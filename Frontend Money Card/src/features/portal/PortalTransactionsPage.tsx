@@ -99,13 +99,13 @@ export function PortalTransactionsPage() {
       <div className="flex items-center gap-3">
         <Link
           to="/portal/session"
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-800 bg-slate-900 text-slate-400 hover:text-slate-200"
+          className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:text-slate-900 shadow-sm"
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
-          <h1 className="text-xl font-bold text-slate-100">Transaction History</h1>
-          <p className="text-xs text-slate-400">Recharges, purchases, and session settlements.</p>
+          <h1 className="text-xl font-bold text-slate-900">Transaction History</h1>
+          <p className="text-xs text-slate-500">Recharges, purchases, and session settlements.</p>
         </div>
       </div>
 
@@ -141,10 +141,10 @@ export function PortalTransactionsPage() {
                     <div
                       className={`flex h-10 w-10 items-center justify-center rounded-xl ${
                         isRecharge
-                          ? 'bg-emerald-500/10 text-emerald-400'
+                          ? 'bg-emerald-50 text-emerald-600'
                           : isRefund
-                            ? 'bg-rose-500/10 text-rose-400'
-                            : 'bg-violet-500/10 text-violet-400'
+                            ? 'bg-rose-50 text-rose-600'
+                            : 'bg-emerald-50 text-emerald-600'
                       }`}
                     >
                       {isRecharge ? (
@@ -158,7 +158,7 @@ export function PortalTransactionsPage() {
 
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-slate-200">
+                        <span className="text-sm font-semibold text-slate-900">
                           {isRecharge
                             ? `Card Recharge (${txn.paymentMethod || 'CASH'})`
                             : isRefund
@@ -172,7 +172,7 @@ export function PortalTransactionsPage() {
                           {txn.status}
                         </Badge>
                       </div>
-                      <p className="text-xs text-slate-400">{formatDate(txn.timestamp)}</p>
+                      <p className="text-xs text-slate-500">{formatDate(txn.timestamp)}</p>
                     </div>
                   </div>
 
@@ -180,16 +180,16 @@ export function PortalTransactionsPage() {
                     <p
                       className={`font-mono text-sm font-bold ${
                         isRecharge
-                          ? 'text-emerald-400'
+                          ? 'text-emerald-600'
                           : isRefund
-                            ? 'text-rose-400'
-                            : 'text-slate-200'
+                            ? 'text-rose-600'
+                            : 'text-slate-900'
                       }`}
                     >
                       {isRecharge ? '+' : '-'}{formatCurrency(txn.amount)}
                     </p>
                     {txn.items && txn.items.length > 0 && (
-                      <div className="mt-1 flex items-center justify-end text-[11px] text-violet-400">
+                      <div className="mt-1 flex items-center justify-end text-[11px] text-emerald-600 font-medium">
                         <span>{txn.items.length} items</span>
                         {isExpanded ? (
                           <ChevronUp className="h-3 w-3 ml-0.5" />
@@ -203,17 +203,17 @@ export function PortalTransactionsPage() {
 
                 {/* Expanded Itemized Purchase Breakdown */}
                 {isExpanded && txn.items && (
-                  <div className="rounded-lg border border-slate-800 bg-slate-950 p-3 space-y-2 text-xs">
-                    <div className="flex items-center gap-1.5 font-semibold text-slate-300 pb-1 border-b border-slate-800">
-                      <ShoppingBag className="h-3.5 w-3.5 text-violet-400" />
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2 text-xs">
+                    <div className="flex items-center gap-1.5 font-semibold text-slate-900 pb-1 border-b border-slate-200">
+                      <ShoppingBag className="h-3.5 w-3.5 text-emerald-600" />
                       <span>Purchased Items Breakdown</span>
                     </div>
                     {txn.items.map((item, idx) => (
-                      <div key={idx} className="flex justify-between text-slate-300">
+                      <div key={idx} className="flex justify-between text-slate-700">
                         <span>
                           {item.itemName} x{item.quantity}
                         </span>
-                        <span className="font-mono text-slate-200">
+                        <span className="font-mono text-slate-900 font-semibold">
                           {formatCurrency(item.totalPrice)}
                         </span>
                       </div>

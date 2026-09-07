@@ -21,11 +21,11 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div className={cn('flex flex-col items-center justify-center gap-4 py-16', className)}>
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-800/60 text-slate-500">
+      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
         {icon || <Inbox className="h-8 w-8" />}
       </div>
       <div className="text-center">
-        <h3 className="text-base font-semibold text-slate-300">{title}</h3>
+        <h3 className="text-base font-semibold text-slate-800">{title}</h3>
         {description && (
           <p className="mt-1 max-w-sm text-sm text-slate-500">{description}</p>
         )}

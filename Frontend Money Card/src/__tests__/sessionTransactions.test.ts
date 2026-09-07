@@ -33,10 +33,10 @@ describe('Customer Session Transactions - Bought Items & Details', () => {
     expect(items).toHaveLength(2);
 
     const title = items
-      .map((i) => `${i.quantity > 1 ? `${i.quantity}× ` : ''}${i.name}`)
+      .map((i) => `${i.quantity}× ${i.name}`)
       .join(', ');
 
-    expect(title).toBe('2× Chicken Roll, Cold Coffee');
+    expect(title).toBe('2× Chicken Roll, 1× Cold Coffee');
     expect(items[0].total).toBe(300);
     expect(items[1].total).toBe(80);
   });

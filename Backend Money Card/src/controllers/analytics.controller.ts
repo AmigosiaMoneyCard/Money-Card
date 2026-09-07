@@ -59,7 +59,16 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     ...(fromDate || toDate ? { createdAt: dateFilter } : {}),
   };
 
-  const [transactions, totalCards, activeSessionsCount, branches, lowStockCount, products] = await Promise.all([
+  const [
+    transactions,
+    totalCards,
+    activeSessionsCount,
+    branches,
+    lowStockCount,
+    products,
+    activeSessionsList,
+    settledSessionsCount,
+  ] = await Promise.all([
     prisma.transaction.findMany({
       where: txWhere,
       include: { branch: true },
@@ -94,6 +103,30 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     prisma.product.findMany({
       where: orgId ? { organizationId: orgId } : {},
       include: { inventoryItems: true },
+    }),
+    prisma.cardSession.findMany({
+      where: {
+        ...(orgId ? { organizationId: orgId } : {}),
+        ...(branchId && branchId !== 'ALL' ? { branchId } : {}),
+        status: 'ACTIVE',
+      },
+      select: {
+        id: true,
+        balance: true,
+        transactions: {
+          where: {
+            type: { in: ['RECHARGE_CASH', 'RECHARGE_UPI'] },
+          },
+          select: { id: true },
+        },
+      },
+    }),
+    prisma.cardSession.count({
+      where: {
+        ...(orgId ? { organizationId: orgId } : {}),
+        ...(branchId && branchId !== 'ALL' ? { branchId } : {}),
+        status: 'SETTLED',
+      },
     }),
   ]);
 
@@ -260,6 +293,17 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     bm.totalRevenue = Number(bm.totalRevenue.toFixed(2));
   });
 
+  const zeroBalanceActiveCardsCount = activeSessionsList.filter((s) => s.balance === 0).length;
+  let activeCardsRechargeCount = 0;
+  let reRechargedCardsCount = 0;
+  activeSessionsList.forEach((s) => {
+    const count = s.transactions.length;
+    activeCardsRechargeCount += count;
+    if (count > 1) {
+      reRechargedCardsCount += (count - 1);
+    }
+  });
+
   return sendSuccess(res, {
     totalTransactions: transactions.length,
     totalRechargeVolume: Number(totalRechargeVolume.toFixed(2)),
@@ -271,6 +315,10 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     activeCardsCount: totalCards,
     lowStockItemsCount: lowStockCount,
     branchPerformance: Array.from(branchMetricsMap.values()),
+    activeCardsRechargeCount,
+    reRechargedCardsCount,
+    closedCardsCount: settledSessionsCount,
+    zeroBalanceActiveCardsCount,
   });
 }
 
@@ -284,7 +332,7 @@ export async function getPeakAnalytics(req: Request, res: Response) {
     ? (req.query.organizationId as string) || undefined
     : req.user?.organizationId;
 
-  const { branchId, startDate, endDate } = req.query as Record<string, string>;
+  const { branchId, startDate, endDate, category, categoryId } = req.query as Record<string, string>;
 
   const dateFilter: any = {};
   if (startDate) dateFilter.gte = new Date(startDate.includes('T') ? startDate : `${startDate}T00:00:00.000Z`);
@@ -361,14 +409,6 @@ export async function getPeakAnalytics(req: Request, res: Response) {
         bucket.rechargeCount++;
         totalRechargeVolume += tx.amount;
       }
-
-      if (bucket.isPeak) {
-        peakTransactions++;
-        peakVolume += tx.amount;
-      } else {
-        offPeakTransactions++;
-        offPeakVolume += tx.amount;
-      }
     }
 
     branchVolMap.set(tx.branchId, (branchVolMap.get(tx.branchId) || 0) + tx.amount);
@@ -379,6 +419,21 @@ export async function getPeakAnalytics(req: Request, res: Response) {
   hourlyBuckets.forEach((b) => {
     if (b.transactionCount > maxHourBucket.transactionCount) {
       maxHourBucket = b;
+    }
+  });
+
+  // Dynamically include the busiest operational hour alongside standard meal rush windows (12-14 & 19-21)
+  hourlyBuckets.forEach((b) => {
+    const isStandardPeak = (b.hour >= 12 && b.hour <= 14) || (b.hour >= 19 && b.hour <= 21);
+    const isDynamicPeak = maxHourBucket.transactionCount > 0 && b.hour === maxHourBucket.hour;
+    b.isPeak = isStandardPeak || isDynamicPeak;
+
+    if (b.isPeak) {
+      peakTransactions += b.transactionCount;
+      peakVolume += b.totalVolume;
+    } else {
+      offPeakTransactions += b.transactionCount;
+      offPeakVolume += b.totalVolume;
     }
   });
 
@@ -393,7 +448,7 @@ export async function getPeakAnalytics(req: Request, res: Response) {
   });
 
   // 2. Product Demand
-  const productDemand = products.map((p) => {
+  let productDemand = products.map((p) => {
     const totalStock = p.inventoryItems.reduce((sum, inv) => sum + inv.quantity, 0);
     const stockStatus = totalStock <= 0 ? 'OUT_OF_STOCK' : totalStock <= 10 ? 'LOW' : 'NORMAL';
 
@@ -408,6 +463,17 @@ export async function getPeakAnalytics(req: Request, res: Response) {
       stockStatus: stockStatus as 'NORMAL' | 'LOW' | 'OUT_OF_STOCK',
     };
   });
+
+  const filterCategory = category || categoryId;
+  if (filterCategory && filterCategory !== 'ALL') {
+    const targetLower = filterCategory.toLowerCase();
+    productDemand = productDemand.filter((p) => {
+      const cats = p.category.split(',').map((c) => c.trim().toLowerCase());
+      return cats.some(
+        (c) => c === targetLower || c.replace(/s$/, '') === targetLower.replace(/s$/, '')
+      );
+    });
+  }
 
   return sendSuccess(res, {
     hourlyDistribution: hourlyBuckets,

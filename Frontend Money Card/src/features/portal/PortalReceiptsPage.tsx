@@ -89,13 +89,13 @@ export function PortalReceiptsPage() {
       <div className="flex items-center gap-3">
         <Link
           to="/portal/session"
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-800 bg-slate-900 text-slate-400 hover:text-slate-200"
+          className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:text-slate-900 shadow-sm"
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
-          <h1 className="text-xl font-bold text-slate-100">Itemized Receipts</h1>
-          <p className="text-xs text-slate-400">Digital receipts for purchases made with this session.</p>
+          <h1 className="text-xl font-bold text-slate-900">Itemized Receipts</h1>
+          <p className="text-xs text-slate-500">Digital receipts for purchases made with this session.</p>
         </div>
       </div>
 
@@ -112,16 +112,16 @@ export function PortalReceiptsPage() {
       ) : (
         <div className="space-y-4">
           {receipts.map((rcpt) => (
-            <Card key={rcpt.receiptId} padding="md" className="space-y-4 border-slate-800">
+            <Card key={rcpt.receiptId} padding="md" className="space-y-4 border-slate-200 bg-white shadow-sm">
               {/* Receipt Header */}
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
-                  <span className="font-mono text-xs font-bold text-violet-300">
+                  <span className="font-mono text-xs font-bold text-emerald-600">
                     {rcpt.receiptId}
                   </span>
-                  <p className="text-[11px] text-slate-400">{formatDate(rcpt.date)}</p>
+                  <p className="text-[11px] text-slate-500">{formatDate(rcpt.date)}</p>
                 </div>
-                <Badge variant="outline" className="text-[10px] text-emerald-400">
+                <Badge variant="success" className="text-[10px]">
                   PAID
                 </Badge>
               </div>
@@ -129,14 +129,14 @@ export function PortalReceiptsPage() {
               {/* Items List */}
               <div className="space-y-2 text-xs">
                 {rcpt.items.map((item, idx) => (
-                  <div key={idx} className="flex justify-between items-center text-slate-300">
+                  <div key={idx} className="flex justify-between items-center text-slate-700">
                     <div>
-                      <p className="font-medium text-slate-200">{item.itemName}</p>
-                      <p className="text-[11px] text-slate-400">
+                      <p className="font-medium text-slate-900">{item.itemName}</p>
+                      <p className="text-[11px] text-slate-500">
                         {item.quantity} x {formatCurrency(item.unitPrice)}
                       </p>
                     </div>
-                    <span className="font-mono font-semibold text-slate-100">
+                    <span className="font-mono font-semibold text-slate-900">
                       {formatCurrency(item.totalPrice)}
                     </span>
                   </div>
@@ -144,9 +144,9 @@ export function PortalReceiptsPage() {
               </div>
 
               {/* Receipt Total */}
-              <div className="flex justify-between border-t border-slate-800 pt-3 text-xs">
-                <span className="font-semibold text-slate-300">Total Paid</span>
-                <span className="font-mono text-base font-bold text-emerald-400">
+              <div className="flex justify-between border-t border-slate-100 pt-3 text-xs">
+                <span className="font-semibold text-slate-900">Total Paid</span>
+                <span className="font-mono text-base font-bold text-emerald-600">
                   {formatCurrency(rcpt.totalAmount)}
                 </span>
               </div>

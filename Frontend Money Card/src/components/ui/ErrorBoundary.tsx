@@ -49,20 +49,20 @@ export class ErrorBoundary extends Component<Props, State> {
 
       return (
         <div className="flex min-h-[50vh] flex-col items-center justify-center p-6 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-400 mb-4 border border-rose-500/20">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 mb-4 border border-rose-200">
             <AlertTriangle className="h-8 w-8" />
           </div>
 
-          <h2 className="text-xl font-bold text-slate-100">Page Failed to Render</h2>
-          <p className="mt-2 max-w-md text-sm text-slate-400">
+          <h2 className="text-xl font-bold text-slate-900">Page Failed to Render</h2>
+          <p className="mt-2 max-w-md text-sm text-slate-600">
             An unexpected error occurred while rendering this page. You can try refreshing or returning to the dashboard.
           </p>
 
           {isDev && this.state.error && (
-            <div className="mt-4 max-w-2xl overflow-x-auto rounded-lg border border-rose-500/30 bg-rose-950/20 p-4 text-left font-mono text-xs text-rose-300">
+            <div className="mt-4 max-w-2xl overflow-x-auto rounded-lg border border-rose-200 bg-rose-50 p-4 text-left font-mono text-xs text-rose-800">
               <p className="font-bold">{this.state.error.name}: {this.state.error.message}</p>
               {this.state.error.stack && (
-                <pre className="mt-2 text-[11px] text-rose-400/80 whitespace-pre-wrap">
+                <pre className="mt-2 text-[11px] text-rose-700 whitespace-pre-wrap">
                   {this.state.error.stack.split('\n').slice(0, 5).join('\n')}
                 </pre>
               )}

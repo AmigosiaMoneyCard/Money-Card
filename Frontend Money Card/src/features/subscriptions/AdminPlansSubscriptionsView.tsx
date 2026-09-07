@@ -66,15 +66,13 @@ export function AdminPlansSubscriptionsView() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Search & Filter for Organization Subscriptions & Global Toolbar
-  const [selectedOrgFilter, setSelectedOrgFilter] = useState<string>('ALL');
+  // Search & Filter for Organization Subscriptions
   const [orgSearchQuery, setOrgSearchQuery] = useState('');
   const [selectedPlanFilter, setSelectedPlanFilter] = useState<string>('ALL');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('ALL');
 
-  // Search & Filter for Plan Requests
+  // Search for Plan Requests
   const [requestSearchQuery, setRequestSearchQuery] = useState('');
-  const [requestStatusFilter, setRequestStatusFilter] = useState<string>('PENDING');
 
   // Sync activeTab when searchParams change
   useEffect(() => {
@@ -538,8 +536,6 @@ export function AdminPlansSubscriptionsView() {
   // Metrics
   const activeSubsCount = subscriptions.filter((s) => s.status === 'ACTIVE').length;
   const pendingRequestsCount = planRequests.filter((r) => r.status === 'PENDING').length;
-  const approvedRequestsCount = planRequests.filter((r) => r.status === 'APPROVED' || r.status === 'COMPLETED').length;
-  const rejectedRequestsCount = planRequests.filter((r) => r.status === 'REJECTED').length;
   const totalVerifiedRevenue = payments
     .filter((p) => p.status === 'SUCCESS')
     .reduce((sum, p) => sum + p.amount, 0);
@@ -550,69 +546,43 @@ export function AdminPlansSubscriptionsView() {
       const sub = subscriptions.find((s) => s.organizationId === org.id) || org.subscription;
       const plan = plans.find((p) => p.id === (sub?.planId || org.planId)) || org.plan;
 
-      const matchesOrg =
-        !selectedOrgFilter ||
-        selectedOrgFilter === 'ALL' ||
-        org.id === selectedOrgFilter;
-
       const matchesSearch =
         !orgSearchQuery.trim() ||
         org.name.toLowerCase().includes(orgSearchQuery.toLowerCase()) ||
         org.id.toLowerCase().includes(orgSearchQuery.toLowerCase());
 
       const matchesPlan =
-        !selectedPlanFilter ||
         selectedPlanFilter === 'ALL' ||
         plan?.id === selectedPlanFilter ||
         org.planId === selectedPlanFilter;
 
       const matchesStatus =
-        !selectedStatusFilter ||
         selectedStatusFilter === 'ALL' ||
         (sub?.status || org.status) === selectedStatusFilter;
 
-      return matchesOrg && matchesSearch && matchesPlan && matchesStatus;
+      return matchesSearch && matchesPlan && matchesStatus;
     });
-  }, [orgs, subscriptions, plans, selectedOrgFilter, orgSearchQuery, selectedPlanFilter, selectedStatusFilter]);
+  }, [orgs, subscriptions, plans, orgSearchQuery, selectedPlanFilter, selectedStatusFilter]);
 
-  // Filtered & Sorted Plan Change & Renewal Requests
+  // Pending Plan Change Requests Only (Exclusively showing requests awaiting Super Admin action)
+  const pendingRequestsList = useMemo(() => {
+    return planRequests.filter((r) => r.status === 'PENDING');
+  }, [planRequests]);
+
   const filteredAndSortedRequests = useMemo(() => {
-    return planRequests
+    return pendingRequestsList
       .filter((req) => {
-        // Cafeteria Filter
-        if (selectedOrgFilter && selectedOrgFilter !== 'ALL') {
-          if (req.organizationId !== selectedOrgFilter) return false;
-        }
-
-        // Plan Filter
-        if (selectedPlanFilter && selectedPlanFilter !== 'ALL') {
-          if (req.requestedPlanId !== selectedPlanFilter && req.currentPlanId !== selectedPlanFilter) {
-            return false;
-          }
-        }
-
-        // Status Filter
-        if (requestStatusFilter !== 'ALL') {
-          if (requestStatusFilter === 'APPROVED') {
-            if (req.status !== 'APPROVED' && req.status !== 'COMPLETED') return false;
-          } else if (req.status !== requestStatusFilter) {
-            return false;
-          }
-        }
-
-        // Search Filter
         if (!requestSearchQuery.trim()) return true;
         const q = requestSearchQuery.toLowerCase().trim();
         return (
           (req.organizationName || '').toLowerCase().includes(q) ||
           (req.requestedPlanName || '').toLowerCase().includes(q) ||
           (req.currentPlanName || '').toLowerCase().includes(q) ||
-          (req.adminNotes || '').toLowerCase().includes(q) ||
           req.id.toLowerCase().includes(q)
         );
       })
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [planRequests, selectedOrgFilter, selectedPlanFilter, requestStatusFilter, requestSearchQuery]);
+  }, [pendingRequestsList, requestSearchQuery]);
 
   // Selected Plan for Org Sub Modal (for real-time default vs override preview)
   const previewSelectedPlan = plans.find((p) => p.id === subFormPlanId) || plans[0];
@@ -624,11 +594,11 @@ export function AdminPlansSubscriptionsView() {
       header: 'Global Plan Definition',
       render: (plan: Plan) => (
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500/10 text-violet-400">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
             <Layers className="h-4 w-4" />
           </div>
           <div>
-            <p className="font-semibold text-slate-100">{plan.name}</p>
+            <p className="font-semibold text-slate-900">{plan.name}</p>
           </div>
         </div>
       ),
@@ -637,8 +607,8 @@ export function AdminPlansSubscriptionsView() {
       key: 'price',
       header: 'Default Price',
       render: (plan: Plan) => (
-        <span className="font-mono text-sm font-bold text-violet-300">
-          {formatCurrency(plan.price)} <span className="text-xs text-slate-400 font-normal">/{(plan.billingInterval || 'MONTHLY').toLowerCase()}</span>
+        <span className="font-mono text-sm font-bold text-emerald-700">
+          {formatCurrency(plan.price)} <span className="text-xs text-slate-500 font-normal">/{(plan.billingInterval || 'MONTHLY').toLowerCase()}</span>
         </span>
       ),
     },
@@ -646,7 +616,7 @@ export function AdminPlansSubscriptionsView() {
       key: 'limits',
       header: 'Default Technical Limits',
       render: (plan: Plan) => (
-        <span className="text-xs text-slate-300 font-mono">
+        <span className="text-xs text-slate-600 font-mono">
           {plan.branchLimit} Branches • {plan.staffLimit} Staff • {plan.cardLimit} Cards
         </span>
       ),
@@ -688,11 +658,11 @@ export function AdminPlansSubscriptionsView() {
       header: 'Organization',
       render: (org: OrganizationOverview) => (
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500/10 text-violet-400">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
             <Building2 className="h-4 w-4" />
           </div>
           <div>
-            <p className="font-semibold text-slate-100">{org.name}</p>
+            <p className="font-semibold text-slate-900">{org.name}</p>
             
           </div>
         </div>
@@ -705,7 +675,7 @@ export function AdminPlansSubscriptionsView() {
         const sub = subscriptions.find((s) => s.organizationId === org.id);
         const plan = plans.find((p) => p.id === (sub?.planId || org.planId)) || org.plan;
         return (
-          <Badge variant="outline" className="border-violet-500/30 text-violet-300 font-bold">
+          <Badge variant="outline" className="border-emerald-200 text-emerald-700 bg-emerald-50 font-bold">
             {plan?.name || 'Standard'}
           </Badge>
         );
@@ -746,7 +716,7 @@ export function AdminPlansSubscriptionsView() {
         return (
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-xs text-slate-200">
+              <span className="font-mono text-xs font-bold text-slate-900">
                 {effBranches} Branches • {effStaff} Staff • {effCards} Cards
               </span>
               {hasOverrides && (
@@ -755,7 +725,7 @@ export function AdminPlansSubscriptionsView() {
                 </Badge>
               )}
             </div>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-slate-500">
               Usage: {org.usage?.branchCount ?? 0}b / {org.usage?.staffCount ?? 0}s / {org.usage?.cardCount ?? 0}c
             </p>
           </div>
@@ -767,74 +737,51 @@ export function AdminPlansSubscriptionsView() {
       header: 'Renewal Date',
       render: (org: OrganizationOverview) => {
         const sub = subscriptions.find((s) => s.organizationId === org.id);
-        return <span className="text-xs text-slate-400">{sub ? formatDate(sub.renewalDate) : '—'}</span>;
+        return <span className="text-xs text-slate-500">{sub ? formatDate(sub.renewalDate) : '—'}</span>;
       },
     },
-    {
-      key: 'actions',
-      header: 'Actions',
-      className: 'text-right',
-      render: (org: OrganizationOverview) => (
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => openOrgSubscriptionModal(org)}
-            leftIcon={<Sliders className="h-3.5 w-3.5" />}
-          >
-            Edit Limits
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => openRecordPaymentModal(org.id)}
-            leftIcon={<DollarSign className="h-3.5 w-3.5" />}
-          >
-            Record Payment
-          </Button>
-        </div>
-      ),
-    },
-  ];
+      {
+        key: 'actions',
+        header: 'Actions',
+        className: 'text-right',
+        render: (org: OrganizationOverview) => (
+          <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => openOrgSubscriptionModal(org)}
+              leftIcon={<Sliders className="h-3.5 w-3.5" />}
+            >
+              Edit Limits
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => openRecordPaymentModal(org.id)}
+              leftIcon={<DollarSign className="h-3.5 w-3.5" />}
+            >
+              Record Payment
+            </Button>
+          </div>
+        ),
+      },
+    ];
 
-  const requestColumns = [
+    const requestColumns = [
     {
       key: 'organizationName',
       header: 'Organization',
       render: (req: PlanChangeRequest) => (
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-2">
-            <Building2
-              className={`h-4 w-4 ${
-                req.status === 'PENDING'
-                  ? 'text-amber-400'
-                  : req.status === 'APPROVED' || req.status === 'COMPLETED'
-                  ? 'text-emerald-400'
-                  : 'text-rose-400'
-              }`}
-            />
-            <span className="font-bold text-slate-100">{req.organizationName || 'Organization'}</span>
+            <Building2 className={`h-4 w-4 ${req.status === 'PENDING' ? 'text-amber-500' : 'text-emerald-600'}`} />
+            <span className="font-bold text-slate-900">{req.organizationName || 'Organization'}</span>
             {req.status === 'PENDING' && (
-              <span className="text-[10px] uppercase font-extrabold tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded">
+              <span className="text-[10px] uppercase font-extrabold tracking-wider bg-amber-100 text-amber-800 border border-amber-300 px-1.5 py-0.5 rounded">
                 Pending
               </span>
             )}
-            {(req.status === 'APPROVED' || req.status === 'COMPLETED') && (
-              <span className="text-[10px] uppercase font-extrabold tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.5 rounded">
-                Approved
-              </span>
-            )}
-            {req.status === 'REJECTED' && (
-              <span className="text-[10px] uppercase font-extrabold tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/40 px-1.5 py-0.5 rounded">
-                Rejected
-              </span>
-            )}
           </div>
-          {req.reason && (
-            <p className="text-[11px] text-slate-400 truncate max-w-xs" title={req.reason}>
-              Note: {req.reason}
-            </p>
-          )}
         </div>
       ),
     },
@@ -842,18 +789,8 @@ export function AdminPlansSubscriptionsView() {
       key: 'planTransition',
       header: 'Plan Request',
       render: (req: PlanChangeRequest) => (
-        <div className="flex flex-col gap-0.5">
-          <div className="flex items-center gap-1.5">
-            {req.currentPlanName && req.currentPlanName !== req.requestedPlanName ? (
-              <span className="text-xs text-slate-300 font-mono">
-                <span className="text-slate-400">{req.currentPlanName}</span>
-                <span className="text-slate-500 mx-1">→</span>
-                <span className="font-bold text-violet-300">{req.requestedPlanName}</span>
-              </span>
-            ) : (
-              <span className="font-bold text-slate-100">{req.requestedPlanName}</span>
-            )}
-          </div>
+        <div>
+          <span className="font-bold text-slate-900">{req.requestedPlanName}</span>
         </div>
       ),
     },
@@ -863,13 +800,13 @@ export function AdminPlansSubscriptionsView() {
       render: (req: PlanChangeRequest) => {
         if (req.requestType === 'RENEWAL') {
           return (
-            <Badge variant="success" className="bg-emerald-500/10 text-emerald-300 border-emerald-500/30 font-semibold">
+            <Badge variant="success" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold">
               Subscription Renewal
             </Badge>
           );
         }
         return (
-          <Badge variant="outline" className="text-violet-300 border-violet-500/30">
+          <Badge variant="outline" className="text-emerald-700 border-emerald-200 bg-emerald-50">
             {(req.requestType || 'UPGRADE').replace(/_/g, ' ')}
           </Badge>
         );
@@ -880,17 +817,19 @@ export function AdminPlansSubscriptionsView() {
       header: 'Status',
       render: (req: PlanChangeRequest) => (
         req.status === 'PENDING' ? (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm shadow-amber-500/10">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 shadow-xs">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-ping" />
             AWAITING APPROVAL
           </span>
-        ) : req.status === 'APPROVED' || req.status === 'COMPLETED' ? (
-          <Badge variant="success" className="bg-emerald-500/15 text-emerald-300 border-emerald-500/40 font-bold">
-            APPROVED
-          </Badge>
         ) : (
-          <Badge variant="danger" className="bg-rose-500/15 text-rose-300 border-rose-500/40 font-bold">
-            REJECTED
+          <Badge
+            variant={
+              req.status === 'APPROVED' || req.status === 'COMPLETED'
+                ? 'success'
+                : 'danger'
+            }
+          >
+            {req.status}
           </Badge>
         )
       ),
@@ -899,14 +838,7 @@ export function AdminPlansSubscriptionsView() {
       key: 'createdAt',
       header: 'Submitted Date',
       render: (req: PlanChangeRequest) => (
-        <div className="flex flex-col text-xs text-slate-400">
-          <span>{formatDate(req.createdAt)}</span>
-          {req.adminNotes && (
-            <span className="text-[11px] text-slate-500 truncate max-w-xs" title={req.adminNotes}>
-              Note: {req.adminNotes}
-            </span>
-          )}
-        </div>
+        <span className="text-xs text-slate-500">{formatDate(req.createdAt)}</span>
       ),
     },
     {
@@ -921,19 +853,12 @@ export function AdminPlansSubscriptionsView() {
               size="sm"
               onClick={() => openReviewModal(req)}
               leftIcon={<Check className="h-3.5 w-3.5" />}
-              className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-500/20 border-0"
+              className="bg-amber-500 hover:bg-amber-600 text-white font-bold shadow-xs shadow-amber-500/20 border-0"
             >
               Review / Approve
             </Button>
           ) : (
-            <div className="text-right">
-              <span className="text-xs font-semibold text-slate-300">
-                {req.status === 'APPROVED' || req.status === 'COMPLETED' ? 'Approved & Applied' : 'Declined'}
-              </span>
-              <p className="text-[10px] text-slate-500">
-                {req.reviewedBy ? `By ${req.reviewedBy}` : 'Processed'}
-              </p>
-            </div>
+            <span className="text-xs text-slate-500">Reviewed</span>
           )}
         </div>
       ),
@@ -945,21 +870,21 @@ export function AdminPlansSubscriptionsView() {
       key: 'id',
       header: 'Payment ID',
       render: (p: SubscriptionPayment) => (
-        <span className="font-mono text-xs font-bold text-slate-200">PAY-#{p.id.slice(0, 8).toUpperCase()}</span>
+        <span className="font-mono text-xs font-bold text-slate-800">PAY-#{p.id.slice(0, 8).toUpperCase()}</span>
       ),
     },
     {
       key: 'amount',
       header: 'Amount',
       render: (p: SubscriptionPayment) => (
-        <span className="font-mono text-sm font-bold text-violet-300">{formatCurrency(p.amount)}</span>
+        <span className="font-mono text-sm font-bold text-emerald-700">{formatCurrency(p.amount)}</span>
       ),
     },
     {
       key: 'method',
       header: 'Direct Payment Method',
       render: (p: SubscriptionPayment) => (
-        <Badge variant="outline" className="text-slate-300">
+        <Badge variant="outline" className="text-slate-600">
           {(p.paymentMethod || 'DIRECT_BANK_TRANSFER').replace(/_/g, ' ')}
         </Badge>
       ),
@@ -968,7 +893,7 @@ export function AdminPlansSubscriptionsView() {
       key: 'reference',
       header: 'Reference ID',
       render: (p: SubscriptionPayment) => (
-        <span className="font-mono text-xs text-slate-400">
+        <span className="font-mono text-xs text-slate-500">
           {p.paymentReference || p.externalReference || '—'}
         </span>
       ),
@@ -984,7 +909,7 @@ export function AdminPlansSubscriptionsView() {
       key: 'verifiedBy',
       header: 'Verified By',
       render: (p: SubscriptionPayment) => (
-        <span className="text-xs text-emerald-400 font-medium">
+        <span className="text-xs text-emerald-600 font-medium">
           {p.verifiedBy || 'Super Admin'}
         </span>
       ),
@@ -993,7 +918,7 @@ export function AdminPlansSubscriptionsView() {
       key: 'createdAt',
       header: 'Date',
       render: (p: SubscriptionPayment) => (
-        <span className="text-xs text-slate-400">{formatDate(p.createdAt)}</span>
+        <span className="text-xs text-slate-500">{formatDate(p.createdAt)}</span>
       ),
     },
   ];
@@ -1003,12 +928,7 @@ export function AdminPlansSubscriptionsView() {
       {/* Header Bar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-100">Plans & Subscriptions Management</h1>
-            <Badge variant="outline" className="border-violet-500/30 text-violet-300">
-              Super Admin Scope
-            </Badge>
-          </div>
+          <h1 className="text-2xl font-bold text-slate-900">Plans & Subscriptions Management</h1>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -1018,9 +938,8 @@ export function AdminPlansSubscriptionsView() {
             onClick={() => openRecordPaymentModal()}
             leftIcon={<DollarSign className="h-4 w-4" />}
           >
-            Record Direct Payment
+            Record Tenant Payment
           </Button>
-
           <Button
             variant="primary"
             size="sm"
@@ -1032,118 +951,58 @@ export function AdminPlansSubscriptionsView() {
         </div>
       </div>
 
-      {/* ── Filter Toolbar (Cafeteria Scope, Plan & Subscription, Status, Refresh Data) ── */}
-      <div className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Cafeteria Scope Filter */}
-          <div className="w-full sm:w-56">
-            <label className="mb-1 block text-[11px] font-medium text-slate-400">Cafeteria Scope</label>
-            <Select
-              id="plans-cafeteria-filter"
-              value={selectedOrgFilter}
-              onChange={(e) => setSelectedOrgFilter(e.target.value)}
-              options={[
-                { value: 'ALL', label: 'All Cafeterias' },
-                ...orgs.map((o) => ({ value: o.id, label: o.name })),
-              ]}
-            />
-          </div>
-
-          {/* Plan & Subscription Filter */}
-          <div className="w-full sm:w-56">
-            <label className="mb-1 block text-[11px] font-medium text-slate-400">Plan & Subscription</label>
-            <Select
-              id="plans-plan-filter"
-              value={selectedPlanFilter}
-              onChange={(e) => setSelectedPlanFilter(e.target.value)}
-              options={[
-                { value: 'ALL', label: 'All Plans & Subscriptions' },
-                ...plans.map((p) => ({ value: p.id, label: `${p.name} Plan` })),
-              ]}
-            />
-          </div>
-
-          {/* Subscription Status Filter */}
-          <div className="w-full sm:w-48">
-            <label className="mb-1 block text-[11px] font-medium text-slate-400">Subscription Status</label>
-            <Select
-              id="plans-status-filter"
-              value={selectedStatusFilter}
-              onChange={(e) => setSelectedStatusFilter(e.target.value)}
-              options={[
-                { value: 'ALL', label: 'All Statuses' },
-                { value: 'ACTIVE', label: 'Active' },
-                { value: 'RENEWAL_DUE', label: 'Renewal Due' },
-                { value: 'PENDING_PAYMENT', label: 'Pending Payment' },
-                { value: 'EXPIRED', label: 'Expired' },
-              ]}
-            />
-          </div>
-        </div>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => fetchUnifiedData()}
-          leftIcon={<RotateCcw className="h-4 w-4" />}
-          className="shrink-0 self-start lg:self-center"
-        >
-          Refresh Data
-        </Button>
-      </div>
-
       {/* KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Active Subscriptions"
           value={activeSubsCount}
-          icon={<Layers className="h-5 w-5 text-violet-400" />}
+          icon={<Layers className="h-5 w-5 text-emerald-600" />}
         />
         <StatCard
           label="Pending Plan Requests"
           value={pendingRequestsCount}
-          icon={<Inbox className="h-5 w-5 text-amber-400" />}
+          icon={<Inbox className="h-5 w-5 text-amber-500" />}
         />
         <StatCard
           label="Global Plan Catalog"
           value={plans.length}
-          icon={<Zap className="h-5 w-5 text-sky-400" />}
+          icon={<Zap className="h-5 w-5 text-sky-500" />}
         />
         <StatCard
           label="Verified Direct Revenue"
           value={formatCurrency(totalVerifiedRevenue)}
-          icon={<Receipt className="h-5 w-5 text-emerald-400" />}
+          icon={<Receipt className="h-5 w-5 text-emerald-600" />}
         />
       </div>
 
       {/* Navigation Tabs (Distinct Global Plans vs Org Subscriptions) */}
-      <div className="flex border-b border-slate-800 text-sm overflow-x-auto">
+      <div className="flex border-b border-slate-200 text-sm overflow-x-auto">
         <button
           onClick={() => handleTabChange('plans')}
-          className={`px-4 py-2.5 font-medium border-b-2 whitespace-nowrap transition-colors ${
+          className={`px-4 py-2.5 font-medium border-b-2 whitespace-nowrap transition-colors cursor-pointer ${
             activeTab === 'plans'
-              ? 'border-violet-500 text-violet-400'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-emerald-600 text-emerald-700 font-semibold'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
           Global Plans ({plans.length})
         </button>
         <button
           onClick={() => handleTabChange('org_subscriptions')}
-          className={`px-4 py-2.5 font-medium border-b-2 whitespace-nowrap transition-colors ${
+          className={`px-4 py-2.5 font-medium border-b-2 whitespace-nowrap transition-colors cursor-pointer ${
             activeTab === 'org_subscriptions'
-              ? 'border-violet-500 text-violet-400'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-emerald-600 text-emerald-700 font-semibold'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
           Organization Subscriptions ({orgs.length})
         </button>
         <button
           onClick={() => handleTabChange('requests')}
-          className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 whitespace-nowrap transition-colors ${
+          className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 whitespace-nowrap transition-colors cursor-pointer ${
             activeTab === 'requests'
-              ? 'border-violet-500 text-violet-400'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-emerald-600 text-emerald-700 font-semibold'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
           <span>Plan Requests</span>
@@ -1155,10 +1014,10 @@ export function AdminPlansSubscriptionsView() {
         </button>
         <button
           onClick={() => handleTabChange('payments')}
-          className={`px-4 py-2.5 font-medium border-b-2 whitespace-nowrap transition-colors ${
+          className={`px-4 py-2.5 font-medium border-b-2 whitespace-nowrap transition-colors cursor-pointer ${
             activeTab === 'payments'
-              ? 'border-violet-500 text-violet-400'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-emerald-600 text-emerald-700 font-semibold'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
           Payment History ({payments.length})
@@ -1176,7 +1035,7 @@ export function AdminPlansSubscriptionsView() {
             <div className="space-y-4">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-100">Global Plan Catalog Definitions</h2>
+                  <h2 className="text-lg font-bold text-slate-900">Global Plan Catalog Definitions</h2>
                 </div>
                 <Button variant="primary" size="sm" onClick={openCreatePlanModal} leftIcon={<Plus className="h-4 w-4" />}>
                   Create Plan Definition
@@ -1198,7 +1057,7 @@ export function AdminPlansSubscriptionsView() {
             <div className="space-y-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-100">Organization Subscriptions & Custom Limits</h2>
+                  <h2 className="text-lg font-bold text-slate-900">Organization Subscriptions & Custom Limits</h2>
                 </div>
               </div>
 
@@ -1254,38 +1113,30 @@ export function AdminPlansSubscriptionsView() {
             </div>
           )}
 
-          {/* TAB 4: PLAN REQUESTS */}
+          {/* TAB 4: PLAN REQUESTS (PENDING ONLY) */}
           {activeTab === 'requests' && (
             <div className="space-y-6">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-100">
-                    {requestStatusFilter === 'APPROVED'
-                      ? 'Approved Plan Change Requests'
-                      : requestStatusFilter === 'REJECTED'
-                      ? 'Rejected Plan Change Requests'
-                      : requestStatusFilter === 'ALL'
-                      ? 'All Plan Change & Renewal Requests'
-                      : 'Pending Plan Change Requests'}
-                  </h2>
+                  <h2 className="text-lg font-bold text-slate-900">Pending Plan Change Requests</h2>
                 </div>
               </div>
 
               {/* Highlight Banner for Pending Requests */}
-              {pendingRequestsCount > 0 && requestStatusFilter === 'PENDING' && (
-                <div className="rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg shadow-amber-500/5">
+              {pendingRequestsList.length > 0 && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/90 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
                       <AlertCircle className="h-5 w-5" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-slate-100">
-                          {pendingRequestsCount} Request{pendingRequestsCount > 1 ? 's' : ''} Awaiting Approval
+                        <span className="text-sm font-bold text-slate-900">
+                          {pendingRequestsList.length} Request{pendingRequestsList.length > 1 ? 's' : ''} Awaiting Approval
                         </span>
                         <Badge variant="warning" className="text-[10px] font-bold">ATTENTION NEEDED</Badge>
                       </div>
-                      <p className="text-xs text-slate-300 mt-0.5">
+                      <p className="text-xs text-slate-600 mt-0.5">
                         Highlighted below in gold. Click "Review / Approve" on any request to accept or decline.
                       </p>
                     </div>
@@ -1293,64 +1144,29 @@ export function AdminPlansSubscriptionsView() {
                 </div>
               )}
 
-              {/* Search Bar with Status Filter Dropdown */}
+              {/* Search Bar */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-                <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-                  <div className="w-full sm:w-80">
-                    <Input
-                      placeholder="Search requests by cafeteria or plan..."
-                      value={requestSearchQuery}
-                      maxLength={30}
-                      onChange={(e) => setRequestSearchQuery(e.target.value)}
-                    />
-                  </div>
-                  <div className="w-full sm:w-60">
-                    <Select
-                      value={requestStatusFilter}
-                      onChange={(e) => setRequestStatusFilter(e.target.value)}
-                      options={[
-                        { value: 'PENDING', label: `Pending Requests (${pendingRequestsCount})` },
-                        { value: 'APPROVED', label: `Approved Requests (${approvedRequestsCount})` },
-                        { value: 'ALL', label: `All Requests (${planRequests.length})` },
-                        { value: 'REJECTED', label: `Rejected Requests (${rejectedRequestsCount})` },
-                      ]}
-                    />
-                  </div>
+                <div className="w-full sm:w-80">
+                  <Input
+                    placeholder="Search pending requests by cafeteria or plan..."
+                    value={requestSearchQuery}
+                    maxLength={30}
+                    onChange={(e) => setRequestSearchQuery(e.target.value)}
+                  />
                 </div>
-                <div className="text-xs text-slate-400 font-medium shrink-0">
-                  Showing{' '}
-                  <span className={requestStatusFilter === 'APPROVED' ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>
-                    {filteredAndSortedRequests.length}
-                  </span>{' '}
-                  {requestStatusFilter === 'ALL'
-                    ? 'total'
-                    : requestStatusFilter === 'PENDING'
-                    ? 'pending'
-                    : requestStatusFilter === 'APPROVED'
-                    ? 'approved'
-                    : 'rejected'}{' '}
-                  request{filteredAndSortedRequests.length === 1 ? '' : 's'}
+                <div className="text-xs text-slate-400 font-medium">
+                  Showing <span className="text-amber-400 font-bold">{filteredAndSortedRequests.length}</span> pending request{filteredAndSortedRequests.length === 1 ? '' : 's'}
                 </div>
               </div>
 
               {filteredAndSortedRequests.length === 0 ? (
                 <EmptyState
                   icon={<Inbox className="h-8 w-8 text-slate-500" />}
-                  title={
-                    requestSearchQuery
-                      ? 'No matching requests found'
-                      : requestStatusFilter === 'PENDING'
-                      ? 'No pending plan requests'
-                      : requestStatusFilter === 'APPROVED'
-                      ? 'No approved plan requests'
-                      : 'No plan requests found'
-                  }
+                  title={requestSearchQuery ? "No matching pending requests" : "No pending plan requests"}
                   description={
                     requestSearchQuery
-                      ? 'No requests match your search query.'
-                      : requestStatusFilter === 'PENDING'
-                      ? 'All caught up! There are no cafeteria plan change requests currently awaiting approval.'
-                      : 'No requests found for the selected status.'
+                      ? 'No pending requests match your search.'
+                      : 'All caught up! There are no cafeteria plan change requests currently awaiting approval.'
                   }
                 />
               ) : (
@@ -1359,18 +1175,7 @@ export function AdminPlansSubscriptionsView() {
                     data={filteredAndSortedRequests}
                     columns={requestColumns}
                     keyExtractor={(item: PlanChangeRequest) => item.id}
-                    rowClassName={(item: PlanChangeRequest) => {
-                      if (item.status === 'PENDING') {
-                        return 'bg-amber-500/[0.08] hover:bg-amber-500/[0.14] border-l-4 border-l-amber-500';
-                      }
-                      if (item.status === 'APPROVED' || item.status === 'COMPLETED') {
-                        return 'bg-emerald-500/[0.03] hover:bg-emerald-500/[0.07] border-l-4 border-l-emerald-500/40';
-                      }
-                      if (item.status === 'REJECTED') {
-                        return 'bg-rose-500/[0.03] hover:bg-rose-500/[0.07] border-l-4 border-l-rose-500/40';
-                      }
-                      return '';
-                    }}
+                    rowClassName={() => 'bg-amber-500/[0.08] hover:bg-amber-500/[0.14] border-l-4 border-l-amber-500'}
                   />
                 </Card>
               )}
@@ -1382,8 +1187,8 @@ export function AdminPlansSubscriptionsView() {
             <div className="space-y-4">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-100">Direct Payment Ledger</h2>
-                  <p className="text-xs text-slate-400">Audited offline direct bank transfers and offline invoices verified by Super Admin.</p>
+                  <h2 className="text-lg font-bold text-slate-900">Direct Payment Ledger</h2>
+                  <p className="text-xs text-slate-500">Audited offline direct bank transfers and offline invoices verified by Super Admin.</p>
                 </div>
                 <Button variant="primary" size="sm" onClick={() => openRecordPaymentModal()} leftIcon={<DollarSign className="h-4 w-4" />}>
                   Record Direct Payment
@@ -1613,7 +1418,7 @@ export function AdminPlansSubscriptionsView() {
             )}
 
             {/* Basic Subscription Settings */}
-            <div className="grid grid-cols-2 gap-4">
+            <div>
               <Select
                 label="Assigned Plan *"
                 value={subFormPlanId}
@@ -1623,31 +1428,16 @@ export function AdminPlansSubscriptionsView() {
                   label: `${p.name} (${formatCurrency(p.price)}/${(p.billingInterval || 'MONTHLY').toLowerCase()})`,
                 }))}
               />
-              <Select
-                label="Subscription Status *"
-                value={subFormStatus}
-                onChange={(e) => setSubFormStatus(e.target.value as SubscriptionStatus)}
-                options={[
-                  { value: 'ACTIVE', label: 'Active' },
-                  { value: 'RENEWAL_DUE', label: 'Renewal Due' },
-                  { value: 'PENDING_PAYMENT', label: 'Pending Payment' },
-                  { value: 'EXPIRED', label: 'Expired' },
-                  { value: 'CANCELLED', label: 'Cancelled' },
-                ]}
-              />
             </div>
 
             {/* Custom Limits Table (Plan Default vs Organization Override vs Effective Limit) */}
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                    <Sliders className="h-4 w-4 text-violet-400" />
+                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <Sliders className="h-4 w-4 text-emerald-600" />
                     Organization-Specific Limit Overrides
                   </h3>
-                  <p className="text-[11px] text-slate-400">
-                    Applies ONLY to this organization. Leave blank to inherit the global plan default.
-                  </p>
                 </div>
                 <Button
                   variant="ghost"
@@ -1655,15 +1445,15 @@ export function AdminPlansSubscriptionsView() {
                   type="button"
                   onClick={handleResetAllOverrides}
                   leftIcon={<RotateCcw className="h-3 w-3" />}
-                  className="text-xs text-slate-400 hover:text-slate-200"
+                  className="text-xs text-slate-500 hover:text-slate-700"
                 >
                   Reset All to Defaults
                 </Button>
               </div>
 
-              <div className="rounded-xl border border-slate-800 bg-slate-950/70 overflow-hidden text-xs">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/70 overflow-hidden text-xs">
                 {/* Table Header */}
-                <div className="grid grid-cols-4 bg-slate-900/90 px-4 py-2.5 font-semibold text-slate-300 border-b border-slate-800">
+                <div className="grid grid-cols-4 bg-slate-100/90 px-4 py-2.5 font-semibold text-slate-700 border-b border-slate-200">
                   <div>Resource</div>
                   <div>Plan Default</div>
                   <div>Custom Override</div>
@@ -1671,79 +1461,79 @@ export function AdminPlansSubscriptionsView() {
                 </div>
 
                 {/* Branches */}
-                <div className="grid grid-cols-4 items-center px-4 py-3 border-b border-slate-800/60">
-                  <div className="flex items-center gap-2 font-medium text-slate-200">
-                    <Building2 className="h-3.5 w-3.5 text-violet-400" />
+                <div className="grid grid-cols-4 items-center px-4 py-3 border-b border-slate-200">
+                  <div className="flex items-center gap-2 font-medium text-slate-800">
+                    <Building2 className="h-3.5 w-3.5 text-emerald-600" />
                     Branches
                   </div>
-                  <div className="font-mono text-slate-400">{previewSelectedPlan?.branchLimit ?? 1}</div>
+                  <div className="font-mono text-slate-500">{previewSelectedPlan?.branchLimit ?? 1}</div>
                   <div className="pr-2">
                     <input
                       type="number"
                       min="0"
-                      placeholder="Inherit default"
+                      placeholder="Default"
                       value={subOverrideBranch}
                       onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') e.preventDefault(); }}
                       onChange={(e) => {
                         const val = e.target.value;
                         if (val === '' || parseInt(val, 10) >= 0) setSubOverrideBranch(val);
                       }}
-                      className="w-full rounded border border-slate-800 bg-slate-900 px-2 py-1 text-xs font-mono text-slate-100 placeholder-slate-600 focus:border-violet-500 focus:outline-none"
+                      className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs font-mono text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
                     />
                   </div>
-                  <div className="text-right font-mono font-bold text-violet-300">
+                  <div className="text-right font-mono font-bold text-emerald-700">
                     {subOverrideBranch.trim() ? subOverrideBranch : previewSelectedPlan?.branchLimit ?? 1}
                   </div>
                 </div>
 
                 {/* Staff */}
-                <div className="grid grid-cols-4 items-center px-4 py-3 border-b border-slate-800/60">
-                  <div className="flex items-center gap-2 font-medium text-slate-200">
-                    <Users className="h-3.5 w-3.5 text-indigo-400" />
+                <div className="grid grid-cols-4 items-center px-4 py-3 border-b border-slate-200">
+                  <div className="flex items-center gap-2 font-medium text-slate-800">
+                    <Users className="h-3.5 w-3.5 text-teal-600" />
                     Staff Accounts
                   </div>
-                  <div className="font-mono text-slate-400">{previewSelectedPlan?.staffLimit ?? 10}</div>
+                  <div className="font-mono text-slate-500">{previewSelectedPlan?.staffLimit ?? 10}</div>
                   <div className="pr-2">
                     <input
                       type="number"
                       min="0"
-                      placeholder="Inherit default"
+                      placeholder="Default"
                       value={subOverrideStaff}
                       onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') e.preventDefault(); }}
                       onChange={(e) => {
                         const val = e.target.value;
                         if (val === '' || parseInt(val, 10) >= 0) setSubOverrideStaff(val);
                       }}
-                      className="w-full rounded border border-slate-800 bg-slate-900 px-2 py-1 text-xs font-mono text-slate-100 placeholder-slate-600 focus:border-violet-500 focus:outline-none"
+                      className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs font-mono text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
                     />
                   </div>
-                  <div className="text-right font-mono font-bold text-violet-300">
+                  <div className="text-right font-mono font-bold text-emerald-700">
                     {subOverrideStaff.trim() ? subOverrideStaff : previewSelectedPlan?.staffLimit ?? 10}
                   </div>
                 </div>
 
                 {/* Cards */}
                 <div className="grid grid-cols-4 items-center px-4 py-3">
-                  <div className="flex items-center gap-2 font-medium text-slate-200">
-                    <CreditCard className="h-3.5 w-3.5 text-sky-400" />
+                  <div className="flex items-center gap-2 font-medium text-slate-800">
+                    <CreditCard className="h-3.5 w-3.5 text-sky-600" />
                     Active Cards
                   </div>
-                  <div className="font-mono text-slate-400">{previewSelectedPlan?.cardLimit ?? 250}</div>
+                  <div className="font-mono text-slate-500">{previewSelectedPlan?.cardLimit ?? 250}</div>
                   <div className="pr-2">
                     <input
                       type="number"
                       min="0"
-                      placeholder="Inherit default"
+                      placeholder="Default"
                       value={subOverrideCard}
                       onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') e.preventDefault(); }}
                       onChange={(e) => {
                         const val = e.target.value;
                         if (val === '' || parseInt(val, 10) >= 0) setSubOverrideCard(val);
                       }}
-                      className="w-full rounded border border-slate-800 bg-slate-900 px-2 py-1 text-xs font-mono text-slate-100 placeholder-slate-600 focus:border-violet-500 focus:outline-none"
+                      className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs font-mono text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
                     />
                   </div>
-                  <div className="text-right font-mono font-bold text-violet-300">
+                  <div className="text-right font-mono font-bold text-emerald-700">
                     {subOverrideCard.trim() ? subOverrideCard : previewSelectedPlan?.cardLimit ?? 250}
                   </div>
                 </div>
@@ -1776,16 +1566,16 @@ export function AdminPlansSubscriptionsView() {
         {selectedRequest && (
           <form onSubmit={handleReviewSubmit} className="space-y-4 py-2">
             {modalApiError && (
-              <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
+              <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
                 <span>{modalApiError}</span>
               </div>
             )}
 
-            <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-2 text-xs">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2 text-xs">
               <div className="flex justify-between items-center">
-                <span className="text-slate-400">Organization:</span>
-                <strong className="text-slate-100 text-sm">
+                <span className="text-slate-500">Organization:</span>
+                <strong className="text-slate-900 text-sm">
                   {selectedRequest.organizationName || selectedRequest.organizationId}
                 </strong>
               </div>
@@ -1793,14 +1583,14 @@ export function AdminPlansSubscriptionsView() {
               {selectedRequest.requestType === 'RENEWAL' ? (
                 <>
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-400">Plan to Renew:</span>
-                    <span className="font-bold text-emerald-400 text-sm">
+                    <span className="text-slate-500">Plan to Renew:</span>
+                    <span className="font-bold text-emerald-600 text-sm">
                       {selectedRequest.requestedPlanName}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-400">Request Intent:</span>
-                    <Badge variant="success" className="bg-emerald-500/10 text-emerald-300 border-emerald-500/30">
+                    <span className="text-slate-500">Request Intent:</span>
+                    <Badge variant="success" className="bg-emerald-50 text-emerald-700 border-emerald-200">
                       Active Subscription Renewal
                     </Badge>
                   </div>
@@ -1808,36 +1598,36 @@ export function AdminPlansSubscriptionsView() {
               ) : (
                 <>
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-400">Transition:</span>
-                    <span className="font-bold text-violet-300">
+                    <span className="text-slate-500">Transition:</span>
+                    <span className="font-bold text-emerald-700">
                       {selectedRequest.currentPlanName} → {selectedRequest.requestedPlanName}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-400">Request Type:</span>
+                    <span className="text-slate-500">Request Type:</span>
                     <Badge variant="outline">{selectedRequest.requestType}</Badge>
                   </div>
                 </>
               )}
 
               {selectedRequest.reason && (
-                <div className="pt-2 border-t border-slate-800 text-slate-300">
-                  <span className="text-slate-400 block mb-1">Tenant Notes:</span>
-                  <p className="bg-slate-900 p-2.5 rounded-lg text-slate-200">{selectedRequest.reason}</p>
+                <div className="pt-2 border-t border-slate-200 text-slate-700">
+                  <span className="text-slate-500 block mb-1">Tenant Notes:</span>
+                  <p className="bg-slate-100 p-2.5 rounded-lg text-slate-800">{selectedRequest.reason}</p>
                 </div>
               )}
             </div>
 
             {selectedRequest.requestType === 'RENEWAL' ? (
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs text-emerald-200 space-y-1">
-                <span className="font-bold block text-emerald-300">Super Admin Renewal Acceptance:</span>
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3.5 text-xs text-emerald-800 space-y-1">
+                <span className="font-bold block text-emerald-700">Super Admin Renewal Acceptance:</span>
                 <p className="leading-relaxed">
                   Accepting this renewal will extend the active subscription date by 1 billing cycle, ensure organization access remains uninterrupted, and log a verified payment record in the billing ledger.
                 </p>
               </div>
             ) : (
-              <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-3.5 text-xs text-violet-200 space-y-1">
-                <span className="font-bold block text-violet-300">Plan Change Application:</span>
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3.5 text-xs text-emerald-800 space-y-1">
+                <span className="font-bold block text-emerald-700">Plan Change Application:</span>
                 <p className="leading-relaxed">
                   Approving this request will switch the organization active plan to {selectedRequest.requestedPlanName} and update their resource limits.
                 </p>
@@ -1863,8 +1653,8 @@ export function AdminPlansSubscriptionsView() {
 
             <div className="space-y-1 text-xs">
               <div className="flex items-center justify-between">
-                <label className="font-semibold text-slate-300">Admin Remarks / Audit Notes</label>
-                <span className="text-[10px] text-slate-400 font-mono">
+                <label className="font-semibold text-slate-700">Admin Remarks / Audit Notes</label>
+                <span className="text-[10px] text-slate-500 font-mono">
                   {reviewNotes.length}/60
                 </span>
               </div>
@@ -1878,7 +1668,7 @@ export function AdminPlansSubscriptionsView() {
                     : 'Optional remarks for the organization (Max 60 chars)...'
                 }
                 rows={3}
-                className="w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:border-violet-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
               />
             </div>
 

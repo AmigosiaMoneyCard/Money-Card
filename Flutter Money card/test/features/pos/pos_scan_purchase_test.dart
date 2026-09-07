@@ -194,7 +194,7 @@ void main() {
       expect(find.text('Settle / Return Card'), findsNothing);
     });
 
-    testWidgets('Scanning QR-MOCK-004 (AVAILABLE card with no session) shows Issue Card option', (tester) async {
+    testWidgets('Scanning QR-MOCK-004 (AVAILABLE card with no session) automatically issues card and opens Action Hub', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -218,12 +218,10 @@ void main() {
       scanner.onQrScanned('QR-MOCK-004');
       await tester.pumpAndSettle();
 
-      // Verify available card warning state
+      // Verify available card was auto-issued and is now ACTIVE in Action Hub
       expect(find.text('MC-004'), findsOneWidget);
-      expect(find.text('AVAILABLE'), findsOneWidget);
-      expect(find.text('Card has no active session.'), findsOneWidget);
-      expect(find.text('Issue Card Session First'), findsOneWidget);
-      expect(find.text('Scan Another Card'), findsOneWidget);
+      expect(find.text('ACTIVE'), findsOneWidget);
+      expect(find.text('Add Products (POS Sale)'), findsOneWidget);
     });
 
     testWidgets('Scanning QR-MOCK-003 (BLOCKED card) displays blocked state and prevents operations', (tester) async {

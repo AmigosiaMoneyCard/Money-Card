@@ -1,4 +1,4 @@
-﻿import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Button, Input } from '@/components/ui';
 import { apiService } from '@/services/api';
@@ -86,28 +86,28 @@ export function MandatoryChangePasswordPage() {
   );
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10 border border-amber-500/20">
-            <ShieldAlert className="h-8 w-8 text-amber-400" />
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 border border-amber-200">
+            <ShieldAlert className="h-8 w-8 text-amber-600" />
           </div>
-          <h1 className="mt-4 text-2xl font-bold text-slate-100">Create Your New Password</h1>
-          <p className="mt-2 text-sm text-slate-400">
+          <h1 className="mt-4 text-2xl font-bold text-slate-900">Create Your New Password</h1>
+          <p className="mt-2 text-sm text-slate-500">
             Your password was reset by the Super Admin. For security, you must create a new private password before continuing.
           </p>
         </div>
 
-        <Card padding="lg" className="border-slate-800 bg-slate-900/90 shadow-2xl">
+        <Card padding="lg" className="border border-slate-200 bg-white shadow-xl">
           <form onSubmit={handleSubmit} noValidate className="space-y-5">
             {apiError && (
               <div
-                className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3"
+                className="flex items-start gap-2.5 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3"
                 role="alert"
                 aria-live="assertive"
               >
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
-                <p className="text-sm text-rose-300">{apiError}</p>
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+                <p className="text-sm text-rose-800 font-medium">{apiError}</p>
               </div>
             )}
 
@@ -178,7 +178,7 @@ export function MandatoryChangePasswordPage() {
               <Button
                 type="button"
                 variant="ghost"
-                className="w-full text-slate-400 hover:text-slate-200"
+                className="w-full text-slate-500 hover:text-slate-800"
                 onClick={logout}
                 leftIcon={<LogOut className="h-4 w-4" />}
               >

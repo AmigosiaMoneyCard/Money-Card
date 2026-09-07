@@ -92,18 +92,18 @@ export function LoginPage() {
     <Card padding="lg">
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-slate-100">Welcome back</h2>
-          <p className="mt-1 text-sm text-slate-400">Sign in to the admin dashboard</p>
+          <h2 className="text-xl font-semibold text-slate-900">Welcome back</h2>
+          <p className="mt-1 text-sm text-slate-500">Sign in to the admin dashboard</p>
         </div>
 
         {/* Session expired notice */}
         {sessionExpired && !apiError && (
           <div
-            className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3"
+            className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3"
             role="alert"
           >
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
-            <p className="text-sm text-amber-300">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <p className="text-sm text-amber-800 font-medium">
               Your session has expired. Please sign in again.
             </p>
           </div>
@@ -112,12 +112,12 @@ export function LoginPage() {
         {/* API error */}
         {apiError && (
           <div
-            className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3"
+            className="flex items-start gap-2.5 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3"
             role="alert"
             aria-live="assertive"
           >
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
-            <p className="text-sm text-rose-300">{apiError}</p>
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+            <p className="text-sm text-rose-800 font-medium">{apiError}</p>
           </div>
         )}
 
@@ -178,7 +178,7 @@ export function LoginPage() {
         <div className="text-center">
           <Link
             to="/forgot-password"
-            className="text-sm text-violet-400 transition-colors hover:text-violet-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:rounded"
+            className="text-sm font-medium text-emerald-600 transition-colors hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:rounded"
           >
             Forgot your password?
           </Link>

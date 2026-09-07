@@ -52,16 +52,16 @@ export function ProfileMenu() {
         aria-expanded={isOpen}
         aria-haspopup="true"
         aria-label="User menu"
-        className="flex items-center gap-2.5 rounded-lg border border-slate-800/80 bg-slate-900/50 px-3 py-1.5 transition-all hover:border-slate-700 hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+        className="flex items-center gap-2.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 transition-all hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 shadow-xs"
       >
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 text-xs font-bold text-white shadow-md shadow-violet-500/20">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-600 to-teal-600 text-xs font-bold text-white shadow-xs shadow-emerald-500/20">
           {userInitial}
         </div>
         <div className="hidden text-left sm:block">
-          <p className="max-w-[120px] truncate text-xs font-semibold text-slate-200">
+          <p className="max-w-[120px] truncate text-xs font-semibold text-slate-900">
             {user?.name || 'Admin'}
           </p>
-          <p className="text-[10px] text-slate-400 font-medium">
+          <p className="text-[10px] text-slate-500 font-medium">
             {user?.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Org Admin'}
           </p>
         </div>
@@ -78,21 +78,21 @@ export function ProfileMenu() {
         <div
           role="menu"
           aria-orientation="vertical"
-          className="absolute right-0 top-full z-50 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-800 bg-slate-900/95 py-2 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95"
+          className="absolute right-0 top-full z-50 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white py-2 shadow-xl animate-in fade-in zoom-in-95"
         >
           {/* Header Info */}
-          <div className="border-b border-slate-800 px-4 py-3">
+          <div className="border-b border-slate-100 px-4 py-3">
             <div className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/20 to-indigo-500/20 text-sm font-bold text-violet-400">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-sm font-bold text-emerald-700 border border-emerald-100">
                 {userInitial}
               </div>
               <div className="overflow-hidden">
-                <p className="truncate text-sm font-medium text-slate-100">{user?.name}</p>
-                <p className="truncate text-xs text-slate-400">{user?.email}</p>
+                <p className="truncate text-sm font-semibold text-slate-900">{user?.name}</p>
+                <p className="truncate text-xs text-slate-500">{user?.email}</p>
               </div>
             </div>
-            <div className="mt-2.5 flex items-center gap-1.5 rounded-md bg-slate-950 px-2 py-1 text-[11px] font-medium text-violet-400 border border-slate-800">
-              <ShieldCheck className="h-3.5 w-3.5 text-violet-400 shrink-0" />
+            <div className="mt-2.5 flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700 border border-emerald-100">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
               <span>Role: {user?.role ? (user.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Org Admin') : 'Loading...'}</span>
             </div>
           </div>
@@ -105,7 +105,7 @@ export function ProfileMenu() {
                 setIsOpen(false);
                 navigate('/settings');
               }}
-              className="flex w-full items-center gap-2.5 px-4 py-2.5 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-800/70 hover:text-slate-100 focus-visible:outline-none focus-visible:bg-slate-800"
+              className="flex w-full items-center gap-2.5 px-4 py-2.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:bg-slate-50"
             >
               <Settings className="h-4 w-4 text-slate-400" />
               Account Settings
@@ -113,13 +113,13 @@ export function ProfileMenu() {
           </div>
 
           {/* Footer Action */}
-          <div className="border-t border-slate-800 pt-1">
+          <div className="border-t border-slate-100 pt-1">
             <button
               role="menuitem"
               onClick={handleLogout}
-              className="flex w-full items-center gap-2.5 px-4 py-2.5 text-xs font-medium text-rose-400 transition-colors hover:bg-rose-500/10 hover:text-rose-300 focus-visible:outline-none focus-visible:bg-rose-500/10"
+              className="flex w-full items-center gap-2.5 px-4 py-2.5 text-xs font-medium text-rose-600 transition-colors hover:bg-rose-50 hover:text-rose-700 focus-visible:outline-none focus-visible:bg-rose-50"
             >
-              <LogOut className="h-4 w-4 text-rose-400" />
+              <LogOut className="h-4 w-4 text-rose-600" />
               Sign Out
             </button>
           </div>

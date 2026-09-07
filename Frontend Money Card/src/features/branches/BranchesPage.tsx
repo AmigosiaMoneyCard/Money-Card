@@ -126,7 +126,7 @@ function BranchActionMenu({
         variant="outline"
         size="sm"
         onClick={handleToggle}
-        className="flex items-center gap-1.5 text-xs py-1 px-2.5 bg-slate-900 border-slate-700 hover:border-violet-500 text-slate-200"
+        className="flex items-center gap-1.5 text-xs py-1 px-2.5 bg-white border-slate-200 hover:border-emerald-500 text-slate-700"
       >
         <MoreVertical className="h-3.5 w-3.5 text-slate-400" />
         <span>Actions</span>
@@ -143,7 +143,7 @@ function BranchActionMenu({
               left: `${menuPosition.left}px`,
               zIndex: 9999,
             }}
-            className="w-48 rounded-xl border border-slate-700/80 bg-slate-900 p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
+            className="w-48 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-100"
           >
             <button
               type="button"
@@ -151,9 +151,9 @@ function BranchActionMenu({
                 setIsOpen(false);
                 onEdit();
               }}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer text-left"
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer text-left"
             >
-              <Edit2 className="h-4 w-4 text-violet-400" />
+              <Edit2 className="h-4 w-4 text-emerald-600" />
               <span>Edit Branch</span>
             </button>
 
@@ -165,15 +165,15 @@ function BranchActionMenu({
               }}
               className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors cursor-pointer text-left ${
                 branch.status === 'ACTIVE'
-                  ? 'text-rose-400 hover:bg-rose-500/10 hover:text-rose-300'
-                  : 'text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300'
+                  ? 'text-rose-600 hover:bg-rose-50'
+                  : 'text-emerald-600 hover:bg-emerald-50'
               }`}
             >
               <Power className="h-4 w-4" />
               <span>{branch.status === 'ACTIVE' ? 'Deactivate Branch' : 'Activate Branch'}</span>
             </button>
 
-            <div className="my-1 border-t border-slate-800" />
+            <div className="my-1 border-t border-slate-200" />
 
             <button
               type="button"
@@ -181,7 +181,7 @@ function BranchActionMenu({
                 setIsOpen(false);
                 onDelete();
               }}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-colors cursor-pointer text-left"
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer text-left"
             >
               <Trash2 className="h-4 w-4" />
               <span>Delete Branch</span>
@@ -482,11 +482,11 @@ export function BranchesPage() {
       header: 'Branch Name',
       render: (branch: Branch) => (
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500/10 text-violet-400">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
             <Building2 className="h-4 w-4" />
           </div>
           <div>
-            <p className="font-semibold text-slate-100">{branch.name}</p>
+            <p className="font-semibold text-slate-900">{branch.name}</p>
           </div>
         </div>
       ),
@@ -504,7 +504,7 @@ export function BranchesPage() {
       key: 'createdAt',
       header: 'Created Date',
       render: (branch: Branch) => (
-        <span className="text-xs text-slate-400">{formatDate(branch.createdAt)}</span>
+        <span className="text-xs text-slate-500">{formatDate(branch.createdAt)}</span>
       ),
     },
     {
@@ -530,7 +530,7 @@ export function BranchesPage() {
       {/* Header Bar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">Branches</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Branches</h1>
         </div>
 
         {canManage && (
@@ -546,19 +546,19 @@ export function BranchesPage() {
 
       {/* Plan Usage Indicator (if available) */}
       {orgOverview?.usage && (
-        <Card padding="sm" className="bg-slate-900/40">
+        <Card padding="sm" className="bg-slate-50 border border-slate-200">
           <div className="flex items-center justify-between text-xs font-medium">
-            <span className="text-slate-400">
+            <span className="text-slate-600">
               Branch Usage ({orgOverview.plan?.name || 'Active Plan'}):
             </span>
-            <span className="text-slate-200">
-              <strong className="text-violet-400">{orgOverview.usage.branchCount}</strong> /{' '}
+            <span className="text-slate-800">
+              <strong className="text-emerald-600">{orgOverview.usage.branchCount}</strong> /{' '}
               {orgOverview.usage.branchLimit} branches created
             </span>
           </div>
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
             <div
-              className="h-full bg-violet-500 transition-all duration-300"
+              className="h-full bg-emerald-600 transition-all duration-300"
               style={{
                 width: `${Math.min(
                   (orgOverview.usage.branchCount / orgOverview.usage.branchLimit) * 100,
@@ -573,20 +573,20 @@ export function BranchesPage() {
       {/* Filter / Search Bar */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             placeholder="Search branches by name..."
             value={searchQuery}
             maxLength={30}
             onChange={(e) => setSearchQuery(e.target.value.slice(0, 30))}
-            className="w-full rounded-lg border border-slate-800 bg-slate-900/60 pl-10 pr-10 py-2 text-sm text-slate-100 placeholder-slate-500 transition-colors focus:border-violet-500 focus:outline-none"
+            className="w-full rounded-lg border border-slate-300 bg-white pl-10 pr-10 py-2 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
               aria-label="Clear search"
             >
               <X className="h-4 w-4" />
@@ -598,20 +598,24 @@ export function BranchesPage() {
         </Button>
       </div>
 
-      {/* Main Content Area */}
+      {/* Main Content */}
       {isLoading ? (
         <LoadingState message="Loading branches..." />
       ) : error ? (
-        <ErrorState title="Failed to load branches" message={error} onRetry={fetchBranches} />
+        <ErrorState
+          title="Failed to load branches"
+          message={error}
+          onRetry={fetchBranches}
+        />
       ) : branches.length === 0 ? (
         <EmptyState
           icon={<Building2 className="h-8 w-8 text-slate-500" />}
           title="No branches found"
-          description="Get started by creating your first organization branch."
+          description="Get started by adding your first operational branch location."
           action={
             canManage ? (
               <Button variant="primary" onClick={handleOpenCreate} leftIcon={<Plus className="h-4 w-4" />}>
-                Create Branch
+                Create First Branch
               </Button>
             ) : undefined
           }
@@ -620,7 +624,7 @@ export function BranchesPage() {
         <EmptyState
           icon={<Building2 className="h-8 w-8 text-slate-500" />}
           title="No matching branches"
-          description={`No branches matching "${searchQuery}". Try a different name or clear the search.`}
+          description={`No branches match the name "${searchQuery}".`}
           action={
             <Button variant="outline" onClick={() => setSearchQuery('')} leftIcon={<X className="h-4 w-4" />}>
               Clear Search
@@ -628,41 +632,43 @@ export function BranchesPage() {
           }
         />
       ) : (
-        <Card padding="none" className="min-h-[220px]">
-          <DataTable<Branch> data={filteredBranches} columns={columns} keyExtractor={(item: Branch) => item.id} />
+        <Card padding="none">
+          <DataTable<Branch>
+            data={filteredBranches}
+            columns={columns}
+            keyExtractor={(item) => item.id}
+          />
         </Card>
       )}
 
-      {/* ── Create Branch Modal ── */}
-      <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Create New Branch">
+      {/* ── Create Branch Modal ───────────────────────────────────── */}
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Create New Branch"
+        description="Add a new physical location or service desk for your organization."
+      >
         <form onSubmit={handleCreateSubmit} noValidate className="space-y-4">
           {modalApiError && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
+            <div className="flex items-start gap-2.5 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
               <span>{modalApiError}</span>
             </div>
           )}
 
           <Input
-            id="branch-name-create"
+            id="create-branch-name"
             label="Branch Name"
-            placeholder="e.g. Main Cafeteria, Downtown Stall"
+            placeholder="e.g. Downtown Cafeteria, North Campus..."
             value={branchNameInput}
             onChange={(e) => {
               setBranchNameInput(e.target.value);
               if (nameError) setNameError(null);
             }}
-            error={nameError ?? undefined}
-            autoFocus
+            error={nameError || undefined}
             disabled={isSubmitting}
+            autoFocus
           />
-
-          {orgOverview?.usage && (
-            <p className="text-xs text-slate-400">
-              Active plan allows up to {orgOverview.usage.branchLimit} branches (
-              {orgOverview.usage.branchLimit - orgOverview.usage.branchCount} remaining).
-            </p>
-          )}
 
           <ModalFooter>
             <Button variant="outline" onClick={() => setShowCreateModal(false)} disabled={isSubmitting}>
@@ -675,28 +681,33 @@ export function BranchesPage() {
         </form>
       </Modal>
 
-      {/* ── Edit Branch Modal ── */}
-      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Edit Branch">
+      {/* ── Edit Branch Modal ─────────────────────────────────────── */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Edit Branch"
+        description={`Update information for ${selectedBranch?.name}.`}
+      >
         <form onSubmit={handleEditSubmit} noValidate className="space-y-4">
           {modalApiError && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
+            <div className="flex items-start gap-2.5 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
               <span>{modalApiError}</span>
             </div>
           )}
 
           <Input
-            id="branch-name-edit"
+            id="edit-branch-name"
             label="Branch Name"
-            placeholder="Enter new branch name"
+            placeholder="e.g. Downtown Cafeteria..."
             value={branchNameInput}
             onChange={(e) => {
               setBranchNameInput(e.target.value);
               if (nameError) setNameError(null);
             }}
-            error={nameError ?? undefined}
-            autoFocus
+            error={nameError || undefined}
             disabled={isSubmitting}
+            autoFocus
           />
 
           <ModalFooter>
@@ -710,7 +721,7 @@ export function BranchesPage() {
         </form>
       </Modal>
 
-      {/* ── Activate / Deactivate Confirmation Modal ── */}
+      {/* ── Activate / Deactivate Confirmation Modal ─────────────── */}
       <Modal
         isOpen={showStatusModal}
         onClose={() => setShowStatusModal(false)}
@@ -718,23 +729,23 @@ export function BranchesPage() {
       >
         <div className="space-y-4 py-2">
           {modalApiError && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
+            <div className="flex items-start gap-2.5 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
               <span>{modalApiError}</span>
             </div>
           )}
 
-          <p className="text-sm text-slate-300">
+          <p className="text-sm text-slate-700">
             Are you sure you want to{' '}
-            <strong className="text-white">
+            <strong className="text-slate-900">
               {selectedBranch?.status === 'ACTIVE' ? 'deactivate' : 'activate'}
             </strong>{' '}
-            the branch <span className="text-violet-400 font-semibold">{selectedBranch?.name}</span>?
+            the branch <span className="text-emerald-700 font-semibold">{selectedBranch?.name}</span>?
           </p>
 
           {selectedBranch?.status === 'ACTIVE' && activeBranchesCount <= 1 && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3.5 text-sm text-rose-300">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
+            <div className="flex items-start gap-2.5 rounded-lg border border-rose-200 bg-rose-50 p-3.5 text-sm text-rose-700">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
               <span>
                 Cannot deactivate this branch. Your organization must have at least one active branch at all times.
               </span>
@@ -756,6 +767,7 @@ export function BranchesPage() {
           </ModalFooter>
         </div>
       </Modal>
+
       {/* ── Delete Confirmation Modal ────────────────────────────── */}
       <Modal
         isOpen={showDeleteModal}
@@ -766,8 +778,8 @@ export function BranchesPage() {
       >
         <div className="space-y-4">
           {modalApiError && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+            <div className="flex items-start gap-2.5 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-500 mt-0.5" />
               <div className="space-y-1">
                 <p className="font-semibold">Cannot Delete Branch</p>
                 <p>{modalApiError}</p>
@@ -776,14 +788,14 @@ export function BranchesPage() {
           )}
 
           {!deleteApiConflict ? (
-            <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4 space-y-2">
-              <p className="text-sm text-slate-200 font-medium">
-                Are you sure you want to delete <span className="text-violet-300 font-bold font-mono">{selectedBranch?.name}</span>?
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-2">
+              <p className="text-sm text-slate-800 font-medium">
+                Are you sure you want to delete <span className="text-emerald-700 font-bold font-mono">{selectedBranch?.name}</span>?
               </p>
             </div>
           ) : (
-            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 space-y-2 text-xs text-amber-200">
-              <p className="font-bold text-amber-300">Safe Deactivation Available</p>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-2 text-xs text-amber-800">
+              <p className="font-bold text-amber-700">Safe Deactivation Available</p>
               <p>
                 This branch cannot be permanently erased because customers have financial transactions recorded here. You can safely <strong>Deactivate</strong> it so it is hidden from operations while preserving all historical records.
               </p>

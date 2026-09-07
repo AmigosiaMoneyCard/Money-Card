@@ -176,21 +176,42 @@ export function CardsPage() {
   // Summary Metrics
   const totalCardsCount = allCards.length;
   const activeCardsList = useMemo(() => {
-    return allCards.filter((c) => c.status === 'ACTIVE' || !!c.activeSession);
+    return allCards.filter((c) => c.status === 'ACTIVE');
   }, [allCards]);
   const activeCardsCount = activeCardsList.length;
-  const availableCardsCount = allCards.filter((c) => c.status === 'AVAILABLE' && !c.activeSession).length;
+  const availableCardsCount = allCards.filter((c) => c.status === 'AVAILABLE').length;
   const blockedCardsCount = allCards.filter((c) => c.status === 'BLOCKED').length;
   const effectiveCardLimit = (orgOverview as any)?.effectiveLimits?.cardLimit ?? 100;
 
   const handleViewAllInMainTable = () => {
-    setAssignmentFilter('ASSIGNED');
+    setAssignmentFilter('ALL');
     setStatusFilter('ACTIVE');
     const tableEl = document.getElementById('cards-table-container');
     if (tableEl) {
       tableEl.scrollIntoView({ behavior: 'smooth' });
     }
   };
+
+  const currentCycleSession = useMemo(() => {
+    if (!selectedCard) return null;
+    const activeFromHistory = cardHistorySessions.find((s) => s.status === 'ACTIVE');
+    if (activeFromHistory) return activeFromHistory;
+    if (selectedCard.activeSession) {
+      return {
+        id: selectedCard.activeSession.id,
+        cycleNumber: selectedCard.activeSession.cycleNumber || 1,
+        customerName: selectedCard.activeSession.customerName || null,
+        customerPhone: selectedCard.activeSession.customerPhone || null,
+        balance: selectedCard.activeSession.balance ?? 0,
+        status: 'ACTIVE' as const,
+        startedAt:
+          (selectedCard.activeSession as any).issuedAt ||
+          (selectedCard.activeSession as any).startedAt ||
+          selectedCard.updatedAt,
+      };
+    }
+    return null;
+  }, [cardHistorySessions, selectedCard]);
 
   // ─── Execute Individual Card Number Assignment ────────────────────
   const handleOpenAssignModal = (card: CardEntity) => {
@@ -508,21 +529,21 @@ export function CardsPage() {
           <div className="flex items-center gap-2.5">
             <button
               onClick={() => setSelectedQrCard(card)}
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors border border-slate-700/60 shrink-0"
+              className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors border border-slate-200 shrink-0"
               title="Click to view QR code"
             >
-              <QrCode className="h-4 w-4 text-emerald-400" />
+              <QrCode className="h-4 w-4 text-emerald-600" />
             </button>
             <div className="flex items-center gap-2">
               {isAssigned ? (
                 <>
-                  <span className="font-mono font-bold text-slate-100 text-sm">
+                  <span className="font-mono font-bold text-slate-900 text-sm">
                     {card.physicalCardNumber}
                   </span>
                   <button
                     type="button"
                     onClick={() => handleOpenDetails(card)}
-                    className="p-1 rounded-md text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/15 border border-slate-700/60 hover:border-emerald-500/30 transition-colors cursor-pointer"
+                    className="p-1 rounded-md text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 transition-colors cursor-pointer"
                     title="View card details & actions"
                     aria-label={`View card ${card.physicalCardNumber}`}
                   >
@@ -531,7 +552,7 @@ export function CardsPage() {
                 </>
               ) : (
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center text-amber-400 text-xs font-semibold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                  <span className="inline-flex items-center text-amber-800 text-xs font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
                     Unassigned
                   </span>
                   <Button
@@ -594,10 +615,10 @@ export function CardsPage() {
         if (card.activeSession) {
           return (
             <div>
-              <p className="font-semibold text-slate-200 text-xs sm:text-sm">
+              <p className="font-semibold text-slate-900 text-xs sm:text-sm">
                 {card.activeSession.customerName || 'Walk-in Customer'}
               </p>
-              <p className="text-xs text-emerald-400 font-mono font-bold">
+              <p className="text-xs text-emerald-600 font-mono font-bold">
                 {formatCurrency(card.activeSession.balance)}
               </p>
             </div>
@@ -612,7 +633,7 @@ export function CardsPage() {
       render: (card: CardEntity) => {
         const branch = branches.find((b) => b.id === card.currentBranchId);
         return (
-          <span className="text-xs text-slate-300">
+          <span className="text-xs text-slate-600">
             {branch ? branch.name : 'All Branches'}
           </span>
         );
@@ -625,8 +646,8 @@ export function CardsPage() {
       {/* ─── Page Header & Action Buttons ────────────────────────────── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-100 tracking-tight flex items-center gap-3">
-            <CreditCard className="h-8 w-8 text-emerald-400" />
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
+            <CreditCard className="h-8 w-8 text-emerald-600" />
             Physical Cards & QR Registry
           </h1>
         </div>
@@ -639,7 +660,7 @@ export function CardsPage() {
             onClick={fetchCardsData}
             title="Refresh Registry"
           >
-            <RefreshCw className="h-4 w-4 text-slate-400" />
+            <RefreshCw className="h-4 w-4 text-slate-500" />
             <span className="hidden sm:inline">Refresh</span>
           </Button>
 
@@ -647,7 +668,7 @@ export function CardsPage() {
             <Button
               variant="primary"
               size="md"
-              className="gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold shadow-lg shadow-emerald-950/50"
+              className="gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold shadow-md shadow-emerald-600/20"
               onClick={handleOpenQrImportModal}
             >
               <Scan className="h-4 w-4" />
@@ -660,56 +681,56 @@ export function CardsPage() {
       {/* ─── Metric Summary Cards ────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="flex items-start gap-4 p-4 sm:p-5">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-800 border border-slate-700/60 text-emerald-400">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600">
             <CreditCard className="h-6 w-6" />
           </div>
           <div>
-            <p className="text-xs sm:text-sm font-medium text-slate-400">Total Registered Cards</p>
-            <p className="mt-1 text-2xl sm:text-3xl font-extrabold text-slate-100">{totalCardsCount}</p>
+            <p className="text-xs sm:text-sm font-medium text-slate-500">Total Registered Cards</p>
+            <p className="mt-1 text-2xl sm:text-3xl font-extrabold text-slate-900">{totalCardsCount}</p>
           </div>
         </Card>
 
         <Card className="flex items-start gap-4 p-4 sm:p-5">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-800 border border-slate-700/60 text-blue-400">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-sky-50 border border-sky-100 text-sky-600">
             <Zap className="h-6 w-6" />
           </div>
           <div>
-            <p className="text-xs sm:text-sm font-medium text-slate-400">Cards In Use</p>
-            <p className="mt-1 text-2xl sm:text-3xl font-extrabold text-slate-100">{activeCardsCount}</p>
+            <p className="text-xs sm:text-sm font-medium text-slate-500">Cards In Use</p>
+            <p className="mt-1 text-2xl sm:text-3xl font-extrabold text-slate-900">{activeCardsCount}</p>
           </div>
         </Card>
 
         <Card className="flex items-start gap-4 p-4 sm:p-5">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-800 border border-slate-700/60 text-amber-400">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-50 border border-amber-100 text-amber-600">
             <CheckCircle2 className="h-6 w-6" />
           </div>
           <div>
-            <p className="text-xs sm:text-sm font-medium text-slate-400">Ready to Issue</p>
-            <p className="mt-1 text-2xl sm:text-3xl font-extrabold text-slate-100">{availableCardsCount}</p>
+            <p className="text-xs sm:text-sm font-medium text-slate-500">Ready to Issue</p>
+            <p className="mt-1 text-2xl sm:text-3xl font-extrabold text-slate-900">{availableCardsCount}</p>
           </div>
         </Card>
 
         <Card className="flex items-start gap-4 p-4 sm:p-5">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-800 border border-slate-700/60 text-rose-400">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-rose-50 border border-rose-100 text-rose-600">
             <ShieldAlert className="h-6 w-6" />
           </div>
           <div>
-            <p className="text-xs sm:text-sm font-medium text-slate-400">Blocked / Disabled</p>
-            <p className="mt-1 text-2xl sm:text-3xl font-extrabold text-slate-100">{blockedCardsCount}</p>
+            <p className="text-xs sm:text-sm font-medium text-slate-500">Blocked / Disabled</p>
+            <p className="mt-1 text-2xl sm:text-3xl font-extrabold text-slate-900">{blockedCardsCount}</p>
           </div>
         </Card>
       </div>
 
       {/* ─── Cards In Use Right Now Summary Banner ───────────────────── */}
       {!isLoading && activeCardsList.length > 0 && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-xl border border-emerald-500/30 bg-emerald-950/20 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-xl border border-emerald-200 bg-emerald-50/70 shadow-sm">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-            <span className="text-sm font-bold text-slate-100">
-              Cards in use rn — <span className="text-emerald-400 font-mono">{activeCardsList.length}</span>
+            <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <span className="text-sm font-bold text-slate-900">
+              Cards in use rn — <span className="text-emerald-600 font-mono">{activeCardsList.length}</span>
             </span>
-            <span className="text-slate-500">—</span>
-            <span className="text-sm font-semibold text-emerald-300">
+            <span className="text-slate-400">—</span>
+            <span className="text-sm font-semibold text-emerald-700">
               {formatCurrency(activeCardsList.reduce((sum, c) => sum + (c.activeSession?.balance || 0), 0))} active balance
             </span>
           </div>
@@ -717,7 +738,7 @@ export function CardsPage() {
           <button
             type="button"
             onClick={handleViewAllInMainTable}
-            className="self-start sm:self-auto flex items-center gap-1.5 text-xs font-semibold text-emerald-400 hover:text-emerald-300 px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 transition-colors cursor-pointer"
+            className="self-start sm:self-auto flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800 px-3 py-1.5 rounded-lg bg-emerald-100/70 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer"
           >
             <span>View active cards in table</span>
             <ArrowDown className="h-3.5 w-3.5" />
@@ -737,13 +758,13 @@ export function CardsPage() {
                 value={searchQuery}
                 maxLength={30}
                 onChange={(e) => setSearchQuery(e.target.value.slice(0, 30))}
-                className="w-full rounded-lg border border-slate-800 bg-slate-950 pl-9 pr-8 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-300 bg-white pl-9 pr-8 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none shadow-sm"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-2.5 text-slate-500 hover:text-slate-300 transition-colors"
+                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 transition-colors"
                   title="Clear search"
                 >
                   <X className="h-4 w-4" />
@@ -787,10 +808,10 @@ export function CardsPage() {
 
           {/* Active Filter Summary & Clear Action */}
           {isFiltered && (
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/80 pt-2.5 text-xs text-slate-400">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-2.5 text-xs text-slate-600">
               <div className="flex items-center gap-1.5">
                 <span>Showing</span>
-                <span className="font-semibold text-emerald-400">
+                <span className="font-semibold text-emerald-600">
                   {filteredCards.length}
                 </span>
                 <span>of {allCards.length} cards matching criteria</span>
@@ -798,9 +819,9 @@ export function CardsPage() {
               <button
                 type="button"
                 onClick={handleClearFilters}
-                className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 border border-slate-700/80 px-2.5 py-1 text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-md bg-white border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
               >
-                <X className="h-3.5 w-3.5 text-slate-400" />
+                <X className="h-3.5 w-3.5 text-slate-500" />
                 <span>Clear All Filters</span>
               </button>
             </div>
@@ -827,7 +848,7 @@ export function CardsPage() {
               <Button
                 variant="outline"
                 onClick={handleClearFilters}
-                className="gap-2 border-slate-700 text-slate-200 hover:bg-slate-800"
+                className="gap-2 border-slate-300 text-slate-700 hover:bg-slate-50"
               >
                 <RefreshCw className="h-4 w-4" />
                 <span>Clear Filters</span>
@@ -836,7 +857,7 @@ export function CardsPage() {
               <Button
                 variant="primary"
                 onClick={() => setShowQrImportModal(true)}
-                className="gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold shadow-lg shadow-emerald-950/50"
+                className="gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold shadow-md shadow-emerald-600/20"
               >
                 <QrCode className="h-4 w-4" />
                 <span>Import & Scan Cards</span>
@@ -858,11 +879,11 @@ export function CardsPage() {
         >
           <div className="space-y-4">
             {/* Next Card Indicator & Prefix */}
-            <div className="flex flex-wrap items-center justify-between p-4 rounded-xl border border-emerald-500/30 bg-emerald-950/20 gap-3">
+            <div className="flex flex-wrap items-center justify-between p-4 rounded-xl border border-emerald-200 bg-emerald-50/70 gap-3">
               <div>
-                <span className="text-xs text-slate-400 font-medium">Next Card to be Registered:</span>
+                <span className="text-xs text-slate-600 font-medium">Next Card to be Registered:</span>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className="font-mono text-xl font-extrabold text-emerald-300 tracking-wider">
+                  <span className="font-mono text-xl font-extrabold text-emerald-700 tracking-wider">
                     {padZeros
                       ? `${cardPrefix.trim().toUpperCase()}${String(startSequence).padStart(3, '0')}`
                       : `${cardPrefix.trim().toUpperCase()}${startSequence}`}
@@ -871,7 +892,7 @@ export function CardsPage() {
               </div>
 
               <div className="flex items-center gap-2 text-xs">
-                <span className="text-slate-400 font-medium">Card Prefix:</span>
+                <span className="text-slate-600 font-medium">Card Prefix:</span>
                 <input
                   type="text"
                   value={cardPrefix}
@@ -880,7 +901,7 @@ export function CardsPage() {
                     setCardPrefix(p);
                     setStartSequence(initSequenceForPrefix(p));
                   }}
-                  className="w-20 px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 font-mono text-xs text-center font-bold focus:border-emerald-400 focus:outline-none"
+                  className="w-20 px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 font-mono text-xs text-center font-bold focus:border-emerald-500 focus:outline-none shadow-sm"
                   placeholder="MC-"
                 />
               </div>
@@ -890,7 +911,7 @@ export function CardsPage() {
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
-                  <Scan className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-400" />
+                  <Scan className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-600" />
                   <input
                     ref={scannerInputRef}
                     type="text"
@@ -905,7 +926,7 @@ export function CardsPage() {
                       }
                     }}
                     placeholder="Scan or enter card QR code..."
-                    className="w-full pl-11 pr-24 py-3 rounded-xl border-2 border-emerald-500/50 bg-slate-900 text-sm font-mono text-slate-100 placeholder-slate-500 focus:border-emerald-400 focus:outline-none shadow-inner"
+                    className="w-full pl-11 pr-24 py-3 rounded-xl border-2 border-emerald-500 bg-white text-sm font-mono text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 focus:outline-none shadow-inner"
                     autoFocus
                   />
                   <Button
@@ -931,7 +952,7 @@ export function CardsPage() {
                     'gap-2 text-xs font-semibold shrink-0 py-3',
                     isCameraActive
                       ? 'bg-rose-600 hover:bg-rose-500 text-white'
-                      : 'border-slate-700 hover:border-slate-600 text-slate-300',
+                      : 'border-slate-300 hover:border-slate-400 text-slate-700',
                   )}
                 >
                   {isCameraActive ? (
@@ -941,7 +962,7 @@ export function CardsPage() {
                     </>
                   ) : (
                     <>
-                      <Camera className="h-4 w-4 text-emerald-400" />
+                      <Camera className="h-4 w-4 text-emerald-600" />
                       <span>Use Camera</span>
                     </>
                   )}
@@ -982,18 +1003,18 @@ export function CardsPage() {
           size="md"
         >
           <form onSubmit={handleAssignCardNumber} className="space-y-4">
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-slate-600">
               Link an organization-specific human-readable card number (e.g. <code>MC 105</code>, <code>STU-001</code>) to this physical QR card.
             </p>
 
-            <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1.5">
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
               <p className="text-xs text-slate-500">Physical QR Identifier</p>
-              <p className="font-mono text-sm font-bold text-slate-200 break-all">{selectedCard.qrToken}</p>
+              <p className="font-mono text-sm font-bold text-slate-800 break-all">{selectedCard.qrToken}</p>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-                Organization Card Number <span className="text-rose-400">*</span>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                Organization Card Number <span className="text-rose-500">*</span>
               </label>
               <Input
                 type="text"
@@ -1008,7 +1029,7 @@ export function CardsPage() {
             </div>
 
             {assignError && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-300 text-xs">
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 <span>{assignError}</span>
               </div>
@@ -1057,10 +1078,10 @@ export function CardsPage() {
             </div>
 
             <div>
-              <p className="font-mono font-bold text-lg text-slate-100">
+              <p className="font-mono font-bold text-lg text-slate-900">
                 {selectedCard?.physicalCardNumber || selectedQrCard.physicalCardNumber || 'Unassigned QR Code'}
               </p>
-              <p className="font-mono text-xs text-slate-400 break-all max-w-xs mt-1">
+              <p className="font-mono text-xs text-slate-500 break-all max-w-xs mt-1">
                 {selectedQrCard.qrToken}
               </p>
             </div>
@@ -1075,7 +1096,7 @@ export function CardsPage() {
                 setTimeout(() => setIsCopiedToken(false), 2000);
               }}
             >
-              {isCopiedToken ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+              {isCopiedToken ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
               <span>{isCopiedToken ? 'Copied QR Value' : 'Copy QR String'}</span>
             </Button>
           </div>
@@ -1094,71 +1115,96 @@ export function CardsPage() {
           size="lg"
         >
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+            <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs">
               <div>
                 <p className="text-slate-500">Card Number</p>
-                <p className="font-bold text-slate-200 text-sm">{selectedCard.physicalCardNumber || 'Not Assigned'}</p>
+                <p className="font-bold text-slate-900 text-sm">{selectedCard.physicalCardNumber || 'Not Assigned'}</p>
               </div>
               <div>
                 <p className="text-slate-500">Assignment Status</p>
-                <p className="font-bold text-slate-200 text-sm">{selectedCard.assignmentStatus || 'UNASSIGNED'}</p>
+                <p className="font-bold text-slate-900 text-sm">{selectedCard.assignmentStatus || 'UNASSIGNED'}</p>
               </div>
               <div>
                 <p className="text-slate-500">Card Status</p>
-                <p className="font-bold text-slate-200 text-sm">{selectedCard.status}</p>
+                <p className="font-bold text-slate-900 text-sm">{selectedCard.status}</p>
               </div>
               <div>
                 <p className="text-slate-500">QR Identifier</p>
-                <p className="font-mono text-slate-300 truncate">{selectedCard.qrToken}</p>
+                <p className="font-mono text-slate-700 truncate">{selectedCard.qrToken}</p>
               </div>
 
               {selectedCard.status === 'BLOCKED' && (
-                <div className="col-span-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
-                  <p className="font-semibold text-rose-400">Card is Blocked</p>
+                <div className="col-span-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+                  <p className="font-semibold text-rose-600">Card is Blocked</p>
                   <p className="mt-1 font-medium leading-relaxed">
                     {formatBlockedCardMessage(selectedCard.blockedReason, selectedCard.blockedBy)}
                   </p>
                   {selectedCard.blockedBy && (
-                    <p className="mt-1 text-slate-400">Authorized By: {selectedCard.blockedBy}</p>
+                    <p className="mt-1 text-slate-600">Authorized By: {selectedCard.blockedBy}</p>
                   )}
                 </div>
               )}
             </div>
 
             <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                Recent Customer Sessions
-              </h4>
-              {isLoadingHistory ? (
-                <LoadingState message="Loading sessions..." />
-              ) : cardHistorySessions.length === 0 ? (
-                <div className="p-6 text-center text-xs text-slate-500 border border-slate-800 rounded-lg">
-                  No sessions recorded for this card yet.
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-600">
+                  Active customer
+                </h4>
+                <span className="text-[11px] text-slate-400">
+                  Older sessions stored in Customer History
+                </span>
+              </div>
+
+              {isLoadingHistory && !currentCycleSession ? (
+                <LoadingState message="Loading active customer session..." />
+              ) : !currentCycleSession ? (
+                <div className="p-4 text-center text-xs text-slate-500 border border-slate-200 rounded-lg bg-slate-50/50">
+                  <p className="font-semibold text-slate-700">No active customer session</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    This card is not currently in use. Older cycles are preserved in Customer History.
+                  </p>
                 </div>
               ) : (
-                <div className="border border-slate-800 rounded-lg overflow-hidden max-h-48 overflow-y-auto">
+                <div className="border border-slate-200 rounded-lg overflow-hidden">
                   <table className="w-full text-left text-xs border-collapse">
-                    <thead className="bg-slate-900 text-slate-400">
+                    <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
                       <tr>
-                        <th className="p-2">Cycle</th>
-                        <th className="p-2">Customer</th>
-                        <th className="p-2">Balance</th>
-                        <th className="p-2">Status</th>
-                        <th className="p-2">Started At</th>
+                        <th className="p-2.5">Current Cycle</th>
+                        <th className="p-2.5">Customer Name</th>
+                        <th className="p-2.5">Phone</th>
+                        <th className="p-2.5">Current Balance</th>
+                        <th className="p-2.5">Status</th>
+                        <th className="p-2.5">Started At</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800">
-                      {cardHistorySessions.map((s) => (
-                        <tr key={s.id}>
-                          <td className="p-2 font-mono">#{s.cycleNumber || 1}</td>
-                          <td className="p-2 font-semibold text-slate-200">{s.customerName || 'Walk-in'}</td>
-                          <td className="p-2 font-mono font-bold text-emerald-400">{formatCurrency(s.balance)}</td>
-                          <td className="p-2"><Badge variant={s.status === 'ACTIVE' ? 'success' : 'outline'}>{s.status}</Badge></td>
-                          <td className="p-2 text-slate-400">{formatDate(s.startedAt)}</td>
-                        </tr>
-                      ))}
+                    <tbody className="bg-white">
+                      <tr>
+                        <td className="p-2.5 font-mono font-bold text-slate-900">
+                          #{currentCycleSession.cycleNumber || 1}
+                        </td>
+                        <td className="p-2.5 font-semibold text-slate-900">
+                          {currentCycleSession.customerName || 'Walk-in Customer'}
+                        </td>
+                        <td className="p-2.5 text-slate-600 font-mono">
+                          {currentCycleSession.customerPhone || '—'}
+                        </td>
+                        <td className="p-2.5 font-mono font-bold text-emerald-600 text-sm">
+                          {formatCurrency(currentCycleSession.balance)}
+                        </td>
+                        <td className="p-2.5">
+                          <Badge variant="success">In Use</Badge>
+                        </td>
+                        <td className="p-2.5 text-slate-500">
+                          {formatDate(currentCycleSession.startedAt)}
+                        </td>
+                      </tr>
                     </tbody>
                   </table>
+                  <div className="px-3 py-1.5 bg-slate-50 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between">
+                    <span className="font-medium text-emerald-700">Showing current cycle only</span>
+                    <span className="text-slate-400">Older cycles are stored in Customer History</span>
+                  </div>
                 </div>
               )}
             </div>
@@ -1171,7 +1217,7 @@ export function CardsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="gap-1.5 text-rose-400 border-rose-500/30 hover:bg-rose-500/10 hover:border-rose-500/50"
+                    className="gap-1.5 text-rose-600 border-rose-200 hover:bg-rose-50"
                     onClick={() => {
                       setShowDetailsModal(false);
                       setBlockReasonCategory('Lost or Stolen Card');
@@ -1188,7 +1234,7 @@ export function CardsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="gap-1.5 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 hover:border-emerald-500/50"
+                    className="gap-1.5 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
                     onClick={() => {
                       setShowDetailsModal(false);
                       setShowUnblockModal(true);
@@ -1203,7 +1249,7 @@ export function CardsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="gap-1.5 text-slate-400 border-slate-700 hover:text-rose-400 hover:border-rose-500/40 hover:bg-rose-500/10"
+                    className="gap-1.5 text-slate-600 border-slate-300 hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50"
                     onClick={() => {
                       setShowDetailsModal(false);
                       handleOpenDeleteCard(selectedCard);
@@ -1232,8 +1278,8 @@ export function CardsPage() {
           size="md"
         >
           <div className="space-y-4">
-            <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300 flex items-start gap-2">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+            <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
               <p>
                 Are you sure you want to block this card? It will immediately prevent all purchases, recharges, and session operations across all cafeteria counters.
               </p>
@@ -1241,13 +1287,13 @@ export function CardsPage() {
 
             {/* Default Reason Category */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300">
-                Primary Reason <span className="text-rose-400">*</span>
+              <label className="text-xs font-semibold text-slate-700">
+                Primary Reason <span className="text-rose-500">*</span>
               </label>
               <select
                 value={blockReasonCategory}
                 onChange={(e) => setBlockReasonCategory(e.target.value)}
-                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:border-rose-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-rose-500 focus:outline-none shadow-sm"
               >
                 <option value="Lost or Stolen Card">Lost or Stolen Card</option>
                 <option value="Damaged / Hardware Fault">Damaged / Hardware Fault</option>
@@ -1261,7 +1307,7 @@ export function CardsPage() {
 
             {/* Additional Reason Option */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300">
+              <label className="text-xs font-semibold text-slate-700">
                 Additional Reason / Notes (Optional)
               </label>
               <textarea
@@ -1269,16 +1315,16 @@ export function CardsPage() {
                 onChange={(e) => setAdditionalBlockReason(e.target.value)}
                 placeholder="Type additional reason, remarks, or context (e.g. customer misplaced wallet at cafeteria, reported via phone)..."
                 rows={2}
-                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-rose-500 focus:outline-none resize-none"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-rose-500 focus:outline-none shadow-sm resize-none"
               />
             </div>
 
             {/* Live Business Logic Message Preview */}
-            <div className="rounded-lg border border-rose-500/20 bg-rose-950/20 p-2.5 text-xs text-slate-300 space-y-1">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-rose-400 block">
+            <div className="rounded-lg border border-rose-200 bg-rose-50/50 p-2.5 text-xs text-slate-700 space-y-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-rose-600 block">
                 Recorded Business Reason & Policy:
               </span>
-              <p className="text-rose-200 italic font-medium leading-relaxed">
+              <p className="text-rose-800 italic font-medium leading-relaxed">
                 {buildCardBlockReason(blockReasonCategory, additionalBlockReason, user?.name, user?.role)}
               </p>
             </div>
@@ -1303,7 +1349,7 @@ export function CardsPage() {
           title={`Unblock Card — ${selectedCard.physicalCardNumber || selectedCard.qrToken}`}
           size="sm"
         >
-          <p className="text-sm text-slate-300">
+          <p className="text-sm text-slate-700">
             Are you sure you want to unblock this card? It will restore normal active/available operational status in the cafeteria registry.
           </p>
           <ModalFooter>
@@ -1324,8 +1370,8 @@ export function CardsPage() {
       >
         <div className="space-y-4">
           {deleteCardApiError && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+            <div className="flex items-start gap-2.5 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
               <div className="space-y-1">
                 <p className="font-semibold">Action Blocked</p>
                 <p>{deleteCardApiError}</p>
@@ -1333,15 +1379,15 @@ export function CardsPage() {
             </div>
           )}
 
-          <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4 space-y-2">
-            <p className="text-sm text-slate-200 font-medium">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-2">
+            <p className="text-sm text-slate-900 font-medium">
               Are you sure you want to remove card{' '}
-              <span className="text-emerald-400 font-mono font-bold">
+              <span className="text-emerald-600 font-mono font-bold">
                 {selectedCard?.physicalCardNumber || selectedCard?.qrToken}
               </span>
               ?
             </p>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-slate-600 leading-relaxed">
               This card will be permanently deleted from the active card registry, freeing its physical card number and organization quota. A permanent deletion record and all historical audit logs will remain preserved in Customer History.
             </p>
           </div>

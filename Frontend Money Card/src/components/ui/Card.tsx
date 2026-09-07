@@ -8,7 +8,6 @@ interface CardProps {
   className?: string;
   padding?: 'none' | 'sm' | 'md' | 'lg';
   hover?: boolean;
-  onClick?: () => void;
 }
 
 const paddingStyles = {
@@ -18,15 +17,13 @@ const paddingStyles = {
   lg: 'p-8',
 };
 
-export function Card({ children, className, padding = 'md', hover = false, onClick }: CardProps) {
+export function Card({ children, className, padding = 'md', hover = false }: CardProps) {
   return (
     <div
-      onClick={onClick}
       className={cn(
-        'rounded-xl border border-slate-800/60 bg-slate-900/50 backdrop-blur-sm',
+        'rounded-xl border border-slate-200 bg-white shadow-xs',
         paddingStyles[padding],
-        hover && 'transition-all duration-200 hover:border-slate-700 hover:bg-slate-900/80 hover:shadow-lg hover:shadow-black/20',
-        onClick && 'cursor-pointer',
+        hover && 'transition-all duration-200 hover:border-slate-300 hover:shadow-md',
         className,
       )}
     >
@@ -48,8 +45,8 @@ export function CardHeader({ title, description, action, className }: CardHeader
   return (
     <div className={cn('flex items-start justify-between', className)}>
       <div>
-        <h3 className="text-lg font-semibold text-slate-100">{title}</h3>
-        {description && <p className="mt-1 text-sm text-slate-400">{description}</p>}
+        <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+        {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
       </div>
       {action && <div>{action}</div>}
     </div>
@@ -80,37 +77,28 @@ export interface StatCardProps {
     isPositive: boolean;
   };
   className?: string;
-  onClick?: () => void;
 }
 
-export function StatCard({ label, title, value, description, icon, trend, className, onClick }: StatCardProps) {
+export function StatCard({ label, title, value, description, icon, trend, className }: StatCardProps) {
   const headline = label || title || '';
   return (
-    <Card
-      onClick={onClick}
-      hover={Boolean(onClick)}
-      className={cn(
-        'flex items-start gap-4 p-4 sm:p-5 transition-all hover:border-slate-700',
-        onClick && 'cursor-pointer hover:border-violet-500/40 hover:bg-slate-900/80',
-        className
-      )}
-    >
+    <Card className={cn('flex items-start gap-4 p-4 sm:p-5 transition-all hover:border-slate-300 hover:shadow-md', className)}>
       {icon && (
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-800/80 border border-slate-700/60 shadow-inner">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 shadow-xs">
           {icon}
         </div>
       )}
       <div className="min-w-0 flex-1">
         {headline && (
-          <p className="text-xs sm:text-sm font-medium text-slate-400 leading-snug">
+          <p className="text-xs sm:text-sm font-medium text-slate-500 leading-snug">
             {headline}
           </p>
         )}
-        <p className="mt-1.5 text-2xl sm:text-3xl font-extrabold text-slate-100 tracking-tight">
+        <p className="mt-1.5 text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
           {value}
         </p>
         {description && (
-          <p className="mt-1 text-xs text-slate-400/90 leading-normal">
+          <p className="mt-1 text-xs text-slate-500 leading-normal">
             {description}
           </p>
         )}
@@ -118,7 +106,7 @@ export function StatCard({ label, title, value, description, icon, trend, classN
           <p
             className={cn(
               'mt-1.5 text-xs font-semibold',
-              trend.isPositive ? 'text-emerald-400' : 'text-rose-400',
+              trend.isPositive ? 'text-emerald-600' : 'text-rose-600',
             )}
           >
             {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}%

@@ -231,6 +231,52 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
 
     if (!mounted) return;
 
+    if (success) {
+      final cardDetailsState = ref.read(cardDetailsNotifierProvider);
+      final card = cardDetailsState.card;
+      if (card != null && card.status == CardStatus.available) {
+        var branch = ref.read(currentBranchProvider);
+        if (branch == null) {
+          final branchState = ref.read(branchNotifierProvider);
+          if (branchState.assignedBranches.isNotEmpty) {
+            branch = branchState.assignedBranches.first;
+            ref.read(branchNotifierProvider.notifier).selectBranch(branch);
+          }
+        }
+
+        if (branch != null) {
+          final session = await ref.read(cardDetailsNotifierProvider.notifier).issueCardSession(
+                cardId: card.id,
+                branchId: branch.id,
+              );
+
+          if (session != null && mounted) {
+            ref.read(availableCardsNotifierProvider.notifier).loadAvailableCards();
+            ref.read(cardListNotifierProvider.notifier).loadCards();
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Card ${card.displayCardNumber} auto-issued successfully!'),
+                backgroundColor: AppColors.success,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+
+            if (GoRouter.maybeOf(context) != null) {
+              context.pushReplacement(
+                '/app/cards/${card.id}',
+                extra: {
+                  'initialCard': card.copyWith(status: CardStatus.active, currentBranchId: branch.id),
+                  'initialSession': session,
+                },
+              );
+            }
+            return;
+          }
+        }
+      }
+    }
+
     setState(() {
       _isResolvingQr = false;
       if (!success) {
