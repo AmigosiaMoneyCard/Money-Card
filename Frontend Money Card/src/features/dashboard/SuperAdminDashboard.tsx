@@ -28,22 +28,18 @@ import {
   Building2,
   BarChart3,
   TrendingUp,
-  Receipt,
   ArrowRight,
   RefreshCw,
   Layers,
   ShoppingBag,
   CreditCard,
   AlertTriangle,
-  Clock,
-  X,
-  ChevronDown,
-  ChevronUp,
   Sparkles,
-  Search,
   PlusCircle,
   Bell,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 export type DatePreset = 'all' | 'today' | 'yesterday' | 'last7' | 'last30' | 'thisMonth' | 'custom';
@@ -90,14 +86,13 @@ export function SuperAdminDashboard() {
   // Organization Filter State
   const [selectedOrgId, setSelectedOrgId] = useState<string>('');
 
+  // Cafeterias Section Expand/Collapse State (Starts collapsed)
+  const [isCafeteriasExpanded, setIsCafeteriasExpanded] = useState<boolean>(false);
+
   // Date Filtering State
   const [datePreset, setDatePreset] = useState<DatePreset>('all');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-
-  // Search & Business Overview Accordion Toggle
-  const [searchOrgTerm, setSearchOrgTerm] = useState('');
-  const [isDetailedView, setIsDetailedView] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -154,24 +149,22 @@ export function SuperAdminDashboard() {
     [orgs]
   );
 
+  const selectedOrg = useMemo(
+    () => orgs.find((o) => o.id === selectedOrgId),
+    [orgs, selectedOrgId]
+  );
+
   const pendingRequests = useMemo(
     () => planRequests.filter((r) => r.status === 'PENDING'),
     [planRequests]
   );
 
-  const selectedOrgName = useMemo(() => {
-    if (!selectedOrgId) return 'All Cafeterias';
-    const found = orgs.find((o) => o.id === selectedOrgId);
-    return found ? found.name : 'All Cafeterias';
+  const filteredOrgs = useMemo(() => {
+    if (!selectedOrgId) return orgs;
+    return orgs.filter((o) => o.id === selectedOrgId);
   }, [orgs, selectedOrgId]);
 
-  const filteredOrgs = useMemo(() => {
-    if (!searchOrgTerm.trim()) return orgs;
-    const term = searchOrgTerm.toLowerCase().trim();
-    return orgs.filter((o) => o.name.toLowerCase().includes(term));
-  }, [orgs, searchOrgTerm]);
-
-  // Simplified Table Headers: Cafeteria, Status, Plan, Joined, View
+  // Simplified Table Headers: Cafeteria, Status, Plan, Joined, View, Action
   const orgColumns = [
     {
       key: 'name',
@@ -213,7 +206,7 @@ export function SuperAdminDashboard() {
       ),
     },
     {
-      key: 'actions',
+      key: 'view',
       header: 'View',
       render: (_org: OrganizationOverview) => (
         <button
@@ -223,6 +216,32 @@ export function SuperAdminDashboard() {
           <span>Open</span>
           <ArrowRight className="h-3.5 w-3.5" />
         </button>
+      ),
+    },
+    {
+      key: 'action',
+      header: 'Action',
+      render: (org: OrganizationOverview) => (
+        <div className="relative inline-block">
+          <select
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === 'filter') setSelectedOrgId(org.id);
+              if (val === 'manage') navigate('/organizations');
+              if (val === 'analytics') navigate(`/analytics?org=${org.id}`);
+              if (val === 'plans') navigate('/plans');
+            }}
+            defaultValue=""
+            className="appearance-none rounded-lg border border-slate-700 bg-slate-800/90 pl-2.5 pr-6 py-1 text-xs font-medium text-slate-300 hover:border-violet-500/60 focus:border-violet-500 focus:outline-none cursor-pointer shadow-sm"
+          >
+            <option value="" disabled>Select Action</option>
+            <option value="filter" className="bg-slate-900 text-slate-200">Filter Dashboard</option>
+            <option value="manage" className="bg-slate-900 text-slate-200">Manage Org</option>
+            <option value="analytics" className="bg-slate-900 text-slate-200">View Analytics</option>
+            <option value="plans" className="bg-slate-900 text-slate-200">View Plans</option>
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+        </div>
       ),
     },
   ];
@@ -443,144 +462,127 @@ export function SuperAdminDashboard() {
           </div>
 
           {/* ── 4. Simplified KPI Cards (Cafeterias, Sales, Active Cards, Orders) ── */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              label="Cafeterias"
-              value={`${activeOrgsCount} Active`}
-              icon={<Building2 className="h-5 w-5 text-violet-400" />}
-            />
-
-            <StatCard
-              label="Sales"
-              value={formatCurrency(analytics?.totalPurchaseVolume || 0)}
-              icon={<TrendingUp className="h-5 w-5 text-emerald-400" />}
-            />
-
-            <StatCard
-              label="Active Cards"
-              value={(analytics?.activeCardsCount || 0).toLocaleString()}
-              icon={<CreditCard className="h-5 w-5 text-sky-400" />}
-            />
-
-            <StatCard
-              label="Orders"
-              value={(analytics?.totalTransactions || 0).toLocaleString()}
-              icon={<ShoppingBag className="h-5 w-5 text-indigo-400" />}
-            />
-          </div>
-
-          {/* ── 6. Business Overview (Renamed from Financial & Operational Breakdown) ── */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm overflow-hidden">
-            <button
-              onClick={() => setIsDetailedView((prev) => !prev)}
-              className="w-full flex items-center justify-between p-4 sm:p-5 text-left hover:bg-slate-900/80 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400">
-                  <BarChart3 className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-100">
-                    Business Overview ({selectedOrgName})
-                  </h3>
-                </div>
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  {selectedOrg ? `Org Admin Scope: ${selectedOrg.name}` : 'Platform Metrics (All Cafeterias)'}
+                </span>
+                <Badge variant={selectedOrg ? 'primary' : 'outline'} className="text-[10px]">
+                  {selectedOrg ? 'Connected Org Admin' : 'Global Super Admin'}
+                </Badge>
               </div>
-              <div className="flex items-center gap-2 text-xs font-semibold text-violet-400">
-                <span>{isDetailedView ? 'Hide Details' : 'Show Details'}</span>
-                {isDetailedView ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </div>
-            </button>
+              {selectedOrg && (
+                <button
+                  onClick={() => setSelectedOrgId('')}
+                  className="text-xs text-violet-400 hover:text-violet-300 hover:underline font-medium"
+                >
+                  Reset to All Cafeterias
+                </button>
+              )}
+            </div>
 
-            {isDetailedView && (
-              <div className="p-5 pt-0 space-y-5 border-t border-slate-800/80">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 pt-4">
-                  <StatCard
-                    label="Money Added to Cards"
-                    value={formatCurrency(analytics?.totalRechargeVolume || 0)}
-                    icon={<TrendingUp className="h-5 w-5 text-violet-400" />}
-                  />
-
-                  <StatCard
-                    label="Customer Refunds"
-                    value={formatCurrency(analytics?.totalRefundVolume || 0)}
-                    icon={<Receipt className="h-5 w-5 text-rose-400" />}
-                  />
-
-                  <StatCard
-                    label="Net Revenue"
-                    value={formatCurrency(
-                      Math.max(0, (analytics?.totalPurchaseVolume || 0) - (analytics?.totalRefundVolume || 0))
-                    )}
-                    icon={<Receipt className="h-5 w-5 text-teal-400" />}
-                  />
-
-                  <StatCard
-                    label="Active Sessions"
-                    value={analytics?.activeSessionsCount || 0}
-                    icon={<Clock className="h-5 w-5 text-amber-400" />}
-                  />
-                </div>
-
-                {/* Branch Breakdown Table */}
-                {analytics?.branchPerformance && analytics.branchPerformance.length > 0 && (
-                  <div className="space-y-3 pt-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                        Branch Breakdown
-                      </h4>
-                      <span className="text-xs text-slate-500 font-mono">
-                        {analytics.branchPerformance.length} location{analytics.branchPerformance.length > 1 ? 's' : ''}
-                      </span>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {/* 1. Cafeteria Card with prominent single dropdown on the right-end side */}
+              <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 backdrop-blur-sm p-4 sm:p-5 transition-all hover:border-violet-500/40 flex flex-col justify-between gap-3 group shadow-sm">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-400 shadow-inner">
+                      <Building2 className="h-5 w-5" />
                     </div>
-
-                    <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950">
-                      <table className="w-full text-left text-xs text-slate-300">
-                        <thead className="border-b border-slate-800 bg-slate-900/60 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                          <tr>
-                            <th className="px-4 py-3">Location</th>
-                            <th className="px-4 py-3">Status</th>
-                            <th className="px-4 py-3 text-right">Purchases</th>
-                            <th className="px-4 py-3 text-right">Recharges</th>
-                            <th className="px-4 py-3 text-right">Refunds</th>
-                            <th className="px-4 py-3 text-right">Orders</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-800/60">
-                          {analytics.branchPerformance.map((bp) => (
-                            <tr key={bp.branchId} className="hover:bg-slate-900/40 transition-colors">
-                              <td className="px-4 py-3 font-semibold text-slate-100 flex items-center gap-2">
-                                <Building2 className="h-3.5 w-3.5 text-violet-400 shrink-0" />
-                                <span>{bp.branchName}</span>
-                              </td>
-                              <td className="px-4 py-3">
-                                <Badge variant={bp.status === 'ACTIVE' ? 'success' : 'danger'}>
-                                  {bp.status === 'ACTIVE' ? 'Open' : 'Closed'}
-                                </Badge>
-                              </td>
-                              <td className="px-4 py-3 text-right font-medium text-emerald-400">
-                                {formatCurrency(bp.purchaseVolume)}
-                              </td>
-                              <td className="px-4 py-3 text-right font-medium text-violet-300">
-                                {formatCurrency(bp.rechargeVolume)}
-                              </td>
-                              <td className="px-4 py-3 text-right font-medium text-rose-400">
-                                {formatCurrency(bp.refundVolume)}
-                              </td>
-                              <td className="px-4 py-3 text-right font-medium text-slate-200">
-                                {bp.transactionCount.toLocaleString()}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-slate-400 leading-snug">Cafeteria</p>
+                      <p
+                        className="mt-1 text-lg sm:text-xl font-extrabold text-slate-100 tracking-tight truncate max-w-[110px] sm:max-w-[130px]"
+                        title={selectedOrg ? selectedOrg.name : `${activeOrgsCount} Active`}
+                      >
+                        {selectedOrg ? selectedOrg.name : `${activeOrgsCount} Active`}
+                      </p>
                     </div>
                   </div>
-                )}
+
+                  {/* Single Dropdown on the right end side of the Cafeteria box */}
+                  <div className="shrink-0">
+                    <div className="relative">
+                      <select
+                        id="dashboard-cafeteria-box-dropdown"
+                        value={selectedOrgId}
+                        onChange={(e) => setSelectedOrgId(e.target.value)}
+                        className="appearance-none rounded-lg border-2 border-violet-500/40 bg-violet-950/40 pl-3 pr-8 py-1.5 text-xs font-bold text-violet-200 hover:border-violet-400 hover:bg-violet-900/50 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-500/50 cursor-pointer shadow-md shadow-violet-950/30 transition-all"
+                      >
+                        <option value="" className="bg-slate-900 text-slate-200">All Cafeterias</option>
+                        {orgs.map((o) => (
+                          <option key={o.id} value={o.id} className="bg-slate-900 text-slate-200">
+                            {o.name}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-violet-300" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between border-t border-slate-800/60 pt-2.5">
+                  <span className="text-xs text-slate-400 truncate">
+                    {selectedOrg
+                      ? `${selectedOrg.plan?.name || 'Standard'} Plan • Active`
+                      : `${orgs.length} registered cafeterias`}
+                  </span>
+                  <button
+                    onClick={() => navigate('/organizations')}
+                    className="text-xs font-semibold text-violet-400 hover:text-violet-300 hover:underline flex items-center gap-0.5 shrink-0"
+                  >
+                    <span>Manage</span>
+                    <ArrowRight className="h-3 w-3" />
+                  </button>
+                </div>
               </div>
-            )}
+
+              {/* 2. Sales Card */}
+              <StatCard
+                label={selectedOrg ? `${selectedOrg.name} Sales` : 'Sales'}
+                value={formatCurrency(analytics?.totalPurchaseVolume || 0)}
+                description={
+                  selectedOrg
+                    ? `Gross revenue for ${selectedOrg.name}`
+                    : 'Platform-wide gross sales'
+                }
+                icon={<TrendingUp className="h-5 w-5 text-emerald-400" />}
+                onClick={() => navigate(selectedOrgId ? `/analytics?org=${selectedOrgId}` : '/analytics')}
+                className="group transition-all hover:border-emerald-500/50 hover:shadow-md hover:shadow-emerald-500/10"
+              />
+
+              {/* 3. Active Cards */}
+              <StatCard
+                label={selectedOrg ? `${selectedOrg.name} Cards` : 'Active Cards'}
+                value={(analytics?.activeCardsCount || 0).toLocaleString()}
+                description={
+                  selectedOrg
+                    ? `Smart cards in ${selectedOrg.name}`
+                    : 'Total active cards in circulation'
+                }
+                icon={<CreditCard className="h-5 w-5 text-sky-400" />}
+                onClick={() => navigate('/cards')}
+                className="group transition-all hover:border-sky-500/50 hover:shadow-md hover:shadow-sky-500/10"
+              />
+
+              {/* 4. Orders */}
+              <StatCard
+                label={selectedOrg ? `${selectedOrg.name} Orders` : 'Orders'}
+                value={(analytics?.totalTransactions || 0).toLocaleString()}
+                description={
+                  selectedOrg
+                    ? `POS orders at ${selectedOrg.name}`
+                    : 'Completed POS orders platform-wide'
+                }
+                icon={<ShoppingBag className="h-5 w-5 text-indigo-400" />}
+                onClick={() => navigate('/reports')}
+                className="group transition-all hover:border-indigo-500/50 hover:shadow-md hover:shadow-indigo-500/10"
+              />
+            </div>
           </div>
 
-          {/* ── 7. Subscription Plans ─────────────────────────────────────── */}
+          {/* ── 5. Subscription Plans ─────────────────────────────────────── */}
           <Card>
             <CardHeader
               title="Subscription Plans"
@@ -615,54 +617,84 @@ export function SuperAdminDashboard() {
             </CardContent>
           </Card>
 
-          {/* ── 8. Cafeterias Directory (With Search) ──────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-bold text-slate-100">
-                  Cafeterias
-                </h2>
+          {/* ── 6. Cafeterias Directory (With View & Collapse Mode) ─────────── */}
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm overflow-hidden transition-all">
+            {/* Collapsible Header */}
+            <div
+              className={`p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-slate-900/80 transition-colors ${
+                isCafeteriasExpanded ? 'border-b border-slate-800/80' : ''
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400 border border-violet-500/20 shadow-inner">
+                  <Building2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2.5">
+                    <h2 className="text-lg font-bold text-slate-100">
+                      Cafeterias
+                    </h2>
+                    <Badge variant="outline" className="border-violet-500/30 text-violet-300 text-xs font-semibold">
+                      {filteredOrgs.length} {filteredOrgs.length === 1 ? 'Cafeteria' : 'Cafeterias'}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {selectedOrg ? `Filtered for ${selectedOrg.name}` : `All ${orgs.length} registered cafeterias`}
+                  </p>
+                </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                {/* Search Cafeterias */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
-                  <input
-                    type="text"
-                    value={searchOrgTerm}
-                    onChange={(e) => setSearchOrgTerm(e.target.value)}
-                    placeholder="Search cafeteria..."
-                    className="rounded-xl border border-slate-800 bg-slate-900 pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:border-violet-500 focus:outline-none"
-                  />
-                  {searchOrgTerm && (
-                    <button
-                      onClick={() => setSearchOrgTerm('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  )}
-                </div>
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* When Expanded: Show All Cafeterias Dropdown & Manage All Button */}
+                {isCafeteriasExpanded && (
+                  <>
+                    {/* Single Cafeteria Dropdown */}
+                    <div className="w-48 sm:w-56">
+                      <Select
+                        id="dashboard-cafeterias-bottom-filter"
+                        value={selectedOrgId}
+                        onChange={(e) => setSelectedOrgId(e.target.value)}
+                        options={[
+                          { value: '', label: 'All Cafeterias' },
+                          ...orgs.map((o) => ({ value: o.id, label: o.name })),
+                        ]}
+                      />
+                    </div>
 
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate('/organizations')}
+                      rightIcon={<ArrowRight className="h-4 w-4" />}
+                    >
+                      Manage All
+                    </Button>
+                  </>
+                )}
+
+                {/* View / Collapse Toggle Button */}
                 <Button
-                  variant="outline"
+                  variant={isCafeteriasExpanded ? 'secondary' : 'primary'}
                   size="sm"
-                  onClick={() => navigate('/organizations')}
-                  rightIcon={<ArrowRight className="h-4 w-4" />}
+                  onClick={() => setIsCafeteriasExpanded((prev) => !prev)}
+                  rightIcon={isCafeteriasExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  className="font-medium"
                 >
-                  Manage All
+                  {isCafeteriasExpanded ? 'Collapse' : 'View Cafeterias'}
                 </Button>
               </div>
             </div>
 
-            <Card padding="none">
-              <DataTable<OrganizationOverview>
-                data={filteredOrgs.slice(0, 6)}
-                columns={orgColumns}
-                keyExtractor={(item: OrganizationOverview) => item.id}
-              />
-            </Card>
+            {/* Expandable Table Content */}
+            {isCafeteriasExpanded && (
+              <div className="overflow-x-auto">
+                <DataTable<OrganizationOverview>
+                  data={filteredOrgs.slice(0, 10)}
+                  columns={orgColumns}
+                  keyExtractor={(item: OrganizationOverview) => item.id}
+                />
+              </div>
+            )}
           </div>
         </div>
       )}
