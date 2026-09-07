@@ -85,8 +85,9 @@ export function SuperAdminAnalyticsView() {
   const [payments, setPayments] = useState<SubscriptionPayment[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
 
-  // Time Period & Cafeteria Filter State
+  // Time Period, Cafeteria & Plan Filter State
   const [selectedOrgId, setSelectedOrgId] = useState<string>('');
+  const [selectedPlanId, setSelectedPlanId] = useState<string>('');
   const [datePreset, setDatePreset] = useState<DatePreset>('all');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
@@ -387,11 +388,11 @@ export function SuperAdminAnalyticsView() {
         <ErrorState title="Failed to load platform analytics" message={error} onRetry={fetchPlatformData} />
       ) : analytics ? (
         <div className="space-y-8">
-          {/* ── Filter Toolbar (Cafeteria Scope, Time Window, Refresh Data) ── */}
+          {/* ── Filter Toolbar (Cafeteria Scope, Plan & Subscription, Time Window, Refresh Data) ── */}
           <div className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap items-center gap-3">
               {/* Cafeteria Scope Filter */}
-              <div className="w-full sm:w-56">
+              <div className="w-full sm:w-52">
                 <label className="mb-1 block text-[11px] font-medium text-slate-400">Cafeteria Scope</label>
                 <Select
                   id="analytics-cafeteria-filter"
@@ -404,8 +405,22 @@ export function SuperAdminAnalyticsView() {
                 />
               </div>
 
+              {/* Plan & Subscription Filter Dropdown */}
+              <div className="w-full sm:w-52">
+                <label className="mb-1 block text-[11px] font-medium text-slate-400">Plan & Subscription</label>
+                <Select
+                  id="analytics-plan-filter"
+                  value={selectedPlanId}
+                  onChange={(e) => setSelectedPlanId(e.target.value)}
+                  options={[
+                    { value: '', label: 'All Plans & Subscriptions' },
+                    ...plans.map((p) => ({ value: p.id, label: `${p.name} Plan` })),
+                  ]}
+                />
+              </div>
+
               {/* Time Window Filter */}
-              <div className="w-full sm:w-48">
+              <div className="w-full sm:w-44">
                 <label className="mb-1 block text-[11px] font-medium text-slate-400">Time Window</label>
                 <Select
                   id="analytics-preset-filter"
@@ -508,31 +523,97 @@ export function SuperAdminAnalyticsView() {
 
           {/* Section 1: Tenant Organizations Summary */}
           <div className="space-y-4">
-            <h2 className="text-lg font-bold text-slate-100">Platform Organizations Performance</h2>
-            <Card padding="none">
-              <DataTable<OrganizationOverview>
-                data={selectedOrgId ? orgs.filter((o) => o.id === selectedOrgId) : orgs}
-                columns={orgColumns}
-                keyExtractor={(item: OrganizationOverview) => item.id}
-              />
-            </Card>
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-slate-100">Platform Organizations Performance</h2>
+                <p className="text-xs text-slate-400">
+                  Showing {
+                    orgs.filter((o) => {
+                      const matchesOrg = !selectedOrgId || o.id === selectedOrgId;
+                      const matchesPlan = !selectedPlanId || o.plan?.id === selectedPlanId || o.planId === selectedPlanId || (o as any).subscription?.planId === selectedPlanId;
+                      return matchesOrg && matchesPlan;
+                    }).length
+                  } of {orgs.length} organizations
+                  {selectedPlanId ? ` subscribed to ${plans.find(p => p.id === selectedPlanId)?.name || 'Selected'} Plan` : ''}
+                </p>
+              </div>
+            </div>
+            {orgs.filter((o) => {
+              const matchesOrg = !selectedOrgId || o.id === selectedOrgId;
+              const matchesPlan = !selectedPlanId || o.plan?.id === selectedPlanId || o.planId === selectedPlanId || (o as any).subscription?.planId === selectedPlanId;
+              return matchesOrg && matchesPlan;
+            }).length === 0 ? (
+              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-8 text-center">
+                <Building2 className="mx-auto h-8 w-8 text-slate-500 mb-2" />
+                <p className="text-sm font-semibold text-slate-300">No organizations match the selected plan or cafeteria filter</p>
+                <p className="text-xs text-slate-500 mt-1">Try resetting or choosing a different plan from the dropdown.</p>
+              </div>
+            ) : (
+              <Card padding="none">
+                <DataTable<OrganizationOverview>
+                  data={orgs.filter((o) => {
+                    const matchesOrg = !selectedOrgId || o.id === selectedOrgId;
+                    const matchesPlan = !selectedPlanId || o.plan?.id === selectedPlanId || o.planId === selectedPlanId || (o as any).subscription?.planId === selectedPlanId;
+                    return matchesOrg && matchesPlan;
+                  })}
+                  columns={orgColumns}
+                  keyExtractor={(item: OrganizationOverview) => item.id}
+                />
+              </Card>
+            )}
           </div>
 
           {/* Section 2: Catalog Plans Overview */}
           <div className="space-y-4">
-            <h2 className="text-lg font-bold text-slate-100">Subscription Plans Distribution</h2>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-slate-100">Subscription Plans Distribution</h2>
+                <p className="text-xs text-slate-400">
+                  Global platform plans catalog and tenant subscription distribution
+                </p>
+              </div>
+              <div className="w-full sm:w-56">
+                <Select
+                  value={selectedPlanId}
+                  onChange={(e) => setSelectedPlanId(e.target.value)}
+                  options={[
+                    { value: '', label: 'All Plans Overview' },
+                    ...plans.map((p) => ({ value: p.id, label: `${p.name} Plan` })),
+                  ]}
+                />
+              </div>
+            </div>
+
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {plans.map((plan) => {
                 const count = orgs.filter((o) => o.plan?.id === plan.id || o.plan?.name === plan.name).length;
+                const isSelected = selectedPlanId === plan.id;
                 return (
-                  <div key={plan.id} className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-2">
+                  <div
+                    key={plan.id}
+                    onClick={() => setSelectedPlanId(isSelected ? '' : plan.id)}
+                    className={`cursor-pointer rounded-xl border p-4 space-y-2 transition-all ${
+                      isSelected
+                        ? 'border-violet-500 bg-violet-500/15 shadow-lg shadow-violet-500/10 ring-1 ring-violet-500'
+                        : 'border-slate-800 bg-slate-900/60 hover:border-slate-700 hover:bg-slate-900/90'
+                    }`}
+                  >
                     <div className="flex justify-between items-center">
-                      <span className="font-bold text-slate-100">{plan.name}</span>
-                      <Badge variant="outline">{count} Tenants</Badge>
+                      <span className="font-bold text-slate-100 flex items-center gap-1.5">
+                        <Layers className={`h-4 w-4 ${isSelected ? 'text-violet-400' : 'text-slate-400'}`} />
+                        {plan.name}
+                      </span>
+                      <Badge variant={isSelected ? 'info' : 'outline'}>{count} Tenants</Badge>
                     </div>
                     <p className="font-mono text-lg font-bold text-violet-300">
-                      {formatCurrency(plan.price)} <span className="text-xs text-slate-400 font-normal">/{plan.billingInterval.toLowerCase()}</span>
+                      {formatCurrency(plan.price)}{' '}
+                      <span className="text-xs text-slate-400 font-normal">
+                        /{(plan.billingInterval || 'MONTHLY').toLowerCase()}
+                      </span>
                     </p>
+                    <div className="text-[11px] text-slate-400 font-mono pt-1 border-t border-slate-800/60">
+                      {plan.branchLimit ?? 3} Branches • {plan.staffLimit ?? 25} Staff • {plan.cardLimit ?? 1000} Cards
+                    </div>
                   </div>
                 );
               })}
