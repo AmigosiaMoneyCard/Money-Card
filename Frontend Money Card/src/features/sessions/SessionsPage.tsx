@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiService } from '@/services/api';
-import { usePermissions } from '@/hooks';
+import { usePermissions, useBranch } from '@/hooks';
 import type {
   Card as CardEntity,
   SessionStatus,
@@ -71,6 +71,7 @@ export interface CustomerHistoryItem {
 
 export function SessionsPage() {
   const { hasPermission } = usePermissions();
+  const { currentBranch, selectBranch } = useBranch();
 
   const [activeTab, setActiveTab] = useState<'sessions' | 'card_events'>('sessions');
 
@@ -84,7 +85,11 @@ export function SessionsPage() {
   // ─── Filters State ────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('');
   const [sessionStatusFilter, setSessionStatusFilter] = useState<SessionStatus | 'ALL'>('ALL');
-  const [branchFilter, setBranchFilter] = useState<string>('ALL');
+  const [branchFilter, setBranchFilter] = useState<string>(currentBranch?.id || 'ALL');
+
+  useEffect(() => {
+    setBranchFilter(currentBranch ? currentBranch.id : 'ALL');
+  }, [currentBranch]);
   const [dateRangeFilter, setDateRangeFilter] = useState<'ALL' | 'today' | 'yesterday' | '7d' | '30d'>('ALL');
 
   // ─── Session Details Inspection Modal ─────────────────────────────
@@ -679,7 +684,10 @@ export function SessionsPage() {
           {/* Branch Filter */}
           <Select
             value={branchFilter}
-            onChange={(e) => setBranchFilter(e.target.value)}
+            onChange={(e) => {
+              setBranchFilter(e.target.value);
+              selectBranch(e.target.value);
+            }}
             options={[
               { value: 'ALL', label: 'All Branches' },
               ...branches.map((b) => ({ value: b.id, label: b.name })),

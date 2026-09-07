@@ -120,7 +120,7 @@ export function matchesFoodCategory(productCategories: string[], selectedCategor
 }
 
 export function PeakPage() {
-  const { currentBranch } = useBranch();
+  const { currentBranch, selectBranch } = useBranch();
 
   const [data, setData] = useState<PeakAnalyticsOverview | null>(null);
   const [allBranches, setAllBranches] = useState<Branch[]>([]);
@@ -129,6 +129,10 @@ export function PeakPage() {
 
   // Filters
   const [selectedBranchId, setSelectedBranchId] = useState<string>(currentBranch?.id || 'ALL');
+
+  useEffect(() => {
+    setSelectedBranchId(currentBranch ? currentBranch.id : 'ALL');
+  }, [currentBranch]);
   const [selectedDateRange, setSelectedDateRange] = useState<TimeWindowPreset>('thisMonth');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [isExporting, setIsExporting] = useState(false);
@@ -385,7 +389,10 @@ export function PeakPage() {
             <Select
               id="peak-branch-scope"
               value={selectedBranchId}
-              onChange={(e) => setSelectedBranchId(e.target.value)}
+              onChange={(e) => {
+                setSelectedBranchId(e.target.value);
+                selectBranch(e.target.value);
+              }}
               options={[
                 { value: 'ALL', label: 'All Branches' },
                 ...allBranches.map((b) => ({ value: b.id, label: b.name })),

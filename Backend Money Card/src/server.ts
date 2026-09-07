@@ -6,7 +6,6 @@ import cookieParser from 'cookie-parser';
 import { env } from './config/env.js';
 import apiRouter from './routes/index.js';
 import { notFoundHandler, globalErrorHandler } from './middlewares/error.middleware.js';
-import { apiRateLimiter } from './middlewares/rateLimiter.middleware.js';
 
 const app = express();
 
@@ -24,7 +23,6 @@ app.use(morgan(env.NODE_ENV === 'development' ? 'dev' : 'combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
-app.use(apiRateLimiter);
 
 // Mount root healthcheck endpoint for direct network discovery probes
 app.get('/health', async (_req, res) => {

@@ -6,10 +6,11 @@ import type { Branch } from '@/types';
 export interface BranchContextValue {
   currentBranch: Branch | null;
   branches: Branch[];
-  selectBranch: (branch: Branch) => void;
+  selectBranch: (branch: Branch | string | null) => void;
   setBranches: (branches: Branch[]) => void;
   clearBranch: () => void;
   isLoading: boolean;
+  refreshBranches?: () => Promise<Branch[] | undefined>;
 }
 
 export const BranchContext = createContext<BranchContextValue | null>(null);

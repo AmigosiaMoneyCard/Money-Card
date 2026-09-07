@@ -67,7 +67,7 @@ function getPresetDates(preset: DatePreset): { startDate: string; endDate: strin
 }
 
 export function OrgAdminAnalyticsView() {
-  const { currentBranch } = useBranch();
+  const { currentBranch, selectBranch } = useBranch();
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -90,6 +90,10 @@ export function OrgAdminAnalyticsView() {
   const [branchFilter, setBranchFilter] = useState<string>(
     searchParams.get('branchId') || currentBranch?.id || 'ALL',
   );
+
+  useEffect(() => {
+    setBranchFilter(currentBranch ? currentBranch.id : 'ALL');
+  }, [currentBranch]);
   const [datePreset, setDatePreset] = useState<DatePreset>(
     (searchParams.get('preset') as DatePreset) || 'thisMonth',
   );
@@ -177,6 +181,7 @@ export function OrgAdminAnalyticsView() {
 
   const handleBranchChange = (newBranchId: string) => {
     setBranchFilter(newBranchId);
+    selectBranch(newBranchId);
     const newParams = new URLSearchParams(searchParams);
     if (newBranchId && newBranchId !== 'ALL') {
       newParams.set('branchId', newBranchId);

@@ -8,8 +8,9 @@ import { apiService } from '@/services/api';
 import type {
   OrganizationOverview,
   Plan,
-  AnalyticsOverview,
   PlanChangeRequest,
+  Subscription,
+  SubscriptionPayment,
 } from '@/types';
 import {
   Button,
@@ -28,14 +29,10 @@ import {
   Building2,
   BarChart3,
   TrendingUp,
-  Receipt,
   ArrowRight,
   RefreshCw,
   Layers,
-  ShoppingBag,
-  CreditCard,
   AlertTriangle,
-  Clock,
   X,
   ChevronDown,
   ChevronUp,
@@ -84,7 +81,8 @@ export function SuperAdminDashboard() {
 
   const [orgs, setOrgs] = useState<OrganizationOverview[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
-  const [analytics, setAnalytics] = useState<AnalyticsOverview | null>(null);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [payments, setPayments] = useState<SubscriptionPayment[]>([]);
   const [planRequests, setPlanRequests] = useState<PlanChangeRequest[]>([]);
 
   // Organization Filter State
@@ -95,9 +93,9 @@ export function SuperAdminDashboard() {
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
 
-  // Search & Business Overview Accordion Toggle
+  // Search & Cafeterias Accordion / Dropdown Toggle
   const [searchOrgTerm, setSearchOrgTerm] = useState('');
-  const [isDetailedView, setIsDetailedView] = useState(false);
+  const [isCafeteriasOpen, setIsCafeteriasOpen] = useState(true);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -117,15 +115,12 @@ export function SuperAdminDashboard() {
     setIsRefreshing(true);
     setError(null);
     try {
-      const [orgsRes, plansRes, analyticsRes, reqsRes] = await Promise.all([
+      const [orgsRes, plansRes, reqsRes, subsRes, payRes] = await Promise.all([
         apiService.organizations.getOrganizations(),
         apiService.plans.getPlans(),
-        apiService.analytics.getAnalyticsOverview({
-          organizationId: selectedOrgId || undefined,
-          startDate: startDate || undefined,
-          endDate: endDate || undefined,
-        }),
         apiService.subscriptions.getPlanRequests(),
+        apiService.subscriptions.getAllSubscriptions(),
+        apiService.subscriptions.getAllPayments(),
       ]);
 
       if (!orgsRes.success) {
@@ -135,15 +130,16 @@ export function SuperAdminDashboard() {
 
       setOrgs(orgsRes.data.items);
       if (plansRes.success) setPlans(plansRes.data);
-      if (analyticsRes.success) setAnalytics(analyticsRes.data);
       if (reqsRes.success) setPlanRequests(reqsRes.data || []);
+      if (subsRes.success) setSubscriptions(subsRes.data || []);
+      if (payRes.success) setPayments(payRes.data || []);
     } catch {
       setError('Unable to load platform data. Please try again.');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [selectedOrgId, startDate, endDate]);
+  }, []);
 
   useEffect(() => {
     fetchPlatformData(false);
@@ -159,11 +155,49 @@ export function SuperAdminDashboard() {
     [planRequests]
   );
 
-  const selectedOrgName = useMemo(() => {
-    if (!selectedOrgId) return 'All Cafeterias';
-    const found = orgs.find((o) => o.id === selectedOrgId);
-    return found ? found.name : 'All Cafeterias';
-  }, [orgs, selectedOrgId]);
+  // ── Super Admin B2B SaaS Business Metrics ─────────────────
+  const activeSubsCount = useMemo(() => {
+    if (selectedOrgId) {
+      const orgSub = subscriptions.find((s) => s.organizationId === selectedOrgId);
+      if (orgSub) return orgSub.status === 'ACTIVE' ? 1 : 0;
+      const org = orgs.find((o) => o.id === selectedOrgId);
+      return org?.status === 'ACTIVE' ? 1 : 0;
+    }
+    const fromSubs = subscriptions.filter((s) => s.status === 'ACTIVE').length;
+    if (fromSubs > 0) return fromSubs;
+    return orgs.filter((o) => o.status === 'ACTIVE').length;
+  }, [subscriptions, orgs, selectedOrgId]);
+
+  const pendingRequestsCount = useMemo(() => {
+    const list = selectedOrgId
+      ? planRequests.filter((r) => r.organizationId === selectedOrgId)
+      : planRequests;
+    return list.filter((r) => r.status === 'PENDING').length;
+  }, [planRequests, selectedOrgId]);
+
+  const subscriptionRevenue = useMemo(() => {
+    const filteredPayments = payments.filter((p) => {
+      if (selectedOrgId && p.organizationId !== selectedOrgId) return false;
+      if (startDate && p.createdAt < startDate) return false;
+      if (endDate && p.createdAt > `${endDate}T23:59:59.999Z`) return false;
+      return true;
+    });
+
+    const verifiedRevenue = filteredPayments
+      .filter((p) => p.status === 'SUCCESS')
+      .reduce((sum, p) => sum + p.amount, 0);
+
+    if (verifiedRevenue > 0) {
+      return verifiedRevenue;
+    }
+
+    const targetOrgs = selectedOrgId
+      ? orgs.filter((o) => o.id === selectedOrgId)
+      : orgs;
+    return targetOrgs
+      .filter((o) => o.status === 'ACTIVE')
+      .reduce((sum, o) => sum + (o.plan?.price || 0), 0);
+  }, [payments, orgs, selectedOrgId, startDate, endDate]);
 
   const filteredOrgs = useMemo(() => {
     if (!searchOrgTerm.trim()) return orgs;
@@ -236,7 +270,7 @@ export function SuperAdminDashboard() {
             <Sparkles className="h-5 w-5" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Welcome back, Super Admin 👋
+            Welcome back, Super Admin
           </h1>
         </div>
 
@@ -442,7 +476,7 @@ export function SuperAdminDashboard() {
             </Button>
           </div>
 
-          {/* ── 4. Simplified KPI Cards (Cafeterias, Sales, Active Cards, Orders) ── */}
+          {/* ── 4. Super Admin SaaS Platform Metrics (Cafeterias, Subscription Revenue, Active Subscriptions, Plan Requests) ── */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               label="Cafeterias"
@@ -451,136 +485,25 @@ export function SuperAdminDashboard() {
             />
 
             <StatCard
-              label="Sales"
-              value={formatCurrency(analytics?.totalPurchaseVolume || 0)}
+              label="Subscription Revenue"
+              value={formatCurrency(subscriptionRevenue)}
               icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
             />
 
             <StatCard
-              label="Active Cards"
-              value={(analytics?.activeCardsCount || 0).toLocaleString()}
-              icon={<CreditCard className="h-5 w-5 text-sky-600" />}
+              label="Active Subscriptions"
+              value={`${activeSubsCount} Active`}
+              icon={<Layers className="h-5 w-5 text-sky-600" />}
             />
 
             <StatCard
-              label="Orders"
-              value={(analytics?.totalTransactions || 0).toLocaleString()}
-              icon={<ShoppingBag className="h-5 w-5 text-teal-600" />}
+              label="Plan Requests"
+              value={`${pendingRequestsCount} Pending`}
+              icon={<Bell className="h-5 w-5 text-amber-600" />}
             />
           </div>
 
-          {/* ── 6. Business Overview (Renamed from Financial & Operational Breakdown) ── */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-            <button
-              onClick={() => setIsDetailedView((prev) => !prev)}
-              className="w-full flex items-center justify-between p-4 sm:p-5 text-left hover:bg-slate-50 transition-colors cursor-pointer"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                  <BarChart3 className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900">
-                    Business Overview ({selectedOrgName})
-                  </h3>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600">
-                <span>{isDetailedView ? 'Hide Details' : 'Show Details'}</span>
-                {isDetailedView ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </div>
-            </button>
-
-            {isDetailedView && (
-              <div className="p-5 pt-0 space-y-5 border-t border-slate-200">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 pt-4">
-                  <StatCard
-                    label="Money Added to Cards"
-                    value={formatCurrency(analytics?.totalRechargeVolume || 0)}
-                    icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
-                  />
-
-                  <StatCard
-                    label="Customer Refunds"
-                    value={formatCurrency(analytics?.totalRefundVolume || 0)}
-                    icon={<Receipt className="h-5 w-5 text-rose-600" />}
-                  />
-
-                  <StatCard
-                    label="Net Revenue"
-                    value={formatCurrency(
-                      Math.max(0, (analytics?.totalPurchaseVolume || 0) - (analytics?.totalRefundVolume || 0))
-                    )}
-                    icon={<Receipt className="h-5 w-5 text-teal-600" />}
-                  />
-
-                  <StatCard
-                    label="Active Sessions"
-                    value={analytics?.activeSessionsCount || 0}
-                    icon={<Clock className="h-5 w-5 text-amber-600" />}
-                  />
-                </div>
-
-                {/* Branch Breakdown Table */}
-                {analytics?.branchPerformance && analytics.branchPerformance.length > 0 && (
-                  <div className="space-y-3 pt-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                        Branch Breakdown
-                      </h4>
-                      <span className="text-xs text-slate-500 font-mono">
-                        {analytics.branchPerformance.length} location{analytics.branchPerformance.length > 1 ? 's' : ''}
-                      </span>
-                    </div>
-
-                    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-                      <table className="w-full text-left text-xs text-slate-600">
-                        <thead className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
-                          <tr>
-                            <th className="px-4 py-3">Location</th>
-                            <th className="px-4 py-3">Status</th>
-                            <th className="px-4 py-3 text-right">Purchases</th>
-                            <th className="px-4 py-3 text-right">Recharges</th>
-                            <th className="px-4 py-3 text-right">Refunds</th>
-                            <th className="px-4 py-3 text-right">Orders</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200/80">
-                          {analytics.branchPerformance.map((bp) => (
-                            <tr key={bp.branchId} className="hover:bg-slate-50 transition-colors">
-                              <td className="px-4 py-3 font-semibold text-slate-900 flex items-center gap-2">
-                                <Building2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                                <span>{bp.branchName}</span>
-                              </td>
-                              <td className="px-4 py-3">
-                                <Badge variant={bp.status === 'ACTIVE' ? 'success' : 'danger'}>
-                                   {bp.status === 'ACTIVE' ? 'Open' : 'Closed'}
-                                </Badge>
-                              </td>
-                              <td className="px-4 py-3 text-right font-medium text-emerald-600">
-                                {formatCurrency(bp.purchaseVolume)}
-                              </td>
-                              <td className="px-4 py-3 text-right font-medium text-teal-600">
-                                {formatCurrency(bp.rechargeVolume)}
-                              </td>
-                              <td className="px-4 py-3 text-right font-medium text-rose-600">
-                                {formatCurrency(bp.refundVolume)}
-                              </td>
-                              <td className="px-4 py-3 text-right font-medium text-slate-800">
-                                {bp.transactionCount.toLocaleString()}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* ── 7. Subscription Plans ─────────────────────────────────────── */}
+          {/* ── 5. Subscription Plans ─────────────────────────────────────── */}
           <Card>
             <CardHeader
               title="Subscription Plans"
@@ -615,23 +538,54 @@ export function SuperAdminDashboard() {
             </CardContent>
           </Card>
 
-          {/* ── 8. Cafeterias Directory (With Search) ──────────────────────── */}
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">
-                  Cafeterias
-                </h2>
+          {/* ── 6. Cafeterias Directory (Dropdown & Collapse Accordion) ── */}
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+            <div
+              onClick={() => setIsCafeteriasOpen((prev) => !prev)}
+              role="button"
+              tabIndex={0}
+              aria-expanded={isCafeteriasOpen}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setIsCafeteriasOpen((prev) => !prev);
+                }
+              }}
+              className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 sm:p-5 text-left hover:bg-slate-50/80 transition-colors cursor-pointer gap-3"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
+                  <Building2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-bold text-slate-900">
+                      Cafeterias
+                    </h2>
+                    <Badge variant="outline" className="font-bold text-emerald-700 border-emerald-200 bg-emerald-50 text-[11px]">
+                      {filteredOrgs.length}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Network directory and status
+                  </p>
+                </div>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div
+                className="flex flex-wrap items-center gap-2.5 sm:gap-3"
+                onClick={(e) => e.stopPropagation()}
+              >
                 {/* Search Cafeterias */}
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                   <input
                     type="text"
                     value={searchOrgTerm}
-                    onChange={(e) => setSearchOrgTerm(e.target.value)}
+                    onChange={(e) => {
+                      setSearchOrgTerm(e.target.value);
+                      if (!isCafeteriasOpen) setIsCafeteriasOpen(true);
+                    }}
                     placeholder="Search cafeteria..."
                     className="rounded-xl border border-slate-300 bg-white pl-8 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
                   />
@@ -653,16 +607,34 @@ export function SuperAdminDashboard() {
                 >
                   Manage All
                 </Button>
+
+                {/* Dropdown & Collapse Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setIsCafeteriasOpen((prev) => !prev)}
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 py-1.5 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 transition-colors cursor-pointer"
+                  aria-label={isCafeteriasOpen ? 'Collapse Cafeterias' : 'Expand Cafeterias'}
+                >
+                  <span>{isCafeteriasOpen ? 'Collapse' : 'Expand'}</span>
+                  {isCafeteriasOpen ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </button>
               </div>
             </div>
 
-            <Card padding="none">
-              <DataTable<OrganizationOverview>
-                data={filteredOrgs.slice(0, 6)}
-                columns={orgColumns}
-                keyExtractor={(item: OrganizationOverview) => item.id}
-              />
-            </Card>
+            {/* Collapsible Content */}
+            {isCafeteriasOpen && (
+              <div className="border-t border-slate-200">
+                <DataTable<OrganizationOverview>
+                  data={filteredOrgs.slice(0, 6)}
+                  columns={orgColumns}
+                  keyExtractor={(item: OrganizationOverview) => item.id}
+                />
+              </div>
+            )}
           </div>
         </div>
       )}

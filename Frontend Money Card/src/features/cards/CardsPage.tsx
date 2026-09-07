@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { apiService } from '@/services/api';
-import { usePermissions, useAuth } from '@/hooks';
+import { usePermissions, useAuth, useBranch } from '@/hooks';
 import type {
   Card as CardEntity,
   CardStatus,
@@ -61,6 +61,7 @@ import { filterCards } from './cardsFilter';
 export function CardsPage() {
   const { hasPermission } = usePermissions();
   const { user } = useAuth();
+  const { currentBranch, selectBranch } = useBranch();
 
   const [blockReasonCategory, setBlockReasonCategory] = useState('Lost or Stolen Card');
   const [additionalBlockReason, setAdditionalBlockReason] = useState('');
@@ -81,7 +82,11 @@ export function CardsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<CardStatus | 'ALL'>('ALL');
   const [assignmentFilter, setAssignmentFilter] = useState<CardAssignmentStatus | 'ALL'>('ALL');
-  const [branchFilter, setBranchFilter] = useState<string>('ALL');
+  const [branchFilter, setBranchFilter] = useState<string>(currentBranch?.id || 'ALL');
+
+  useEffect(() => {
+    setBranchFilter(currentBranch ? currentBranch.id : 'ALL');
+  }, [currentBranch]);
 
   // Modals
   const [showQrImportModal, setShowQrImportModal] = useState(false);
@@ -798,7 +803,10 @@ export function CardsPage() {
             <Select
               id="card-branch-filter"
               value={branchFilter}
-              onChange={(e) => setBranchFilter(e.target.value)}
+              onChange={(e) => {
+                setBranchFilter(e.target.value);
+                selectBranch(e.target.value);
+              }}
               options={[
                 { value: 'ALL', label: 'All Branches' },
                 ...branches.map((b) => ({ value: b.id, label: b.name })),

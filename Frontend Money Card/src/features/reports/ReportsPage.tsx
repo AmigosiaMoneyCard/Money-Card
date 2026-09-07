@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { apiService } from '@/services/api';
-import { usePermissions, useAuth } from '@/hooks';
+import { usePermissions, useAuth, useBranch } from '@/hooks';
 import type { ReportItem, Branch, Transaction, ProductWithInventory, CardSession } from '@/types';
 import {
   Button,
@@ -34,6 +34,7 @@ import {
 export function ReportsPage() {
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
+  const { currentBranch, selectBranch } = useBranch();
   const canViewReports = hasPermission('VIEW_REPORTS');
 
   const [reports, setReports] = useState<ReportItem[]>([]);
@@ -42,7 +43,11 @@ export function ReportsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [branchFilter, setBranchFilter] = useState<string>('ALL');
+  const [branchFilter, setBranchFilter] = useState<string>(currentBranch?.id || 'ALL');
+
+  useEffect(() => {
+    setBranchFilter(currentBranch ? currentBranch.id : 'ALL');
+  }, [currentBranch]);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   // Preview Modal state
@@ -327,7 +332,10 @@ export function ReportsPage() {
           <Select
             id="reports-branch-filter"
             value={branchFilter}
-            onChange={(e) => setBranchFilter(e.target.value)}
+            onChange={(e) => {
+              setBranchFilter(e.target.value);
+              selectBranch(e.target.value);
+            }}
             options={[
               { value: 'ALL', label: 'All Branches' },
               ...branches.map((b) => ({ value: b.id, label: b.name })),
