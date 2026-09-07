@@ -10,6 +10,7 @@ import '../../core/constants/permission_constants.dart';
 import '../../models/card.dart';
 import '../../models/card_session.dart';
 import '../../providers/api_providers.dart';
+import '../../providers/branch_provider.dart';
 import '../../providers/card_operations_provider.dart';
 import '../../providers/permission_provider.dart';
 import '../../providers/session_operations_provider.dart';
@@ -74,6 +75,65 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       final result = await cardRepo.resolveCardByQr(qrToken);
 
       if (!mounted) return;
+
+      // ─── Auto-Issue Available Card Immediately ───────────────────────
+      if (result.card.status == CardStatus.available ||
+          (result.session == null && result.card.status != CardStatus.blocked)) {
+        var branch = ref.read(currentBranchProvider);
+        if (branch == null) {
+          final branchState = ref.read(branchNotifierProvider);
+          if (branchState.assignedBranches.isNotEmpty) {
+            branch = branchState.assignedBranches.first;
+            ref.read(branchNotifierProvider.notifier).selectBranch(branch);
+          }
+        }
+
+        if (branch != null) {
+          final sessionRepo = ref.read(sessionRepositoryProvider);
+          final newSession = await sessionRepo.createSession(
+            cardId: result.card.id,
+            branchId: branch.id,
+          );
+
+          final activeCard = result.card.copyWith(
+            status: CardStatus.active,
+            currentBranchId: branch.id,
+          );
+
+          if (!mounted) return;
+
+          setState(() {
+            _isResolving = false;
+            _resolvedCard = activeCard;
+            _activeSession = newSession;
+          });
+
+          ref.read(availableCardsNotifierProvider.notifier).loadAvailableCards();
+          ref.read(cardListNotifierProvider.notifier).loadCards();
+          ref.read(sessionListNotifierProvider.notifier).loadSessions();
+          ref.read(sessionDetailsNotifierProvider.notifier).loadSessionById(newSession.id);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Card ${activeCard.displayCardNumber} auto-issued & activated!',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: AppColors.success,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+          return;
+        }
+      }
 
       setState(() {
         _isResolving = false;

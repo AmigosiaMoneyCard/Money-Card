@@ -5,7 +5,7 @@ import '../../core/constants/app_spacing.dart';
 import '../../core/storage/server_config_storage.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/common/app_button.dart';
-import '../../widgets/dev_connection_banner.dart';
+import '../../widgets/dialogs/server_config_dialog.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -59,8 +59,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
+        child: Stack(
+          children: [
+            Positioned(
+              top: AppSpacing.sm,
+              right: AppSpacing.sm,
+              child: IconButton(
+                icon: const Icon(Icons.settings_outlined, color: AppColors.textSecondaryLight),
+                tooltip: 'Server Settings',
+                onPressed: () => ServerConfigDialog.show(context),
+              ),
+            ),
+            Center(
+              child: SingleChildScrollView(
             padding: AppSpacing.paddingLg,
             child: Card(
               elevation: 4,
@@ -249,16 +260,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         isLoading: authState.isAuthenticating,
                         onPressed: authState.isAuthenticating ? null : _handleLogin,
                       ),
-                      const SizedBox(height: AppSpacing.md),
-
-                      // Server Connection / Dev Status
-                      const DevConnectionBanner(),
                     ],
                   ),
                 ),
               ),
             ),
           ),
+        ),
+          ],
         ),
       ),
     );

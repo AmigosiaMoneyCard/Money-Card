@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/config/app_config.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/network/mdns_discovery_service.dart';
 import '../../core/storage/server_config_storage.dart';
 import '../../providers/api_providers.dart';
 
@@ -24,7 +23,6 @@ class ServerConfigDialog extends ConsumerStatefulWidget {
 class _ServerConfigDialogState extends ConsumerState<ServerConfigDialog> {
   late final TextEditingController _urlController;
   bool _isTesting = false;
-  bool _isDiscovering = false;
   String? _testResult;
   bool _testSuccess = false;
 
@@ -38,37 +36,6 @@ class _ServerConfigDialogState extends ConsumerState<ServerConfigDialog> {
   void dispose() {
     _urlController.dispose();
     super.dispose();
-  }
-
-  Future<void> _runMdnsDiscovery() async {
-    if (!mounted) return;
-    setState(() {
-      _isDiscovering = true;
-      _testResult = 'Searching local Wi-Fi via mDNS (_moneycard-api._tcp)...';
-      _testSuccess = false;
-    });
-
-    final stopwatch = Stopwatch();
-    stopwatch.start();
-    final discoveredUrl = await MdnsDiscoveryService.instance.discoverAndVerifyBackend(
-      timeout: const Duration(seconds: 10),
-      testStoredFirst: false,
-    );
-    stopwatch.stop();
-
-    if (!mounted) return;
-    setState(() {
-      _isDiscovering = false;
-      if (discoveredUrl != null && discoveredUrl.isNotEmpty) {
-        _urlController.text = discoveredUrl;
-        _testSuccess = true;
-        _testResult = '✓ Auto-discovered via mDNS (${stopwatch.elapsedMilliseconds}ms)\n$discoveredUrl';
-      } else {
-        _testSuccess = false;
-        _testResult =
-            '✗ Money Card server not found.\nMake sure your phone and computer are on the same Wi-Fi, the backend is running, and Wi-Fi AP isolation is disabled.';
-      }
-    });
   }
 
   Future<void> _testConnection() async {
@@ -195,7 +162,7 @@ class _ServerConfigDialogState extends ConsumerState<ServerConfigDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Dynamic mDNS discovery or custom development host:',
+              'Configure development backend host or IP address:',
               style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
             ),
             const SizedBox(height: 12),
@@ -246,20 +213,6 @@ class _ServerConfigDialogState extends ConsumerState<ServerConfigDialog> {
                     _urlController.text = AppConfig.defaultLanBaseUrl;
                   },
                 ),
-                ActionChip(
-                  avatar: _isDiscovering
-                      ? const SizedBox(
-                          width: 12,
-                          height: 12,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-                        )
-                      : const Icon(Icons.radar_rounded, size: 14, color: AppColors.primary),
-                  label: Text(_isDiscovering ? 'Searching...' : 'mDNS Auto-Discover',
-                      style: const TextStyle(fontSize: 12, color: Colors.white)),
-                  backgroundColor: const Color(0xFF0F172A),
-                  side: const BorderSide(color: AppColors.primary),
-                  onPressed: (_isDiscovering || _isTesting) ? null : _runMdnsDiscovery,
-                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -267,7 +220,7 @@ class _ServerConfigDialogState extends ConsumerState<ServerConfigDialog> {
             Row(
               children: [
                 OutlinedButton.icon(
-                  onPressed: (_isTesting || _isDiscovering) ? null : _testConnection,
+                  onPressed: _isTesting ? null : _testConnection,
                   icon: _isTesting
                       ? const SizedBox(
                           width: 14,
