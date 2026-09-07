@@ -343,9 +343,6 @@ export function SuperAdminAnalyticsView() {
               Super Admin Scope
             </Badge>
           </div>
-          <p className="mt-1 text-sm text-slate-400">
-            Global platform metrics across all organizations, subscription plans, and POS transactions.
-          </p>
         </div>
 
         {/* Action Buttons: [ View PDF ] and [ Download PDF ] */}

@@ -8,6 +8,7 @@ interface CardProps {
   className?: string;
   padding?: 'none' | 'sm' | 'md' | 'lg';
   hover?: boolean;
+  onClick?: () => void;
 }
 
 const paddingStyles = {
@@ -17,13 +18,15 @@ const paddingStyles = {
   lg: 'p-8',
 };
 
-export function Card({ children, className, padding = 'md', hover = false }: CardProps) {
+export function Card({ children, className, padding = 'md', hover = false, onClick }: CardProps) {
   return (
     <div
+      onClick={onClick}
       className={cn(
         'rounded-xl border border-slate-800/60 bg-slate-900/50 backdrop-blur-sm',
         paddingStyles[padding],
         hover && 'transition-all duration-200 hover:border-slate-700 hover:bg-slate-900/80 hover:shadow-lg hover:shadow-black/20',
+        onClick && 'cursor-pointer',
         className,
       )}
     >
@@ -77,12 +80,21 @@ export interface StatCardProps {
     isPositive: boolean;
   };
   className?: string;
+  onClick?: () => void;
 }
 
-export function StatCard({ label, title, value, description, icon, trend, className }: StatCardProps) {
+export function StatCard({ label, title, value, description, icon, trend, className, onClick }: StatCardProps) {
   const headline = label || title || '';
   return (
-    <Card className={cn('flex items-start gap-4 p-4 sm:p-5 transition-all hover:border-slate-700', className)}>
+    <Card
+      onClick={onClick}
+      hover={Boolean(onClick)}
+      className={cn(
+        'flex items-start gap-4 p-4 sm:p-5 transition-all hover:border-slate-700',
+        onClick && 'cursor-pointer hover:border-violet-500/40 hover:bg-slate-900/80',
+        className
+      )}
+    >
       {icon && (
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-800/80 border border-slate-700/60 shadow-inner">
           {icon}
