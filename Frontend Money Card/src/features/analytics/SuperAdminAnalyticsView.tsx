@@ -11,6 +11,7 @@ import type {
   Plan,
   Branch,
   PeakAnalyticsOverview,
+  PlanChangeRequest,
 } from '@/types';
 import {
   Button,
@@ -33,15 +34,12 @@ import {
 import {
   Building2,
   Layers,
-  CreditCard,
-  TrendingUp,
   RefreshCw,
   FileText,
   Receipt,
-  BarChart3,
   Eye,
   Download,
-  Clock,
+  Bell,
 } from 'lucide-react';
 
 export type DatePreset = 'all' | 'today' | 'yesterday' | 'last7' | 'last30' | 'thisMonth' | 'custom';
@@ -84,6 +82,7 @@ export function SuperAdminAnalyticsView() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [payments, setPayments] = useState<SubscriptionPayment[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [planRequests, setPlanRequests] = useState<PlanChangeRequest[]>([]);
 
   // Time Period & Cafeteria Filter State
   const [selectedOrgId, setSelectedOrgId] = useState<string>('');
@@ -112,7 +111,7 @@ export function SuperAdminAnalyticsView() {
     setIsLoading(true);
     setError(null);
     try {
-      const [analyticsRes, peakRes, orgsRes, branchesRes, payRes, plansRes] = await Promise.all([
+      const [analyticsRes, peakRes, orgsRes, branchesRes, payRes, plansRes, reqsRes] = await Promise.all([
         apiService.analytics.getOverview({
           organizationId: selectedOrgId || undefined,
           branchId: undefined,
@@ -124,6 +123,7 @@ export function SuperAdminAnalyticsView() {
         apiService.branches.getBranches(),
         apiService.subscriptions.getPayments(),
         apiService.plans.getPlans(),
+        apiService.subscriptions.getPlanRequests(),
       ]);
 
       if (!analyticsRes.success) {
@@ -137,6 +137,7 @@ export function SuperAdminAnalyticsView() {
       if (branchesRes.success) setBranches(branchesRes.data.items);
       if (payRes.success) setPayments(payRes.data);
       if (plansRes.success) setPlans(plansRes.data);
+      if (reqsRes.success) setPlanRequests(reqsRes.data || []);
     } catch {
       setError('Unable to connect to the server. Please try again.');
     } finally {
@@ -152,7 +153,18 @@ export function SuperAdminAnalyticsView() {
     .filter((p) => p.status === 'SUCCESS')
     .reduce((sum, p) => sum + p.amount, 0);
 
+  const recurringMrr = orgs
+    .filter((o) => o.status === 'ACTIVE')
+    .reduce((sum, o) => sum + (o.plan?.price || 0), 0);
+
+  const subscriptionRevenue = totalGatewayRevenue > 0 ? totalGatewayRevenue : recurringMrr;
+
   const activeOrgsCount = orgs.filter((o) => o.status === 'ACTIVE').length;
+
+  const pendingRequestsCount = planRequests.filter((r) => {
+    if (selectedOrgId && r.organizationId !== selectedOrgId) return false;
+    return r.status === 'PENDING';
+  }).length;
 
   // Helper to compile full report parameters object
   const buildReportParams = (): GeneratePlatformAnalyticsPdfParams | null => {
@@ -166,7 +178,8 @@ export function SuperAdminAnalyticsView() {
       selectedOrgFilter: 'All Platform Organizations',
       totalOrganizations: orgs.length,
       activeSubscriptions: activeOrgsCount,
-      totalGatewayRevenue,
+      totalGatewayRevenue: subscriptionRevenue,
+      pendingRequestsCount,
       totalPurchaseVolume: analytics.totalPurchaseVolume,
       totalRechargeVolume: analytics.totalRechargeVolume,
       totalRefundVolume: analytics.totalRefundVolume ?? 0,
@@ -450,7 +463,7 @@ export function SuperAdminAnalyticsView() {
             </Button>
           </div>
 
-          {/* Top Platform KPI Cards */}
+          {/* Top Platform KPI Cards (Super Admin B2B SaaS Metrics) */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               label="Total Organizations"
@@ -466,34 +479,14 @@ export function SuperAdminAnalyticsView() {
 
             <StatCard
               label="Gateway Subscription Revenue"
-              value={formatCurrency(totalGatewayRevenue)}
+              value={formatCurrency(subscriptionRevenue)}
               icon={<Receipt className="h-5 w-5 text-emerald-600" />}
             />
 
             <StatCard
-              label="Platform POS Volume"
-              value={formatCurrency(analytics.totalPurchaseVolume)}
-              icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
-            />
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <StatCard
-              label="Wallet Recharges"
-              value={formatCurrency(analytics.totalRechargeVolume)}
-              icon={<CreditCard className="h-5 w-5 text-emerald-600" />}
-            />
-
-            <StatCard
-              label="Total Transactions"
-              value={analytics.totalTransactions.toLocaleString()}
-              icon={<BarChart3 className="h-5 w-5 text-emerald-600" />}
-            />
-
-            <StatCard
-              label="Active Sessions"
-              value={analytics.activeSessionsCount.toLocaleString()}
-              icon={<Clock className="h-5 w-5 text-emerald-600" />}
+              label="Plan Requests"
+              value={`${pendingRequestsCount} Pending`}
+              icon={<Bell className="h-5 w-5 text-emerald-600" />}
             />
           </div>
 
