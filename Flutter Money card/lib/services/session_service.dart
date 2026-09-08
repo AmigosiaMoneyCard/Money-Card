@@ -77,13 +77,16 @@ class SessionService {
     required double amount,
     required PaymentMethod paymentMethod,
     String? externalReference,
+    String? branchId,
   }) async {
     return _apiService.post<RechargeResult>(
       ApiEndpoints.rechargeCardSession(sessionId),
       data: {
         'amount': amount,
         'paymentMethod': paymentMethod.value,
-        'externalReference': ?externalReference,
+        if (externalReference != null && externalReference.isNotEmpty)
+          'externalReference': externalReference,
+        if (branchId != null && branchId.isNotEmpty) 'branchId': branchId,
       },
       fromJson: (data) => RechargeResult.fromJson(data as Map<String, dynamic>),
     );

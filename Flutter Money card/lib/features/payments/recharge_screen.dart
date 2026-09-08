@@ -9,6 +9,8 @@ import '../../providers/auth_provider.dart';
 import '../../providers/branch_provider.dart';
 import '../../providers/recharge_provider.dart';
 import '../../providers/session_operations_provider.dart';
+import '../../providers/card_operations_provider.dart';
+import '../../providers/analytics_provider.dart';
 import '../../widgets/common/app_badge.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_card.dart';
@@ -162,9 +164,19 @@ class _RechargeScreenState extends ConsumerState<RechargeScreen> {
 
     if (confirm != true) return;
 
-    final result = await rechargeNotifier.executeRecharge(session.id);
+    final branch = ref.read(currentBranchProvider);
+    final result = await rechargeNotifier.executeRecharge(
+      session.id,
+      branchId: branch?.id,
+    );
 
     if (result != null && mounted) {
+      // Synchronize active sessions, cards registry, available inventory, and analytics
+      ref.read(sessionListNotifierProvider.notifier).loadSessions();
+      ref.read(cardListNotifierProvider.notifier).loadCards();
+      ref.read(availableCardsNotifierProvider.notifier).loadAvailableCards();
+      ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
+
       _showRechargeSuccessDialog(result);
     }
   }

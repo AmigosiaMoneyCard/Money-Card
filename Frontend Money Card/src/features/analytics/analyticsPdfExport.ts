@@ -377,8 +377,16 @@ export function downloadOrgAnalyticsPdf(options: GenerateOrgPdfOptions, filename
 // ─── 2. Super Admin Comprehensive Multi-Page PDF Generator ────────────────
 export interface PlatformPdfSectionOptions {
   includePlatformKpis: boolean;
-  includeOrgsAndBranches: boolean;
-  includeProductsAndPlans: boolean;
+  includeFinancialSummary: boolean;
+  includeTenantOrgs: boolean;
+  includeBranchPerformance: boolean;
+  includeProductDemand: boolean;
+  includePeakTraffic: boolean;
+  includeSubscriptionPlans: boolean;
+
+  // Backward-compatible bundle keys for existing tests
+  includeOrgsAndBranches?: boolean;
+  includeProductsAndPlans?: boolean;
 }
 
 export interface GeneratePlatformAnalyticsPdfParams {
@@ -461,10 +469,18 @@ export function buildPlatformAnalyticsJsPdf(params: GeneratePlatformAnalyticsPdf
     format: 'a4',
   });
 
+  const raw = params.sections || {};
+  const orgsBranchesDefault = raw.includeOrgsAndBranches;
+  const productsPlansDefault = raw.includeProductsAndPlans;
+
   const effectiveSections: PlatformPdfSectionOptions = {
-    includePlatformKpis: params.sections?.includePlatformKpis ?? true,
-    includeOrgsAndBranches: params.sections?.includeOrgsAndBranches ?? true,
-    includeProductsAndPlans: params.sections?.includeProductsAndPlans ?? true,
+    includePlatformKpis: raw.includePlatformKpis ?? true,
+    includeFinancialSummary: raw.includeFinancialSummary ?? (raw.includePlatformKpis ?? true),
+    includeTenantOrgs: raw.includeTenantOrgs ?? (orgsBranchesDefault ?? true),
+    includeBranchPerformance: raw.includeBranchPerformance ?? (orgsBranchesDefault ?? true),
+    includeProductDemand: raw.includeProductDemand ?? (productsPlansDefault ?? true),
+    includePeakTraffic: raw.includePeakTraffic ?? (productsPlansDefault ?? true),
+    includeSubscriptionPlans: raw.includeSubscriptionPlans ?? (productsPlansDefault ?? true),
   };
 
   const pageWidth = 210;
@@ -512,9 +528,10 @@ export function buildPlatformAnalyticsJsPdf(params: GeneratePlatformAnalyticsPdf
   }
 
   // ═════════════════════════════════════════════════════════════════════════
-  // SECTION 1 (PAGE): Executive Platform Overview & Revenue Summary
+  // SECTION 1 & 2 (PAGE 1): Platform Overview & Financial Revenue Summary
   // ═════════════════════════════════════════════════════════════════════════
-  if (effectiveSections.includePlatformKpis) {
+  const hasPage1 = effectiveSections.includePlatformKpis || effectiveSections.includeFinancialSummary;
+  if (hasPage1) {
     hasAnySection = true;
     preparePage(
       'MONEY CARD - SUPER ADMIN ANALYTICS REPORT',
@@ -536,326 +553,356 @@ export function buildPlatformAnalyticsJsPdf(params: GeneratePlatformAnalyticsPdf
     doc.setTextColor(100, 116, 139);
     doc.text('Authority: Platform Super Admin', margin + 120, 42.5);
 
+    let curY = 53;
+
     // Section 1: Platform Overview
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(15, 23, 42);
-    doc.text('1. Platform Overview', margin, 53);
-
-    const topKpis = [
-      { label: 'Total Organizations', val: `${params.totalOrganizations} Organizations` },
-      { label: 'Active Subscriptions', val: `${params.activeSubscriptions} Active` },
-      { label: 'Gateway Sub Revenue', val: formatCurrency(params.totalGatewayRevenue) },
-      { label: 'Plan Requests', val: `${params.pendingRequestsCount ?? 0} Pending` },
-    ];
-
-    const cardW = (contentWidth - 9) / 4;
-    topKpis.forEach((kpi, idx) => {
-      const x = margin + idx * (cardW + 3);
-      doc.setFillColor(248, 250, 252);
-      doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(x, 57, cardW, 18, 2, 2, 'FD');
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
-      doc.setTextColor(100, 116, 139);
-      doc.text(kpi.label, x + 3, 63);
-
+    if (effectiveSections.includePlatformKpis) {
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9.5);
+      doc.setFontSize(11);
       doc.setTextColor(15, 23, 42);
-      doc.text(kpi.val, x + 3, 70);
-    });
+      doc.text('1. Platform Overview', margin, curY);
 
-    const secondaryKpis = [
-      { label: 'Branches Deployed', val: `${params.branches.length} Locations` },
-      { label: 'Subscription Plans', val: `${params.plans.length} Active Tiers` },
-    ];
+      const topKpis = [
+        { label: 'Total Organizations', val: `${params.totalOrganizations} Organizations` },
+        { label: 'Active Subscriptions', val: `${params.activeSubscriptions} Active` },
+        { label: 'Gateway Sub Revenue', val: formatCurrency(params.totalGatewayRevenue) },
+        { label: 'Plan Requests', val: `${params.pendingRequestsCount ?? 0} Pending` },
+      ];
 
-    const cardW2 = (contentWidth - 3) / 2;
-    secondaryKpis.forEach((kpi, idx) => {
-      const x = margin + idx * (cardW2 + 3);
-      doc.setFillColor(248, 250, 252);
-      doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(x, 78, cardW2, 18, 2, 2, 'FD');
+      const cardW = (contentWidth - 9) / 4;
+      topKpis.forEach((kpi, idx) => {
+        const x = margin + idx * (cardW + 3);
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(226, 232, 240);
+        doc.roundedRect(x, curY + 4, cardW, 18, 2, 2, 'FD');
 
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
-      doc.setTextColor(100, 116, 139);
-      doc.text(kpi.label, x + 4, 84);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text(kpi.label, x + 3, curY + 10);
 
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9.5);
-      doc.setTextColor(15, 23, 42);
-      doc.text(kpi.val, x + 4, 91);
-    });
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.setTextColor(15, 23, 42);
+        doc.text(kpi.val, x + 3, curY + 17);
+      });
+
+      const secondaryKpis = [
+        { label: 'Branches Deployed', val: `${params.branches.length} Locations` },
+        { label: 'Subscription Plans', val: `${params.plans.length} Active Tiers` },
+      ];
+
+      const cardW2 = (contentWidth - 3) / 2;
+      secondaryKpis.forEach((kpi, idx) => {
+        const x = margin + idx * (cardW2 + 3);
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(226, 232, 240);
+        doc.roundedRect(x, curY + 25, cardW2, 18, 2, 2, 'FD');
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text(kpi.label, x + 4, curY + 31);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.setTextColor(15, 23, 42);
+        doc.text(kpi.val, x + 4, curY + 38);
+      });
+
+      curY = 105;
+    }
 
     // Section 2: Revenue & Sales Summary
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(15, 23, 42);
-    doc.text('2. Revenue & Sales Summary', margin, 105);
+    if (effectiveSections.includeFinancialSummary) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(15, 23, 42);
+      doc.text('2. Revenue & Sales Summary', margin, curY);
 
-    const finTableY = 109;
-    doc.setFillColor(241, 245, 249);
-    doc.setDrawColor(203, 213, 225);
-    doc.rect(margin, finTableY, contentWidth, 7, 'FD');
+      const finTableY = curY + 4;
+      doc.setFillColor(241, 245, 249);
+      doc.setDrawColor(203, 213, 225);
+      doc.rect(margin, finTableY, contentWidth, 7, 'FD');
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.setTextColor(51, 65, 85);
-    doc.text('Revenue Stream', margin + 3, finTableY + 5);
-    doc.text('Total Amount / Volume', margin + 80, finTableY + 5);
-    doc.text('Status', margin + 140, finTableY + 5);
-
-    const finStreams = [
-      { name: 'POS Product Sales & Purchases', amount: formatCurrency(params.totalPurchaseVolume), status: 'Settled' },
-      { name: 'Card Wallet Recharges (Cash & UPI)', amount: formatCurrency(params.totalRechargeVolume), status: 'Deposited' },
-      { name: 'Card Returns & Refund Volume', amount: formatCurrency(params.totalRefundVolume), status: 'Processed' },
-      { name: 'Platform Subscription Invoicing', amount: formatCurrency(params.totalGatewayRevenue), status: 'Collected' },
-    ];
-
-    let finCurY = finTableY + 7;
-    finStreams.forEach((stream, idx) => {
-      if (idx % 2 === 1) {
-        doc.setFillColor(248, 250, 252);
-        doc.rect(margin, finCurY, contentWidth, 8, 'F');
-      }
-      doc.setDrawColor(226, 232, 240);
-      doc.line(margin, finCurY + 8, margin + contentWidth, finCurY + 8);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
       doc.setTextColor(51, 65, 85);
-      doc.text(stream.name, margin + 3, finCurY + 5.5);
-      doc.text(stream.amount, margin + 80, finCurY + 5.5);
-      doc.text(stream.status, margin + 140, finCurY + 5.5);
+      doc.text('Revenue Stream', margin + 3, finTableY + 5);
+      doc.text('Total Amount / Volume', margin + 80, finTableY + 5);
+      doc.text('Status', margin + 140, finTableY + 5);
 
-      finCurY += 8;
-    });
+      const finStreams = [
+        { name: 'POS Product Sales & Purchases', amount: formatCurrency(params.totalPurchaseVolume), status: 'Settled' },
+        { name: 'Card Wallet Recharges (Cash & UPI)', amount: formatCurrency(params.totalRechargeVolume), status: 'Deposited' },
+        { name: 'Card Returns & Refund Volume', amount: formatCurrency(params.totalRefundVolume), status: 'Processed' },
+        { name: 'Platform Subscription Invoicing', amount: formatCurrency(params.totalGatewayRevenue), status: 'Collected' },
+      ];
+
+      let finCurY = finTableY + 7;
+      finStreams.forEach((stream, idx) => {
+        if (idx % 2 === 1) {
+          doc.setFillColor(248, 250, 252);
+          doc.rect(margin, finCurY, contentWidth, 8, 'F');
+        }
+        doc.setDrawColor(226, 232, 240);
+        doc.line(margin, finCurY + 8, margin + contentWidth, finCurY + 8);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(51, 65, 85);
+        doc.text(stream.name, margin + 3, finCurY + 5.5);
+        doc.text(stream.amount, margin + 80, finCurY + 5.5);
+        doc.text(stream.status, margin + 140, finCurY + 5.5);
+
+        finCurY += 8;
+      });
+    }
   }
 
   // ═════════════════════════════════════════════════════════════════════════
-  // SECTION 2 (PAGE): Tenant Organizations & Detailed Branch Performance
+  // SECTION 3 & 4 (PAGE 2): Tenant Organizations & Branch Performance
   // ═════════════════════════════════════════════════════════════════════════
-  if (effectiveSections.includeOrgsAndBranches) {
+  const hasPage2 = effectiveSections.includeTenantOrgs || effectiveSections.includeBranchPerformance;
+  if (hasPage2) {
     hasAnySection = true;
     preparePage(
       'MONEY CARD - ORGANIZATIONS & BRANCHES',
       `Organizations & Branch Operations  |  Generated: ${generatedTime}`,
     );
 
+    let curOrgY = 42;
+
     // Section 3: Organizations Table
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(15, 23, 42);
-    doc.text('3. Organizations & Usage', margin, 42);
+    if (effectiveSections.includeTenantOrgs) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(15, 23, 42);
+      doc.text('3. Organizations & Usage', margin, curOrgY);
 
-    const orgTableY = 46;
-    doc.setFillColor(241, 245, 249);
-    doc.setDrawColor(203, 213, 225);
-    doc.rect(margin, orgTableY, contentWidth, 7, 'FD');
+      const orgTableY = curOrgY + 4;
+      doc.setFillColor(241, 245, 249);
+      doc.setDrawColor(203, 213, 225);
+      doc.rect(margin, orgTableY, contentWidth, 7, 'FD');
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.setTextColor(51, 65, 85);
-    doc.text('Organization Name', margin + 3, orgTableY + 5);
-    doc.text('Subscribed Plan', margin + 60, orgTableY + 5);
-    doc.text('Status', margin + 95, orgTableY + 5);
-    doc.text('Branches', margin + 118, orgTableY + 5);
-    doc.text('Staff', margin + 143, orgTableY + 5);
-    doc.text('Cards', margin + 165, orgTableY + 5);
-
-    let orgCurY = orgTableY + 7;
-    params.organizations.forEach((org, idx) => {
-      if (orgCurY > 120) return;
-      if (idx % 2 === 1) {
-        doc.setFillColor(248, 250, 252);
-        doc.rect(margin, orgCurY, contentWidth, 7, 'F');
-      }
-      doc.setDrawColor(226, 232, 240);
-      doc.line(margin, orgCurY + 7, margin + contentWidth, orgCurY + 7);
-
-      doc.setFont('helvetica', 'normal');
+      doc.setFont('helvetica', 'bold');
       doc.setFontSize(7.5);
       doc.setTextColor(51, 65, 85);
-      doc.text(org.name.substring(0, 26), margin + 3, orgCurY + 5);
-      doc.text(org.planName, margin + 60, orgCurY + 5);
-      doc.text(org.status, margin + 95, orgCurY + 5);
-      doc.text(`${org.branchCount}/${org.branchLimit}`, margin + 118, orgCurY + 5);
-      doc.text(`${org.staffCount}/${org.staffLimit}`, margin + 143, orgCurY + 5);
-      doc.text(`${org.cardCount}/${org.cardLimit}`, margin + 165, orgCurY + 5);
+      doc.text('Organization Name', margin + 3, orgTableY + 5);
+      doc.text('Subscribed Plan', margin + 60, orgTableY + 5);
+      doc.text('Status', margin + 95, orgTableY + 5);
+      doc.text('Branches', margin + 118, orgTableY + 5);
+      doc.text('Staff', margin + 143, orgTableY + 5);
+      doc.text('Cards', margin + 165, orgTableY + 5);
 
-      orgCurY += 7;
-    });
+      let orgCurY = orgTableY + 7;
+      params.organizations.forEach((org, idx) => {
+        if (orgCurY > 120) return;
+        if (idx % 2 === 1) {
+          doc.setFillColor(248, 250, 252);
+          doc.rect(margin, orgCurY, contentWidth, 7, 'F');
+        }
+        doc.setDrawColor(226, 232, 240);
+        doc.line(margin, orgCurY + 7, margin + contentWidth, orgCurY + 7);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(51, 65, 85);
+        doc.text(org.name.substring(0, 26), margin + 3, orgCurY + 5);
+        doc.text(org.planName, margin + 60, orgCurY + 5);
+        doc.text(org.status, margin + 95, orgCurY + 5);
+        doc.text(`${org.branchCount}/${org.branchLimit}`, margin + 118, orgCurY + 5);
+        doc.text(`${org.staffCount}/${org.staffLimit}`, margin + 143, orgCurY + 5);
+        doc.text(`${org.cardCount}/${org.cardLimit}`, margin + 165, orgCurY + 5);
+
+        orgCurY += 7;
+      });
+
+      curOrgY = orgCurY;
+    }
 
     // Section 4: Branches Performance Table
-    const branchSecY = Math.max(orgCurY + 8, 130);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(15, 23, 42);
-    doc.text('4. Branch Performance', margin, branchSecY);
+    if (effectiveSections.includeBranchPerformance) {
+      const branchSecY = effectiveSections.includeTenantOrgs ? Math.max(curOrgY + 8, 130) : 42;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(15, 23, 42);
+      doc.text('4. Branch Performance', margin, branchSecY);
 
-    const brTableY = branchSecY + 4;
-    doc.setFillColor(241, 245, 249);
-    doc.setDrawColor(203, 213, 225);
-    doc.rect(margin, brTableY, contentWidth, 7, 'FD');
+      const brTableY = branchSecY + 4;
+      doc.setFillColor(241, 245, 249);
+      doc.setDrawColor(203, 213, 225);
+      doc.rect(margin, brTableY, contentWidth, 7, 'FD');
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.setTextColor(51, 65, 85);
-    doc.text('Branch Name', margin + 3, brTableY + 5);
-    doc.text('Organization', margin + 48, brTableY + 5);
-    doc.text('Txns', margin + 90, brTableY + 5);
-    doc.text('Purchases', margin + 108, brTableY + 5);
-    doc.text('Recharges', margin + 130, brTableY + 5);
-    doc.text('Revenue', margin + 155, brTableY + 5);
-
-    let brCurY = brTableY + 7;
-    const branchList = params.branches.length > 0 ? params.branches : [
-      { id: 'b1', name: 'Downtown Branch', orgName: 'Acme Cafeteria', status: 'ACTIVE', transactionCount: 142, purchaseCount: 98, rechargeCount: 44, totalRevenue: 34500, sessionCount: 52, productsSoldCount: 180 },
-      { id: 'b2', name: 'Airport Express', orgName: 'Skyline Foods', status: 'ACTIVE', transactionCount: 95, purchaseCount: 65, rechargeCount: 30, totalRevenue: 22800, sessionCount: 38, productsSoldCount: 110 },
-    ];
-
-    branchList.forEach((br, idx) => {
-      if (brCurY > 265) return;
-      if (idx % 2 === 1) {
-        doc.setFillColor(248, 250, 252);
-        doc.rect(margin, brCurY, contentWidth, 6.5, 'F');
-      }
-      doc.setDrawColor(226, 232, 240);
-      doc.line(margin, brCurY + 6.5, margin + contentWidth, brCurY + 6.5);
-
-      doc.setFont('helvetica', 'normal');
+      doc.setFont('helvetica', 'bold');
       doc.setFontSize(7.5);
       doc.setTextColor(51, 65, 85);
-      doc.text(br.name.substring(0, 20), margin + 3, brCurY + 4.5);
-      doc.text(br.orgName.substring(0, 18), margin + 48, brCurY + 4.5);
-      doc.text(String(br.transactionCount), margin + 90, brCurY + 4.5);
-      doc.text(String(br.purchaseCount), margin + 108, brCurY + 4.5);
-      doc.text(String(br.rechargeCount), margin + 130, brCurY + 4.5);
-      doc.text(formatCurrency(br.totalRevenue), margin + 155, brCurY + 4.5);
+      doc.text('Branch Name', margin + 3, brTableY + 5);
+      doc.text('Organization', margin + 48, brTableY + 5);
+      doc.text('Txns', margin + 90, brTableY + 5);
+      doc.text('Purchases', margin + 108, brTableY + 5);
+      doc.text('Recharges', margin + 130, brTableY + 5);
+      doc.text('Revenue', margin + 155, brTableY + 5);
 
-      brCurY += 6.5;
-    });
+      let brCurY = brTableY + 7;
+      const branchList = params.branches.length > 0 ? params.branches : [
+        { id: 'b1', name: 'Downtown Branch', orgName: 'Acme Cafeteria', status: 'ACTIVE', transactionCount: 142, purchaseCount: 98, rechargeCount: 44, totalRevenue: 34500, sessionCount: 52, productsSoldCount: 180 },
+        { id: 'b2', name: 'Airport Express', orgName: 'Skyline Foods', status: 'ACTIVE', transactionCount: 95, purchaseCount: 65, rechargeCount: 30, totalRevenue: 22800, sessionCount: 38, productsSoldCount: 110 },
+      ];
+
+      branchList.forEach((br, idx) => {
+        if (brCurY > 265) return;
+        if (idx % 2 === 1) {
+          doc.setFillColor(248, 250, 252);
+          doc.rect(margin, brCurY, contentWidth, 6.5, 'F');
+        }
+        doc.setDrawColor(226, 232, 240);
+        doc.line(margin, brCurY + 6.5, margin + contentWidth, brCurY + 6.5);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(51, 65, 85);
+        doc.text(br.name.substring(0, 20), margin + 3, brCurY + 4.5);
+        doc.text(br.orgName.substring(0, 18), margin + 48, brCurY + 4.5);
+        doc.text(String(br.transactionCount), margin + 90, brCurY + 4.5);
+        doc.text(String(br.purchaseCount), margin + 108, brCurY + 4.5);
+        doc.text(String(br.rechargeCount), margin + 130, brCurY + 4.5);
+        doc.text(formatCurrency(br.totalRevenue), margin + 155, brCurY + 4.5);
+
+        brCurY += 6.5;
+      });
+    }
   }
 
   // ═════════════════════════════════════════════════════════════════════════
-  // SECTION 3 (PAGE): Product Demand, Peak Activity & Subscription Tiers
+  // SECTION 5, 6 & 7 (PAGE 3): Products, Peak Hours & Subscription Plans
   // ═════════════════════════════════════════════════════════════════════════
-  if (effectiveSections.includeProductsAndPlans) {
+  const hasPage3 = effectiveSections.includeProductDemand || effectiveSections.includePeakTraffic || effectiveSections.includeSubscriptionPlans;
+  if (hasPage3) {
     hasAnySection = true;
     preparePage(
       'MONEY CARD - PRODUCTS & SUBSCRIPTIONS',
       `Product Sales & Subscription Plans  |  Generated: ${generatedTime}`,
     );
 
+    let curProdY = 42;
+
     // Section 5: Top Product Demand
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(15, 23, 42);
-    doc.text('5. Top Selling Products', margin, 42);
+    if (effectiveSections.includeProductDemand) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(15, 23, 42);
+      doc.text('5. Top Selling Products', margin, curProdY);
 
-    const prodTableY = 46;
-    doc.setFillColor(241, 245, 249);
-    doc.setDrawColor(203, 213, 225);
-    doc.rect(margin, prodTableY, contentWidth, 7, 'FD');
+      const prodTableY = curProdY + 4;
+      doc.setFillColor(241, 245, 249);
+      doc.setDrawColor(203, 213, 225);
+      doc.rect(margin, prodTableY, contentWidth, 7, 'FD');
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.setTextColor(51, 65, 85);
-    doc.text('Product Name', margin + 3, prodTableY + 5);
-    doc.text('Category', margin + 65, prodTableY + 5);
-    doc.text('Units Sold', margin + 105, prodTableY + 5);
-    doc.text('Total Revenue', margin + 135, prodTableY + 5);
-    doc.text('Stock Status', margin + 165, prodTableY + 5);
-
-    let prodCurY = prodTableY + 7;
-    const prodList = params.products.length > 0 ? params.products : [
-      { id: 'p1', name: 'Deluxe Veg Meal Thali', category: 'Main Course', quantitySold: 420, revenue: 63000, stockStatus: 'NORMAL' },
-      { id: 'p2', name: 'Fresh Cold Coffee', category: 'Beverages', quantitySold: 310, revenue: 24800, stockStatus: 'NORMAL' },
-      { id: 'p3', name: 'Crispy Paneer Burger', category: 'Snacks', quantitySold: 245, revenue: 29400, stockStatus: 'LOW' },
-      { id: 'p4', name: 'Masala Chai Cup', category: 'Hot Drinks', quantitySold: 580, revenue: 11600, stockStatus: 'NORMAL' },
-    ];
-
-    prodList.slice(0, 6).forEach((prod, idx) => {
-      if (prodCurY > 105) return;
-      if (idx % 2 === 1) {
-        doc.setFillColor(248, 250, 252);
-        doc.rect(margin, prodCurY, contentWidth, 6.5, 'F');
-      }
-      doc.setDrawColor(226, 232, 240);
-      doc.line(margin, prodCurY + 6.5, margin + contentWidth, prodCurY + 6.5);
-
-      doc.setFont('helvetica', 'normal');
+      doc.setFont('helvetica', 'bold');
       doc.setFontSize(7.5);
       doc.setTextColor(51, 65, 85);
-      doc.text(prod.name.substring(0, 28), margin + 3, prodCurY + 4.5);
-      doc.text(prod.category, margin + 65, prodCurY + 4.5);
-      doc.text(`${prod.quantitySold} units`, margin + 105, prodCurY + 4.5);
-      doc.text(formatCurrency(prod.revenue), margin + 135, prodCurY + 4.5);
-      doc.text(prod.stockStatus, margin + 165, prodCurY + 4.5);
+      doc.text('Product Name', margin + 3, prodTableY + 5);
+      doc.text('Category', margin + 65, prodTableY + 5);
+      doc.text('Units Sold', margin + 105, prodTableY + 5);
+      doc.text('Total Revenue', margin + 135, prodTableY + 5);
+      doc.text('Stock Status', margin + 165, prodTableY + 5);
 
-      prodCurY += 6.5;
-    });
+      let rowY = prodTableY + 7;
+      const prodList = params.products.length > 0 ? params.products : [
+        { id: 'p1', name: 'Deluxe Veg Meal Thali', category: 'Main Course', quantitySold: 420, revenue: 63000, stockStatus: 'NORMAL' },
+        { id: 'p2', name: 'Fresh Cold Coffee', category: 'Beverages', quantitySold: 310, revenue: 24800, stockStatus: 'NORMAL' },
+        { id: 'p3', name: 'Crispy Paneer Burger', category: 'Snacks', quantitySold: 245, revenue: 29400, stockStatus: 'LOW' },
+        { id: 'p4', name: 'Masala Chai Cup', category: 'Hot Drinks', quantitySold: 580, revenue: 11600, stockStatus: 'NORMAL' },
+      ];
+
+      prodList.slice(0, 6).forEach((prod, idx) => {
+        if (rowY > 105) return;
+        if (idx % 2 === 1) {
+          doc.setFillColor(248, 250, 252);
+          doc.rect(margin, rowY, contentWidth, 6.5, 'F');
+        }
+        doc.setDrawColor(226, 232, 240);
+        doc.line(margin, rowY + 6.5, margin + contentWidth, rowY + 6.5);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(51, 65, 85);
+        doc.text(prod.name.substring(0, 28), margin + 3, rowY + 4.5);
+        doc.text(prod.category, margin + 65, rowY + 4.5);
+        doc.text(`${prod.quantitySold} units`, margin + 105, rowY + 4.5);
+        doc.text(formatCurrency(prod.revenue), margin + 135, rowY + 4.5);
+        doc.text(prod.stockStatus, margin + 165, rowY + 4.5);
+
+        rowY += 6.5;
+      });
+
+      curProdY = rowY + 8;
+    }
 
     // Section 6: Peak Hours & Traffic Summary
-    const peakSecY = Math.max(prodCurY + 8, 115);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(15, 23, 42);
-    doc.text('6. Peak Hours & Traffic Summary', margin, peakSecY);
+    if (effectiveSections.includePeakTraffic) {
+      const peakSecY = effectiveSections.includeProductDemand ? Math.max(curProdY, 115) : curProdY;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(15, 23, 42);
+      doc.text('6. Peak Hours & Traffic Summary', margin, peakSecY);
 
-    const peakBoxY = peakSecY + 4;
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(203, 213, 225);
-    doc.roundedRect(margin, peakBoxY, contentWidth, 18, 2, 2, 'FD');
-
-    const peakRange = params.peakInfo?.peakHoursRange || '12:00 PM - 02:30 PM (Lunch Rush)';
-    const busiestHour = params.peakInfo?.busiestHour || '01:00 PM - 02:00 PM';
-    const busiestBranch = params.peakInfo?.busiestBranchName || 'Downtown Branch';
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(15, 23, 42);
-    doc.text(`Peak Demand Hours: ${peakRange}`, margin + 4, peakBoxY + 6.5);
-    doc.text(`Busiest Hour: ${busiestHour}`, margin + 110, peakBoxY + 6.5);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(71, 85, 105);
-    doc.text(`Highest Traffic Location: ${busiestBranch}`, margin + 4, peakBoxY + 13.5);
-
-    // Section 7: Subscription Plans & Distribution
-    const plansSecY = peakBoxY + 24;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(15, 23, 42);
-    doc.text('7. Subscription Plans & Pricing', margin, plansSecY);
-
-    const planBoxY = plansSecY + 4;
-    const planW = (contentWidth - 9) / 4;
-    params.plans.slice(0, 4).forEach((plan, idx) => {
-      const px = margin + idx * (planW + 3);
+      const peakBoxY = peakSecY + 4;
       doc.setFillColor(248, 250, 252);
-      doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(px, planBoxY, planW, 20, 2, 2, 'FD');
+      doc.setDrawColor(203, 213, 225);
+      doc.roundedRect(margin, peakBoxY, contentWidth, 18, 2, 2, 'FD');
+
+      const peakRange = params.peakInfo?.peakHoursRange || '12:00 PM - 02:30 PM (Lunch Rush)';
+      const busiestHour = params.peakInfo?.busiestHour || '01:00 PM - 02:00 PM';
+      const busiestBranch = params.peakInfo?.busiestBranchName || 'Downtown Branch';
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8);
       doc.setTextColor(15, 23, 42);
-      doc.text(`${plan.name}`, px + 3, planBoxY + 6);
+      doc.text(`Peak Demand Hours: ${peakRange}`, margin + 4, peakBoxY + 6.5);
+      doc.text(`Busiest Hour: ${busiestHour}`, margin + 110, peakBoxY + 6.5);
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7);
-      doc.setTextColor(100, 116, 139);
-      doc.text(`${plan.tenantCount} Active Tenants`, px + 3, planBoxY + 11);
+      doc.setFontSize(7.5);
+      doc.setTextColor(71, 85, 105);
+      doc.text(`Highest Traffic Location: ${busiestBranch}`, margin + 4, peakBoxY + 13.5);
 
+      curProdY = peakBoxY + 24;
+    }
+
+    // Section 7: Subscription Plans & Distribution
+    if (effectiveSections.includeSubscriptionPlans) {
+      const plansSecY = (effectiveSections.includeProductDemand || effectiveSections.includePeakTraffic) ? curProdY : 42;
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8);
-      doc.setTextColor(5, 150, 105); // Emerald-600
-      doc.text(`${formatCurrency(plan.price)}/${plan.billingInterval.toLowerCase()}`, px + 3, planBoxY + 17);
-    });
+      doc.setFontSize(11);
+      doc.setTextColor(15, 23, 42);
+      doc.text('7. Subscription Plans & Pricing', margin, plansSecY);
+
+      const planBoxY = plansSecY + 4;
+      const planW = (contentWidth - 9) / 4;
+      params.plans.slice(0, 4).forEach((plan, idx) => {
+        const px = margin + idx * (planW + 3);
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(226, 232, 240);
+        doc.roundedRect(px, planBoxY, planW, 20, 2, 2, 'FD');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(15, 23, 42);
+        doc.text(`${plan.name}`, px + 3, planBoxY + 6);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`${plan.tenantCount} Active Tenants`, px + 3, planBoxY + 11);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(5, 150, 105); // Emerald-600
+        doc.text(`${formatCurrency(plan.price)}/${plan.billingInterval.toLowerCase()}`, px + 3, planBoxY + 17);
+      });
+    }
   }
 
   // Empty state if no section is selected

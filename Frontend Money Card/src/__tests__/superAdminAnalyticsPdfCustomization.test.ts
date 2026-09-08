@@ -167,4 +167,85 @@ describe('Super Admin Analytics - Option-Wise PDF Customization', () => {
     expect(blob.size).toBeGreaterThan(0);
     expect(blob.type).toBe('application/pdf');
   });
+
+  describe('Individual Section-by-Section Customization (7 Distinct Sections)', () => {
+    const allDisabled = {
+      includePlatformKpis: false,
+      includeFinancialSummary: false,
+      includeTenantOrgs: false,
+      includeBranchPerformance: false,
+      includeProductDemand: false,
+      includePeakTraffic: false,
+      includeSubscriptionPlans: false,
+    };
+
+    it('renders only Section 1 (Platform Overview)', () => {
+      const doc = buildPlatformAnalyticsJsPdf({
+        ...baseParams,
+        sections: { ...allDisabled, includePlatformKpis: true },
+      });
+      expect(doc.getNumberOfPages()).toBe(1);
+    });
+
+    it('renders only Section 2 (Financial & Revenue)', () => {
+      const doc = buildPlatformAnalyticsJsPdf({
+        ...baseParams,
+        sections: { ...allDisabled, includeFinancialSummary: true },
+      });
+      expect(doc.getNumberOfPages()).toBe(1);
+    });
+
+    it('renders only Section 3 (Organizations & Usage)', () => {
+      const doc = buildPlatformAnalyticsJsPdf({
+        ...baseParams,
+        sections: { ...allDisabled, includeTenantOrgs: true },
+      });
+      expect(doc.getNumberOfPages()).toBe(1);
+    });
+
+    it('renders only Section 4 (Branch Performance)', () => {
+      const doc = buildPlatformAnalyticsJsPdf({
+        ...baseParams,
+        sections: { ...allDisabled, includeBranchPerformance: true },
+      });
+      expect(doc.getNumberOfPages()).toBe(1);
+    });
+
+    it('renders only Section 5 (Top Selling Products)', () => {
+      const doc = buildPlatformAnalyticsJsPdf({
+        ...baseParams,
+        sections: { ...allDisabled, includeProductDemand: true },
+      });
+      expect(doc.getNumberOfPages()).toBe(1);
+    });
+
+    it('renders only Section 6 (Peak Hours & Traffic)', () => {
+      const doc = buildPlatformAnalyticsJsPdf({
+        ...baseParams,
+        sections: { ...allDisabled, includePeakTraffic: true },
+      });
+      expect(doc.getNumberOfPages()).toBe(1);
+    });
+
+    it('renders only Section 7 (Subscription Plans)', () => {
+      const doc = buildPlatformAnalyticsJsPdf({
+        ...baseParams,
+        sections: { ...allDisabled, includeSubscriptionPlans: true },
+      });
+      expect(doc.getNumberOfPages()).toBe(1);
+    });
+
+    it('renders cross-page selection accurately (e.g. Section 2 + Section 4 + Section 6)', () => {
+      const doc = buildPlatformAnalyticsJsPdf({
+        ...baseParams,
+        sections: {
+          ...allDisabled,
+          includeFinancialSummary: true,
+          includeBranchPerformance: true,
+          includePeakTraffic: true,
+        },
+      });
+      expect(doc.getNumberOfPages()).toBe(3);
+    });
+  });
 });

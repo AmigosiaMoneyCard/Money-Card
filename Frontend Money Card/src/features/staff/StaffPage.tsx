@@ -11,10 +11,13 @@ import type {
   Branch,
   Permission,
   OrganizationOverview,
+  StaffPerformanceMetric,
+  StaffActivityItem,
 } from '@/types';
 import {
   Button,
   Input,
+  Select,
   Card,
   Badge,
   Modal,
@@ -24,7 +27,8 @@ import {
   ErrorState,
 } from '@/components/ui';
 import { DataTable } from '@/components/tables';
-import { notify, formatDate } from '@/utils';
+import { notify, formatDate, formatCurrency } from '@/utils';
+import { filterStaffActivities, calculateScopedStaffMetrics } from '@/features/analytics/staffActivityFilter';
 import { PermissionMatrix } from './PermissionMatrix';
 import { UnauthorizedPage } from '@/features/auth';
 import {
@@ -50,6 +54,7 @@ import {
   X,
   MoreVertical,
   ChevronDown,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 interface StaffActionMenuProps {
@@ -58,6 +63,7 @@ interface StaffActionMenuProps {
   resendingId: string | null;
   onResendInvite: () => void;
   onEditOrView: () => void;
+  onViewAudit?: () => void;
   onPermissions: () => void;
   onBranches: () => void;
   onSecurity: () => void;
@@ -71,6 +77,7 @@ function StaffActionMenu({
   resendingId,
   onResendInvite,
   onEditOrView,
+  onViewAudit,
   onPermissions,
   onBranches,
   onSecurity,
@@ -171,6 +178,21 @@ function StaffActionMenu({
             }}
             className="w-52 rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
           >
+            {/* Performance & Operational Audit */}
+            {onViewAudit && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  onViewAudit();
+                }}
+                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors cursor-pointer text-left"
+              >
+                <Eye className="h-4 w-4 text-emerald-600" />
+                <span>Performance & Audit</span>
+              </button>
+            )}
+
             {/* Resend Activation Invite if Pending */}
             {canManage && staff.status === 'PENDING_ACTIVATION' && (
               <button
@@ -347,19 +369,30 @@ export function StaffPage() {
   const [formPermissions, setFormPermissions] = useState<Permission[]>([]);
   const [showAdvancedPerms, setShowAdvancedPerms] = useState(false);
 
+  // ── Staff Performance & Operational Audit State ───────────
+  const [selectedStaffForAudit, setSelectedStaffForAudit] = useState<Staff | null>(null);
+  const [staffPerformanceList, setStaffPerformanceList] = useState<StaffPerformanceMetric[]>([]);
+  const [auditBranchFilter, setAuditBranchFilter] = useState<string>('ALL');
+  const [auditDatePreset, setAuditDatePreset] = useState<string>('all');
+  const [auditStartDate, setAuditStartDate] = useState<string>('');
+  const [auditEndDate, setAuditEndDate] = useState<string>('');
+  const [auditActivityTypeFilter, setAuditActivityTypeFilter] = useState<'ALL' | 'CARD_ACTIVATION' | 'RECHARGE' | 'PURCHASE' | 'CARD_SETTLEMENT' | 'OTHER'>('ALL');
+  const [auditSearch, setAuditSearch] = useState('');
+
   // ── Validation & Error state ──────────────────────────────
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [modalApiError, setModalApiError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // ── Fetch Staff & Organization Branches ───────────────────
+  // ── Fetch Staff, Analytics & Organization Branches ─────────
   const fetchStaffData = useCallback(async () => {
     setError(null);
     try {
-      const [staffRes, branchRes, orgRes] = await Promise.all([
+      const [staffRes, branchRes, orgRes, analyticsRes] = await Promise.all([
         apiService.staff.getStaff({ search: searchQuery }),
         apiService.branches.getBranches(),
         apiService.organizations.getOrganization(),
+        apiService.analytics.getOverview(),
       ]);
 
       if (!staffRes.success) {
@@ -375,6 +408,9 @@ export function StaffPage() {
       if (orgRes.success) {
         setOrgOverview(orgRes.data);
       }
+      if (analyticsRes.success && analyticsRes.data.staffPerformance) {
+        setStaffPerformanceList(analyticsRes.data.staffPerformance);
+      }
     } catch {
       setError('Unable to connect to the server. Please try again.');
     } finally {
@@ -387,10 +423,11 @@ export function StaffPage() {
     const load = async () => {
       setError(null);
       try {
-        const [staffRes, branchRes, orgRes] = await Promise.all([
+        const [staffRes, branchRes, orgRes, analyticsRes] = await Promise.all([
           apiService.staff.getStaff({ search: searchQuery }),
           apiService.branches.getBranches(),
           apiService.organizations.getOrganization(),
+          apiService.analytics.getOverview(),
         ]);
         if (isCancelled) return;
 
@@ -402,6 +439,9 @@ export function StaffPage() {
         setStaffList(staffRes.data.items);
         if (branchRes.success) setBranches(branchRes.data.items);
         if (orgRes.success) setOrgOverview(orgRes.data);
+        if (analyticsRes.success && analyticsRes.data.staffPerformance) {
+          setStaffPerformanceList(analyticsRes.data.staffPerformance);
+        }
       } catch {
         if (!isCancelled) setError('Unable to connect to the server. Please try again.');
       } finally {
@@ -898,6 +938,177 @@ export function StaffPage() {
     }
   };
 
+  // ── Staff Performance & Operational Audit Helpers ────────
+  const getStaffRoleLabel = (staff: Staff): string => {
+    if (staff.permissions.includes('STAFF_MANAGE')) return 'Manager / Admin';
+    if (staff.permissions.includes('INVENTORY_MANAGE') || staff.permissions.includes('PRODUCT_MANAGE')) {
+      return 'Branch Supervisor';
+    }
+    return 'Cashier / POS';
+  };
+
+  const getAuditPresetDates = (preset: string): { startDate: string; endDate: string } => {
+    const now = new Date();
+    const endStr = now.toISOString().split('T')[0];
+
+    if (preset === 'today') {
+      return { startDate: endStr, endDate: endStr };
+    }
+    if (preset === 'yesterday') {
+      const yest = new Date(now);
+      yest.setDate(yest.getDate() - 1);
+      const yestStr = yest.toISOString().split('T')[0];
+      return { startDate: yestStr, endDate: yestStr };
+    }
+    if (preset === 'last7') {
+      const start = new Date(now);
+      start.setDate(start.getDate() - 7);
+      return { startDate: start.toISOString().split('T')[0], endDate: endStr };
+    }
+    if (preset === 'last30') {
+      const start = new Date(now);
+      start.setDate(start.getDate() - 30);
+      return { startDate: start.toISOString().split('T')[0], endDate: endStr };
+    }
+    if (preset === 'thisMonth') {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      return { startDate: start.toISOString().split('T')[0], endDate: endStr };
+    }
+
+    return { startDate: '', endDate: '' };
+  };
+
+  const handleOpenStaffAudit = async (staff: Staff) => {
+    setSelectedStaffForAudit(staff);
+    setAuditBranchFilter('ALL');
+    setAuditDatePreset('all');
+    setAuditStartDate('');
+    setAuditEndDate('');
+    setAuditActivityTypeFilter('ALL');
+    setAuditSearch('');
+
+    if (staffPerformanceList.length === 0) {
+      try {
+        const res = await apiService.analytics.getOverview();
+        if (res.success && res.data.staffPerformance) {
+          setStaffPerformanceList(res.data.staffPerformance);
+        }
+      } catch {
+        // Ignored
+      }
+    }
+  };
+
+  const targetStaffMetric = useMemo(() => {
+    if (!selectedStaffForAudit) return null;
+    return (
+      staffPerformanceList.find(
+        (p) =>
+          p.staffId === selectedStaffForAudit.id ||
+          p.staffEmail?.toLowerCase() === selectedStaffForAudit.email.toLowerCase(),
+      ) || {
+        staffId: selectedStaffForAudit.id,
+        staffName: selectedStaffForAudit.name,
+        staffEmail: selectedStaffForAudit.email,
+        role: getStaffRoleLabel(selectedStaffForAudit),
+        status: selectedStaffForAudit.status,
+        branchId: selectedStaffForAudit.assignedBranchIds[0],
+        branchName: branches.find((b) => selectedStaffForAudit.assignedBranchIds.includes(b.id))?.name || 'Main Branch',
+        cardsActivatedCount: 0,
+        cardsSettledCount: 0,
+        cardRechargeCount: 0,
+        cardRechargeVolume: 0,
+        purchaseCount: 0,
+        purchaseVolume: 0,
+        refundCount: 0,
+        refundVolume: 0,
+        totalTransactionsCount: 0,
+        totalVolumeHandled: 0,
+        activities: [],
+      }
+    );
+  }, [selectedStaffForAudit, staffPerformanceList, branches]);
+
+  const targetBranchName = useMemo(() => {
+    if (auditBranchFilter === 'ALL') return undefined;
+    return branches.find((b) => b.id === auditBranchFilter)?.name;
+  }, [auditBranchFilter, branches]);
+
+  const scopedAuditActivities = useMemo(() => {
+    if (!targetStaffMetric?.activities) return [];
+    return filterStaffActivities({
+      activities: targetStaffMetric.activities,
+      branchFilter: auditBranchFilter,
+      branchName: targetBranchName,
+      startDate: auditStartDate,
+      endDate: auditEndDate,
+    });
+  }, [targetStaffMetric, auditBranchFilter, targetBranchName, auditStartDate, auditEndDate]);
+
+  const filteredAuditActivities = useMemo(() => {
+    return filterStaffActivities({
+      activities: scopedAuditActivities,
+      branchFilter: 'ALL',
+      typeFilter: auditActivityTypeFilter,
+      searchQuery: auditSearch,
+    });
+  }, [scopedAuditActivities, auditActivityTypeFilter, auditSearch]);
+
+  const auditMetrics = useMemo(() => {
+    if (!targetStaffMetric) {
+      return {
+        cardsActivatedCount: 0,
+        cardsSettledCount: 0,
+        cardRechargeVolume: 0,
+        purchaseVolume: 0,
+        refundVolume: 0,
+      };
+    }
+    if (scopedAuditActivities.length === 0 && targetStaffMetric.activities.length === 0) {
+      return targetStaffMetric;
+    }
+    return calculateScopedStaffMetrics(scopedAuditActivities);
+  }, [targetStaffMetric, scopedAuditActivities]);
+
+  const handleExportAuditCsv = () => {
+    if (!selectedStaffForAudit) return;
+    const headers = [
+      'Timestamp',
+      'Type',
+      'Card Number',
+      'Customer Name',
+      'Customer Phone',
+      'Amount (INR)',
+      'Branch',
+      'Details/Remarks',
+    ];
+
+    const exportList = filteredAuditActivities.length > 0 ? filteredAuditActivities : scopedAuditActivities;
+    const rows = exportList.map((act) => [
+      act.timestamp ? `"${new Date(act.timestamp).toLocaleString()}"` : '"N/A"',
+      `"${act.type}"`,
+      act.cardNumber ? `="${act.cardNumber}"` : '"N/A"',
+      `"${(act.customerName || 'Walk-in Customer').replace(/"/g, '""')}"`,
+      act.customerPhone ? `="${act.customerPhone}"` : '"N/A"',
+      act.amount !== undefined ? act.amount.toFixed(2) : '0.00',
+      `"${(act.branchName || 'Main Cafeteria').replace(/"/g, '""')}"`,
+      `"${(act.description || '').replace(/"/g, '""')}"`,
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const sanitizedStaff = selectedStaffForAudit.name.replace(/[^a-zA-Z0-9]/g, '_');
+    link.download = `StaffActivity_${sanitizedStaff}_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    notify.success(`Activity log for ${selectedStaffForAudit.name} exported as CSV.`);
+  };
+
   // ── Table Columns ─────────────────────────────────────────
   const columns = [
     {
@@ -909,7 +1120,18 @@ export function StaffPage() {
             {staff.name.charAt(0).toUpperCase()}
           </div>
           <div>
-            <p className="font-semibold text-slate-900">{staff.name}</p>
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-slate-900">{staff.name}</p>
+              <button
+                type="button"
+                onClick={() => handleOpenStaffAudit(staff)}
+                className="p-1 rounded-md border text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-slate-200 hover:border-emerald-300 transition-colors cursor-pointer"
+                title="View staff performance & operational audit"
+                aria-label={`View performance for ${staff.name}`}
+              >
+                <Eye className="h-3.5 w-3.5" />
+              </button>
+            </div>
             <p className="text-xs text-slate-500">{staff.email}</p>
           </div>
         </div>
@@ -983,6 +1205,7 @@ export function StaffPage() {
             resendingId={resendingId}
             onResendInvite={() => handleResendInvite(staff.id)}
             onEditOrView={() => handleOpenStaffModal(staff, 'overview')}
+            onViewAudit={() => handleOpenStaffAudit(staff)}
             onPermissions={() => handleOpenStaffModal(staff, 'permissions')}
             onBranches={() => handleOpenStaffModal(staff, 'branches')}
             onSecurity={() => handleOpenStaffModal(staff, 'security')}
@@ -2148,6 +2371,297 @@ export function StaffPage() {
           </ModalFooter>
         </div>
       </Modal>
+
+      {/* ── 5. STAFF PERFORMANCE & OPERATIONAL AUDIT MODAL ── */}
+      {selectedStaffForAudit && (
+        <Modal
+          isOpen={true}
+          onClose={() => {
+            setSelectedStaffForAudit(null);
+            setAuditActivityTypeFilter('ALL');
+            setAuditSearch('');
+          }}
+          title={`${selectedStaffForAudit.name} — Staff Performance & Operational Audit`}
+          size="xl"
+        >
+          <div className="space-y-4 text-xs">
+            {/* Staff Profile & Lifetime KPI Strip */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3.5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 font-bold text-white text-base">
+                  {selectedStaffForAudit.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900 text-sm">{selectedStaffForAudit.name}</span>
+                    <Badge variant="outline" className="text-[10px] text-slate-600 bg-white">
+                      {getStaffRoleLabel(selectedStaffForAudit)}
+                    </Badge>
+                  </div>
+                  <span className="text-slate-500">
+                    {selectedStaffForAudit.email} •{' '}
+                    {branches
+                      .filter((b) => selectedStaffForAudit.assignedBranchIds.includes(b.id))
+                      .map((b) => b.name)
+                      .join(', ') || 'All Branches'}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportAuditCsv}
+                  leftIcon={<FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />}
+                >
+                  Export Activity CSV
+                </Button>
+              </div>
+            </div>
+
+            {/* Interactive Filter Toolbar (Branch Scope & Time Window) */}
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3">
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Branch Scope */}
+                <div className="w-44">
+                  <label className="mb-1 block text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Branch Scope</label>
+                  <Select
+                    id="audit-branch-filter"
+                    value={auditBranchFilter}
+                    onChange={(e) => setAuditBranchFilter(e.target.value)}
+                    options={[
+                      { value: 'ALL', label: 'All Branches' },
+                      ...branches.map((b) => ({ value: b.id, label: b.name })),
+                    ]}
+                  />
+                </div>
+
+                {/* Time Window */}
+                <div className="w-40">
+                  <label className="mb-1 block text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Time Window</label>
+                  <Select
+                    id="audit-date-preset"
+                    value={auditDatePreset}
+                    onChange={(e) => {
+                      const preset = e.target.value;
+                      setAuditDatePreset(preset);
+                      const dates = getAuditPresetDates(preset);
+                      setAuditStartDate(dates.startDate);
+                      setAuditEndDate(dates.endDate);
+                    }}
+                    options={[
+                      { value: 'all', label: 'All Time' },
+                      { value: 'today', label: 'Today' },
+                      { value: 'yesterday', label: 'Yesterday' },
+                      { value: 'last7', label: 'Last 7 Days' },
+                      { value: 'last30', label: 'Last 30 Days' },
+                      { value: 'thisMonth', label: 'This Month' },
+                      { value: 'custom', label: 'Custom Range' },
+                    ]}
+                  />
+                </div>
+
+                {auditDatePreset === 'custom' && (
+                  <div className="flex items-center gap-2 pt-3">
+                    <input
+                      type="date"
+                      value={auditStartDate}
+                      onChange={(e) => setAuditStartDate(e.target.value)}
+                      className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-800"
+                    />
+                    <span className="text-slate-400">to</span>
+                    <input
+                      type="date"
+                      value={auditEndDate}
+                      onChange={(e) => setAuditEndDate(e.target.value)}
+                      className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-800"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <span className="text-[11px] text-slate-500 font-medium">
+                Showing <strong className="text-slate-900 font-mono">{filteredAuditActivities.length}</strong> activities
+              </span>
+            </div>
+
+            {/* 5 Metric KPI Cards */}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-2.5">
+                <span className="text-slate-500 text-[11px]">Cards Activated</span>
+                <p className="font-mono text-base font-bold text-emerald-700">
+                  {auditMetrics.cardsActivatedCount} cards
+                </p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+                <span className="text-slate-500 text-[11px]">Cards Settled</span>
+                <p className="font-mono text-base font-bold text-slate-800">
+                  {auditMetrics.cardsSettledCount} cards
+                </p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+                <span className="text-slate-500 text-[11px]">Card Recharges (POS)</span>
+                <p className="font-mono text-base font-semibold text-emerald-600">
+                  {formatCurrency(auditMetrics.cardRechargeVolume)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+                <span className="text-slate-500 text-[11px]">POS Sales Billed</span>
+                <p className="font-mono text-base font-semibold text-emerald-600">
+                  {formatCurrency(auditMetrics.purchaseVolume)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+                <span className="text-slate-500 text-[11px]">Refunds Processed</span>
+                <p className="font-mono text-base font-semibold text-rose-600">
+                  {formatCurrency(auditMetrics.refundVolume)}
+                </p>
+              </div>
+            </div>
+
+            {/* Filter Tabs & Search in Modal */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-200 pb-2">
+              <div className="flex flex-wrap items-center gap-1">
+                {[
+                  { key: 'ALL', label: 'All Activities' },
+                  { key: 'CARD_ACTIVATION', label: 'Card Activations' },
+                  { key: 'RECHARGE', label: 'Recharges' },
+                  { key: 'PURCHASE', label: 'POS Sales' },
+                  { key: 'CARD_SETTLEMENT', label: 'Settlements' },
+                  { key: 'OTHER', label: 'Card Actions' },
+                ].map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setAuditActivityTypeFilter(tab.key as any)}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer ${
+                      auditActivityTypeFilter === tab.key
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Filter by card, customer, phone..."
+                  value={auditSearch}
+                  maxLength={30}
+                  onChange={(e) => {
+                    const sanitized = e.target.value.replace(/[^a-zA-Z0-9\s@._-]/g, '').slice(0, 30);
+                    setAuditSearch(sanitized);
+                  }}
+                  className="h-7.5 w-60 rounded-lg border border-slate-200 bg-white pl-8 pr-7 text-xs text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none"
+                />
+                {auditSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setAuditSearch('')}
+                    className="absolute right-2 top-1.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    aria-label="Clear activity filter"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Operational Activity Ledger Table */}
+            <div className="max-h-[360px] overflow-y-auto rounded-lg border border-slate-200">
+              <table className="w-full text-left text-xs">
+                <thead className="sticky top-0 border-b border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-600">
+                  <tr>
+                    <th className="py-2.5 pl-3 pr-2">Date & Time</th>
+                    <th className="px-2 py-2.5">Operation</th>
+                    <th className="px-2 py-2.5">Card #</th>
+                    <th className="px-2 py-2.5">Customer</th>
+                    <th className="px-2 py-2.5 text-right">Amount</th>
+                    <th className="px-2 py-2.5">Branch</th>
+                    <th className="py-2.5 pl-2 pr-3">Details / Remarks</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-sans text-slate-700">
+                  {filteredAuditActivities.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-xs text-slate-500">
+                        No activity records found for this staff member matching selected criteria.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredAuditActivities.map((act: StaffActivityItem) => {
+                      let badgeClass = 'bg-slate-100 text-slate-700';
+
+                      if (act.type === 'CARD_ACTIVATION') {
+                        badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+                      } else if (act.type === 'RECHARGE_CASH') {
+                        badgeClass = 'bg-green-100 text-green-800 border-green-200';
+                      } else if (act.type === 'RECHARGE_UPI') {
+                        badgeClass = 'bg-sky-100 text-sky-800 border-sky-200';
+                      } else if (act.type === 'PURCHASE') {
+                        badgeClass = 'bg-indigo-100 text-indigo-800 border-indigo-200';
+                      } else if (act.type === 'CARD_SETTLEMENT') {
+                        badgeClass = 'bg-purple-100 text-purple-800 border-purple-200';
+                      } else if (act.type === 'REFUND' || act.type === 'CARD_BLOCKED') {
+                        badgeClass = 'bg-rose-100 text-rose-800 border-rose-200';
+                      }
+
+                      return (
+                        <tr key={act.id} className="hover:bg-slate-50/80">
+                          <td className="py-2 pl-3 pr-2 font-mono text-[11px] text-slate-500 whitespace-nowrap">
+                            {act.timestamp ? new Date(act.timestamp).toLocaleString() : 'N/A'}
+                          </td>
+                          <td className="px-2 py-2">
+                            <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold border ${badgeClass}`}>
+                              {act.type.replace(/_/g, ' ')}
+                            </span>
+                          </td>
+                          <td className="px-2 py-2 font-mono font-semibold text-slate-800">
+                            {act.cardNumber || '—'}
+                          </td>
+                          <td className="px-2 py-2">
+                            <span className="font-medium text-slate-900">{act.customerName || 'Walk-in Customer'}</span>
+                            {act.customerPhone && (
+                              <span className="block text-[10px] text-slate-400 font-mono">{act.customerPhone}</span>
+                            )}
+                          </td>
+                          <td className="px-2 py-2 text-right font-mono font-bold text-slate-900">
+                            {act.amount !== undefined ? formatCurrency(act.amount) : '—'}
+                          </td>
+                          <td className="px-2 py-2 text-slate-600">
+                            {act.branchName || 'Main Cafeteria'}
+                          </td>
+                          <td className="py-2 pl-2 pr-3 text-slate-500 truncate max-w-[200px]" title={act.description}>
+                            {act.description || '—'}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <ModalFooter>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSelectedStaffForAudit(null);
+                  setAuditActivityTypeFilter('ALL');
+                  setAuditSearch('');
+                }}
+              >
+                Close
+              </Button>
+            </ModalFooter>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

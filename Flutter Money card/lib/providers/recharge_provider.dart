@@ -83,7 +83,7 @@ class RechargeNotifier extends StateNotifier<RechargeState> {
     state = state.copyWith(isStaffVerified: verified, errorMessage: null);
   }
 
-  Future<RechargeResult?> executeRecharge(String sessionId) async {
+  Future<RechargeResult?> executeRecharge(String sessionId, {String? branchId}) async {
     if (!state.canSubmit) return null;
 
     state = state.copyWith(isSubmitting: true, errorMessage: null);
@@ -94,6 +94,7 @@ class RechargeNotifier extends StateNotifier<RechargeState> {
         amount: state.amount,
         paymentMethod: state.paymentMethod,
         externalReference: state.paymentReference,
+        branchId: branchId,
       );
 
       state = state.copyWith(

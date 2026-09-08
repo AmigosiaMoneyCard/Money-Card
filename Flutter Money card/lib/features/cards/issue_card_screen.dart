@@ -75,49 +75,75 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
       barrierDismissible: false,
       builder: (context) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Confirm Card Issuance'),
-          content: SingleChildScrollView(
+          scrollable: true,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
+          title: Row(
+            children: const [
+              Icon(Icons.person_add_alt_1, color: AppColors.primary, size: 22),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text('Confirm Card Issuance', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+          content: Container(
+            constraints: const BoxConstraints(maxWidth: 420),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Card Number:'),
-                    Text(
-                      card.physicalCardNumber,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                  ],
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariantLight,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.borderLight),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Card Number:', style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight)),
+                          Text(
+                            card.physicalCardNumber,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Branch:', style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight)),
+                          Text(branch?.name ?? 'Main Branch', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: const [
+                          Text('Starting Balance:', style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight)),
+                          Text(
+                            '\u20b90.00',
+                            style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 14),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Branch:'),
-                    Text(branch!.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    Text('Starting Balance:'),
-                    Text(
-                      '\u20b90.00',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
-                    ),
-                  ],
-                ),
-                const Divider(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.sm),
                 const Text(
                   'Customer Details (Required for Customer History):',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 TextField(
                   controller: nameCtrl,
+                  autofocus: true,
+                  textInputAction: TextInputAction.next,
+                  scrollPadding: const EdgeInsets.only(bottom: 140),
                   onChanged: (val) {
                     if (nameError != null) {
                       setDialogState(() {
@@ -134,10 +160,12 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                     border: const OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 TextField(
                   controller: phoneCtrl,
                   keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.done,
+                  scrollPadding: const EdgeInsets.only(bottom: 140),
                   inputFormatters: [
                     FilteringTextInputFormatter.digitsOnly,
                     LengthLimitingTextInputFormatter(10),
@@ -159,10 +187,10 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                     border: const OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: AppSpacing.sm),
+                const SizedBox(height: AppSpacing.xs),
                 const Text(
                   'Customer details are saved to Customer History. Then the card becomes active.',
-                  style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
+                  style: TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
                 ),
               ],
             ),

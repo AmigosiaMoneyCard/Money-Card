@@ -259,6 +259,7 @@ export const mockAnalyticsHandlers = {
       if (branchId && branchId !== 'ALL' && !s.assignedBranchIds?.includes(branchId)) return false;
       return true;
     });
+    const activeStaffCount = orgStaffList.filter((s) => s.status === 'ACTIVE').length;
 
     const staffPerformance: StaffPerformanceMetric[] = orgStaffList.map((st, idx) => {
       // Sessions issued by this staff

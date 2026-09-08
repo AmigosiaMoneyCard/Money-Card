@@ -75,12 +75,16 @@ export function filterCards(
 
     // 4. Branch Filter
     if (targetBranch !== 'ALL') {
-      const cardBranch =
-        card.activeSession?.branchId ||
-        (card as any).currentBranchId ||
-        (card as any).branchId;
+      const activeBranch = card.activeSession?.branchId;
+      const currentBranch = (card as any).currentBranchId;
+      const baseBranch = (card as any).branchId;
 
-      if (cardBranch !== targetBranch) {
+      const matchesBranch =
+        activeBranch === targetBranch ||
+        currentBranch === targetBranch ||
+        baseBranch === targetBranch;
+
+      if (!matchesBranch) {
         return false;
       }
     }

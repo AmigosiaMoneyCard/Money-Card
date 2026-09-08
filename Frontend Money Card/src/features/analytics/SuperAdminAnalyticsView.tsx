@@ -101,8 +101,12 @@ export function SuperAdminAnalyticsView() {
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [pdfSections, setPdfSections] = useState<PlatformPdfSectionOptions>({
     includePlatformKpis: true,
-    includeOrgsAndBranches: true,
-    includeProductsAndPlans: true,
+    includeFinancialSummary: true,
+    includeTenantOrgs: true,
+    includeBranchPerformance: true,
+    includeProductDemand: true,
+    includePeakTraffic: true,
+    includeSubscriptionPlans: true,
   });
 
   // Clean up object URL when component unmounts or preview changes
@@ -307,8 +311,12 @@ export function SuperAdminAnalyticsView() {
   const handleSetAllSections = (enable: boolean) => {
     const updated: PlatformPdfSectionOptions = {
       includePlatformKpis: enable,
-      includeOrgsAndBranches: enable,
-      includeProductsAndPlans: enable,
+      includeFinancialSummary: enable,
+      includeTenantOrgs: enable,
+      includeBranchPerformance: enable,
+      includeProductDemand: enable,
+      includePeakTraffic: enable,
+      includeSubscriptionPlans: enable,
     };
     setPdfSections(updated);
     refreshPdfPreview(updated);
@@ -591,7 +599,7 @@ export function SuperAdminAnalyticsView() {
             setPdfPreviewUrl(null);
           }
         }}
-        title="Super Admin Analytics Report — PDF Preview"
+        title="Organization Analytics Report — PDF Preview"
         size="xl"
       >
         <div className="space-y-4">
@@ -625,76 +633,43 @@ export function SuperAdminAnalyticsView() {
               </div>
             </div>
 
-            {/* Option Pills / Interactive Toggle Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2.5">
-              {/* Option 1: Platform KPIs */}
-              <button
-                type="button"
-                id="platform-toggle-kpis"
-                onClick={() => handleToggleSection('includePlatformKpis')}
-                className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all cursor-pointer ${
-                  pdfSections.includePlatformKpis
-                    ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
-                    : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
-                }`}
-              >
-                <div
-                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
-                    pdfSections.includePlatformKpis
-                      ? 'border-emerald-600 bg-emerald-600 text-white'
-                      : 'border-slate-300 bg-white'
-                  }`}
-                >
-                  {pdfSections.includePlatformKpis && <Check className="h-3 w-3 stroke-[3]" />}
-                </div>
-                <span className="text-xs font-semibold">1. Platform Overview</span>
-              </button>
-
-              {/* Option 2: Organizations & Branches */}
-              <button
-                type="button"
-                id="platform-toggle-orgs-branches"
-                onClick={() => handleToggleSection('includeOrgsAndBranches')}
-                className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all cursor-pointer ${
-                  pdfSections.includeOrgsAndBranches
-                    ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
-                    : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
-                }`}
-              >
-                <div
-                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
-                    pdfSections.includeOrgsAndBranches
-                      ? 'border-emerald-600 bg-emerald-600 text-white'
-                      : 'border-slate-300 bg-white'
-                  }`}
-                >
-                  {pdfSections.includeOrgsAndBranches && <Check className="h-3 w-3 stroke-[3]" />}
-                </div>
-                <span className="text-xs font-semibold">2. Organizations & Branches</span>
-              </button>
-
-              {/* Option 3: Products & Subscriptions */}
-              <button
-                type="button"
-                id="platform-toggle-products-plans"
-                onClick={() => handleToggleSection('includeProductsAndPlans')}
-                className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all cursor-pointer ${
-                  pdfSections.includeProductsAndPlans
-                    ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
-                    : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
-                }`}
-              >
-                <div
-                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
-                    pdfSections.includeProductsAndPlans
-                      ? 'border-emerald-600 bg-emerald-600 text-white'
-                      : 'border-slate-300 bg-white'
-                  }`}
-                >
-                  {pdfSections.includeProductsAndPlans && <Check className="h-3 w-3 stroke-[3]" />}
-                </div>
-                <span className="text-xs font-semibold">3. Products & Subscriptions</span>
-              </button>
+            {/* Option Pills / Interactive Toggle Cards - Section by section */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 pt-2.5">
+              {[
+                { key: 'includePlatformKpis' as const, label: '1. Platform Overview', id: 'platform-toggle-kpis' },
+                { key: 'includeFinancialSummary' as const, label: '2. Financial & Revenue', id: 'platform-toggle-financial' },
+                { key: 'includeTenantOrgs' as const, label: '3. Organizations & Usage', id: 'platform-toggle-orgs' },
+                { key: 'includeBranchPerformance' as const, label: '4. Branch Performance', id: 'platform-toggle-branches' },
+                { key: 'includeProductDemand' as const, label: '5. Top Selling Products', id: 'platform-toggle-products' },
+                { key: 'includePeakTraffic' as const, label: '6. Peak Hours & Traffic', id: 'platform-toggle-peak' },
+                { key: 'includeSubscriptionPlans' as const, label: '7. Subscription Plans', id: 'platform-toggle-plans' },
+              ].map((sec) => {
+                const isSelected = !!pdfSections[sec.key];
+                return (
+                  <button
+                    key={sec.key}
+                    type="button"
+                    id={sec.id}
+                    onClick={() => handleToggleSection(sec.key)}
+                    className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all cursor-pointer ${
+                      isSelected
+                        ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
+                        : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
+                    }`}
+                  >
+                    <div
+                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                        isSelected
+                          ? 'border-emerald-600 bg-emerald-600 text-white'
+                          : 'border-slate-300 bg-white'
+                      }`}
+                    >
+                      {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
+                    </div>
+                    <span className="text-xs font-semibold">{sec.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -703,7 +678,7 @@ export function SuperAdminAnalyticsView() {
               <iframe
                 src={`${pdfPreviewUrl}#toolbar=0`}
                 className="w-full h-[70vh] rounded-lg"
-                title="Super Admin Analytics Report PDF Preview"
+                title="Organization Analytics Report PDF Preview"
               />
             </div>
           )}
