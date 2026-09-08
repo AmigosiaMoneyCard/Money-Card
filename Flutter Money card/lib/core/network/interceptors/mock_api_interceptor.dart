@@ -1331,6 +1331,10 @@ class MockApiInterceptor extends Interceptor {
       final data = options.data is String ? jsonDecode(options.data) : options.data;
       final amount = (data?['amount'] as num?)?.toDouble() ?? 0.0;
       final methodStr = data?['paymentMethod'] as String? ?? 'CASH';
+      final branchId = (data?['branchId'] as String?) ??
+          (options.headers['x-branch-id'] as String?) ??
+          (currentActiveUser['assignedBranchIds'] as List?)?.firstOrNull ??
+          session['branchId'];
 
       if (amount <= 0) {
         return _reject(handler, options, 400, 'VALIDATION_ERROR', 'Recharge amount must be greater than 0');
@@ -1339,14 +1343,30 @@ class MockApiInterceptor extends Interceptor {
       final currentBalance = (session['balance'] as num).toDouble();
       final updatedBalance = currentBalance + amount;
       session['balance'] = updatedBalance;
+      if (branchId != null) {
+        session['branchId'] = branchId;
+      }
       session['updatedAt'] = DateTime.now().toIso8601String();
+
+      // Synchronize the card's current branch location across the organization
+      if (session['cardId'] != null && branchId != null) {
+        final cardIndex = mockCards.indexWhere((c) =>
+            c['id'] == session['cardId'] ||
+            c['physicalCardNumber'] == session['cardId'] ||
+            c['qrToken'] == session['cardId']);
+        if (cardIndex != -1) {
+          mockCards[cardIndex]['currentBranchId'] = branchId;
+        }
+      }
 
       final tx = {
         'id': 'tx-rec-${DateTime.now().millisecondsSinceEpoch}',
         'sessionId': sessionId,
+        'branchId': branchId ?? session['branchId'] ?? 'branch-001',
         'type': 'RECHARGE',
         'paymentMethod': methodStr,
         'amount': amount,
+        'balanceBefore': currentBalance,
         'balanceAfter': updatedBalance,
         'status': 'SUCCESS',
         'createdAt': DateTime.now().toIso8601String(),
@@ -1855,31 +1875,36 @@ class MockApiInterceptor extends Interceptor {
         factor = 24.0;
       }
 
-      final txCount = (148 * factor).round();
+      final branchTxns = mockTransactions.where((t) => t['branchId'] == branchId).toList();
+      final extraRecharges = branchTxns.where((t) => t['type'] == 'RECHARGE' && (t['id'] as String).startsWith('tx-rec-')).toList();
+      final extraRVol = extraRecharges.fold<double>(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
+      final extraRCount = extraRecharges.length;
+
+      final dynamicRCount = (52 * factor).round() + extraRCount;
+      final dynamicRVol = (24800.0 * factor).roundToDouble() + extraRVol;
+      final dynamicTxCount = (148 * factor).round() + extraRCount;
       final pCount = (96 * factor).round();
       final pVol = (18450.0 * factor).roundToDouble();
-      final rCount = (52 * factor).round();
-      final rVol = (24800.0 * factor).roundToDouble();
       final refCount = (4 * factor).round();
       final refVol = (650.0 * factor).roundToDouble();
-      final totRev = pVol + rVol - refVol;
+      final dynamicTotRev = pVol + dynamicRVol - refVol;
 
       final branchAnalytics = {
         'branchId': branchId,
         'branchName': branch['name'] ?? 'Main Cafeteria',
         'status': 'ACTIVE',
-        'transactionCount': txCount,
+        'transactionCount': dynamicTxCount,
         'purchaseCount': pCount,
         'purchaseVolume': pVol,
-        'rechargeCount': rCount,
-        'rechargeVolume': rVol,
+        'rechargeCount': dynamicRCount,
+        'rechargeVolume': dynamicRVol,
         'refundCount': refCount,
         'refundVolume': refVol,
-        'totalRevenue': totRev,
+        'totalRevenue': dynamicTotRev,
         'sessionCount': (96 * (factor > 2 ? 2.5 : factor)).round(),
         'activeSessionsCount': 12,
         'settledSessionsCount': (84 * (factor > 2 ? 2.5 : factor)).round(),
-        'avgTransactionValue': txCount > 0 ? (pVol / pCount).roundToDouble() : 0.0,
+        'avgTransactionValue': dynamicTxCount > 0 ? (pVol / pCount).roundToDouble() : 0.0,
         'avgPurchaseValue': pCount > 0 ? (pVol / pCount).roundToDouble() : 0.0,
         'productsSoldCount': (245 * factor).round(),
         'inventoryItemCount': mockInventory.length,

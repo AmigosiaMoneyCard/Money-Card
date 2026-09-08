@@ -217,10 +217,18 @@ export const mockSessionsHandlers = {
     const transactionId = mockStore.generateId('TXN');
     const paymentId = mockStore.generateId('PAYMENT');
 
+    const effectiveBranchId = (req as any).branchId || session.branchId;
+    session.branchId = effectiveBranchId;
+
+    const card = mockStore.cards.find((c) => c.id === session.cardId);
+    if (card) {
+      card.currentBranchId = effectiveBranchId;
+    }
+
     const transaction: Transaction = {
       id: transactionId,
       sessionId: session.id,
-      branchId: session.branchId,
+      branchId: effectiveBranchId,
       type: 'RECHARGE',
       amount: req.amount,
       balanceAfter: newBalance,

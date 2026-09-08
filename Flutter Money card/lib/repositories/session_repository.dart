@@ -48,12 +48,14 @@ class SessionRepository {
     required double amount,
     required PaymentMethod paymentMethod,
     String? externalReference,
+    String? branchId,
   }) async {
     return _sessionService.recharge(
       sessionId: sessionId,
       amount: amount,
       paymentMethod: paymentMethod,
       externalReference: externalReference,
+      branchId: branchId,
     );
   }
 

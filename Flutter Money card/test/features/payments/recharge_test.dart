@@ -36,6 +36,7 @@ class FakeRechargeSessionRepository implements SessionRepository {
     required double amount,
     required PaymentMethod paymentMethod,
     String? externalReference,
+    String? branchId,
   }) async {
     currentBalance += amount;
     lastExternalReference = externalReference;

@@ -292,7 +292,7 @@ export async function getActiveSessionByQr(req: Request, res: Response) {
 
 export async function rechargeSession(req: Request, res: Response) {
   const { id } = req.params;
-  const { amount, paymentMethod = 'CASH', externalReference } = req.body;
+  const { amount, paymentMethod = 'CASH', externalReference, branchId: requestedBranchId } = req.body;
   const orgId = req.user?.organizationId;
 
   const rechargeAmount = parseFloat(amount);
@@ -313,12 +313,27 @@ export async function rechargeSession(req: Request, res: Response) {
     return sendError(res, 400, 'INVALID_STATE', 'Cannot recharge an inactive or settled session');
   }
 
-  if (session.branch && session.branch.status !== 'ACTIVE') {
-    return sendError(res, 403, 'BRANCH_INACTIVE', 'This branch location is currently disabled or inactive');
+  // Determine effective recharging branch:
+  // Can be passed via body branchId, header 'x-branch-id', or staff's branch assignment.
+  let effectiveBranchId = requestedBranchId || (req.headers['x-branch-id'] as string) || session.branchId;
+
+  if (req.user?.role === 'STAFF') {
+    if (requestedBranchId && !req.user.assignedBranchIds.includes(requestedBranchId)) {
+      return sendError(res, 403, 'BRANCH_ACCESS_DENIED', 'You are not authorized to process recharges for another branch');
+    }
+    if (!requestedBranchId && req.user.assignedBranchIds.length > 0) {
+      effectiveBranchId = req.user.assignedBranchIds.includes(effectiveBranchId)
+        ? effectiveBranchId
+        : req.user.assignedBranchIds[0];
+    }
   }
 
-  if (req.user?.role === 'STAFF' && !req.user.assignedBranchIds.includes(session.branchId)) {
-    return sendError(res, 403, 'BRANCH_ACCESS_DENIED', 'You are not authorized to recharge a session belonging to another branch');
+  const rechargingBranch = await prisma.branch.findFirst({
+    where: { id: effectiveBranchId, organizationId: orgId || undefined },
+  });
+
+  if (!rechargingBranch || rechargingBranch.status !== 'ACTIVE') {
+    return sendError(res, 403, 'BRANCH_INACTIVE', 'This branch location is currently disabled or inactive');
   }
 
   if (session.card?.status === CardStatus.BLOCKED) {
@@ -329,17 +344,22 @@ export async function rechargeSession(req: Request, res: Response) {
     const balanceBefore = session.balance;
     const balanceAfter = balanceBefore + rechargeAmount;
 
+    // Update session balance and associate active session with the recharging branch
     const updated = await tx.cardSession.update({
       where: { id },
-      data: { balance: balanceAfter },
+      data: {
+        balance: balanceAfter,
+        branchId: effectiveBranchId,
+      },
     });
 
     const txType = paymentMethod === 'UPI' ? TransactionType.RECHARGE_UPI : TransactionType.RECHARGE_CASH;
 
+    // Credit transaction accurately to the recharging branch
     const txRecord = await tx.transaction.create({
       data: {
         sessionId: session.id,
-        branchId: session.branchId,
+        branchId: effectiveBranchId,
         staffUserId: req.user?.id,
         type: txType,
         amount: rechargeAmount,
