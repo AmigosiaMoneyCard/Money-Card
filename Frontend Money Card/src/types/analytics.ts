@@ -43,6 +43,7 @@ export interface StaffActivityItem {
   cardNumber?: string;
   customerName?: string;
   customerPhone?: string;
+  branchId?: string;
   branchName?: string;
   timestamp: string;
   paymentMethod?: string;
