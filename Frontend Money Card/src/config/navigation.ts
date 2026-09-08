@@ -69,14 +69,6 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
     permission: 'SESSION_VIEW',
   },
   {
-    id: 'products',
-    label: 'Menu',
-    path: '/products',
-    iconName: 'Package',
-    roles: ['ORG_ADMIN'],
-    permission: 'PRODUCT_VIEW',
-  },
-  {
     id: 'analytics',
     label: 'Analytics',
     path: '/analytics',
