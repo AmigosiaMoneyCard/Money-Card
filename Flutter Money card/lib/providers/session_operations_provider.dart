@@ -101,7 +101,9 @@ final StateNotifierProvider<SessionListNotifier, SessionListState> sessionListNo
     StateNotifierProvider<SessionListNotifier, SessionListState>((ref) {
   final sessionRepository = ref.watch(sessionRepositoryProvider);
   final currentBranch = ref.watch(currentBranchProvider);
-  return SessionListNotifier(sessionRepository, currentBranch?.id);
+  final notifier = SessionListNotifier(sessionRepository, currentBranch?.id);
+  notifier.loadSessions();
+  return notifier;
 });
 
 // ==========================================

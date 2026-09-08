@@ -31,14 +31,23 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     if (rangeLower.includes('today')) {
       fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       toDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-    } else if (rangeLower.includes('week')) {
-      const day = now.getDay();
-      const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Monday
-      fromDate = new Date(now.getFullYear(), now.getMonth(), diff);
-      toDate = new Date(now.getFullYear(), now.getMonth(), diff + 6, 23, 59, 59, 999);
+    } else if (rangeLower.includes('yesterday')) {
+      const yest = new Date(now);
+      yest.setDate(yest.getDate() - 1);
+      fromDate = new Date(yest.getFullYear(), yest.getMonth(), yest.getDate());
+      toDate = new Date(yest.getFullYear(), yest.getMonth(), yest.getDate(), 23, 59, 59, 999);
+    } else if (rangeLower.includes('week') || rangeLower.includes('last7') || rangeLower.includes('7')) {
+      fromDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      toDate = new Date();
+    } else if (rangeLower.includes('last30') || rangeLower.includes('30')) {
+      fromDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      toDate = new Date();
     } else if (rangeLower.includes('month')) {
       fromDate = new Date(now.getFullYear(), now.getMonth(), 1);
       toDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    } else if (rangeLower.includes('all')) {
+      fromDate = undefined;
+      toDate = undefined;
     }
   }
 

@@ -82,5 +82,7 @@ final StateNotifierProvider<AnalyticsNotifier, AnalyticsState> analyticsNotifier
     StateNotifierProvider<AnalyticsNotifier, AnalyticsState>((ref) {
   final analyticsRepository = ref.watch(analyticsRepositoryProvider);
   final currentBranch = ref.watch(currentBranchProvider);
-  return AnalyticsNotifier(analyticsRepository, currentBranch?.id);
+  final notifier = AnalyticsNotifier(analyticsRepository, currentBranch?.id);
+  notifier.loadAnalytics();
+  return notifier;
 });

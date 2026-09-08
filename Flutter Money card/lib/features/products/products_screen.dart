@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
+import '../../models/branch.dart';
 import '../../providers/branch_provider.dart';
 import '../../providers/pos_cart_provider.dart';
 import '../../widgets/common/app_badge.dart';
@@ -35,13 +36,28 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<Branch?>(currentBranchProvider, (previous, next) {
+      if (next != null && next.id != previous?.id) {
+        ref.read(posCatalogNotifierProvider.notifier).loadProducts(force: true);
+      }
+    });
+
     final catalogState = ref.watch(posCatalogNotifierProvider);
     final notifier = ref.read(posCatalogNotifierProvider.notifier);
-    final currentBranch = ref.watch(currentBranchProvider);
+    final branchState = ref.watch(branchNotifierProvider);
+    final currentBranch = branchState.currentBranch;
+    final assignedBranches = branchState.assignedBranches;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Products & Menu'),
+        actions: [
+          if (assignedBranches.length > 1 && currentBranch != null)
+            Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.sm),
+              child: _buildBranchSwitcher(context, ref, currentBranch, assignedBranches),
+            ),
+        ],
       ),
       body: SafeArea(
         child: Column(
@@ -60,13 +76,17 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                   children: [
                     const Icon(Icons.storefront, size: 20, color: AppColors.primary),
                     const SizedBox(width: AppSpacing.xs),
-                    Text(
-                      'Branch: ${currentBranch?.name ?? "Main Cafeteria"}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
+                    Expanded(
+                      child: Text(
+                        'Branch: ${currentBranch?.name ?? "Main Cafeteria"}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
+                    if (assignedBranches.length > 1 && currentBranch != null)
+                      _buildBranchSwitcher(context, ref, currentBranch, assignedBranches),
                   ],
                 ),
               ),
@@ -132,8 +152,77 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
 
             // Products Catalog List
             Expanded(
-              child: _buildProductsList(catalogState, notifier),
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  await notifier.loadProducts(force: true);
+                },
+                child: _buildProductsList(catalogState, notifier),
+              ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBranchSwitcher(
+    BuildContext context,
+    WidgetRef ref,
+    Branch currentBranch,
+    List<Branch> assignedBranches,
+  ) {
+    return PopupMenuButton<Branch>(
+      initialValue: currentBranch,
+      onSelected: (branch) {
+        ref.read(branchNotifierProvider.notifier).selectBranch(branch);
+        ref.read(posCatalogNotifierProvider.notifier).loadProducts(force: true);
+      },
+      itemBuilder: (context) {
+        return assignedBranches.map((branch) {
+          final isSelected = branch.id == currentBranch.id;
+          return PopupMenuItem<Branch>(
+            value: branch,
+            child: Row(
+              children: [
+                Icon(
+                  Icons.storefront,
+                  size: 18,
+                  color: isSelected ? AppColors.primary : AppColors.textSecondaryLight,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  branch.name,
+                  style: TextStyle(
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected ? AppColors.primaryDark : AppColors.textPrimaryLight,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: AppColors.primaryLight,
+          borderRadius: AppSpacing.roundedSm,
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.swap_horiz, size: 14, color: AppColors.primaryDark),
+            SizedBox(width: 4),
+            Text(
+              'Switch',
+              style: TextStyle(
+                color: AppColors.primaryDark,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Icon(Icons.arrow_drop_down, size: 14, color: AppColors.primaryDark),
           ],
         ),
       ),
@@ -161,7 +250,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
               ElevatedButton(
-                onPressed: notifier.loadProducts,
+                onPressed: () => notifier.loadProducts(force: true),
                 child: const Text('Retry'),
               ),
             ],
@@ -184,12 +273,14 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     }
 
     return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: AppSpacing.paddingMd,
       itemCount: products.length,
       separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
       itemBuilder: (context, index) {
         final product = products[index];
         final isActive = product.status.toUpperCase() == 'ACTIVE';
+        final isOut = product.isOutOfStock;
 
         return AppCard(
           padding: AppSpacing.paddingMd,
@@ -199,12 +290,12 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
               Container(
                 padding: const EdgeInsets.all(AppSpacing.sm),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryLight,
+                  color: isOut ? AppColors.errorLight.withValues(alpha: 0.3) : AppColors.primaryLight,
                   borderRadius: AppSpacing.roundedSm,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.restaurant_menu,
-                  color: AppColors.primary,
+                  color: isOut ? AppColors.error : AppColors.primary,
                   size: 24,
                 ),
               ),
@@ -218,25 +309,38 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                         Expanded(
                           child: Text(
                             product.itemName,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
+                              color: isOut ? AppColors.textSecondaryLight : null,
                             ),
                           ),
                         ),
-                        AppBadge(
-                          label: product.status,
-                          variant: isActive ? AppBadgeVariant.success : AppBadgeVariant.neutral,
-                        ),
+                        if (isOut)
+                          const AppBadge(
+                            label: 'Out of Stock',
+                            variant: AppBadgeVariant.error,
+                          )
+                        else ...[
+                          AppBadge(
+                            label: product.status,
+                            variant: isActive ? AppBadgeVariant.success : AppBadgeVariant.neutral,
+                          ),
+                          const SizedBox(width: 4),
+                          AppBadge(
+                            label: '${product.currentStock} in stock',
+                            variant: product.currentStock <= 10 ? AppBadgeVariant.warning : AppBadgeVariant.primary,
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 2),
                     Text(
                       '₹${product.price.toStringAsFixed(2)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
+                        color: isOut ? AppColors.textSecondaryLight : AppColors.primary,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xs),

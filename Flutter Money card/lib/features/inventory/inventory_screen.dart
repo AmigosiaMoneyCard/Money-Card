@@ -71,6 +71,13 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<Branch?>(currentBranchProvider, (previous, next) {
+      if (next != null && next.id != previous?.id) {
+        ref.read(inventoryNotifierProvider.notifier).loadInventory(force: true);
+        ref.read(inventoryNotifierProvider.notifier).loadMovements();
+      }
+    });
+
     final inventoryState = ref.watch(inventoryNotifierProvider);
     final notifier = ref.read(inventoryNotifierProvider.notifier);
     final branchState = ref.watch(branchNotifierProvider);
@@ -135,6 +142,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
       initialValue: currentBranch,
       onSelected: (branch) {
         ref.read(branchNotifierProvider.notifier).selectBranch(branch);
+        ref.read(inventoryNotifierProvider.notifier).loadInventory(force: true);
+        ref.read(inventoryNotifierProvider.notifier).loadMovements();
       },
       itemBuilder: (context) {
         return assignedBranches.map((branch) {

@@ -119,7 +119,11 @@ final StateNotifierProvider<PosCatalogNotifier, PosCatalogState> posCatalogNotif
     StateNotifierProvider<PosCatalogNotifier, PosCatalogState>((ref) {
   final productRepository = ref.watch(productRepositoryProvider);
   final currentBranch = ref.watch(currentBranchProvider);
-  return PosCatalogNotifier(productRepository, currentBranch?.id);
+  final notifier = PosCatalogNotifier(productRepository, currentBranch?.id);
+  if (currentBranch != null) {
+    notifier.loadProducts(force: true);
+  }
+  return notifier;
 });
 
 // ==========================================
@@ -166,22 +170,38 @@ class PosCartNotifier extends StateNotifier<PosCartState> {
   PosCartNotifier(this._sessionRepository, [this._onPurchaseSuccess]) : super(const PosCartState());
 
   void addToCart(Product product) {
+    if (product.currentStock <= 0) {
+      state = state.copyWith(errorMessage: "'${product.itemName}' is out of stock.");
+      return;
+    }
     final updated = Map<String, CartItem>.from(state.items);
     if (updated.containsKey(product.id)) {
       final existing = updated[product.id]!;
+      if (existing.quantity >= product.currentStock) {
+        state = state.copyWith(
+          errorMessage: "Cannot add more. Only ${product.currentStock} in stock for '${product.itemName}'.",
+        );
+        return;
+      }
       updated[product.id] = existing.copyWith(quantity: existing.quantity + 1);
     } else {
       updated[product.id] = CartItem(product: product, quantity: 1);
     }
-    state = state.copyWith(items: updated);
+    state = state.copyWith(items: updated, errorMessage: null);
   }
 
   void increaseQuantity(String productId) {
     if (!state.items.containsKey(productId)) return;
     final updated = Map<String, CartItem>.from(state.items);
     final item = updated[productId]!;
+    if (item.quantity >= item.product.currentStock) {
+      state = state.copyWith(
+        errorMessage: "Cannot add more. Only ${item.product.currentStock} in stock for '${item.product.itemName}'.",
+      );
+      return;
+    }
     updated[productId] = item.copyWith(quantity: item.quantity + 1);
-    state = state.copyWith(items: updated);
+    state = state.copyWith(items: updated, errorMessage: null);
   }
 
   void decreaseQuantity(String productId) {
@@ -193,22 +213,38 @@ class PosCartNotifier extends StateNotifier<PosCartState> {
     } else {
       updated.remove(productId);
     }
-    state = state.copyWith(items: updated);
+    state = state.copyWith(items: updated, errorMessage: null);
   }
 
   void removeItem(String productId) {
     final updated = Map<String, CartItem>.from(state.items);
     updated.remove(productId);
-    state = state.copyWith(items: updated);
+    state = state.copyWith(items: updated, errorMessage: null);
   }
 
   void clearCart() {
     state = const PosCartState();
   }
 
-  /// Execute purchase transaction
+  /// Execute purchase transaction with strict out-of-stock validation
   Future<PurchaseResult?> executePurchase(String sessionId) async {
     if (state.isEmpty || state.isSubmitting) return null;
+
+    // Validate that no out-of-stock or exceeding-stock items are purchased
+    for (final item in state.items.values) {
+      if (item.product.currentStock <= 0) {
+        state = state.copyWith(
+          errorMessage: "'${item.product.itemName}' is out of stock and cannot be purchased.",
+        );
+        return null;
+      }
+      if (item.quantity > item.product.currentStock) {
+        state = state.copyWith(
+          errorMessage: "Cannot purchase ${item.quantity}x '${item.product.itemName}'. Only ${item.product.currentStock} available in stock.",
+        );
+        return null;
+      }
+    }
 
     state = state.copyWith(isSubmitting: true, errorMessage: null);
 

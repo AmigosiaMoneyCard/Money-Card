@@ -423,8 +423,9 @@ export async function purchaseSession(req: Request, res: Response) {
           },
         });
 
-        if (inventory && inventory.quantity < qty) {
-          throw new Error(`Insufficient stock for '${product.itemName}'. Available: ${inventory.quantity}`);
+        const availableQty = inventory ? inventory.quantity : 0;
+        if (availableQty < qty) {
+          throw new Error(`Insufficient stock for '${product.itemName}'. Available: ${availableQty}, Requested: ${qty}`);
         }
 
         if (inventory) {
