@@ -48,8 +48,14 @@
     border-radius: 3px;
   }
 
-  ::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
+  /* Disable browser native password reveal and clear buttons (Edge / IE) */
+  input::-ms-reveal,
+  input::-ms-clear {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
   }
 }
 

@@ -431,6 +431,7 @@ export function StaffPage() {
     setFormName('');
     setFormEmail('');
     setFormPassword('');
+    setShowPassword(false);
     setFormBranchIds(branches.map((b) => b.id)); // Default assign all active branches
     setFormPermissions([
       'CARD_VIEW',
@@ -449,8 +450,13 @@ export function StaffPage() {
   // ── Validate Add Staff Step 1 ──────────────────────────────
   const validateBasicInfo = (): boolean => {
     const errors: Record<string, string> = {};
-    if (!formName.trim()) errors.name = 'Staff name is required';
-    else if (formName.trim().length > 20) errors.name = 'Staff name must be at most 20 characters';
+    if (!formName.trim()) {
+      errors.name = 'Staff name is required';
+    } else if (formName.trim().length < 2) {
+      errors.name = 'Staff name must be at least 2 characters';
+    } else if (formName.trim().length > 50) {
+      errors.name = 'Staff name must be at most 50 characters';
+    }
     
     const trimmedEmail = formEmail.trim();
     if (!trimmedEmail) {
@@ -1418,53 +1424,55 @@ export function StaffPage() {
                   </h4>
 
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="relative">
-                      <Input
-                        id="staff-new-password"
-                        type={showNewPassword ? 'text' : 'password'}
-                        label="New Password"
-                        placeholder="Enter new password"
-                        value={formNewPassword}
-                        onChange={(e) => {
-                          setFormNewPassword(e.target.value);
-                          if (passwordChangeError) setPasswordChangeError(null);
-                        }}
-                        disabled={!canManage || isChangingPassword}
-                        autoComplete="new-password"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute right-3 top-8 text-slate-400 hover:text-slate-600 focus:outline-none"
-                        tabIndex={-1}
-                      >
-                        {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
+                    <Input
+                      id="staff-new-password"
+                      type={showNewPassword ? 'text' : 'password'}
+                      label="New Password"
+                      placeholder="Enter new password"
+                      value={formNewPassword}
+                      onChange={(e) => {
+                        setFormNewPassword(e.target.value);
+                        if (passwordChangeError) setPasswordChangeError(null);
+                      }}
+                      disabled={!canManage || isChangingPassword}
+                      autoComplete="new-password"
+                      rightElement={
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="text-slate-400 hover:text-slate-600 focus:outline-none p-1 flex items-center justify-center cursor-pointer"
+                          title={showNewPassword ? 'Hide password' : 'Show password'}
+                          tabIndex={-1}
+                        >
+                          {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      }
+                    />
 
-                    <div className="relative">
-                      <Input
-                        id="staff-confirm-password"
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        label="Confirm New Password"
-                        placeholder="Re-enter new password"
-                        value={formConfirmPassword}
-                        onChange={(e) => {
-                          setFormConfirmPassword(e.target.value);
-                          if (passwordChangeError) setPasswordChangeError(null);
-                        }}
-                        disabled={!canManage || isChangingPassword}
-                        autoComplete="new-password"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-8 text-slate-400 hover:text-slate-600 focus:outline-none"
-                        tabIndex={-1}
-                      >
-                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
+                    <Input
+                      id="staff-confirm-password"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      label="Confirm New Password"
+                      placeholder="Re-enter new password"
+                      value={formConfirmPassword}
+                      onChange={(e) => {
+                        setFormConfirmPassword(e.target.value);
+                        if (passwordChangeError) setPasswordChangeError(null);
+                      }}
+                      disabled={!canManage || isChangingPassword}
+                      autoComplete="new-password"
+                      rightElement={
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="text-slate-400 hover:text-slate-600 focus:outline-none p-1 flex items-center justify-center cursor-pointer"
+                          title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                          tabIndex={-1}
+                        >
+                          {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      }
+                    />
                   </div>
 
                   {/* Password requirements checklist */}
@@ -1612,7 +1620,7 @@ export function StaffPage() {
                     id="add-staff-name"
                     label="Staff Full Name"
                     placeholder="e.g. John Cashier"
-                    maxLength={20}
+                    maxLength={50}
                     value={formName}
                     onChange={(e) => {
                       setFormName(e.target.value);
@@ -1628,7 +1636,7 @@ export function StaffPage() {
                     type="email"
                     label="Email Address"
                     placeholder="john@cafeteria.com"
-                    maxLength={30}
+                    maxLength={100}
                     value={formEmail}
                     onChange={(e) => {
                       setFormEmail(e.target.value);

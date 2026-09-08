@@ -146,8 +146,8 @@ export async function createStaffMember(req: Request, res: Response) {
     passwordHash = await hashPassword(password);
   }
 
-  const targetPermissions: PermissionCode[] = Array.isArray(permissions) && permissions.length > 0
-    ? permissions
+  const targetPermissions: PermissionCode[] = Array.isArray(resolvedPermissions) && resolvedPermissions.length > 0
+    ? resolvedPermissions
     : [
         PermissionCode.CARD_VIEW,
         PermissionCode.CARD_ISSUE,
@@ -187,8 +187,8 @@ export async function createStaffMember(req: Request, res: Response) {
       });
     }
 
-    if (Array.isArray(assignedBranchIds)) {
-      for (const branchId of assignedBranchIds) {
+    if (Array.isArray(resolvedBranchIds)) {
+      for (const branchId of resolvedBranchIds) {
         await tx.userBranch.create({
           data: {
             userId: user.id,
@@ -209,7 +209,7 @@ export async function createStaffMember(req: Request, res: Response) {
       email: result.email,
       role: result.role,
       status: result.status,
-      assignedBranchIds: assignedBranchIds || [],
+      assignedBranchIds: resolvedBranchIds || [],
       permissions: targetPermissions,
       createdAt: result.createdAt,
       updatedAt: result.updatedAt,
