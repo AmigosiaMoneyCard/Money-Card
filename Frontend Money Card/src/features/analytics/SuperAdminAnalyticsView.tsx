@@ -30,16 +30,18 @@ import {
   generatePlatformAnalyticsPdfBlob,
   downloadPlatformAnalyticsPdf,
   type GeneratePlatformAnalyticsPdfParams,
+  type PlatformPdfSectionOptions,
 } from './analyticsPdfExport';
 import {
   Building2,
   Layers,
   RefreshCw,
-  FileText,
   Receipt,
   Eye,
   Download,
   Bell,
+  Check,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 export type DatePreset = 'all' | 'today' | 'yesterday' | 'last7' | 'last30' | 'thisMonth' | 'custom';
@@ -94,9 +96,23 @@ export function SuperAdminAnalyticsView() {
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // PDF Viewer Modal State
+  // PDF Viewer Modal & Option-Wise Customizer State
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [pdfSections, setPdfSections] = useState<PlatformPdfSectionOptions>({
+    includePlatformKpis: true,
+    includeOrgsAndBranches: true,
+    includeProductsAndPlans: true,
+  });
+
+  // Clean up object URL when component unmounts or preview changes
+  useEffect(() => {
+    return () => {
+      if (pdfPreviewUrl) {
+        URL.revokeObjectURL(pdfPreviewUrl);
+      }
+    };
+  }, [pdfPreviewUrl]);
 
   const handlePresetChange = (preset: DatePreset) => {
     setDatePreset(preset);
@@ -166,15 +182,30 @@ export function SuperAdminAnalyticsView() {
     return r.status === 'PENDING';
   }).length;
 
-  // Helper to compile full report parameters object
-  const buildReportParams = (): GeneratePlatformAnalyticsPdfParams | null => {
+  // Helper to compile full report parameters object with optional section override
+  const buildReportParams = (overrideSections?: Partial<PlatformPdfSectionOptions>): GeneratePlatformAnalyticsPdfParams | null => {
     if (!analytics) return null;
 
     const orgMap = new Map<string, string>();
-    orgs.forEach((o) => orgMap.set(o.id, o.name));
+    const dateLabel =
+      datePreset === 'all'
+        ? 'All Recorded History'
+        : datePreset === 'today'
+        ? 'Today'
+        : datePreset === 'yesterday'
+        ? 'Yesterday'
+        : datePreset === 'last7'
+        ? 'Last 7 Days'
+        : datePreset === 'last30'
+        ? 'Last 30 Days'
+        : datePreset === 'thisMonth'
+        ? 'This Month'
+        : startDate && endDate
+        ? `${startDate} to ${endDate}`
+        : 'Custom Range';
 
     return {
-      reportDateRange: 'All Recorded History (M0 Active)',
+      reportDateRange: dateLabel,
       selectedOrgFilter: 'All Platform Organizations',
       totalOrganizations: orgs.length,
       activeSubscriptions: activeOrgsCount,
@@ -245,14 +276,49 @@ export function SuperAdminAnalyticsView() {
         cardLimit: p.cardLimit ?? 1000,
         tenantCount: orgs.filter((o) => o.plan?.id === p.id || o.plan?.name === p.name).length,
       })),
+      sections: overrideSections ?? pdfSections,
     };
+  };
+
+  const refreshPdfPreview = (sectionsToUse: PlatformPdfSectionOptions) => {
+    try {
+      const params = buildReportParams(sectionsToUse);
+      if (!params) return;
+      const blob = generatePlatformAnalyticsPdfBlob(params);
+      if (pdfPreviewUrl) {
+        URL.revokeObjectURL(pdfPreviewUrl);
+      }
+      const url = URL.createObjectURL(blob);
+      setPdfPreviewUrl(url);
+    } catch (err) {
+      console.error('Failed to refresh Super Admin PDF preview:', err);
+    }
+  };
+
+  const handleToggleSection = (sectionKey: keyof PlatformPdfSectionOptions) => {
+    const updated = {
+      ...pdfSections,
+      [sectionKey]: !pdfSections[sectionKey],
+    };
+    setPdfSections(updated);
+    refreshPdfPreview(updated);
+  };
+
+  const handleSetAllSections = (enable: boolean) => {
+    const updated: PlatformPdfSectionOptions = {
+      includePlatformKpis: enable,
+      includeOrgsAndBranches: enable,
+      includeProductsAndPlans: enable,
+    };
+    setPdfSections(updated);
+    refreshPdfPreview(updated);
   };
 
   // ── 1. View PDF Action ─────────────────────────────────────
   const handleViewPdf = () => {
     setIsExportingPdf(true);
     try {
-      const params = buildReportParams();
+      const params = buildReportParams(pdfSections);
       if (!params) {
         notify.error('No analytics data available to render PDF.');
         return;
@@ -279,7 +345,7 @@ export function SuperAdminAnalyticsView() {
   const handleDownloadPdf = () => {
     setIsExportingPdf(true);
     try {
-      const params = buildReportParams();
+      const params = buildReportParams(pdfSections);
       if (!params) {
         notify.error('No analytics data available to download.');
         return;
@@ -288,7 +354,7 @@ export function SuperAdminAnalyticsView() {
       const dateStr = new Date().toISOString().split('T')[0];
       const filename = `MoneyCard_SuperAdmin_Analytics_${dateStr}.pdf`;
 
-      // Execute native jsPDF file download
+      // Execute native jsPDF file download strictly matching enabled options
       downloadPlatformAnalyticsPdf(params, filename);
 
       notify.success(`Analytics report downloaded: ${filename}`);
@@ -351,7 +417,7 @@ export function SuperAdminAnalyticsView() {
           <h1 className="text-2xl font-bold text-slate-900">Platform Analytics</h1>
         </div>
 
-        {/* Action Buttons: [ View PDF ] and [ Download PDF ] */}
+        {/* Action Buttons: [ Refresh ] and [ View PDF ] */}
         <div className="flex flex-wrap items-center gap-2.5">
           <Button
             variant="outline"
@@ -363,24 +429,14 @@ export function SuperAdminAnalyticsView() {
           </Button>
 
           <Button
-            variant="secondary"
+            variant="primary"
             size="sm"
             onClick={handleViewPdf}
             disabled={isExportingPdf || isLoading || !analytics}
             leftIcon={<Eye className="h-4 w-4" />}
+            id="view-superadmin-pdf-btn"
           >
             View PDF
-          </Button>
-
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleDownloadPdf}
-            disabled={isExportingPdf || isLoading || !analytics}
-            isLoading={isExportingPdf}
-            leftIcon={<Download className="h-4 w-4" />}
-          >
-            Download PDF
           </Button>
         </div>
       </div>
@@ -539,12 +595,107 @@ export function SuperAdminAnalyticsView() {
         size="xl"
       >
         <div className="space-y-4">
-          <div className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-2 text-xs text-slate-600 border border-slate-200">
-            <div className="flex flex-wrap items-center gap-2">
-              <FileText className="h-4 w-4 text-emerald-600" />
-              <span>Full 3-Page Publication PDF with Complete Metrics, Tables, and Financial Ledgers</span>
+          {/* Option-Wise Report Section Customizer Toolbar */}
+          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-2xs">
+            <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
+                  <SlidersHorizontal className="h-4 w-4" />
+                </div>
+                <h4 className="text-xs font-bold text-slate-900">Customize Report Sections</h4>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  id="platform-pdf-select-all"
+                  onClick={() => handleSetAllSections(true)}
+                  className="rounded-md px-2 py-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors cursor-pointer"
+                >
+                  Select All
+                </button>
+                <span className="text-slate-300">|</span>
+                <button
+                  type="button"
+                  id="platform-pdf-clear-all"
+                  onClick={() => handleSetAllSections(false)}
+                  className="rounded-md px-2 py-1 text-[11px] font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
+                >
+                  Clear All
+                </button>
+              </div>
             </div>
-            <span className="font-mono text-emerald-600">PDF-1.3 Standard</span>
+
+            {/* Option Pills / Interactive Toggle Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2.5">
+              {/* Option 1: Platform KPIs */}
+              <button
+                type="button"
+                id="platform-toggle-kpis"
+                onClick={() => handleToggleSection('includePlatformKpis')}
+                className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all cursor-pointer ${
+                  pdfSections.includePlatformKpis
+                    ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
+                    : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
+                }`}
+              >
+                <div
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                    pdfSections.includePlatformKpis
+                      ? 'border-emerald-600 bg-emerald-600 text-white'
+                      : 'border-slate-300 bg-white'
+                  }`}
+                >
+                  {pdfSections.includePlatformKpis && <Check className="h-3 w-3 stroke-[3]" />}
+                </div>
+                <span className="text-xs font-semibold">1. Platform Overview</span>
+              </button>
+
+              {/* Option 2: Organizations & Branches */}
+              <button
+                type="button"
+                id="platform-toggle-orgs-branches"
+                onClick={() => handleToggleSection('includeOrgsAndBranches')}
+                className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all cursor-pointer ${
+                  pdfSections.includeOrgsAndBranches
+                    ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
+                    : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
+                }`}
+              >
+                <div
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                    pdfSections.includeOrgsAndBranches
+                      ? 'border-emerald-600 bg-emerald-600 text-white'
+                      : 'border-slate-300 bg-white'
+                  }`}
+                >
+                  {pdfSections.includeOrgsAndBranches && <Check className="h-3 w-3 stroke-[3]" />}
+                </div>
+                <span className="text-xs font-semibold">2. Organizations & Branches</span>
+              </button>
+
+              {/* Option 3: Products & Subscriptions */}
+              <button
+                type="button"
+                id="platform-toggle-products-plans"
+                onClick={() => handleToggleSection('includeProductsAndPlans')}
+                className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all cursor-pointer ${
+                  pdfSections.includeProductsAndPlans
+                    ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
+                    : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
+                }`}
+              >
+                <div
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                    pdfSections.includeProductsAndPlans
+                      ? 'border-emerald-600 bg-emerald-600 text-white'
+                      : 'border-slate-300 bg-white'
+                  }`}
+                >
+                  {pdfSections.includeProductsAndPlans && <Check className="h-3 w-3 stroke-[3]" />}
+                </div>
+                <span className="text-xs font-semibold">3. Products & Subscriptions</span>
+              </button>
+            </div>
           </div>
 
           {pdfPreviewUrl && (
@@ -576,6 +727,7 @@ export function SuperAdminAnalyticsView() {
               size="sm"
               onClick={handleDownloadPdf}
               leftIcon={<Download className="h-4 w-4" />}
+              id="download-platform-customized-pdf-btn"
             >
               Download PDF
             </Button>

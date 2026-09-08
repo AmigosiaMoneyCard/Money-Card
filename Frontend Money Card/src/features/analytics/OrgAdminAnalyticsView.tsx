@@ -29,6 +29,7 @@ import { notify, formatCurrency } from '@/utils';
 import {
   generateAnalyticsPdfBlob,
   downloadOrgAnalyticsPdf,
+  type OrgPdfSectionOptions,
 } from './analyticsPdfExport';
 import { filterStaffActivities, calculateScopedStaffMetrics } from './staffActivityFilter';
 import {
@@ -38,7 +39,6 @@ import {
   RefreshCw,
   Building2,
   DollarSign,
-  FileText,
   Eye,
   Download,
   Layers,
@@ -54,6 +54,8 @@ import {
   FileSpreadsheet,
   Calendar,
   Filter,
+  Check,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 export type DatePreset = 'thisMonth' | 'today' | 'yesterday' | 'last7' | 'last30' | 'custom';
@@ -110,9 +112,23 @@ export function OrgAdminAnalyticsView() {
   const [error, setError] = useState<string | null>(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
-  // PDF Viewer Modal State
+  // PDF Viewer Modal & Option-Wise Customizer State
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [pdfSections, setPdfSections] = useState<OrgPdfSectionOptions>({
+    includeExecutiveKpis: true,
+    includeBranchComparison: true,
+    includeStaffPerformance: true,
+  });
+
+  // Clean up object URL when component unmounts or preview changes
+  useEffect(() => {
+    return () => {
+      if (pdfPreviewUrl) {
+        URL.revokeObjectURL(pdfPreviewUrl);
+      }
+    };
+  }, [pdfPreviewUrl]);
 
   // Sorting & Detail state for Branch Comparison
   const [sortBy, setSortBy] = useState<SortMetric>('revenue');
@@ -278,8 +294,8 @@ export function OrgAdminAnalyticsView() {
       : `${startDate} to ${endDate}`;
   }, [datePreset, startDate, endDate]);
 
-  // Helper to compile Org Admin PDF Options
-  const getOrgReportOptions = () => {
+  // Helper to compile Org Admin PDF Options with dynamic section toggles
+  const getOrgReportOptions = (overrideSections?: Partial<OrgPdfSectionOptions>) => {
     if (!analytics) return null;
 
     return {
@@ -288,14 +304,59 @@ export function OrgAdminAnalyticsView() {
       selectedBranchName,
       dateRangeLabel,
       organizationName: user?.organizationId ? `Organization ${user.organizationId}` : 'Organization Portal',
+      sections: overrideSections ?? pdfSections,
     };
+  };
+
+  const activeSectionsCount = useMemo(() => {
+    let count = 0;
+    if (pdfSections.includeExecutiveKpis) count++;
+    if (pdfSections.includeBranchComparison) count++;
+    if (pdfSections.includeStaffPerformance) count++;
+    return count;
+  }, [pdfSections]);
+
+  // Real-time PDF preview refresh when an option is modified
+  const refreshPdfPreview = (sectionsToUse: OrgPdfSectionOptions) => {
+    try {
+      const options = getOrgReportOptions(sectionsToUse);
+      if (!options) return;
+      const blob = generateAnalyticsPdfBlob(options);
+      if (pdfPreviewUrl) {
+        URL.revokeObjectURL(pdfPreviewUrl);
+      }
+      const url = URL.createObjectURL(blob);
+      setPdfPreviewUrl(url);
+    } catch (err) {
+      console.error('Failed to refresh PDF preview:', err);
+    }
+  };
+
+  // Interactive Section Toggle handler (immediately modifies PDF preview)
+  const handleToggleSection = (sectionKey: keyof OrgPdfSectionOptions) => {
+    const updated = {
+      ...pdfSections,
+      [sectionKey]: !pdfSections[sectionKey],
+    };
+    setPdfSections(updated);
+    refreshPdfPreview(updated);
+  };
+
+  const handleSetAllSections = (enable: boolean) => {
+    const updated: OrgPdfSectionOptions = {
+      includeExecutiveKpis: enable,
+      includeBranchComparison: enable,
+      includeStaffPerformance: enable,
+    };
+    setPdfSections(updated);
+    refreshPdfPreview(updated);
   };
 
   // ── 1. View PDF Action ─────────────────────────────────────
   const handleViewPdf = () => {
     setIsExportingPdf(true);
     try {
-      const options = getOrgReportOptions();
+      const options = getOrgReportOptions(pdfSections);
       if (!options) {
         notify.error('No analytics data available to render PDF.');
         return;
@@ -318,11 +379,11 @@ export function OrgAdminAnalyticsView() {
     }
   };
 
-  // ── 2. Download PDF Action (Guaranteed .pdf via doc.save) ──
+  // ── 2. Download PDF Action (Accurately downloads selected options via doc.save) ──
   const handleDownloadPdf = () => {
     setIsExportingPdf(true);
     try {
-      const options = getOrgReportOptions();
+      const options = getOrgReportOptions(pdfSections);
       if (!options) {
         notify.error('No analytics data available to download.');
         return;
@@ -331,7 +392,7 @@ export function OrgAdminAnalyticsView() {
       const dateStr = new Date().toISOString().split('T')[0];
       const filename = `MoneyCard_OrgAdmin_Analytics_${dateStr}.pdf`;
 
-      // Execute native jsPDF file download
+      // Execute native jsPDF file download strictly matching enabled options
       downloadOrgAnalyticsPdf(options, filename);
 
       notify.success(`Analytics report downloaded: ${filename}`);
@@ -566,27 +627,16 @@ export function OrgAdminAnalyticsView() {
           </div>
         </div>
 
-        {/* Action Buttons: [ View PDF ] and [ Download PDF ] */}
+        {/* Action Button: [ View PDF ] */}
         <div className="flex flex-wrap items-center gap-2.5">
           <Button
-            variant="secondary"
+            variant="primary"
             size="sm"
             onClick={handleViewPdf}
             disabled={isExportingPdf || isLoading || !analytics}
             leftIcon={<Eye className="h-4 w-4" />}
           >
             View PDF
-          </Button>
-
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleDownloadPdf}
-            disabled={isExportingPdf || isLoading || !analytics}
-            isLoading={isExportingPdf}
-            leftIcon={<Download className="h-4 w-4" />}
-          >
-            Download PDF
           </Button>
         </div>
       </div>
@@ -1245,12 +1295,107 @@ export function OrgAdminAnalyticsView() {
         size="xl"
       >
         <div className="space-y-4">
-          <div className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-2 text-xs text-slate-600 border border-slate-200">
-            <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-emerald-600" />
-              <span>Verified Organization Scope Report</span>
+          {/* Option-Wise Report Section Customizer Toolbar */}
+          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-2xs">
+            <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
+                  <SlidersHorizontal className="h-4 w-4" />
+                </div>
+                <h4 className="text-xs font-bold text-slate-900">Customize Report Sections</h4>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  id="pdf-opt-select-all"
+                  onClick={() => handleSetAllSections(true)}
+                  className="rounded-md px-2 py-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors cursor-pointer"
+                >
+                  Select All
+                </button>
+                <span className="text-slate-300">|</span>
+                <button
+                  type="button"
+                  id="pdf-opt-clear-all"
+                  onClick={() => handleSetAllSections(false)}
+                  className="rounded-md px-2 py-1 text-[11px] font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
+                >
+                  Clear All
+                </button>
+              </div>
             </div>
-            <span className="font-mono text-emerald-600">PDF-1.3 Standard</span>
+
+            {/* Option Pills / Interactive Toggle Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2.5">
+              {/* Option 1: Executive KPIs */}
+              <button
+                type="button"
+                id="pdf-toggle-executive-kpis"
+                onClick={() => handleToggleSection('includeExecutiveKpis')}
+                className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all cursor-pointer ${
+                  pdfSections.includeExecutiveKpis
+                    ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
+                    : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
+                }`}
+              >
+                <div
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                    pdfSections.includeExecutiveKpis
+                      ? 'border-emerald-600 bg-emerald-600 text-white'
+                      : 'border-slate-300 bg-white'
+                  }`}
+                >
+                  {pdfSections.includeExecutiveKpis && <Check className="h-3 w-3 stroke-[3]" />}
+                </div>
+                <span className="text-xs font-semibold">1. Executive KPIs</span>
+              </button>
+
+              {/* Option 2: Branch Comparison */}
+              <button
+                type="button"
+                id="pdf-toggle-branch-comparison"
+                onClick={() => handleToggleSection('includeBranchComparison')}
+                className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all cursor-pointer ${
+                  pdfSections.includeBranchComparison
+                    ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
+                    : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
+                }`}
+              >
+                <div
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                    pdfSections.includeBranchComparison
+                      ? 'border-emerald-600 bg-emerald-600 text-white'
+                      : 'border-slate-300 bg-white'
+                  }`}
+                >
+                  {pdfSections.includeBranchComparison && <Check className="h-3 w-3 stroke-[3]" />}
+                </div>
+                <span className="text-xs font-semibold">2. Branch Comparison</span>
+              </button>
+
+              {/* Option 3: Staff Performance */}
+              <button
+                type="button"
+                id="pdf-toggle-staff-performance"
+                onClick={() => handleToggleSection('includeStaffPerformance')}
+                className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all cursor-pointer ${
+                  pdfSections.includeStaffPerformance
+                    ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
+                    : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
+                }`}
+              >
+                <div
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                    pdfSections.includeStaffPerformance
+                      ? 'border-emerald-600 bg-emerald-600 text-white'
+                      : 'border-slate-300 bg-white'
+                  }`}
+                >
+                  {pdfSections.includeStaffPerformance && <Check className="h-3 w-3 stroke-[3]" />}
+                </div>
+                <span className="text-xs font-semibold">3. Staff Performance</span>
+              </button>
+            </div>
           </div>
 
           {pdfPreviewUrl && (
@@ -1282,8 +1427,11 @@ export function OrgAdminAnalyticsView() {
               size="sm"
               onClick={handleDownloadPdf}
               leftIcon={<Download className="h-4 w-4" />}
+              id="download-customized-pdf-btn"
             >
-              Download PDF
+              {activeSectionsCount === 0
+                ? 'Download PDF (Empty)'
+                : `Download PDF (${activeSectionsCount} Section${activeSectionsCount > 1 ? 's' : ''})`}
             </Button>
           </ModalFooter>
         </div>
