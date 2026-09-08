@@ -261,8 +261,9 @@ function OrgAdminSettingsView() {
               label="Organization Name"
               placeholder="e.g. Acme Cafeterias"
               value={orgNameInput}
+              maxLength={30}
               onChange={(e) => {
-                setOrgNameInput(e.target.value);
+                setOrgNameInput(e.target.value.slice(0, 30));
                 if (nameError) setNameError(null);
                 if (apiError) setApiError(null);
               }}

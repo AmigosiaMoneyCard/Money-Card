@@ -150,8 +150,9 @@ export function ResetPasswordPage() {
           autoComplete="new-password"
           autoFocus
           value={newPassword}
+          maxLength={30}
           onChange={(e) => {
-            setNewPassword(e.target.value);
+            setNewPassword(e.target.value.slice(0, 30));
             if (newPasswordError) setNewPasswordError(null);
             if (apiError) setApiError(null);
           }}
@@ -168,8 +169,9 @@ export function ResetPasswordPage() {
           placeholder="Confirm new password"
           autoComplete="new-password"
           value={confirmPassword}
+          maxLength={30}
           onChange={(e) => {
-            setConfirmPassword(e.target.value);
+            setConfirmPassword(e.target.value.slice(0, 30));
             if (confirmPasswordError) setConfirmPasswordError(null);
           }}
           error={confirmPasswordError ?? undefined}

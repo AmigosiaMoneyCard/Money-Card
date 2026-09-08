@@ -118,8 +118,9 @@ export function MandatoryChangePasswordPage() {
               placeholder="Enter the temporary password"
               autoComplete="current-password"
               value={currentPassword}
+              maxLength={30}
               onChange={(e) => {
-                setCurrentPassword(e.target.value);
+                setCurrentPassword(e.target.value.slice(0, 30));
                 if (currentPwError) setCurrentPwError(null);
                 if (apiError) setApiError(null);
               }}
@@ -135,8 +136,9 @@ export function MandatoryChangePasswordPage() {
               placeholder="Enter new private password (min 6 characters)"
               autoComplete="new-password"
               value={newPassword}
+              maxLength={30}
               onChange={(e) => {
-                setNewPassword(e.target.value);
+                setNewPassword(e.target.value.slice(0, 30));
                 if (newPwError) setNewPwError(null);
                 if (apiError) setApiError(null);
               }}
@@ -152,8 +154,9 @@ export function MandatoryChangePasswordPage() {
               placeholder="Confirm new private password"
               autoComplete="new-password"
               value={confirmPassword}
+              maxLength={30}
               onChange={(e) => {
-                setConfirmPassword(e.target.value);
+                setConfirmPassword(e.target.value.slice(0, 30));
                 if (confirmPwError) setConfirmPwError(null);
                 if (apiError) setApiError(null);
               }}
