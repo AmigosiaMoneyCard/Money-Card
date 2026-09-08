@@ -92,7 +92,7 @@ describe('Sidebar Branch Selector & Cross-View Synchronization Logic', () => {
       { id: 's2', branchId: 'branch_002' },
     ];
 
-    // Filter simulation
+    // Cards & Sessions filter simulation
     const filteredCards = cards.filter((c) => targetBranchId === 'ALL' || c.currentBranchId === targetBranchId);
     const filteredSessions = sessions.filter((s) => targetBranchId === 'ALL' || s.branchId === targetBranchId);
 
@@ -101,5 +101,37 @@ describe('Sidebar Branch Selector & Cross-View Synchronization Logic', () => {
 
     expect(filteredSessions).toHaveLength(1);
     expect(filteredSessions[0].branchId).toBe('branch_001');
+
+    // Branches & Staff filter simulation
+    const branchesList = mockBranches;
+    const staffList = [
+      { id: 'st1', name: 'Alice', assignedBranchIds: ['branch_001'] },
+      { id: 'st2', name: 'Bob', assignedBranchIds: ['branch_002'] },
+      { id: 'st3', name: 'Charlie', assignedBranchIds: ['branch_001', 'branch_002'] },
+    ];
+
+    const filteredBranches = branchesList.filter((b) => targetBranchId === 'ALL' || b.id === targetBranchId);
+    const filteredStaff = staffList.filter((s) => targetBranchId === 'ALL' || s.assignedBranchIds.includes(targetBranchId));
+
+    expect(filteredBranches).toHaveLength(1);
+    expect(filteredBranches[0].id).toBe('branch_001');
+
+    expect(filteredStaff).toHaveLength(2); // Alice & Charlie
+    expect(filteredStaff.map((s) => s.name)).toEqual(['Alice', 'Charlie']);
+  });
+
+  it('should display all branches and all staff when "All Branches" is selected', () => {
+    const targetBranchId = 'ALL';
+    const branchesList = mockBranches;
+    const staffList = [
+      { id: 'st1', name: 'Alice', assignedBranchIds: ['branch_001'] },
+      { id: 'st2', name: 'Bob', assignedBranchIds: ['branch_002'] },
+    ];
+
+    const filteredBranches = branchesList.filter((b) => targetBranchId === 'ALL' || b.id === targetBranchId);
+    const filteredStaff = staffList.filter((s) => targetBranchId === 'ALL' || s.assignedBranchIds.includes(targetBranchId));
+
+    expect(filteredBranches).toHaveLength(2);
+    expect(filteredStaff).toHaveLength(2);
   });
 });

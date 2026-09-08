@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { apiService } from '@/services/api';
-import { usePermissions } from '@/hooks';
+import { usePermissions, useBranch } from '@/hooks';
 import type {
   Staff,
   Branch,
@@ -285,6 +285,7 @@ function StaffActionMenu({
 
 export function StaffPage() {
   const { hasPermission } = usePermissions();
+  const { currentBranch } = useBranch();
 
   const canView = hasPermission('STAFF_VIEW');
   const canManage = hasPermission('STAFF_MANAGE');
@@ -416,10 +417,16 @@ export function StaffPage() {
 
   // ── Instant Client-Side Filtered Staff ────────────────────
   const filteredStaff = useMemo(() => {
-    if (!searchQuery.trim()) return staffList;
+    let result = staffList;
+    if (currentBranch && currentBranch.id && currentBranch.id !== 'ALL') {
+      result = result.filter(
+        (s) => Array.isArray(s.assignedBranchIds) && s.assignedBranchIds.includes(currentBranch.id),
+      );
+    }
+    if (!searchQuery.trim()) return result;
     const q = searchQuery.toLowerCase().trim();
-    return staffList.filter((s) => s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q));
-  }, [staffList, searchQuery]);
+    return result.filter((s) => s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q));
+  }, [staffList, currentBranch, searchQuery]);
 
   // If user lacks STAFF_VIEW permission, block access
   if (!canView) {
@@ -1082,11 +1089,17 @@ export function StaffPage() {
         <EmptyState
           icon={<Users className="h-8 w-8 text-slate-500" />}
           title="No staff members found"
-          description={`No staff match "${searchQuery}". Try a different name or clear search.`}
+          description={
+            searchQuery
+              ? `No staff match "${searchQuery}". Try a different name or clear search.`
+              : `No staff members assigned to ${currentBranch ? currentBranch.name : 'this branch'}.`
+          }
           action={
-            <Button variant="outline" onClick={() => setSearchQuery('')} leftIcon={<X className="h-4 w-4" />}>
-              Clear Search
-            </Button>
+            searchQuery ? (
+              <Button variant="outline" onClick={() => setSearchQuery('')} leftIcon={<X className="h-4 w-4" />}>
+                Clear Search
+              </Button>
+            ) : undefined
           }
         />
       ) : (
