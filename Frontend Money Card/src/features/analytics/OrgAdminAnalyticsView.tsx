@@ -127,13 +127,13 @@ export function OrgAdminAnalyticsView() {
     setBranchFilter(currentBranch ? currentBranch.id : 'ALL');
   }, [currentBranch]);
   const [datePreset, setDatePreset] = useState<DatePreset>(
-    (searchParams.get('preset') as DatePreset) || 'thisMonth',
+    (searchParams.get('preset') as DatePreset) || 'today',
   );
   const [startDate, setStartDate] = useState<string>(() => {
-    return searchParams.get('startDate') || getPresetDates('thisMonth').startDate;
+    return searchParams.get('startDate') || getPresetDates('today').startDate;
   });
   const [endDate, setEndDate] = useState<string>(() => {
-    return searchParams.get('endDate') || getPresetDates('thisMonth').endDate;
+    return searchParams.get('endDate') || getPresetDates('today').endDate;
   });
 
   const fetchBranches = useCallback(async () => {
@@ -605,7 +605,6 @@ export function OrgAdminAnalyticsView() {
                 { value: 'today', label: 'Today' },
                 { value: 'last7', label: 'Last 7 Days' },
                 { value: 'last30', label: 'Last 30 Days' },
-                { value: 'thisMonth', label: 'This Month' },
                 { value: 'custom', label: 'Custom Range' },
               ]}
             />

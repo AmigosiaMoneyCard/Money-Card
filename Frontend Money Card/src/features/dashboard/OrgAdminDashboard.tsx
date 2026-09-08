@@ -101,10 +101,10 @@ export function OrgAdminDashboard() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsOverview | null>(null);
 
-  // Date Filtering State (Default: This Month matching Analytics)
-  const [datePreset, setDatePreset] = useState<DatePreset>('thisMonth');
-  const [startDate, setStartDate] = useState<string>(() => getPresetDates('thisMonth').startDate);
-  const [endDate, setEndDate] = useState<string>(() => getPresetDates('thisMonth').endDate);
+  // Date Filtering State (Default: Today)
+  const [datePreset, setDatePreset] = useState<DatePreset>('today');
+  const [startDate, setStartDate] = useState<string>(() => getPresetDates('today').startDate);
+  const [endDate, setEndDate] = useState<string>(() => getPresetDates('today').endDate);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -697,7 +697,6 @@ export function OrgAdminDashboard() {
                       value={datePreset}
                       onChange={(e) => handlePresetChange(e.target.value as DatePreset)}
                       options={[
-                        { value: 'thisMonth', label: 'This Month' },
                         { value: 'today', label: 'Today' },
                         { value: 'yesterday', label: 'Yesterday' },
                         { value: 'last7', label: 'Last 7 Days' },

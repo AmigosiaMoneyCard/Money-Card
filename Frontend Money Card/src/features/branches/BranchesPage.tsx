@@ -315,10 +315,14 @@ export function BranchesPage() {
 
   // ── Instant Client-Side Filtered Branches ──────────────────
   const filteredBranches = useMemo(() => {
-    if (!searchQuery.trim()) return branches;
+    let result = branches;
+    if (currentBranch && currentBranch.id && currentBranch.id !== 'ALL') {
+      result = result.filter((b) => b.id === currentBranch.id);
+    }
+    if (!searchQuery.trim()) return result;
     const q = searchQuery.toLowerCase().trim();
-    return branches.filter((b) => b.name.toLowerCase().includes(q));
-  }, [branches, searchQuery]);
+    return result.filter((b) => b.name.toLowerCase().includes(q));
+  }, [branches, currentBranch, searchQuery]);
 
   // ── Create Branch ─────────────────────────────────────────
   const handleOpenCreate = () => {
@@ -681,11 +685,17 @@ export function BranchesPage() {
         <EmptyState
           icon={<Building2 className="h-8 w-8 text-slate-500" />}
           title="No matching branches"
-          description={`No branches match the name "${searchQuery}".`}
+          description={
+            searchQuery
+              ? `No branches match the name "${searchQuery}".`
+              : `No branches match the selected branch filter.`
+          }
           action={
-            <Button variant="outline" onClick={() => setSearchQuery('')} leftIcon={<X className="h-4 w-4" />}>
-              Clear Search
-            </Button>
+            searchQuery ? (
+              <Button variant="outline" onClick={() => setSearchQuery('')} leftIcon={<X className="h-4 w-4" />}>
+                Clear Search
+              </Button>
+            ) : undefined
           }
         />
       ) : (

@@ -180,16 +180,12 @@ export function PeakPage() {
   });
 
   useEffect(() => {
-    if (currentBranch) {
+    if (currentBranch && currentBranch.id && currentBranch.id !== 'ALL') {
       setSelectedBranchId(currentBranch.id);
-    } else if (allBranches.length > 0 && selectedBranchId === 'ALL') {
-      const mainBranch =
-        allBranches.find((b) => b.name.toLowerCase().includes('main')) || allBranches[0];
-      if (mainBranch) {
-        setSelectedBranchId(mainBranch.id);
-      }
+    } else {
+      setSelectedBranchId('ALL');
     }
-  }, [currentBranch, allBranches, selectedBranchId]);
+  }, [currentBranch]);
 
   const [selectedDateRange, setSelectedDateRange] = useState<TimeWindowPreset>('thisMonth');
   const [startDate, setStartDate] = useState<string>(() => getPeakPresetDates('thisMonth').startDate);
