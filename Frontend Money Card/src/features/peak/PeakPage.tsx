@@ -36,7 +36,7 @@ import {
   Calendar,
 } from 'lucide-react';
 
-export type TimeWindowPreset = 'thisMonth' | 'today' | 'last7' | 'last30' | 'custom';
+export type TimeWindowPreset = 'thisMonth' | 'today' | 'yesterday' | 'last7' | 'last30' | 'custom';
 
 function formatLocalDate(d: Date): string {
   const year = d.getFullYear();
@@ -61,6 +61,11 @@ export function getPeakPresetDates(
   }
   if (preset === 'today') {
     return { startDate: endStr, endDate: endStr };
+  }
+  if (preset === 'yesterday') {
+    const yest = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const yestStr = formatLocalDate(yest);
+    return { startDate: yestStr, endDate: yestStr };
   }
   if (preset === 'last7') {
     const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -324,6 +329,8 @@ export function PeakPage() {
       const dateRangeLabel =
         selectedDateRange === 'today'
           ? 'Today'
+          : selectedDateRange === 'yesterday'
+          ? 'Yesterday'
           : selectedDateRange === 'last7'
           ? 'Last 7 Days'
           : selectedDateRange === 'last30'
@@ -532,6 +539,7 @@ export function PeakPage() {
                 options={[
                   { value: 'thisMonth', label: 'This Month' },
                   { value: 'today', label: 'Today' },
+                  { value: 'yesterday', label: 'Yesterday' },
                   { value: 'last7', label: 'Last 7 Days' },
                   { value: 'last30', label: 'Last 30 Days' },
                   { value: 'custom', label: 'Custom Range' },

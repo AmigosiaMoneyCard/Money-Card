@@ -54,14 +54,14 @@ export const mockAnalyticsHandlers = {
     }
 
     // Date range filter
-    if (filter?.startDate || filter?.endDate) {
-      const from = filter.startDate
-        ? new Date(filter.startDate.includes('T') ? filter.startDate : `${filter.startDate}T00:00:00.000Z`).getTime()
-        : 0;
-      const to = filter.endDate
-        ? new Date(filter.endDate.includes('T') ? filter.endDate : `${filter.endDate}T23:59:59.999Z`).getTime()
-        : Infinity;
+    const from = filter?.startDate
+      ? new Date(filter.startDate.includes('T') ? filter.startDate : `${filter.startDate}T00:00:00.000Z`).getTime()
+      : 0;
+    const to = filter?.endDate
+      ? new Date(filter.endDate.includes('T') ? filter.endDate : `${filter.endDate}T23:59:59.999Z`).getTime()
+      : Infinity;
 
+    if (filter?.startDate || filter?.endDate) {
       filteredTransactions = filteredTransactions.filter((t) => {
         const txTime = new Date(t.createdAt).getTime();
         return txTime >= from && txTime <= to;
@@ -250,15 +250,27 @@ export const mockAnalyticsHandlers = {
 
     const staffPerformance: StaffPerformanceMetric[] = orgStaffList.map((st, idx) => {
       // Sessions issued by this staff
-      const issuedSessions = mockStore.sessions.filter(
-        (s) => (s as any).issuedByUserId === st.id || (idx === 0 && !(s as any).issuedByUserId),
-      );
-      // Sessions settled by this staff
-      const settledSessions = mockStore.sessions.filter(
-        (s) => (s as any).settledByUserId === st.id,
-      );
+      const issuedSessions = mockStore.sessions.filter((s) => {
+        const isStaff = (s as any).issuedByUserId === st.id || (idx === 0 && !(s as any).issuedByUserId);
+        if (!isStaff) return false;
+        if (branchId && branchId !== 'ALL' && s.branchId !== branchId) return false;
+        const time = new Date(s.startedAt || s.createdAt).getTime();
+        if (from && time < from) return false;
+        if (to && time > to) return false;
+        return true;
+      });
 
-      // Transactions performed under this staff
+      // Sessions settled by this staff
+      const settledSessions = mockStore.sessions.filter((s) => {
+        if ((s as any).settledByUserId !== st.id) return false;
+        if (branchId && branchId !== 'ALL' && s.branchId !== branchId) return false;
+        const time = new Date(s.settledAt || s.updatedAt).getTime();
+        if (from && time < from) return false;
+        if (to && time > to) return false;
+        return true;
+      });
+
+      // Transactions performed under this staff (already filtered by branchId and date)
       const staffTxns = filteredTransactions.filter(
         (t) => (t as any).staffUserId === st.id || (idx === 0 && !(t as any).staffUserId),
       );
@@ -286,6 +298,7 @@ export const mockAnalyticsHandlers = {
           cardNumber: cardNum,
           customerName: sess.customerName || 'Walk-in Customer',
           customerPhone: sess.customerPhone || '—',
+          branchId: sess.branchId,
           branchName: mockStore.branches.find((b) => b.id === sess.branchId)?.name || 'Main Cafeteria',
           timestamp: sess.startedAt || sess.createdAt,
           amount: sess.balance,
@@ -304,6 +317,7 @@ export const mockAnalyticsHandlers = {
           cardNumber: cardNum,
           customerName: sess.customerName || 'Customer',
           customerPhone: sess.customerPhone || '—',
+          branchId: sess.branchId,
           branchName: mockStore.branches.find((b) => b.id === sess.branchId)?.name || 'Main Cafeteria',
           timestamp: sess.settledAt || sess.updatedAt,
           amount: (sess as any).refundAmount || 0,
@@ -311,9 +325,15 @@ export const mockAnalyticsHandlers = {
       });
 
       // Add Customer History events
-      const staffEvents = mockStore.customerHistoryEvents.filter(
-        (e) => e.performedByUserId === st.id,
-      );
+      const staffEvents = mockStore.customerHistoryEvents.filter((e) => {
+        if (e.performedByUserId !== st.id) return false;
+        if (branchId && branchId !== 'ALL' && e.branchId && e.branchId !== branchId) return false;
+        const time = new Date(e.createdAt).getTime();
+        if (from && time < from) return false;
+        if (to && time > to) return false;
+        return true;
+      });
+
       staffEvents.forEach((ev) => {
         if (ev.action === 'CARD_BLOCKED' || ev.action === 'CARD_UNBLOCKED') {
           activities.push({
@@ -324,6 +344,7 @@ export const mockAnalyticsHandlers = {
             cardNumber: ev.physicalCardNumber,
             customerName: ev.customerName || 'Customer',
             customerPhone: ev.customerPhone || '—',
+            branchId: ev.branchId || undefined,
             branchName: ev.branchName || 'Main Cafeteria',
             timestamp: ev.createdAt,
           });
@@ -345,6 +366,7 @@ export const mockAnalyticsHandlers = {
             title: 'POS Purchase Processed',
             description: `Billed order amounting to ₹${tx.amount}`,
             amount: tx.amount,
+            branchId: tx.branchId,
             branchName,
             timestamp: tx.createdAt,
             paymentMethod: 'CARD_BALANCE',
@@ -358,6 +380,7 @@ export const mockAnalyticsHandlers = {
             title: 'Cash / Card POS Recharge',
             description: `Deposited ₹${tx.amount} onto card balance via Counter POS`,
             amount: tx.amount,
+            branchId: tx.branchId,
             branchName,
             timestamp: tx.createdAt,
             paymentMethod: 'CASH',
@@ -371,6 +394,7 @@ export const mockAnalyticsHandlers = {
             title: 'UPI QR Recharge',
             description: `Deposited ₹${tx.amount} onto card balance via UPI QR`,
             amount: tx.amount,
+            branchId: tx.branchId,
             branchName,
             timestamp: tx.createdAt,
             paymentMethod: 'UPI',
@@ -384,14 +408,16 @@ export const mockAnalyticsHandlers = {
             title: 'Customer Refund Processed',
             description: `Processed customer refund of ₹${tx.amount}`,
             amount: tx.amount,
+            branchId: tx.branchId,
             branchName,
             timestamp: tx.createdAt,
           });
         }
       });
 
-      // Distribute fallback metrics so all demo staff have realistic, rich data
-      if (idx === 1 && activities.length === 0) {
+      // Distribute fallback metrics so all demo staff have realistic, rich data only when no restrictive date/branch filters
+      const hasStrictFilter = Boolean(filter?.startDate || filter?.endDate || (branchId && branchId !== 'ALL'));
+      if (idx === 1 && activities.length === 0 && !hasStrictFilter) {
         cardRechargeCount = 4;
         cardRechargeVol = 1200;
         upiRechargeCount = 2;
@@ -406,6 +432,7 @@ export const mockAnalyticsHandlers = {
           cardNumber: 'MC 104',
           customerName: 'Michael Scott',
           customerPhone: '9765432109',
+          branchId: 'branch_001',
           branchName: 'Main Cafeteria',
           timestamp: '2026-08-28T08:30:00.000Z',
           amount: 600,
@@ -417,6 +444,7 @@ export const mockAnalyticsHandlers = {
           description: 'Deposited ₹300 onto card balance via UPI QR',
           amount: 300,
           cardNumber: 'MC 104',
+          branchId: 'branch_001',
           branchName: 'Main Cafeteria',
           timestamp: '2026-08-28T09:15:00.000Z',
           paymentMethod: 'UPI',

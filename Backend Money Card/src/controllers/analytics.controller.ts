@@ -153,6 +153,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       where: {
         ...(orgId ? { organizationId: orgId } : {}),
         ...(branchId && branchId !== 'ALL' ? { branchId } : {}),
+        ...(fromDate || toDate ? { createdAt: dateFilter } : {}),
       },
       orderBy: { createdAt: 'desc' },
       take: 300,
@@ -161,6 +162,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       where: {
         ...(orgId ? { organizationId: orgId } : {}),
         ...(branchId && branchId !== 'ALL' ? { branchId } : {}),
+        ...(fromDate || toDate ? { issuedAt: dateFilter } : {}),
       },
       include: {
         card: { select: { physicalCardNumber: true } },
@@ -404,6 +406,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
         cardNumber: sess.card?.physicalCardNumber,
         customerName: sess.customerName || 'Customer',
         customerPhone: sess.customerPhone || '—',
+        branchId: sess.branchId,
         branchName: (sess as any).branch?.name || 'Main Cafeteria',
         timestamp: sess.issuedAt ? sess.issuedAt.toISOString() : new Date().toISOString(),
         amount: sess.balance,
@@ -419,6 +422,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
         cardNumber: sess.card?.physicalCardNumber,
         customerName: sess.customerName || 'Customer',
         customerPhone: sess.customerPhone || '—',
+        branchId: sess.branchId,
         branchName: (sess as any).branch?.name || 'Main Cafeteria',
         timestamp: sess.settledAt ? sess.settledAt.toISOString() : new Date().toISOString(),
         amount: sess.refundAmount || 0,
@@ -435,6 +439,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           cardNumber: ev.physicalCardNumber,
           customerName: ev.customerName || 'Customer',
           customerPhone: ev.customerPhone || '—',
+          branchId: ev.branchId,
           branchName: ev.branchName || 'Main Cafeteria',
           timestamp: ev.createdAt.toISOString(),
         });
@@ -455,6 +460,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           title: 'POS Purchase Processed',
           description: `Processed POS order amounting to ₹${tx.amount}`,
           amount: tx.amount,
+          branchId: tx.branchId,
           branchName: bName,
           timestamp: tx.createdAt.toISOString(),
           paymentMethod: 'CARD_BALANCE',
@@ -468,6 +474,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           title: 'Card / Cash Recharge',
           description: `Loaded ₹${tx.amount} onto card via Cash/Card POS`,
           amount: tx.amount,
+          branchId: tx.branchId,
           branchName: bName,
           timestamp: tx.createdAt.toISOString(),
           paymentMethod: 'CASH',
@@ -481,6 +488,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           title: 'UPI Recharge',
           description: `Loaded ₹${tx.amount} onto card via UPI QR`,
           amount: tx.amount,
+          branchId: tx.branchId,
           branchName: bName,
           timestamp: tx.createdAt.toISOString(),
           paymentMethod: 'UPI',
@@ -494,6 +502,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           title: 'Customer Refund Processed',
           description: `Processed refund of ₹${tx.amount}`,
           amount: tx.amount,
+          branchId: tx.branchId,
           branchName: bName,
           timestamp: tx.createdAt.toISOString(),
         });
