@@ -1,6 +1,8 @@
 export { cn } from './cn';
 export {
   formatCurrency,
+  formatCompactCurrency,
+  formatCompactNumber,
   formatDate,
   formatDateTime,
   formatCardNumber,

@@ -15,7 +15,7 @@ import {
   EmptyState,
   ErrorState,
 } from '@/components/ui';
-import { formatCurrency, formatDate } from '@/utils';
+import { formatCurrency, formatCompactCurrency, formatCompactNumber } from '@/utils';
 import {
   Building2,
   Users,
@@ -262,7 +262,6 @@ export function AllBranchesOverviewModal({
       isOpen={isOpen}
       onClose={onClose}
       title="All Branches End-to-End Overview"
-      description="Consolidated operational breakdown across all branch locations, staff assignments, menu items, and live inventory."
       size="full"
     >
       <div className="space-y-6">
@@ -287,7 +286,6 @@ export function AllBranchesOverviewModal({
               <Users className="h-4 w-4 text-indigo-600" />
             </div>
             <p className="text-xl font-bold text-slate-900">{overallMetrics.totalStaffCount}</p>
-            <p className="text-[11px] text-slate-500">Across all locations</p>
           </div>
 
           {/* Menu Catalog */}
@@ -297,27 +295,28 @@ export function AllBranchesOverviewModal({
               <UtensilsCrossed className="h-4 w-4 text-emerald-600" />
             </div>
             <p className="text-xl font-bold text-slate-900">{overallMetrics.totalProductsCount}</p>
-            <p className="text-[11px] text-slate-500">Configured catalog</p>
           </div>
 
           {/* Stock Units */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1 min-w-0">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Stock Units</span>
-              <Package className="h-4 w-4 text-sky-600" />
+              <Package className="h-4 w-4 text-sky-600 shrink-0" />
             </div>
-            <p className="text-xl font-bold text-slate-900">{overallMetrics.totalStockUnits}</p>
-            <p className="text-[11px] text-sky-700 font-medium">Live unit count</p>
+            <p className="text-xl font-bold text-slate-900 truncate" title={`${overallMetrics.totalStockUnits.toLocaleString('en-IN')} units`}>
+              {formatCompactNumber(overallMetrics.totalStockUnits)}
+            </p>
           </div>
 
           {/* Stock Valuation */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1 min-w-0">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Valuation</span>
-              <TrendingUp className="h-4 w-4 text-teal-600" />
+              <TrendingUp className="h-4 w-4 text-teal-600 shrink-0" />
             </div>
-            <p className="text-xl font-bold text-teal-700">{formatCurrency(overallMetrics.totalValuation)}</p>
-            <p className="text-[11px] text-slate-500">Aggregate value</p>
+            <p className="text-xl font-bold text-teal-700 truncate" title={formatCurrency(overallMetrics.totalValuation)}>
+              {formatCompactCurrency(overallMetrics.totalValuation)}
+            </p>
           </div>
 
           {/* Stock Alerts */}
@@ -327,7 +326,6 @@ export function AllBranchesOverviewModal({
               <AlertTriangle className="h-4 w-4 text-amber-600" />
             </div>
             <p className="text-xl font-bold text-amber-700">{overallMetrics.totalAlerts}</p>
-            <p className="text-[11px] text-slate-500">Low / Out of stock</p>
           </div>
         </div>
 
@@ -458,114 +456,138 @@ export function AllBranchesOverviewModal({
                       : 'border-slate-200 bg-slate-50/80 opacity-80'
                   }`}
                 >
-                  {/* Branch Summary Header Bar */}
-                  <div className="p-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between bg-white border-b border-slate-100">
-                    {/* Left: Branch Identity & Date */}
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">
-                        <Building2 className="h-6 w-6" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
+                  {/* Branch Summary Header (2-Tier Executive Layout) */}
+                  <div className="bg-white border-b border-slate-100">
+                    {/* Top Tier: Branch Identity & Quick Actions */}
+                    <div className="p-3.5 sm:p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      {/* Left: Branch Icon + Name + Badge */}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold shadow-2xs">
+                          <Building2 className="h-5 w-5" />
+                        </div>
+                        <div className="flex items-center gap-2.5 min-w-0">
                           <h3 className="font-bold text-slate-900 text-base truncate">{branch.name}</h3>
-                          <Badge variant={branch.status === 'ACTIVE' ? 'success' : 'outline'} className="text-[11px]">
+                          <Badge variant={branch.status === 'ACTIVE' ? 'success' : 'outline'} className="text-[11px] shrink-0">
                             {branch.status}
                           </Badge>
                         </div>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          Created {formatDate(branch.createdAt)} • Branch ID: <span className="font-mono text-slate-600">{branch.id.slice(0, 8)}...</span>
-                        </p>
+                      </div>
+
+                      {/* Right: Actions & Accordion Toggle */}
+                      <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
+                        {onOpenBranchMenu && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onOpenBranchMenu(branch)}
+                            className="flex items-center gap-1.5 text-xs py-1 px-2.5 bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100 hover:border-emerald-400 font-semibold shadow-2xs"
+                            title={`Manage Menu & Live Stock for ${branch.name}`}
+                          >
+                            <UtensilsCrossed className="h-3.5 w-3.5 text-emerald-600" />
+                            <span>Menu & Stock</span>
+                          </Button>
+                        )}
+
+                        {onEditBranch && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onEditBranch(branch)}
+                            className="text-xs py-1 px-2.5 border-slate-200 text-slate-700 hover:border-emerald-500"
+                          >
+                            Edit
+                          </Button>
+                        )}
+
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleBranchExpand(branch.id)}
+                          className="text-xs py-1 px-2.5 text-slate-700 hover:bg-slate-100 flex items-center gap-1.5 border border-slate-200 rounded-lg cursor-pointer"
+                          title={isExpanded ? 'Collapse breakdown' : 'Expand end-to-end breakdown'}
+                        >
+                          <span>{isExpanded ? 'Hide Details' : 'View Details'}</span>
+                          {isExpanded ? (
+                            <ChevronUp className="h-3.5 w-3.5 text-slate-500" />
+                          ) : (
+                            <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
+                          )}
+                        </Button>
                       </div>
                     </div>
 
-                    {/* Middle: 4 Key Summary Pills */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                      {/* Staff Pill */}
-                      <div className="rounded-lg bg-slate-50 border border-slate-200/80 px-2.5 py-1.5 flex flex-col">
-                        <span className="text-[10px] font-semibold text-slate-500 uppercase">Staff</span>
-                        <span className="font-bold text-slate-900 flex items-center gap-1">
-                          <Users className="h-3 w-3 text-indigo-600" />
-                          {assignedStaff.length} Members
-                        </span>
+                    {/* Bottom Tier: 4 Key Metric Columns */}
+                    <div className="px-4 py-3 bg-slate-50/70 border-t border-slate-100 grid grid-cols-2 gap-3 sm:grid-cols-4 text-xs">
+                      {/* Staff */}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100">
+                          <Users className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Staff</p>
+                          <p className="font-bold text-slate-900 leading-tight">
+                            {assignedStaff.length} {assignedStaff.length === 1 ? 'Member' : 'Members'}
+                          </p>
+                        </div>
                       </div>
 
-                      {/* Menu Items Pill */}
-                      <div className="rounded-lg bg-slate-50 border border-slate-200/80 px-2.5 py-1.5 flex flex-col">
-                        <span className="text-[10px] font-semibold text-slate-500 uppercase">Menu Items</span>
-                        <span className="font-bold text-slate-900 flex items-center gap-1">
-                          <UtensilsCrossed className="h-3 w-3 text-emerald-600" />
-                          {totalProducts} <span className="text-[10px] text-slate-500 font-normal">({activeProducts} on sale)</span>
-                        </span>
+                      {/* Menu Items */}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
+                          <UtensilsCrossed className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Menu Items</p>
+                          <p className="font-bold text-slate-900 leading-tight">
+                            {totalProducts} Items
+                          </p>
+                          <p className="text-[10px] text-slate-500">{activeProducts} on sale</p>
+                        </div>
                       </div>
 
-                      {/* Stock & Valuation Pill */}
-                      <div className="rounded-lg bg-slate-50 border border-slate-200/80 px-2.5 py-1.5 flex flex-col">
-                        <span className="text-[10px] font-semibold text-slate-500 uppercase">Valuation</span>
-                        <span className="font-bold text-teal-700 font-mono">
-                          {formatCurrency(totalValuation)}{' '}
-                          <span className="text-[10px] text-slate-500 font-normal">({totalStockUnits} units)</span>
-                        </span>
+                      {/* Valuation */}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-600 border border-teal-100">
+                          <TrendingUp className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Valuation</p>
+                          <p className="font-bold text-teal-700 font-mono leading-tight text-sm" title={formatCurrency(totalValuation)}>
+                            {formatCompactCurrency(totalValuation)}
+                          </p>
+                          <p className="text-[10px] text-slate-500 truncate" title={`${totalStockUnits.toLocaleString('en-IN')} units in stock`}>
+                            {formatCompactNumber(totalStockUnits)} units in stock
+                          </p>
+                        </div>
                       </div>
 
-                      {/* Alerts Pill */}
-                      <div className="rounded-lg bg-slate-50 border border-slate-200/80 px-2.5 py-1.5 flex flex-col">
-                        <span className="text-[10px] font-semibold text-slate-500 uppercase">Stock Alerts</span>
-                        {criticalAlerts === 0 ? (
-                          <span className="font-bold text-emerald-600 flex items-center gap-1">
-                            <ShieldCheck className="h-3 w-3" /> All Stocked
-                          </span>
-                        ) : (
-                          <span className="font-bold text-amber-700 flex items-center gap-1">
-                            <AlertTriangle className="h-3 w-3" />
-                            {criticalAlerts} Alerts{' '}
-                            {outOfStockCount > 0 && (
-                              <span className="text-[10px] text-rose-600 font-semibold">({outOfStockCount} out)</span>
-                            )}
-                          </span>
-                        )}
+                      {/* Stock Status */}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
+                          criticalAlerts === 0
+                            ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                            : 'bg-amber-50 text-amber-600 border-amber-100'
+                        }`}>
+                          {criticalAlerts === 0 ? <ShieldCheck className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Stock Status</p>
+                          {criticalAlerts === 0 ? (
+                            <p className="font-bold text-emerald-600 leading-tight">
+                              All Stocked
+                            </p>
+                          ) : (
+                            <div>
+                              <p className="font-bold text-amber-700 leading-tight">
+                                {criticalAlerts} Alerts
+                              </p>
+                              {outOfStockCount > 0 && (
+                                <p className="text-[10px] text-rose-600 font-medium">{outOfStockCount} out of stock</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-
-                    {/* Right: Actions & Accordion Toggle */}
-                    <div className="flex items-center gap-2 justify-end shrink-0">
-                      {onOpenBranchMenu && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onOpenBranchMenu(branch)}
-                          className="flex items-center gap-1.5 text-xs py-1 px-2.5 bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100 hover:border-emerald-400 font-semibold shadow-2xs"
-                          title={`Manage Menu & Live Stock for ${branch.name}`}
-                        >
-                          <UtensilsCrossed className="h-3.5 w-3.5 text-emerald-600" />
-                          <span>Menu & Stock</span>
-                        </Button>
-                      )}
-
-                      {onEditBranch && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onEditBranch(branch)}
-                          className="text-xs py-1 px-2.5 border-slate-200 text-slate-700 hover:border-emerald-500"
-                        >
-                          Edit
-                        </Button>
-                      )}
-
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleBranchExpand(branch.id)}
-                        className="text-xs py-1 px-2 text-slate-600 hover:bg-slate-100 flex items-center gap-1 cursor-pointer"
-                        title={isExpanded ? 'Collapse breakdown' : 'Expand end-to-end breakdown'}
-                      >
-                        <span>{isExpanded ? 'Hide' : 'Details'}</span>
-                        {isExpanded ? (
-                          <ChevronUp className="h-3.5 w-3.5" />
-                        ) : (
-                          <ChevronDown className="h-3.5 w-3.5" />
-                        )}
-                      </Button>
                     </div>
                   </div>
 

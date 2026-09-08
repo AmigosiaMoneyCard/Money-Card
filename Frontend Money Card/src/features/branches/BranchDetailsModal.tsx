@@ -14,7 +14,7 @@ import {
   EmptyState,
   ErrorState,
 } from '@/components/ui';
-import { formatCurrency, formatDate } from '@/utils';
+import { formatCurrency, formatCompactCurrency, formatCompactNumber, formatDate } from '@/utils';
 import {
   Building2,
   Users,
@@ -248,22 +248,26 @@ export function BranchDetailsModal({
           </div>
 
           {/* Total Units */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1 min-w-0">
             <div className="flex items-center justify-between text-slate-500">
               <span className="text-[11px] font-semibold uppercase tracking-wider">Stock Units</span>
-              <Package className="h-3.5 w-3.5 text-sky-600" />
+              <Package className="h-3.5 w-3.5 text-sky-600 shrink-0" />
             </div>
-            <p className="text-lg font-bold text-slate-900">{branchMetrics.totalStockUnits}</p>
+            <p className="text-lg font-bold text-slate-900 truncate" title={`${branchMetrics.totalStockUnits.toLocaleString('en-IN')} units`}>
+              {formatCompactNumber(branchMetrics.totalStockUnits)}
+            </p>
             <p className="text-[10px] text-sky-700 font-medium">Units available</p>
           </div>
 
           {/* Inventory Valuation */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-1 min-w-0">
             <div className="flex items-center justify-between text-slate-500">
               <span className="text-[11px] font-semibold uppercase tracking-wider">Valuation</span>
-              <TrendingUp className="h-3.5 w-3.5 text-teal-600" />
+              <TrendingUp className="h-3.5 w-3.5 text-teal-600 shrink-0" />
             </div>
-            <p className="text-lg font-bold text-teal-700 font-mono">{formatCurrency(branchMetrics.totalValuation)}</p>
+            <p className="text-lg font-bold text-teal-700 font-mono truncate" title={formatCurrency(branchMetrics.totalValuation)}>
+              {formatCompactCurrency(branchMetrics.totalValuation)}
+            </p>
             <p className="text-[10px] text-slate-500">Inventory worth</p>
           </div>
 

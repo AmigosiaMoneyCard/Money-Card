@@ -48,6 +48,9 @@ export interface CardSession {
   customerName?: string | null;
   customerPhone?: string | null;
   physicalCardNumber?: string | null;
+  issuedByUserId?: string | null;
+  settledByUserId?: string | null;
+  refundAmount?: number | null;
   startedAt: string;
   settledAt?: string | null;
   createdAt: string;
@@ -90,6 +93,7 @@ export interface Transaction {
   items?: PurchaseItem[];
   paymentMethod?: PaymentMethod | string;
   externalReference?: string;
+  staffUserId?: string | null;
   createdAt: string;
 }
 

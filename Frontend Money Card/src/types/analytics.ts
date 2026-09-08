@@ -77,6 +77,10 @@ export interface StaffPerformanceMetric {
 export interface AnalyticsOverview {
   totalTransactions: number;
   totalRechargeVolume: number;
+  cashRechargeVolume?: number;
+  cashRechargeCount?: number;
+  upiRechargeVolume?: number;
+  upiRechargeCount?: number;
   totalPurchaseVolume: number;
   totalRefundVolume: number;
   activeSessionsCount: number;
@@ -88,6 +92,8 @@ export interface AnalyticsOverview {
   reRechargedCardsCount?: number;
   closedCardsCount?: number;
   zeroBalanceActiveCardsCount?: number;
+  activeStaffCount?: number;
+  totalStaffCount?: number;
 }
 
 export interface AnalyticsFilter {
