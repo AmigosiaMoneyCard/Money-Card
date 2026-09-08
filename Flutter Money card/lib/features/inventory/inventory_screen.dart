@@ -610,25 +610,15 @@ class _AdjustStockBottomSheet extends ConsumerStatefulWidget {
 }
 
 class _AdjustStockBottomSheetState extends ConsumerState<_AdjustStockBottomSheet> {
-  int _adjustment = 10;
+  int _adjustment = 0;
+  final _quantityController = TextEditingController();
   final _reasonController = TextEditingController(text: 'Restock / Fresh Batch');
 
   @override
   void dispose() {
+    _quantityController.dispose();
     _reasonController.dispose();
     super.dispose();
-  }
-
-  void _stepAdjustment(int delta) {
-    setState(() {
-      _adjustment = (_adjustment + delta).clamp(-widget.item.currentStock, 99999);
-    });
-  }
-
-  void _setDirectAdjustment(int val) {
-    setState(() {
-      _adjustment = val;
-    });
   }
 
   Future<void> _handleConfirmAdjustment() async {
@@ -650,7 +640,6 @@ class _AdjustStockBottomSheetState extends ConsumerState<_AdjustStockBottomSheet
     final inventoryState = ref.watch(inventoryNotifierProvider);
     final newStock = (widget.item.currentStock + _adjustment).clamp(0, 99999);
 
-    final quickIncrements = [5, 10, 25, 50, 100];
     final quickReasons = ['Restock', 'Fresh Kitchen Batch', 'Vendor Delivery', 'Count Correction', 'Waste / Damaged'];
 
     return AppBottomSheet(
@@ -676,60 +665,23 @@ class _AdjustStockBottomSheetState extends ConsumerState<_AdjustStockBottomSheet
           ),
           const Divider(height: AppSpacing.lg),
 
-          // Quick Restock Presets
-          const Text('Quick Restock Quantity (+Units)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-          const SizedBox(height: AppSpacing.xs),
-          Wrap(
-            spacing: 6,
-            children: quickIncrements.map((qty) {
-              final isSelected = _adjustment == qty;
-              return ActionChip(
-                label: Text('+$qty'),
-                backgroundColor: isSelected ? AppColors.primaryLight : AppColors.surfaceLight,
-                labelStyle: TextStyle(
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  color: isSelected ? AppColors.primaryDark : AppColors.textPrimaryLight,
-                ),
-                onPressed: () => _setDirectAdjustment(qty),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
-          // Adjustment Steppers
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              OutlinedButton(
-                onPressed: () => _stepAdjustment(-5),
-                child: const Text('-5'),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              OutlinedButton(
-                onPressed: () => _stepAdjustment(-1),
-                child: const Text('-1'),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                child: Text(
-                  '${_adjustment >= 0 ? "+" : ""}$_adjustment',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: _adjustment >= 0 ? AppColors.primary : AppColors.error,
-                  ),
-                ),
-              ),
-              OutlinedButton(
-                onPressed: () => _stepAdjustment(1),
-                child: const Text('+1'),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              OutlinedButton(
-                onPressed: () => _stepAdjustment(5),
-                child: const Text('+5'),
-              ),
-            ],
+          // Manual Restock Quantity Input
+          AppTextField(
+            controller: _quantityController,
+            label: 'Restock Quantity (Units to Add)',
+            hintText: 'Enter quantity manually (e.g. 10)',
+            prefixIcon: Icons.add_box_outlined,
+            keyboardType: const TextInputType.numberWithOptions(signed: true),
+            autofocus: true,
+            errorText: (_adjustment < 0 && (widget.item.currentStock + _adjustment) < 0)
+                ? 'Cannot reduce stock below 0 units'
+                : null,
+            onChanged: (val) {
+              final parsed = int.tryParse(val.trim());
+              setState(() {
+                _adjustment = parsed ?? 0;
+              });
+            },
           ),
           const SizedBox(height: AppSpacing.md),
 
@@ -791,7 +743,9 @@ class _AdjustStockBottomSheetState extends ConsumerState<_AdjustStockBottomSheet
             label: 'Confirm Restock',
             icon: Icons.check,
             isLoading: inventoryState.isSubmitting,
-            onPressed: _adjustment == 0 || inventoryState.isSubmitting
+            onPressed: _adjustment == 0 ||
+                    (widget.item.currentStock + _adjustment < 0) ||
+                    inventoryState.isSubmitting
                 ? null
                 : _handleConfirmAdjustment,
           ),

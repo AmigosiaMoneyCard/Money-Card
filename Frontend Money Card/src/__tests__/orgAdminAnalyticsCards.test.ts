@@ -107,4 +107,23 @@ describe('Org Admin Analytics - Card Lifecycle & Activity Boxes', () => {
       expect(res.data.activeCardsRechargeCount).toBe(3);
     }
   });
+
+  it('should include individual cardRechargeVolume and upiRechargeVolume in branchPerformance metrics', async () => {
+    const res = await mockAnalyticsHandlers.getAnalyticsOverview();
+    expect(res.success).toBe(true);
+    if (res.success) {
+      const branches = res.data.branchPerformance;
+      expect(Array.isArray(branches)).toBe(true);
+      expect(branches!.length).toBeGreaterThan(0);
+
+      const mainBranch = branches!.find((b) => b.branchId === 'branch_001');
+      expect(mainBranch).toBeDefined();
+      expect(typeof mainBranch!.cardRechargeVolume).toBe('number');
+      expect(typeof mainBranch!.upiRechargeVolume).toBe('number');
+      // Main branch has TXN001 (CASH 500) and TXN003 (UPI 200)
+      expect(mainBranch!.cardRechargeVolume).toBe(500);
+      expect(mainBranch!.upiRechargeVolume).toBe(200);
+      expect(mainBranch!.rechargeVolume).toBe(700);
+    }
+  });
 });

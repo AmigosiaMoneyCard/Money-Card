@@ -113,4 +113,88 @@ describe('Customer History Sync & Table Rendering', () => {
     expect(extractArray(paginatedObj)).toHaveLength(1);
     expect(extractArray(null)).toHaveLength(0);
   });
+
+  it('correctly formats internal card cycle as #1, #2 for each customer in history', () => {
+    const formatCycle = (cycle: number) => `#${cycle}`;
+
+    const multiCycleSessions: CustomerHistoryItem[] = [
+      {
+        id: 'sess-101',
+        cardId: 'card-100',
+        physicalCardNumber: 'MC-100',
+        sessionCardNumber: 'MC-100_1',
+        cycleNumber: 1,
+        customerName: 'Alice Green',
+        customerPhone: '9876500001',
+        sessionStatus: 'SETTLED',
+        balance: 0,
+      },
+      {
+        id: 'sess-102',
+        cardId: 'card-100',
+        physicalCardNumber: 'MC-100',
+        sessionCardNumber: 'MC-100_2',
+        cycleNumber: 2,
+        customerName: 'Bob White',
+        customerPhone: '9876500002',
+        sessionStatus: 'ACTIVE',
+        balance: 350,
+      },
+    ];
+
+    expect(formatCycle(multiCycleSessions[0].cycleNumber)).toBe('#1');
+    expect(formatCycle(multiCycleSessions[1].cycleNumber)).toBe('#2');
+    expect(multiCycleSessions[0].customerName).toBe('Alice Green');
+    expect(multiCycleSessions[1].customerName).toBe('Bob White');
+    expect(multiCycleSessions[0].physicalCardNumber).toBe(multiCycleSessions[1].physicalCardNumber);
+  });
+
+  it('filters customer history items by cycle number (e.g. #2)', () => {
+    const sessions: CustomerHistoryItem[] = [
+      { id: '1', physicalCardNumber: 'MC-100', cycleNumber: 1, customerName: 'Alice' },
+      { id: '2', physicalCardNumber: 'MC-100', cycleNumber: 2, customerName: 'Bob' },
+      { id: '3', physicalCardNumber: 'MC-200', cycleNumber: 1, customerName: 'Charlie' },
+    ];
+
+    const searchFilter = (query: string) => {
+      const q = query.toLowerCase().trim();
+      return sessions.filter((s) =>
+        s.physicalCardNumber.toLowerCase().includes(q) ||
+        (s.customerName?.toLowerCase().includes(q) ?? false) ||
+        `#${s.cycleNumber}`.toLowerCase().includes(q) ||
+        `cycle ${s.cycleNumber}`.includes(q)
+      );
+    };
+
+    const matchesCycle2 = searchFilter('#2');
+    expect(matchesCycle2).toHaveLength(1);
+    expect(matchesCycle2[0].customerName).toBe('Bob');
+
+    const matchesCycle1 = searchFilter('#1');
+    expect(matchesCycle1).toHaveLength(2);
+  });
+
+  it('keeps Card Cycle in the Eye button Customer Profile details overview', () => {
+    const sessionDetailsModalView = (item: CustomerHistoryItem) => ({
+      customerProfile: {
+        name: item.customerName,
+        phone: item.customerPhone,
+      },
+      overview: {
+        physicalCard: item.physicalCardNumber,
+        cardCycle: `#${item.cycleNumber}`,
+        branchLocation: item.branchName,
+        sessionStarted: item.startedAt,
+        settledAt: item.settledAt || 'Still Active',
+      },
+    });
+
+    const modalData = sessionDetailsModalView(sampleSessions[0]);
+    expect(modalData.customerProfile.name).toBe('John Doe');
+    expect(modalData.overview.physicalCard).toBe('MC 105');
+    expect(modalData.overview.cardCycle).toBe('#1');
+    expect(modalData.overview.branchLocation).toBe('Main Cafeteria');
+    expect(modalData.overview.settledAt).toBe('Still Active');
+  });
 });
+

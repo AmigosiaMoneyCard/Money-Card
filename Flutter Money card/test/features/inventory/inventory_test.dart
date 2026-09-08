@@ -202,10 +202,11 @@ void main() {
 
       // Bottom sheet renders
       expect(find.text('Restock & Adjust Stock'), findsOneWidget);
-      expect(find.text('+5'), findsWidgets);
+      expect(find.text('Restock Quantity (Units to Add)'), findsOneWidget);
 
-      // Tap +5 stepper
-      await tester.tap(find.widgetWithText(OutlinedButton, '+5'));
+      // Enter manual restock quantity (+15 units)
+      final quantityField = find.byWidgetPredicate((w) => w is TextField && w.decoration?.hintText == 'Enter quantity manually (e.g. 10)');
+      await tester.enterText(quantityField, '15');
       await tester.pumpAndSettle();
 
       expect(find.text('57 units'), findsOneWidget);

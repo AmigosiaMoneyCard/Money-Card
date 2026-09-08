@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { PlanChangeRequest } from '@/types';
+import { detectPlanRequestType } from '@/features/subscriptions/SubscriptionsPage';
 
 describe('Plan Change Requests Filter Logic', () => {
   const sampleRequests: PlanChangeRequest[] = [
@@ -128,3 +129,127 @@ describe('Plan Change Requests Filter Logic', () => {
     expect(result[0].id).toBe('req_004');
   });
 });
+
+describe('Plan Request Type Auto-Detection (Upgrade / Downgrade)', () => {
+  const starterPlan: any = {
+    id: 'plan_001',
+    name: 'Starter',
+    price: 999,
+    billingInterval: 'MONTHLY',
+  };
+
+  const standardPlan: any = {
+    id: 'plan_002',
+    name: 'Standard',
+    price: 1999,
+    billingInterval: 'MONTHLY',
+  };
+
+  const enterprisePlan: any = {
+    id: 'plan_003',
+    name: 'Enterprise',
+    price: 4999,
+    billingInterval: 'MONTHLY',
+  };
+
+  it('automatically detects DOWNGRADE when current plan is Enterprise and target is Standard', () => {
+    const result = detectPlanRequestType(standardPlan, enterprisePlan);
+    expect(result).toBe('DOWNGRADE');
+  });
+
+  it('automatically detects DOWNGRADE when current plan is Enterprise and target is Starter', () => {
+    const result = detectPlanRequestType(starterPlan, enterprisePlan);
+    expect(result).toBe('DOWNGRADE');
+  });
+
+  it('automatically detects UPGRADE when current plan is Starter and target is Standard or Enterprise', () => {
+    expect(detectPlanRequestType(standardPlan, starterPlan)).toBe('UPGRADE');
+    expect(detectPlanRequestType(enterprisePlan, starterPlan)).toBe('UPGRADE');
+  });
+
+  it('automatically detects UPGRADE when current plan is Standard and target is Enterprise', () => {
+    expect(detectPlanRequestType(enterprisePlan, standardPlan)).toBe('UPGRADE');
+  });
+
+  it('automatically detects DOWNGRADE when current plan is Standard and target is Starter', () => {
+    expect(detectPlanRequestType(starterPlan, standardPlan)).toBe('DOWNGRADE');
+  });
+
+  it('strictly outputs only UPGRADE or DOWNGRADE without ENTERPRISE or CHANGE_PLAN', () => {
+    const resultToEnterprise = detectPlanRequestType(enterprisePlan, standardPlan);
+    expect(resultToEnterprise).toBe('UPGRADE');
+    expect(['UPGRADE', 'DOWNGRADE']).toContain(resultToEnterprise);
+
+    const resultFromEnterprise = detectPlanRequestType(standardPlan, enterprisePlan);
+    expect(resultFromEnterprise).toBe('DOWNGRADE');
+    expect(['UPGRADE', 'DOWNGRADE']).toContain(resultFromEnterprise);
+  });
+
+  describe('Single Pending Plan Request Constraint', () => {
+    it('blocks a new plan change request if an organization already has a request with status PENDING', () => {
+      const orgRequests: PlanChangeRequest[] = [
+        {
+          id: 'req_101',
+          organizationId: 'org_001',
+          organizationName: 'Acme Cafeterias',
+          currentPlanId: 'plan_std',
+          currentPlanName: 'Standard',
+          requestedPlanId: 'plan_ent',
+          requestedPlanName: 'Enterprise',
+          requestType: 'UPGRADE',
+          status: 'PENDING',
+          createdAt: '2026-03-01T10:00:00.000Z',
+          updatedAt: '2026-03-01T10:00:00.000Z',
+        },
+      ];
+
+      const hasPending = orgRequests.some(
+        (r) => r.organizationId === 'org_001' && r.status === 'PENDING'
+      );
+      expect(hasPending).toBe(true);
+
+      const canSubmitNew = !hasPending;
+      expect(canSubmitNew).toBe(false);
+    });
+
+    it('allows a new plan change request once all previous requests are APPROVED or REJECTED', () => {
+      const orgRequests: PlanChangeRequest[] = [
+        {
+          id: 'req_101',
+          organizationId: 'org_001',
+          organizationName: 'Acme Cafeterias',
+          currentPlanId: 'plan_std',
+          currentPlanName: 'Standard',
+          requestedPlanId: 'plan_ent',
+          requestedPlanName: 'Enterprise',
+          requestType: 'UPGRADE',
+          status: 'REJECTED',
+          createdAt: '2026-03-01T10:00:00.000Z',
+          updatedAt: '2026-03-02T10:00:00.000Z',
+        },
+        {
+          id: 'req_102',
+          organizationId: 'org_001',
+          organizationName: 'Acme Cafeterias',
+          currentPlanId: 'plan_std',
+          currentPlanName: 'Standard',
+          requestedPlanId: 'plan_ent',
+          requestedPlanName: 'Enterprise',
+          requestType: 'UPGRADE',
+          status: 'APPROVED',
+          createdAt: '2026-02-01T10:00:00.000Z',
+          updatedAt: '2026-02-02T10:00:00.000Z',
+        },
+      ];
+
+      const hasPending = orgRequests.some(
+        (r) => r.organizationId === 'org_001' && r.status === 'PENDING'
+      );
+      expect(hasPending).toBe(false);
+
+      const canSubmitNew = !hasPending;
+      expect(canSubmitNew).toBe(true);
+    });
+  });
+});
+

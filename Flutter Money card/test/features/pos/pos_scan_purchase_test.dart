@@ -216,9 +216,18 @@ void main() {
       // Simulate scanning QR-MOCK-004
       final scanner = tester.widget<QrScannerView>(find.byType(QrScannerView));
       scanner.onQrScanned('QR-MOCK-004');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Dialog appears asking for customer details before activation
+      expect(find.text('Confirm Card Activation'), findsOneWidget);
+      final fields = find.descendant(of: find.byType(AlertDialog), matching: find.byType(TextField));
+      await tester.enterText(fields.at(0), 'Customer Four');
+      await tester.enterText(fields.at(1), '9876543210');
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Confirm & Activate'));
       await tester.pumpAndSettle();
 
-      // Verify available card was auto-issued and is now ACTIVE in Action Hub
+      // Verify available card was issued and is now ACTIVE in Action Hub
       expect(find.text('MC-004'), findsOneWidget);
       expect(find.text('ACTIVE'), findsOneWidget);
       expect(find.text('Add Products (POS Sale)'), findsOneWidget);

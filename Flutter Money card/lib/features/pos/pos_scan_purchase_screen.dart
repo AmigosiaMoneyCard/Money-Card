@@ -1,4 +1,5 @@
 import '../../models/transaction.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart' hide Card;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -76,7 +77,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
 
       if (!mounted) return;
 
-      // ─── Auto-Issue Available Card Immediately ───────────────────────
+      // ─── Available Card Detected: Prompt for Customer Details Before Issuing ───
       if (result.card.status == CardStatus.available ||
           (result.session == null && result.card.status != CardStatus.blocked)) {
         var branch = ref.read(currentBranchProvider);
@@ -89,10 +90,123 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
         }
 
         if (branch != null) {
+          setState(() {
+            _isResolving = false;
+          });
+
+          final nameCtrl = TextEditingController();
+          final phoneCtrl = TextEditingController();
+          String? nameError;
+          String? phoneError;
+
+          final confirm = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => StatefulBuilder(
+              builder: (ctx, setDialogState) => AlertDialog(
+                title: const Text('Confirm Card Activation'),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Card ${result.card.displayCardNumber} is Available. Enter customer details to activate for customer history:',
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      TextField(
+                        controller: nameCtrl,
+                        onChanged: (val) {
+                          if (nameError != null) setDialogState(() => nameError = null);
+                        },
+                        decoration: InputDecoration(
+                          labelText: 'Customer Name *',
+                          hintText: 'e.g. John Doe',
+                          errorText: nameError,
+                          prefixIcon: const Icon(Icons.person_outline, size: 18),
+                          isDense: true,
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: phoneCtrl,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(10),
+                        ],
+                        onChanged: (val) {
+                          if (phoneError != null) setDialogState(() => phoneError = null);
+                        },
+                        decoration: InputDecoration(
+                          labelText: 'Phone Number (10 Digits) *',
+                          hintText: 'e.g. 9876543210',
+                          prefixIcon: const Icon(Icons.phone_outlined, size: 18),
+                          errorText: phoneError,
+                          counterText: '',
+                          isDense: true,
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Cancel'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      final name = nameCtrl.text.trim();
+                      final phone = phoneCtrl.text.trim();
+                      bool hasError = false;
+                      String? nError;
+                      String? pError;
+                      if (name.isEmpty) {
+                        nError = 'Customer name is required';
+                        hasError = true;
+                      }
+                      if (phone.isEmpty) {
+                        pError = 'Phone number is required';
+                        hasError = true;
+                      } else if (phone.length != 10) {
+                        pError = 'Phone number must be exactly 10 digits';
+                        hasError = true;
+                      }
+                      if (hasError) {
+                        setDialogState(() {
+                          nameError = nError;
+                          phoneError = pError;
+                        });
+                        return;
+                      }
+                      Navigator.of(context).pop(true);
+                    },
+                    child: const Text('Confirm & Activate'),
+                  ),
+                ],
+              ),
+            ),
+          );
+
+          if (confirm != true) {
+            if (!mounted) return;
+            setState(() {
+              _isResolving = false;
+              _scannedQrToken = null;
+            });
+            return;
+          }
+
           final sessionRepo = ref.read(sessionRepositoryProvider);
           final newSession = await sessionRepo.createSession(
             cardId: result.card.id,
             branchId: branch.id,
+            customerName: nameCtrl.text.trim(),
+            customerPhone: phoneCtrl.text.trim(),
           );
 
           final activeCard = result.card.copyWith(
@@ -121,7 +235,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Card ${activeCard.displayCardNumber} auto-issued & activated!',
+                      'Card ${activeCard.displayCardNumber} activated successfully!',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),

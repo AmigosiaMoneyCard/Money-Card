@@ -95,6 +95,8 @@ export type {
 export type {
   AnalyticsOverview,
   BranchPerformanceMetric,
+  StaffPerformanceMetric,
+  StaffActivityItem,
   AnalyticsFilter,
   AnalyticsExportResponseData,
   ReportItem,

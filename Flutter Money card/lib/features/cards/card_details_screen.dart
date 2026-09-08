@@ -89,6 +89,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
 
     final nameCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
+    String? nameError;
     String? phoneError;
 
     final confirm = await showDialog<bool>(
@@ -133,18 +134,26 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                 ),
                 const Divider(height: AppSpacing.md),
                 const Text(
-                  'Customer Details (Optional):',
+                  'Customer Details (Required for Customer History):',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
                 ),
                 const SizedBox(height: 6),
                 TextField(
                   controller: nameCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Customer Name',
+                  onChanged: (val) {
+                    if (nameError != null) {
+                      setDialogState(() {
+                        nameError = null;
+                      });
+                    }
+                  },
+                  decoration: InputDecoration(
+                    labelText: 'Customer Name *',
                     hintText: 'e.g. John Doe',
-                    prefixIcon: Icon(Icons.person_outline, size: 18),
+                    errorText: nameError,
+                    prefixIcon: const Icon(Icons.person_outline, size: 18),
                     isDense: true,
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -163,7 +172,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                     }
                   },
                   decoration: InputDecoration(
-                    labelText: 'Phone Number (10 Digits)',
+                    labelText: 'Phone Number (10 Digits) *',
                     hintText: 'e.g. 9876543210',
                     prefixIcon: const Icon(Icons.phone_outlined, size: 18),
                     errorText: phoneError,
@@ -174,7 +183,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 const Text(
-                  'Activating this card will start an active customer session for purchases & recharges.',
+                  'Customer details are saved to Customer History. Then the card becomes active.',
                   style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
                 ),
               ],
@@ -187,13 +196,33 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
             ),
             ElevatedButton(
               onPressed: () {
+                final name = nameCtrl.text.trim();
                 final phone = phoneCtrl.text.trim();
-                if (phone.isNotEmpty && phone.length != 10) {
+
+                bool hasError = false;
+                String? newNameError;
+                String? newPhoneError;
+
+                if (name.isEmpty) {
+                  newNameError = 'Customer name is required';
+                  hasError = true;
+                }
+                if (phone.isEmpty) {
+                  newPhoneError = 'Phone number is required';
+                  hasError = true;
+                } else if (phone.length != 10) {
+                  newPhoneError = 'Phone number must be exactly 10 digits';
+                  hasError = true;
+                }
+
+                if (hasError) {
                   setDialogState(() {
-                    phoneError = 'Phone number must be exactly 10 digits';
+                    nameError = newNameError;
+                    phoneError = newPhoneError;
                   });
                   return;
                 }
+
                 Navigator.of(context).pop(true);
               },
               child: const Text('Confirm & Activate'),

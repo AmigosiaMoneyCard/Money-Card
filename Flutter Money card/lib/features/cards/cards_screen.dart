@@ -3,12 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
-import '../../core/constants/permission_constants.dart';
 import '../../models/card.dart';
 import '../../providers/card_operations_provider.dart';
 import '../../widgets/common/app_badge.dart';
 import '../../widgets/common/app_card.dart';
-import '../../widgets/guards/permission_guard.dart';
 import '../../widgets/states/app_empty_state.dart';
 import '../../widgets/states/app_loading_view.dart';
 
@@ -50,16 +48,6 @@ class _CardsScreenState extends ConsumerState<CardsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Branch Cards'),
-        actions: [
-          PermissionGuard.single(
-            permission: AppPermission.cardIssue,
-            child: IconButton(
-              icon: const Icon(Icons.add_card),
-              tooltip: 'Issue New Card',
-              onPressed: () => context.push('/app/cards/issue'),
-            ),
-          ),
-        ],
       ),
       body: Column(
         children: [
