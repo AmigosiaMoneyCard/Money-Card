@@ -39,7 +39,6 @@ import {
   RefreshCw,
   Building2,
   DollarSign,
-  FileText,
   Eye,
   Download,
   Layers,
@@ -628,27 +627,16 @@ export function OrgAdminAnalyticsView() {
           </div>
         </div>
 
-        {/* Action Buttons: [ View PDF ] and [ Download PDF ] */}
+        {/* Action Button: [ View PDF ] */}
         <div className="flex flex-wrap items-center gap-2.5">
           <Button
-            variant="secondary"
+            variant="primary"
             size="sm"
             onClick={handleViewPdf}
             disabled={isExportingPdf || isLoading || !analytics}
             leftIcon={<Eye className="h-4 w-4" />}
           >
             View PDF
-          </Button>
-
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleDownloadPdf}
-            disabled={isExportingPdf || isLoading || !analytics}
-            isLoading={isExportingPdf}
-            leftIcon={<Download className="h-4 w-4" />}
-          >
-            Download PDF
           </Button>
         </div>
       </div>
@@ -1307,29 +1295,16 @@ export function OrgAdminAnalyticsView() {
         size="xl"
       >
         <div className="space-y-4">
-          <div className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-2 text-xs text-slate-600 border border-slate-200">
-            <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-emerald-600" />
-              <span>Verified Organization Scope Report</span>
-            </div>
-            <span className="font-mono text-emerald-600">PDF-1.3 Standard</span>
-          </div>
-
           {/* Option-Wise Report Section Customizer Toolbar */}
-          <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-slate-100">
+          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-2xs">
+            <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
                   <SlidersHorizontal className="h-4 w-4" />
                 </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900">Customize Report Sections</h4>
-                  <p className="text-[11px] text-slate-500">
-                    Click any option to update the preview immediately and download tailored reports.
-                  </p>
-                </div>
+                <h4 className="text-xs font-bold text-slate-900">Customize Report Sections</h4>
               </div>
-              <div className="flex items-center gap-2 self-start sm:self-auto">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   id="pdf-opt-select-all"
@@ -1347,9 +1322,6 @@ export function OrgAdminAnalyticsView() {
                 >
                   Clear All
                 </button>
-                <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-700 border border-slate-200">
-                  {activeSectionsCount} of 3 active
-                </span>
               </div>
             </div>
 
@@ -1360,14 +1332,14 @@ export function OrgAdminAnalyticsView() {
                 type="button"
                 id="pdf-toggle-executive-kpis"
                 onClick={() => handleToggleSection('includeExecutiveKpis')}
-                className={`flex items-start gap-2.5 rounded-lg border p-2.5 text-left transition-all cursor-pointer ${
+                className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all cursor-pointer ${
                   pdfSections.includeExecutiveKpis
                     ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
                     : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
                 }`}
               >
                 <div
-                  className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
                     pdfSections.includeExecutiveKpis
                       ? 'border-emerald-600 bg-emerald-600 text-white'
                       : 'border-slate-300 bg-white'
@@ -1375,15 +1347,7 @@ export function OrgAdminAnalyticsView() {
                 >
                   {pdfSections.includeExecutiveKpis && <Check className="h-3 w-3 stroke-[3]" />}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold">1. Executive KPIs</span>
-                    <span className="text-[10px] font-mono text-slate-400">Section 1</span>
-                  </div>
-                  <p className="mt-0.5 text-[10.5px] leading-tight text-slate-500">
-                    Revenue, POS, Recharges, and Refund summary cards.
-                  </p>
-                </div>
+                <span className="text-xs font-semibold">1. Executive KPIs</span>
               </button>
 
               {/* Option 2: Branch Comparison */}
@@ -1391,14 +1355,14 @@ export function OrgAdminAnalyticsView() {
                 type="button"
                 id="pdf-toggle-branch-comparison"
                 onClick={() => handleToggleSection('includeBranchComparison')}
-                className={`flex items-start gap-2.5 rounded-lg border p-2.5 text-left transition-all cursor-pointer ${
+                className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all cursor-pointer ${
                   pdfSections.includeBranchComparison
                     ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
                     : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
                 }`}
               >
                 <div
-                  className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
                     pdfSections.includeBranchComparison
                       ? 'border-emerald-600 bg-emerald-600 text-white'
                       : 'border-slate-300 bg-white'
@@ -1406,15 +1370,7 @@ export function OrgAdminAnalyticsView() {
                 >
                   {pdfSections.includeBranchComparison && <Check className="h-3 w-3 stroke-[3]" />}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold">2. Branch Comparison</span>
-                    <span className="text-[10px] font-mono text-slate-400">Section 2</span>
-                  </div>
-                  <p className="mt-0.5 text-[10.5px] leading-tight text-slate-500">
-                    Multi-branch table with volumes, deposits, and sessions.
-                  </p>
-                </div>
+                <span className="text-xs font-semibold">2. Branch Comparison</span>
               </button>
 
               {/* Option 3: Staff Performance */}
@@ -1422,14 +1378,14 @@ export function OrgAdminAnalyticsView() {
                 type="button"
                 id="pdf-toggle-staff-performance"
                 onClick={() => handleToggleSection('includeStaffPerformance')}
-                className={`flex items-start gap-2.5 rounded-lg border p-2.5 text-left transition-all cursor-pointer ${
+                className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all cursor-pointer ${
                   pdfSections.includeStaffPerformance
                     ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
                     : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
                 }`}
               >
                 <div
-                  className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
                     pdfSections.includeStaffPerformance
                       ? 'border-emerald-600 bg-emerald-600 text-white'
                       : 'border-slate-300 bg-white'
@@ -1437,15 +1393,7 @@ export function OrgAdminAnalyticsView() {
                 >
                   {pdfSections.includeStaffPerformance && <Check className="h-3 w-3 stroke-[3]" />}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold">3. Staff Performance</span>
-                    <span className="text-[10px] font-mono text-slate-400">Section 3</span>
-                  </div>
-                  <p className="mt-0.5 text-[10.5px] leading-tight text-slate-500">
-                    Audited operator cards, recharges, and settlements.
-                  </p>
-                </div>
+                <span className="text-xs font-semibold">3. Staff Performance</span>
               </button>
             </div>
           </div>
