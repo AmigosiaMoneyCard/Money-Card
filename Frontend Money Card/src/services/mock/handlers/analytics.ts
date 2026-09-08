@@ -5,6 +5,8 @@ import type {
   ApiResult,
   AnalyticsOverview,
   BranchPerformanceMetric,
+  StaffPerformanceMetric,
+  StaffActivityItem,
   AnalyticsFilter,
   AnalyticsExportResponseData,
   ReportItem,
@@ -147,20 +149,56 @@ export const mockAnalyticsHandlers = {
       let bPurchaseVol = 0;
       let bRechargeCount = 0;
       let bRechargeVol = 0;
+      let bCardRechargeCount = 0;
+      let bCardRechargeVol = 0;
+      let bUpiRechargeCount = 0;
+      let bUpiRechargeVol = 0;
       let bRefundCount = 0;
       let bRefundVol = 0;
 
       for (const t of bTxns) {
+        const pMethod = String((t as any).paymentMethod || '').toUpperCase();
         if (t.type === 'PURCHASE') {
           bPurchaseCount++;
           bPurchaseVol += t.amount;
+        } else if (
+          t.type === 'RECHARGE_CASH' ||
+          (t.type === 'RECHARGE' && (pMethod === 'CASH' || pMethod === 'CARD'))
+        ) {
+          bRechargeCount++;
+          bRechargeVol += t.amount;
+          bCardRechargeCount++;
+          bCardRechargeVol += t.amount;
+        } else if (
+          t.type === 'RECHARGE_UPI' ||
+          (t.type === 'RECHARGE' && pMethod === 'UPI')
+        ) {
+          bRechargeCount++;
+          bRechargeVol += t.amount;
+          bUpiRechargeCount++;
+          bUpiRechargeVol += t.amount;
         } else if (t.type === 'RECHARGE') {
           bRechargeCount++;
           bRechargeVol += t.amount;
+          if (pMethod === 'UPI') {
+            bUpiRechargeCount++;
+            bUpiRechargeVol += t.amount;
+          } else {
+            bCardRechargeCount++;
+            bCardRechargeVol += t.amount;
+          }
         } else if (t.type === 'REFUND') {
           bRefundCount++;
           bRefundVol += t.amount;
         }
+      }
+
+      // If simulated recharges did not record paymentMethod explicitly, provide realistic breakdown
+      if (bRechargeVol > 0 && bCardRechargeVol === 0 && bUpiRechargeVol === 0) {
+        bCardRechargeVol = Number((bRechargeVol * 0.6).toFixed(2));
+        bUpiRechargeVol = Number((bRechargeVol - bCardRechargeVol).toFixed(2));
+        bCardRechargeCount = Math.max(1, Math.round(bRechargeCount * 0.6));
+        bUpiRechargeCount = Math.max(0, bRechargeCount - bCardRechargeCount);
       }
 
       const bSessions = mockStore.sessions.filter((s) => s.branchId === b.id);
@@ -183,6 +221,12 @@ export const mockAnalyticsHandlers = {
         purchaseVolume: Number(bPurchaseVol.toFixed(2)),
         rechargeCount: bRechargeCount,
         rechargeVolume: Number(bRechargeVol.toFixed(2)),
+        cardRechargeCount: bCardRechargeCount,
+        cardRechargeVolume: Number(bCardRechargeVol.toFixed(2)),
+        cashRechargeCount: bCardRechargeCount,
+        cashRechargeVolume: Number(bCardRechargeVol.toFixed(2)),
+        upiRechargeCount: bUpiRechargeCount,
+        upiRechargeVolume: Number(bUpiRechargeVol.toFixed(2)),
         refundCount: bRefundCount,
         refundVolume: Number(bRefundVol.toFixed(2)),
         totalRevenue: Number(bPurchaseVol.toFixed(2)),
@@ -197,6 +241,220 @@ export const mockAnalyticsHandlers = {
       };
     });
 
+    // ── Staff Performance & Activity Aggregation ─────────────
+    const orgStaffList = mockStore.staffEntities.filter((s) => {
+      if (targetOrgId && s.organizationId !== targetOrgId) return false;
+      if (branchId && branchId !== 'ALL' && !s.assignedBranchIds.includes(branchId)) return false;
+      return true;
+    });
+
+    const staffPerformance: StaffPerformanceMetric[] = orgStaffList.map((st, idx) => {
+      // Sessions issued by this staff
+      const issuedSessions = mockStore.sessions.filter(
+        (s) => (s as any).issuedByUserId === st.id || (idx === 0 && !(s as any).issuedByUserId),
+      );
+      // Sessions settled by this staff
+      const settledSessions = mockStore.sessions.filter(
+        (s) => (s as any).settledByUserId === st.id,
+      );
+
+      // Transactions performed under this staff
+      const staffTxns = filteredTransactions.filter(
+        (t) => (t as any).staffUserId === st.id || (idx === 0 && !(t as any).staffUserId),
+      );
+
+      let purchaseCount = 0;
+      let purchaseVol = 0;
+      let cardRechargeCount = 0;
+      let cardRechargeVol = 0;
+      let upiRechargeCount = 0;
+      let upiRechargeVol = 0;
+      let refundCount = 0;
+      let refundVol = 0;
+
+      const activities: StaffActivityItem[] = [];
+
+      // Add Card Activation activities
+      issuedSessions.forEach((sess) => {
+        const card = mockStore.cards.find((c) => c.id === sess.cardId);
+        const cardNum = card?.physicalCardNumber || sess.sessionCardNumber || 'MC-Card';
+        activities.push({
+          id: `act_act_${sess.id}`,
+          type: 'CARD_ACTIVATION',
+          title: 'Card Activated & Issued',
+          description: `Issued new card session for ${sess.customerName || 'Customer'} (Card: ${cardNum})`,
+          cardNumber: cardNum,
+          customerName: sess.customerName || 'Walk-in Customer',
+          customerPhone: sess.customerPhone || '—',
+          branchName: mockStore.branches.find((b) => b.id === sess.branchId)?.name || 'Main Cafeteria',
+          timestamp: sess.startedAt || sess.createdAt,
+          amount: sess.balance,
+        });
+      });
+
+      // Add Settlement activities
+      settledSessions.forEach((sess) => {
+        const card = mockStore.cards.find((c) => c.id === sess.cardId);
+        const cardNum = card?.physicalCardNumber || sess.sessionCardNumber || 'MC-Card';
+        activities.push({
+          id: `act_stl_${sess.id}`,
+          type: 'CARD_SETTLEMENT',
+          title: 'Card Settled & Returned',
+          description: `Settled card ${cardNum} and refunded remaining balance to ${sess.customerName || 'Customer'}`,
+          cardNumber: cardNum,
+          customerName: sess.customerName || 'Customer',
+          customerPhone: sess.customerPhone || '—',
+          branchName: mockStore.branches.find((b) => b.id === sess.branchId)?.name || 'Main Cafeteria',
+          timestamp: sess.settledAt || sess.updatedAt,
+          amount: (sess as any).refundAmount || 0,
+        });
+      });
+
+      // Add Customer History events
+      const staffEvents = mockStore.customerHistoryEvents.filter(
+        (e) => e.performedByUserId === st.id,
+      );
+      staffEvents.forEach((ev) => {
+        if (ev.action === 'CARD_BLOCKED' || ev.action === 'CARD_UNBLOCKED') {
+          activities.push({
+            id: `act_ev_${ev.id}`,
+            type: ev.action === 'CARD_BLOCKED' ? 'CARD_BLOCKED' : 'CARD_UNBLOCKED',
+            title: ev.action === 'CARD_BLOCKED' ? 'Card Blocked' : 'Card Unblocked',
+            description: `${ev.action === 'CARD_BLOCKED' ? 'Blocked' : 'Unblocked'} card ${ev.physicalCardNumber}. Reason: ${ev.reason || 'N/A'}`,
+            cardNumber: ev.physicalCardNumber,
+            customerName: ev.customerName || 'Customer',
+            customerPhone: ev.customerPhone || '—',
+            branchName: ev.branchName || 'Main Cafeteria',
+            timestamp: ev.createdAt,
+          });
+        }
+      });
+
+      // Add Transactions
+      staffTxns.forEach((tx) => {
+        const pMethod = String((tx as any).paymentMethod || '').toUpperCase();
+        const txType = tx.type;
+        const branchName = mockStore.branches.find((b) => b.id === tx.branchId)?.name || 'Main Cafeteria';
+
+        if (txType === 'PURCHASE') {
+          purchaseCount++;
+          purchaseVol += tx.amount;
+          activities.push({
+            id: `act_tx_${tx.id}`,
+            type: 'PURCHASE',
+            title: 'POS Purchase Processed',
+            description: `Billed order amounting to ₹${tx.amount}`,
+            amount: tx.amount,
+            branchName,
+            timestamp: tx.createdAt,
+            paymentMethod: 'CARD_BALANCE',
+          });
+        } else if (txType === 'RECHARGE_CASH' || (txType === 'RECHARGE' && (pMethod === 'CASH' || pMethod === 'CARD' || !pMethod))) {
+          cardRechargeCount++;
+          cardRechargeVol += tx.amount;
+          activities.push({
+            id: `act_tx_${tx.id}`,
+            type: 'RECHARGE_CASH',
+            title: 'Cash / Card POS Recharge',
+            description: `Deposited ₹${tx.amount} onto card balance via Counter POS`,
+            amount: tx.amount,
+            branchName,
+            timestamp: tx.createdAt,
+            paymentMethod: 'CASH',
+          });
+        } else if (txType === 'RECHARGE_UPI' || (txType === 'RECHARGE' && pMethod === 'UPI')) {
+          upiRechargeCount++;
+          upiRechargeVol += tx.amount;
+          activities.push({
+            id: `act_tx_${tx.id}`,
+            type: 'RECHARGE_UPI',
+            title: 'UPI QR Recharge',
+            description: `Deposited ₹${tx.amount} onto card balance via UPI QR`,
+            amount: tx.amount,
+            branchName,
+            timestamp: tx.createdAt,
+            paymentMethod: 'UPI',
+          });
+        } else if (txType === 'REFUND') {
+          refundCount++;
+          refundVol += tx.amount;
+          activities.push({
+            id: `act_tx_${tx.id}`,
+            type: 'REFUND',
+            title: 'Customer Refund Processed',
+            description: `Processed customer refund of ₹${tx.amount}`,
+            amount: tx.amount,
+            branchName,
+            timestamp: tx.createdAt,
+          });
+        }
+      });
+
+      // Distribute fallback metrics so all demo staff have realistic, rich data
+      if (idx === 1 && activities.length === 0) {
+        cardRechargeCount = 4;
+        cardRechargeVol = 1200;
+        upiRechargeCount = 2;
+        upiRechargeVol = 500;
+        purchaseCount = 5;
+        purchaseVol = 450;
+        activities.push({
+          id: 'act_demo_1',
+          type: 'CARD_ACTIVATION',
+          title: 'Card Activated & Issued',
+          description: 'Issued new card session for Michael Scott (Card: MC-104)',
+          cardNumber: 'MC 104',
+          customerName: 'Michael Scott',
+          customerPhone: '9765432109',
+          branchName: 'Main Cafeteria',
+          timestamp: '2026-08-28T08:30:00.000Z',
+          amount: 600,
+        });
+        activities.push({
+          id: 'act_demo_2',
+          type: 'RECHARGE_UPI',
+          title: 'UPI QR Recharge',
+          description: 'Deposited ₹300 onto card balance via UPI QR',
+          amount: 300,
+          cardNumber: 'MC 104',
+          branchName: 'Main Cafeteria',
+          timestamp: '2026-08-28T09:15:00.000Z',
+          paymentMethod: 'UPI',
+        });
+      }
+
+      const totalRechargeVol = cardRechargeVol + upiRechargeVol;
+      const totalTransactions = purchaseCount + cardRechargeCount + upiRechargeCount + refundCount;
+      const totalVolume = Number((purchaseVol + totalRechargeVol + refundVol).toFixed(2));
+
+      activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+      return {
+        staffId: st.id,
+        staffName: st.name,
+        staffEmail: st.email,
+        role: 'Counter Staff',
+        status: (st.status || 'ACTIVE') as 'ACTIVE' | 'INACTIVE',
+        branchId: st.assignedBranchIds[0] || 'branch_001',
+        branchName: mockStore.branches.find((b) => st.assignedBranchIds.includes(b.id))?.name || 'Main Cafeteria',
+        cardsActivatedCount: issuedSessions.length || (idx === 1 ? 2 : 0),
+        cardsSettledCount: settledSessions.length,
+        totalTransactionsCount: totalTransactions || (idx === 1 ? 6 : 0),
+        totalVolumeHandled: totalVolume || (idx === 1 ? 2150 : 0),
+        rechargeCount: cardRechargeCount + upiRechargeCount,
+        rechargeVolume: Number(totalRechargeVol.toFixed(2)),
+        cardRechargeCount,
+        cardRechargeVolume: Number(cardRechargeVol.toFixed(2)),
+        upiRechargeCount,
+        upiRechargeVolume: Number(upiRechargeVol.toFixed(2)),
+        purchaseCount,
+        purchaseVolume: Number(purchaseVol.toFixed(2)),
+        refundCount,
+        refundVolume: Number(refundVol.toFixed(2)),
+        activities,
+      };
+    });
+
     return createMockSuccess({
       totalTransactions: filteredTransactions.length,
       totalRechargeVolume: Number(totalRechargeVolume.toFixed(2)),
@@ -206,6 +464,7 @@ export const mockAnalyticsHandlers = {
       activeCardsCount,
       lowStockItemsCount,
       branchPerformance,
+      staffPerformance,
       activeCardsRechargeCount,
       reRechargedCardsCount,
       closedCardsCount,
@@ -336,6 +595,7 @@ export const mockAnalyticsHandlers = {
         peakHourQuantity: peakHourQty,
         offPeakQuantity: offPeakQty,
         stockStatus,
+        currentStock: totalQty,
       };
     });
 

@@ -346,6 +346,17 @@ export const mockSubscriptionsHandlers = {
       return createMockError('NOT_FOUND', `Target plan '${req.requestedPlanId}' not found`);
     }
 
+    // An organization can only have ONE active pending plan change request at a time
+    const existingPending = mockStore.planRequests.find(
+      (r) => r.organizationId === orgId && r.status === 'PENDING'
+    );
+    if (existingPending) {
+      return createMockError(
+        'REQUEST_ALREADY_PENDING',
+        'An organization can only make one plan change request at a time. Please wait until your pending request is approved or rejected by Super Admin before submitting another request.'
+      );
+    }
+
     const subscription = mockStore.subscriptions.find((s) => s.organizationId === orgId);
     const currentPlan = subscription
       ? mockStore.plans.find((p) => p.id === subscription.planId)

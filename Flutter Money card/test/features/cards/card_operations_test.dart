@@ -180,6 +180,8 @@ class FakeSessionRepository implements SessionRepository {
       branchId: branchId,
       status: SessionStatus.active,
       balance: 0.0,
+      customerName: customerName,
+      customerPhone: customerPhone,
       startedAt: '2026-08-17T10:00:00Z',
     );
     sessions.insert(0, session);
@@ -345,6 +347,11 @@ void main() {
       expect(find.text('Branch: Main Cafeteria'), findsOneWidget);
       expect(find.text('₹0.00'), findsOneWidget);
 
+      // Enter required customer details
+      final dialogFields = find.descendant(of: find.byType(AlertDialog), matching: find.byType(TextField));
+      await tester.enterText(dialogFields.at(0), 'John Doe');
+      await tester.enterText(dialogFields.at(1), '9876543210');
+
       // Tap Confirm & Issue in dialog
       await tester.tap(find.widgetWithText(ElevatedButton, 'Confirm & Issue'));
       await tester.pumpAndSettle();
@@ -353,6 +360,8 @@ void main() {
       expect(fakeSessionRepo.sessions.length, 1);
       expect(fakeSessionRepo.sessions.first.cardId, 'CARD001');
       expect(fakeSessionRepo.sessions.first.balance, 0.0);
+      expect(fakeSessionRepo.sessions.first.customerName, 'John Doe');
+      expect(fakeSessionRepo.sessions.first.customerPhone, '9876543210');
     });
 
     testWidgets('CardDetailsScreen renders Available card with Start Session action', (tester) async {
@@ -399,8 +408,11 @@ void main() {
       await tester.tap(find.text('Start Active Session'));
       await tester.pumpAndSettle();
 
-      // Confirm activation in dialog
+      // Confirm activation in dialog with required customer details
       expect(find.text('Confirm Card Activation'), findsOneWidget);
+      final activateFields = find.descendant(of: find.byType(AlertDialog), matching: find.byType(TextField));
+      await tester.enterText(activateFields.at(0), 'John Doe');
+      await tester.enterText(activateFields.at(1), '9876543210');
       await tester.tap(find.widgetWithText(ElevatedButton, 'Confirm & Activate'));
       await tester.pumpAndSettle();
 

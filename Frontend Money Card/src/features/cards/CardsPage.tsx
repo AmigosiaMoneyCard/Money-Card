@@ -1,4 +1,4 @@
-import { formatCurrency, formatDate, cn, buildCardBlockReason, formatBlockedCardMessage } from '@/utils';
+import { formatCurrency, formatDate, cn, buildCardBlockReason, formatBlockedCardMessage, countWords } from '@/utils';
 import { generateSecureToken } from '@/utils/cryptoRandom';
 import { toast } from 'sonner';
 // ─── Cards Management Page (M7) ──────────────────────────────
@@ -11,7 +11,6 @@ import { usePermissions, useAuth, useBranch } from '@/hooks';
 import type {
   Card as CardEntity,
   CardStatus,
-  CardAssignmentStatus,
   Branch,
   CardSession,
   Transaction,
@@ -53,6 +52,9 @@ import {
   Scan,
   X,
   ArrowDown,
+  Phone,
+  User,
+  Building2,
 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { CameraQrScanner } from '@/components/scanner/CameraQrScanner';
@@ -65,6 +67,11 @@ export function CardsPage() {
 
   const [blockReasonCategory, setBlockReasonCategory] = useState('Lost or Stolen Card');
   const [additionalBlockReason, setAdditionalBlockReason] = useState('');
+
+  const blockReasonWordCount = useMemo(() => {
+    return countWords(additionalBlockReason);
+  }, [additionalBlockReason]);
+  const isBlockReasonOverLimit = blockReasonWordCount > 30;
 
   const canView = hasPermission('CARD_VIEW');
   const canIssue = hasPermission('CARD_ISSUE');
@@ -81,7 +88,6 @@ export function CardsPage() {
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<CardStatus | 'ALL'>('ALL');
-  const [assignmentFilter, setAssignmentFilter] = useState<CardAssignmentStatus | 'ALL'>('ALL');
   const [branchFilter, setBranchFilter] = useState<string>(currentBranch?.id || 'ALL');
 
   useEffect(() => {
@@ -157,26 +163,26 @@ export function CardsPage() {
     return filterCards(allCards, {
       searchQuery,
       statusFilter,
-      assignmentFilter,
       branchFilter,
     });
-  }, [allCards, searchQuery, statusFilter, assignmentFilter, branchFilter]);
+  }, [allCards, searchQuery, statusFilter, branchFilter]);
 
   const isFiltered = useMemo(() => {
     return Boolean(
       searchQuery.trim() ||
       statusFilter !== 'ALL' ||
-      assignmentFilter !== 'ALL' ||
       branchFilter !== 'ALL'
     );
-  }, [searchQuery, statusFilter, assignmentFilter, branchFilter]);
+  }, [searchQuery, statusFilter, branchFilter]);
 
   const handleClearFilters = useCallback(() => {
     setSearchQuery('');
     setStatusFilter('ALL');
-    setAssignmentFilter('ALL');
     setBranchFilter('ALL');
   }, []);
+
+  // Tabs & Views
+  const [activeTab, setActiveTab] = useState<'all' | 'blocked'>('all');
 
   // Summary Metrics
   const totalCardsCount = allCards.length;
@@ -185,11 +191,41 @@ export function CardsPage() {
   }, [allCards]);
   const activeCardsCount = activeCardsList.length;
   const availableCardsCount = allCards.filter((c) => c.status === 'AVAILABLE').length;
-  const blockedCardsCount = allCards.filter((c) => c.status === 'BLOCKED').length;
+  const blockedCardsList = useMemo(() => {
+    return allCards.filter((c) => c.status === 'BLOCKED');
+  }, [allCards]);
+  const blockedCardsCount = blockedCardsList.length;
   const effectiveCardLimit = (orgOverview as any)?.effectiveLimits?.cardLimit ?? 100;
 
+  // Filtered Blocked Cards for the Merged Blocked Cards View
+  const filteredBlockedCards = useMemo(() => {
+    return blockedCardsList.filter((card) => {
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchesCard =
+          (card.physicalCardNumber || '').toLowerCase().includes(q) ||
+          card.qrToken.toLowerCase().includes(q);
+        const matchesCustomer =
+          card.activeSession?.customerName?.toLowerCase().includes(q) ?? false;
+        const matchesPhone =
+          card.activeSession?.customerPhone?.toLowerCase().includes(q) ?? false;
+        const matchesReason =
+          card.blockedReason?.toLowerCase().includes(q) ?? false;
+        const matchesStaff =
+          card.blockedBy?.toLowerCase().includes(q) ?? false;
+        if (!matchesCard && !matchesCustomer && !matchesPhone && !matchesReason && !matchesStaff) {
+          return false;
+        }
+      }
+      if (branchFilter !== 'ALL' && card.currentBranchId && card.currentBranchId !== branchFilter) {
+        return false;
+      }
+      return true;
+    });
+  }, [blockedCardsList, searchQuery, branchFilter]);
+
   const handleViewAllInMainTable = () => {
-    setAssignmentFilter('ALL');
+    setActiveTab('all');
     setStatusFilter('ACTIVE');
     const tableEl = document.getElementById('cards-table-container');
     if (tableEl) {
@@ -477,6 +513,10 @@ export function CardsPage() {
   // ─── Block / Unblock Actions ──────────────────────────────────────
   const handleConfirmBlock = async () => {
     if (!selectedCard) return;
+    if (isBlockReasonOverLimit) {
+      toast.error('Additional reason / notes cannot exceed 30 words.');
+      return;
+    }
     try {
       const notes = additionalBlockReason.trim();
       const fullReason = buildCardBlockReason(
@@ -548,8 +588,13 @@ export function CardsPage() {
                   <button
                     type="button"
                     onClick={() => handleOpenDetails(card)}
-                    className="p-1 rounded-md text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 transition-colors cursor-pointer"
-                    title="View card details & actions"
+                    className={cn(
+                      'p-1 rounded-md border transition-colors cursor-pointer',
+                      card.status === 'BLOCKED'
+                        ? 'text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200'
+                        : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-slate-200 hover:border-emerald-300',
+                    )}
+                    title={card.status === 'BLOCKED' ? 'View detailed blocked card audit' : 'View card details & actions'}
                     aria-label={`View card ${card.physicalCardNumber}`}
                   >
                     <Eye className="h-3.5 w-3.5" />
@@ -560,6 +605,17 @@ export function CardsPage() {
                   <span className="inline-flex items-center text-amber-800 text-xs font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
                     Unassigned
                   </span>
+                  {card.status === 'BLOCKED' && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDetails(card)}
+                      className="p-1 rounded-md text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 transition-colors cursor-pointer"
+                      title="View detailed blocked card audit"
+                      aria-label={`View blocked unassigned card ${card.qrToken}`}
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                   <Button
                     variant="primary"
                     size="sm"
@@ -643,6 +699,150 @@ export function CardsPage() {
           </span>
         );
       },
+    },
+  ];
+
+  // ─── Blocked Cards Table Columns (Merged from Customer History) ───
+  const blockedCardColumns = [
+    {
+      key: 'physicalCardNumber',
+      header: 'Card Number',
+      render: (card: CardEntity) => (
+        <div className="flex items-center gap-2">
+          <ShieldAlert className="h-4 w-4 text-rose-500 shrink-0" />
+          <span className="font-mono font-bold text-slate-900">
+            {card.physicalCardNumber || card.qrToken}
+          </span>
+          <button
+            type="button"
+            onClick={() => handleOpenDetails(card)}
+            className="p-1 rounded-md text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 transition-colors cursor-pointer"
+            title="View detailed blocked card audit"
+            aria-label={`View blocked card details for ${card.physicalCardNumber || card.qrToken}`}
+          >
+            <Eye className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ),
+    },
+    {
+      key: 'customerName',
+      header: 'Customer / Holder',
+      render: (card: CardEntity) => (
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-700 font-bold text-xs border border-rose-200 shrink-0">
+            {card.activeSession?.customerName ? card.activeSession.customerName.charAt(0).toUpperCase() : <User className="h-3.5 w-3.5" />}
+          </div>
+          <div>
+            <p className="font-bold text-slate-900 text-xs sm:text-sm">
+              {card.activeSession?.customerName || 'Unassigned / General Card'}
+            </p>
+            {card.activeSession?.customerPhone && (
+              <p className="text-xs text-slate-500 flex items-center gap-1">
+                <Phone className="h-3 w-3 text-slate-400" />
+                <span>{card.activeSession.customerPhone}</span>
+              </p>
+            )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'balance',
+      header: 'Frozen Balance',
+      render: (card: CardEntity) => (
+        <span className="font-mono font-bold text-slate-900 text-sm">
+          {formatCurrency(card.activeSession?.balance || 0)}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: () => (
+        <Badge variant="danger" className="gap-1 font-semibold text-xs">
+          <Lock className="h-3 w-3" />
+          Blocked
+        </Badge>
+      ),
+    },
+    {
+      key: 'blockedReason',
+      header: 'Blocked Reason',
+      render: (card: CardEntity) => {
+        const displayReason = formatBlockedCardMessage(card.blockedReason, card.blockedBy);
+        return (
+          <span
+            className="text-xs text-rose-700 font-medium max-w-xs truncate block"
+            title={displayReason}
+          >
+            {displayReason || 'Card Blocked'}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'blockedBy',
+      header: 'Blocked By',
+      render: (card: CardEntity) => (
+        <span className="text-sm font-semibold text-slate-900">
+          {card.blockedBy || 'Staff Member'}
+        </span>
+      ),
+    },
+    {
+      key: 'branch',
+      header: 'Branch',
+      render: (card: CardEntity) => {
+        const branch = branches.find((b) => b.id === card.currentBranchId);
+        return (
+          <span className="text-xs font-medium text-slate-700 flex items-center gap-1">
+            <Building2 className="h-3.5 w-3.5 text-slate-500" />
+            {branch ? branch.name : 'All Branches'}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'blockedAt',
+      header: 'Blocked At',
+      render: (card: CardEntity) => (
+        <span className="text-xs font-medium text-slate-500">
+          {card.blockedAt ? formatDate(card.blockedAt) : formatDate(card.updatedAt)}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      className: 'text-right whitespace-nowrap',
+      render: (card: CardEntity) => (
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs py-1 px-2.5 border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50"
+            onClick={() => handleOpenDetails(card)}
+            leftIcon={<Eye className="h-3.5 w-3.5" />}
+          >
+            Details
+          </Button>
+          {canUnblock && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs py-1 px-2.5 border-slate-300 text-emerald-700 hover:border-emerald-500 hover:text-emerald-800 hover:bg-emerald-50 transition-colors"
+              onClick={() => {
+                setSelectedCard(card);
+                setShowUnblockModal(true);
+              }}
+              leftIcon={<Unlock className="h-3.5 w-3.5" />}
+            >
+              Unblock
+            </Button>
+          )}
+        </div>
+      ),
     },
   ];
 
@@ -754,7 +954,7 @@ export function CardsPage() {
       {/* ─── Search & Filter Bar ─────────────────────────────────────── */}
       <Card padding="md">
         <div id="cards-table-container" className="flex flex-col gap-3">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="relative">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
               <input
@@ -776,17 +976,6 @@ export function CardsPage() {
                 </button>
               )}
             </div>
-
-            <Select
-              id="card-assignment-filter"
-              value={assignmentFilter}
-              onChange={(e) => setAssignmentFilter(e.target.value as CardAssignmentStatus | 'ALL')}
-              options={[
-                { value: 'ALL', label: 'All Cards' },
-                { value: 'ASSIGNED', label: 'Assigned Cards' },
-                { value: 'UNASSIGNED', label: 'Unassigned Cards' },
-              ]}
-            />
 
             <Select
               id="card-status-filter"
@@ -820,9 +1009,12 @@ export function CardsPage() {
               <div className="flex items-center gap-1.5">
                 <span>Showing</span>
                 <span className="font-semibold text-emerald-600">
-                  {filteredCards.length}
+                  {activeTab === 'blocked' ? filteredBlockedCards.length : filteredCards.length}
                 </span>
-                <span>of {allCards.length} cards matching criteria</span>
+                <span>
+                  of {activeTab === 'blocked' ? blockedCardsCount : allCards.length}{' '}
+                  {activeTab === 'blocked' ? 'blocked cards' : 'cards'} matching criteria
+                </span>
               </div>
               <button
                 type="button"
@@ -837,11 +1029,109 @@ export function CardsPage() {
         </div>
       </Card>
 
-      {/* ─── Cards Data Table ────────────────────────────────────────── */}
+      {/* ─── Navigation Tabs ─────────────────────────────────────────── */}
+      <div className="flex items-center gap-2 border-b border-slate-200">
+        <button
+          type="button"
+          onClick={() => setActiveTab('all')}
+          className={cn(
+            'flex items-center gap-2 border-b-2 py-3 px-4 text-sm font-semibold transition-colors cursor-pointer',
+            activeTab === 'all'
+              ? 'border-emerald-600 text-emerald-600'
+              : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700',
+          )}
+        >
+          <CreditCard className="h-4 w-4" />
+          <span>Cards Registry</span>
+          <span
+            className={cn(
+              'rounded-full px-2 py-0.5 text-xs font-bold',
+              activeTab === 'all'
+                ? 'bg-emerald-100 text-emerald-700'
+                : 'bg-slate-100 text-slate-600',
+            )}
+          >
+            {allCards.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('blocked')}
+          className={cn(
+            'flex items-center gap-2 border-b-2 py-3 px-4 text-sm font-semibold transition-colors cursor-pointer',
+            activeTab === 'blocked'
+              ? 'border-rose-600 text-rose-600'
+              : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700',
+          )}
+        >
+          <ShieldAlert className="h-4 w-4" />
+          <span>Blocked Cards</span>
+          {blockedCardsCount > 0 && (
+            <span
+              className={cn(
+                'rounded-full px-2 py-0.5 text-xs font-bold',
+                activeTab === 'blocked'
+                  ? 'bg-rose-100 text-rose-700'
+                  : 'bg-rose-50 text-rose-600 border border-rose-200',
+              )}
+            >
+              {blockedCardsCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* ─── Cards Data Table / Blocked Cards Table ─────────────────────── */}
       {isLoading ? (
         <LoadingState message="Loading card registry..." />
       ) : error ? (
         <ErrorState title="Error Loading Cards" message={error} onRetry={fetchCardsData} />
+      ) : activeTab === 'blocked' ? (
+        filteredBlockedCards.length === 0 ? (
+          <EmptyState
+            icon={<ShieldAlert className="h-8 w-8 text-slate-400" />}
+            title={isFiltered ? "No matching blocked cards" : "No Blocked Cards"}
+            description={
+              isFiltered
+                ? "No blocked cards match your current search or branch filter."
+                : "All registered smart cards are active or ready to issue. Any card locked due to loss or security reasons will appear here."
+            }
+            action={
+              isFiltered ? (
+                <Button
+                  variant="outline"
+                  onClick={handleClearFilters}
+                  className="gap-2 border-slate-300 text-slate-700 hover:bg-slate-50"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  <span>Clear Filters</span>
+                </Button>
+              ) : undefined
+            }
+          />
+        ) : (
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 rounded-xl border border-rose-200 bg-rose-50/70 text-xs text-rose-900">
+              <div className="flex items-center gap-2.5">
+                <ShieldAlert className="h-5 w-5 text-rose-600 shrink-0" />
+                <div>
+                  <p className="font-bold text-rose-800">
+                    Blocked Cards Security Center ({filteredBlockedCards.length} {filteredBlockedCards.length === 1 ? 'card' : 'cards'})
+                  </p>
+                  <p className="text-rose-700 text-[11px] mt-0.5">
+                    Locked cards cannot be used for POS purchases or balance top-ups. Click Details to view full audit logs or Unblock to restore card functionality.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <DataTable
+              data={filteredBlockedCards}
+              columns={blockedCardColumns}
+              keyExtractor={(c) => c.id}
+            />
+          </div>
+        )
       ) : filteredCards.length === 0 ? (
         <EmptyState
           icon={<CreditCard className="h-8 w-8 text-slate-500" />}
@@ -1178,7 +1468,6 @@ export function CardsPage() {
                   <table className="w-full text-left text-xs border-collapse">
                     <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
                       <tr>
-                        <th className="p-2.5">Current Cycle</th>
                         <th className="p-2.5">Customer Name</th>
                         <th className="p-2.5">Phone</th>
                         <th className="p-2.5">Current Balance</th>
@@ -1188,9 +1477,6 @@ export function CardsPage() {
                     </thead>
                     <tbody className="bg-white">
                       <tr>
-                        <td className="p-2.5 font-mono font-bold text-slate-900">
-                          #{currentCycleSession.cycleNumber || 1}
-                        </td>
                         <td className="p-2.5 font-semibold text-slate-900">
                           {currentCycleSession.customerName || 'Walk-in Customer'}
                         </td>
@@ -1209,10 +1495,6 @@ export function CardsPage() {
                       </tr>
                     </tbody>
                   </table>
-                  <div className="px-3 py-1.5 bg-slate-50 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between">
-                    <span className="font-medium text-emerald-700">Showing current cycle only</span>
-                    <span className="text-slate-400">Older cycles are stored in Customer History</span>
-                  </div>
                 </div>
               )}
             </div>
@@ -1315,16 +1597,34 @@ export function CardsPage() {
 
             {/* Additional Reason Option */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">
-                Additional Reason / Notes (Optional)
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-slate-700">
+                  Additional Reason / Notes (Optional)
+                </label>
+                <span
+                  className={`text-[11px] font-medium transition-colors ${
+                    isBlockReasonOverLimit ? 'text-rose-600 font-semibold' : 'text-slate-400'
+                  }`}
+                >
+                  {blockReasonWordCount} / 30 words
+                </span>
+              </div>
               <textarea
                 value={additionalBlockReason}
                 onChange={(e) => setAdditionalBlockReason(e.target.value)}
                 placeholder="Type additional reason, remarks, or context (e.g. customer misplaced wallet at cafeteria, reported via phone)..."
                 rows={2}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-rose-500 focus:outline-none shadow-sm resize-none"
+                className={`w-full rounded-lg border px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none shadow-sm resize-none transition-colors ${
+                  isBlockReasonOverLimit
+                    ? 'border-rose-400 bg-rose-50/40 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
+                    : 'border-slate-300 bg-white focus:border-rose-500'
+                }`}
               />
+              {isBlockReasonOverLimit && (
+                <p className="text-xs text-rose-600 font-medium">
+                  Additional notes cannot exceed 30 words (currently {blockReasonWordCount} words).
+                </p>
+              )}
             </div>
 
             {/* Live Business Logic Message Preview */}
@@ -1342,7 +1642,12 @@ export function CardsPage() {
             <Button variant="outline" onClick={() => setShowBlockModal(false)}>
               Cancel
             </Button>
-            <Button variant="danger" onClick={handleConfirmBlock} className="bg-rose-600 hover:bg-rose-500 font-bold">
+            <Button
+              variant="danger"
+              onClick={handleConfirmBlock}
+              disabled={isBlockReasonOverLimit}
+              className="bg-rose-600 hover:bg-rose-500 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               Confirm Block
             </Button>
           </ModalFooter>

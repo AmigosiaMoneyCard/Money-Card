@@ -149,10 +149,10 @@ export function buildPeakDemandJsPdf({
   doc.setFontSize(7.5);
   doc.setTextColor(51, 65, 85);
   doc.text('Food / Product Item', margin + 4, curY + 5);
-  doc.text('Category', margin + 65, curY + 5);
-  doc.text('Units Sold', margin + 105, curY + 5);
-  doc.text('Gross Revenue (INR)', margin + 135, curY + 5);
-  doc.text('Stock Status', margin + 168, curY + 5);
+  doc.text('Gross Revenue', margin + 68, curY + 5);
+  doc.text('Stock Status', margin + 105, curY + 5);
+  doc.text('Units Sold', margin + 138, curY + 5);
+  doc.text('Category', margin + 165, curY + 5);
 
   curY += 7;
   const products = data.productDemand || [];
@@ -169,11 +169,14 @@ export function buildPeakDemandJsPdf({
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.setTextColor(51, 65, 85);
-    doc.text(p.productName.substring(0, 32), margin + 4, curY + 4);
-    doc.text(p.category.substring(0, 20), margin + 65, curY + 4);
-    doc.text(`${p.quantitySold} units`, margin + 105, curY + 4);
-    doc.text(formatCurrency(p.revenue), margin + 135, curY + 4);
-    doc.text(p.stockStatus.replace(/_/g, ' '), margin + 168, curY + 4);
+    doc.text(p.productName.substring(0, 30), margin + 4, curY + 4);
+    doc.text(formatCurrency(p.revenue), margin + 68, curY + 4);
+    const stockText = p.currentStock !== undefined
+      ? `${p.stockStatus.replace(/_/g, ' ')} (${p.currentStock})`
+      : p.stockStatus.replace(/_/g, ' ');
+    doc.text(stockText.substring(0, 16), margin + 105, curY + 4);
+    doc.text(`${p.quantitySold} units`, margin + 138, curY + 4);
+    doc.text(p.category.substring(0, 16), margin + 165, curY + 4);
 
     curY += 5.5;
   });

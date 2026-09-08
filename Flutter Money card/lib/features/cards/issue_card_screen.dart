@@ -66,10 +66,12 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
 
     final nameCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
+    String? nameError;
     String? phoneError;
 
     final confirm = await showDialog<bool>(
       context: context,
+      barrierDismissible: false,
       builder: (context) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           title: const Text('Confirm Card Issuance'),
@@ -109,18 +111,26 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                 ),
                 const Divider(height: AppSpacing.md),
                 const Text(
-                  'Customer Details (Optional):',
+                  'Customer Details (Required for Customer History):',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
                 ),
                 const SizedBox(height: 6),
                 TextField(
                   controller: nameCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Customer Name',
+                  onChanged: (val) {
+                    if (nameError != null) {
+                      setDialogState(() {
+                        nameError = null;
+                      });
+                    }
+                  },
+                  decoration: InputDecoration(
+                    labelText: 'Customer Name *',
                     hintText: 'e.g. John Doe',
-                    prefixIcon: Icon(Icons.person_outline, size: 18),
+                    errorText: nameError,
+                    prefixIcon: const Icon(Icons.person_outline, size: 18),
                     isDense: true,
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -139,7 +149,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                     }
                   },
                   decoration: InputDecoration(
-                    labelText: 'Phone Number (10 Digits)',
+                    labelText: 'Phone Number (10 Digits) *',
                     hintText: 'e.g. 9876543210',
                     prefixIcon: const Icon(Icons.phone_outlined, size: 18),
                     errorText: phoneError,
@@ -150,7 +160,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 const Text(
-                  'Issuing this card will activate it and create an active session for transactions.',
+                  'Customer details are saved to Customer History. Then the card becomes active.',
                   style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
                 ),
               ],
@@ -163,13 +173,33 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
             ),
             ElevatedButton(
               onPressed: () {
+                final name = nameCtrl.text.trim();
                 final phone = phoneCtrl.text.trim();
-                if (phone.isNotEmpty && phone.length != 10) {
+
+                bool hasError = false;
+                String? newNameError;
+                String? newPhoneError;
+
+                if (name.isEmpty) {
+                  newNameError = 'Customer name is required';
+                  hasError = true;
+                }
+                if (phone.isEmpty) {
+                  newPhoneError = 'Phone number is required';
+                  hasError = true;
+                } else if (phone.length != 10) {
+                  newPhoneError = 'Phone number must be exactly 10 digits';
+                  hasError = true;
+                }
+
+                if (hasError) {
                   setDialogState(() {
-                    phoneError = 'Phone number must be exactly 10 digits';
+                    nameError = newNameError;
+                    phoneError = newPhoneError;
                   });
                   return;
                 }
+
                 Navigator.of(context).pop(true);
               },
               child: const Text('Confirm & Issue'),
@@ -235,45 +265,15 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
       final cardDetailsState = ref.read(cardDetailsNotifierProvider);
       final card = cardDetailsState.card;
       if (card != null && card.status == CardStatus.available) {
-        var branch = ref.read(currentBranchProvider);
-        if (branch == null) {
-          final branchState = ref.read(branchNotifierProvider);
-          if (branchState.assignedBranches.isNotEmpty) {
-            branch = branchState.assignedBranches.first;
-            ref.read(branchNotifierProvider.notifier).selectBranch(branch);
-          }
+        setState(() {
+          _isResolvingQr = false;
+        });
+        // Ask for Customer Name and Number before issuing
+        await _handleConfirmIssue(card);
+        if (mounted) {
+          _resetScan();
         }
-
-        if (branch != null) {
-          final session = await ref.read(cardDetailsNotifierProvider.notifier).issueCardSession(
-                cardId: card.id,
-                branchId: branch.id,
-              );
-
-          if (session != null && mounted) {
-            ref.read(availableCardsNotifierProvider.notifier).loadAvailableCards();
-            ref.read(cardListNotifierProvider.notifier).loadCards();
-
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Card ${card.displayCardNumber} auto-issued successfully!'),
-                backgroundColor: AppColors.success,
-                duration: const Duration(seconds: 2),
-              ),
-            );
-
-            if (GoRouter.maybeOf(context) != null) {
-              context.pushReplacement(
-                '/app/cards/${card.id}',
-                extra: {
-                  'initialCard': card.copyWith(status: CardStatus.active, currentBranchId: branch.id),
-                  'initialSession': session,
-                },
-              );
-            }
-            return;
-          }
-        }
+        return;
       }
     }
 

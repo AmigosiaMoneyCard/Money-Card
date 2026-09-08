@@ -33,28 +33,47 @@ import {
   RefreshCw,
   ShoppingBag,
   Building2,
+  Calendar,
 } from 'lucide-react';
 
-export type TimeWindowPreset = 'thisMonth' | 'today' | 'last7' | 'last30';
+export type TimeWindowPreset = 'thisMonth' | 'today' | 'last7' | 'last30' | 'custom';
 
-function getPeakPresetDates(preset: TimeWindowPreset): { startDate: string; endDate: string } {
+function formatLocalDate(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function getPeakPresetDates(
+  preset: TimeWindowPreset,
+  customStart?: string,
+  customEnd?: string
+): { startDate: string; endDate: string } {
   const now = new Date();
-  const endStr = now.toISOString().split('T')[0];
+  const endStr = formatLocalDate(now);
 
+  if (preset === 'custom') {
+    return {
+      startDate: customStart || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`,
+      endDate: customEnd || endStr,
+    };
+  }
   if (preset === 'today') {
     return { startDate: endStr, endDate: endStr };
   }
   if (preset === 'last7') {
     const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    return { startDate: start.toISOString().split('T')[0], endDate: endStr };
+    return { startDate: formatLocalDate(start), endDate: endStr };
   }
   if (preset === 'last30') {
     const start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    return { startDate: start.toISOString().split('T')[0], endDate: endStr };
+    return { startDate: formatLocalDate(start), endDate: endStr };
   }
   if (preset === 'thisMonth') {
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { startDate: start.toISOString().split('T')[0], endDate: endStr };
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    return { startDate: `${year}-${month}-01`, endDate: endStr };
   }
 
   return { startDate: '', endDate: endStr };
@@ -119,6 +138,33 @@ export function matchesFoodCategory(productCategories: string[], selectedCategor
   });
 }
 
+/**
+ * Sorts food & product demand metrics by Revenue or Orders,
+ * prioritizing revenue and available stock health.
+ */
+export function sortProductDemand(
+  items: ProductDemandMetric[],
+  sortBy: 'REVENUE' | 'ORDERS' = 'REVENUE'
+): ProductDemandMetric[] {
+  return [...items].sort((a, b) => {
+    if (sortBy === 'REVENUE') {
+      // Primary: Revenue descending
+      if (b.revenue !== a.revenue) return b.revenue - a.revenue;
+      // Secondary: Stock count descending (prioritize healthy stocks)
+      const stockA = a.currentStock ?? (a.stockStatus === 'NORMAL' ? 50 : a.stockStatus === 'LOW' ? 5 : 0);
+      const stockB = b.currentStock ?? (b.stockStatus === 'NORMAL' ? 50 : b.stockStatus === 'LOW' ? 5 : 0);
+      if (stockB !== stockA) return stockB - stockA;
+      // Tertiary: Quantity sold descending
+      return b.quantitySold - a.quantitySold;
+    } else {
+      // Primary: Orders / Units sold descending
+      if (b.quantitySold !== a.quantitySold) return b.quantitySold - a.quantitySold;
+      // Secondary: Revenue descending
+      return b.revenue - a.revenue;
+    }
+  });
+}
+
 export function PeakPage() {
   const { currentBranch, selectBranch } = useBranch();
 
@@ -127,22 +173,63 @@ export function PeakPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filters
-  const [selectedBranchId, setSelectedBranchId] = useState<string>(currentBranch?.id || 'ALL');
+  // Filters & Sorting Prioritization: defaults to Main Cafeteria or current active branch
+  const [selectedBranchId, setSelectedBranchId] = useState<string>(() => {
+    if (currentBranch) return currentBranch.id;
+    return 'ALL';
+  });
 
   useEffect(() => {
-    setSelectedBranchId(currentBranch ? currentBranch.id : 'ALL');
-  }, [currentBranch]);
+    if (currentBranch) {
+      setSelectedBranchId(currentBranch.id);
+    } else if (allBranches.length > 0 && selectedBranchId === 'ALL') {
+      const mainBranch =
+        allBranches.find((b) => b.name.toLowerCase().includes('main')) || allBranches[0];
+      if (mainBranch) {
+        setSelectedBranchId(mainBranch.id);
+      }
+    }
+  }, [currentBranch, allBranches, selectedBranchId]);
+
   const [selectedDateRange, setSelectedDateRange] = useState<TimeWindowPreset>('thisMonth');
+  const [startDate, setStartDate] = useState<string>(() => getPeakPresetDates('thisMonth').startDate);
+  const [endDate, setEndDate] = useState<string>(() => getPeakPresetDates('thisMonth').endDate);
+  const [customStartDate, setCustomStartDate] = useState<string>(() => getPeakPresetDates('thisMonth').startDate);
+  const [customEndDate, setCustomEndDate] = useState<string>(() => getPeakPresetDates('thisMonth').endDate);
+
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [demandSortBy, setDemandSortBy] = useState<'REVENUE' | 'ORDERS'>('REVENUE');
   const [isExporting, setIsExporting] = useState(false);
+
+  const handlePresetChange = (preset: TimeWindowPreset) => {
+    setSelectedDateRange(preset);
+    if (preset !== 'custom') {
+      const { startDate: s, endDate: e } = getPeakPresetDates(preset);
+      setStartDate(s);
+      setEndDate(e);
+      setCustomStartDate(s);
+      setCustomEndDate(e);
+    }
+  };
+
+  const handleApplyCustomDates = () => {
+    if (!customStartDate || !customEndDate) {
+      notify.error('Please select both start and end dates.');
+      return;
+    }
+    if (customStartDate > customEndDate) {
+      notify.error('Start date cannot be after end date.');
+      return;
+    }
+    setStartDate(customStartDate);
+    setEndDate(customEndDate);
+  };
 
   // ── Fetch Peak Analytics ───────────────────────────────────
   const fetchPeakData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const { startDate, endDate } = getPeakPresetDates(selectedDateRange);
       const [peakRes, branchRes] = await Promise.all([
         apiService.analytics.getPeakAnalytics({
           branchId: selectedBranchId !== 'ALL' ? selectedBranchId : undefined,
@@ -159,14 +246,27 @@ export function PeakPage() {
 
       setData(peakRes.data);
       if (branchRes.success) {
-        setAllBranches(branchRes.data.items);
+        const items = branchRes.data.items || [];
+        setAllBranches(items);
+        if (!currentBranch && selectedBranchId === 'ALL' && items.length > 0) {
+          const mainBranch =
+            items.find((b: Branch) => b.name.toLowerCase().includes('main')) || items[0];
+          if (mainBranch) {
+            setSelectedBranchId(mainBranch.id);
+          }
+        }
       }
     } catch {
       setError('Unable to connect to the server. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  }, [selectedBranchId, selectedDateRange]);
+  }, [selectedBranchId, startDate, endDate, currentBranch]);
+
+  const handleRefreshData = async () => {
+    await fetchPeakData();
+    notify.success('Peak and demand data refreshed successfully.');
+  };
 
   useEffect(() => {
     let isCancelled = false;
@@ -174,7 +274,6 @@ export function PeakPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const { startDate, endDate } = getPeakPresetDates(selectedDateRange);
         const [peakRes, branchRes] = await Promise.all([
           apiService.analytics.getPeakAnalytics({
             branchId: selectedBranchId !== 'ALL' ? selectedBranchId : undefined,
@@ -205,7 +304,7 @@ export function PeakPage() {
     return () => {
       isCancelled = true;
     };
-  }, [selectedBranchId, selectedDateRange]);
+  }, [selectedBranchId, startDate, endDate]);
 
   // ── CSV Export Handler ────────────────────────────────────
   // ── PDF Download Handler ──────────────────────────────────────────
@@ -229,8 +328,11 @@ export function PeakPage() {
           ? 'Last 7 Days'
           : selectedDateRange === 'last30'
           ? 'Last 30 Days'
+          : selectedDateRange === 'custom'
+          ? `Custom Range (${startDate} to ${endDate})`
           : 'This Month';
 
+      const sortLabel = demandSortBy === 'REVENUE' ? 'Revenue Wise' : 'Order Wise';
       const doc = buildPeakDemandJsPdf({
         data: {
           ...data,
@@ -239,8 +341,8 @@ export function PeakPage() {
         selectedBranchName,
         dateRangeLabel:
           selectedCategory !== 'ALL'
-            ? `${dateRangeLabel} (Category: ${selectedCategory})`
-            : dateRangeLabel,
+            ? `${dateRangeLabel} (${sortLabel}, Category: ${selectedCategory})`
+            : `${dateRangeLabel} (${sortLabel})`,
         organizationName: 'Money Card Cafeteria',
       });
 
@@ -291,14 +393,17 @@ export function PeakPage() {
 
   const filteredProducts = useMemo(() => {
     if (!productDemand) return [];
-    if (selectedCategory === 'ALL') return productDemand;
-    return productDemand.filter((p) => {
-      const cats = (p as any)._categoryList || extractProductCategories(p.category);
-      return matchesFoodCategory(cats, selectedCategory);
-    });
-  }, [productDemand, selectedCategory]);
+    let items = productDemand;
+    if (selectedCategory !== 'ALL') {
+      items = items.filter((p) => {
+        const cats = (p as any)._categoryList || extractProductCategories(p.category);
+        return matchesFoodCategory(cats, selectedCategory);
+      });
+    }
+    return sortProductDemand(items, demandSortBy);
+  }, [productDemand, selectedCategory, demandSortBy]);
 
-  // Columns for Product Demand Table
+  // Columns for Product Demand Table - Prioritizing Revenue and Stocks
   const productColumns = [
     {
       key: 'productName',
@@ -316,39 +421,55 @@ export function PeakPage() {
       ),
     },
     {
-      key: 'quantitySold',
-      header: 'Total Units Sold',
-      render: (p: ProductDemandMetric) => (
-        <span className="font-mono text-sm font-bold text-slate-900">
-          {p.quantitySold.toLocaleString()} units
-        </span>
-      ),
-    },
-
-    {
       key: 'revenue',
       header: 'Gross Revenue',
       render: (p: ProductDemandMetric) => (
-        <span className="font-mono text-sm font-bold text-emerald-600">
-          {formatCurrency(p.revenue)}
-        </span>
+        <div className="flex flex-col">
+          <span className="font-mono text-sm font-bold text-emerald-600">
+            {formatCurrency(p.revenue)}
+          </span>
+          <span className="text-[10px] text-slate-400">Total Sales</span>
+        </div>
       ),
     },
     {
       key: 'stockStatus',
-      header: 'Peak Stock Status',
+      header: 'Stock & Availability',
+      render: (p: ProductDemandMetric) => {
+        const stockCount = p.currentStock;
+        return (
+          <div className="flex items-center gap-1.5">
+            <Badge
+              variant={
+                p.stockStatus === 'NORMAL'
+                  ? 'success'
+                  : p.stockStatus === 'LOW'
+                    ? 'warning'
+                    : 'danger'
+              }
+            >
+              {p.stockStatus === 'OUT_OF_STOCK'
+                ? 'Out of Stock'
+                : p.stockStatus === 'LOW'
+                  ? 'Low Stock'
+                  : 'In Stock'}
+            </Badge>
+            {stockCount !== undefined && (
+              <span className="font-mono text-xs font-bold text-slate-700">
+                {stockCount} in stock
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: 'quantitySold',
+      header: 'Orders & Volume',
       render: (p: ProductDemandMetric) => (
-        <Badge
-          variant={
-            p.stockStatus === 'NORMAL'
-              ? 'success'
-              : p.stockStatus === 'LOW'
-                ? 'warning'
-                : 'danger'
-          }
-        >
-          {p.stockStatus.replace(/_/g, ' ')}
-        </Badge>
+        <span className="font-mono text-sm font-bold text-slate-900">
+          {p.quantitySold.toLocaleString()} orders
+        </span>
       ),
     },
   ];
@@ -381,67 +502,118 @@ export function PeakPage() {
       </div>
 
       {/* ── Filter Toolbar ── */}
-      <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:flex-row lg:items-end lg:justify-between">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 flex-1">
-          {/* Branch Scope Filter */}
-          <div>
-            <label className="text-xs font-semibold text-slate-600 block mb-1.5">Branch Scope</label>
-            <Select
-              id="peak-branch-scope"
-              value={selectedBranchId}
-              onChange={(e) => {
-                setSelectedBranchId(e.target.value);
-                selectBranch(e.target.value);
-              }}
-              options={[
-                { value: 'ALL', label: 'All Branches' },
-                ...allBranches.map((b) => ({ value: b.id, label: b.name })),
-              ]}
-            />
+      <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 flex-1">
+            {/* Branch Scope Filter */}
+            <div>
+              <label className="text-xs font-semibold text-slate-600 block mb-1.5">Branch Scope</label>
+              <Select
+                id="peak-branch-scope"
+                value={selectedBranchId}
+                onChange={(e) => {
+                  setSelectedBranchId(e.target.value);
+                  selectBranch(e.target.value);
+                }}
+                options={[
+                  { value: 'ALL', label: 'All Branches' },
+                  ...allBranches.map((b) => ({ value: b.id, label: b.name })),
+                ]}
+              />
+            </div>
+
+            {/* Time Window Selector */}
+            <div>
+              <label className="text-xs font-semibold text-slate-600 block mb-1.5">Time Window</label>
+              <Select
+                id="peak-time-window"
+                value={selectedDateRange}
+                onChange={(e) => handlePresetChange(e.target.value as TimeWindowPreset)}
+                options={[
+                  { value: 'thisMonth', label: 'This Month' },
+                  { value: 'today', label: 'Today' },
+                  { value: 'last7', label: 'Last 7 Days' },
+                  { value: 'last30', label: 'Last 30 Days' },
+                  { value: 'custom', label: 'Custom Range' },
+                ]}
+              />
+            </div>
+
+            {/* Food Category Filter */}
+            <div>
+              <label className="text-xs font-semibold text-slate-600 block mb-1.5">Food Category</label>
+              <Select
+                id="peak-food-category"
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                options={[
+                  { value: 'ALL', label: 'All Food Categories' },
+                  ...categories.map((c) => ({ value: c, label: c })),
+                ]}
+              />
+            </div>
           </div>
 
-          {/* Time Window Selector */}
-          <div>
-            <label className="text-xs font-semibold text-slate-600 block mb-1.5">Time Window</label>
-            <Select
-              id="peak-time-window"
-              value={selectedDateRange}
-              onChange={(e) => setSelectedDateRange(e.target.value as TimeWindowPreset)}
-              options={[
-                { value: 'thisMonth', label: 'This Month' },
-                { value: 'today', label: 'Today' },
-                { value: 'last7', label: 'Last 7 Days' },
-                { value: 'last30', label: 'Last 30 Days' },
-              ]}
-            />
-          </div>
-
-          {/* Food Category Filter */}
-          <div>
-            <label className="text-xs font-semibold text-slate-600 block mb-1.5">Food Category</label>
-            <Select
-              id="peak-food-category"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              options={[
-                { value: 'ALL', label: 'All Food Categories' },
-                ...categories.map((c) => ({ value: c, label: c })),
-              ]}
-            />
+          <div className="flex items-center self-end lg:self-end">
+            <Button
+              variant="outline"
+              size="md"
+              onClick={handleRefreshData}
+              isLoading={isLoading}
+              leftIcon={<RefreshCw className="h-4 w-4" />}
+            >
+              Refresh Data
+            </Button>
           </div>
         </div>
 
-        <div className="flex items-center self-end lg:self-end">
-          <Button
-            variant="outline"
-            size="md"
-            onClick={fetchPeakData}
-            isLoading={isLoading}
-            leftIcon={<RefreshCw className="h-4 w-4" />}
+        {/* Custom Range Sub-bar */}
+        {selectedDateRange === 'custom' && (
+          <div
+            data-testid="peak-custom-date-container"
+            className="flex flex-wrap items-end gap-3 pt-3 border-t border-slate-100"
           >
-            Refresh Data
-          </Button>
-        </div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 self-center">
+              <Calendar className="h-4 w-4 text-emerald-600" />
+              <span>Custom Date Range:</span>
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-medium text-slate-600">Start Date</label>
+              <input
+                id="peak-start-date"
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none shadow-sm"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-medium text-slate-600">End Date</label>
+              <input
+                id="peak-end-date"
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none shadow-sm"
+              />
+            </div>
+            <Button
+              id="peak-apply-custom-date"
+              size="sm"
+              variant="primary"
+              onClick={handleApplyCustomDates}
+              className="h-8"
+            >
+              Apply Range
+            </Button>
+            {startDate && endDate && (
+              <span className="text-xs text-slate-500 self-center">
+                Active: <span className="font-semibold text-slate-700">{startDate}</span> to{' '}
+                <span className="font-semibold text-slate-700">{endDate}</span>
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {isLoading ? (
@@ -544,7 +716,7 @@ export function PeakPage() {
 
           {/* ── Section 2: Food / Product Demand Analysis ── */}
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2.5">
                 <h2 className="text-lg font-bold text-slate-900">Top Food & Item Demand</h2>
                 {selectedCategory !== 'ALL' && (
@@ -554,11 +726,41 @@ export function PeakPage() {
                 )}
               </div>
 
-              {selectedCategory !== 'ALL' && (
-                <Button variant="ghost" size="sm" onClick={() => setSelectedCategory('ALL')}>
-                  Reset Category Filter
-                </Button>
-              )}
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Prioritization Toggle: Revenue Wise vs Order Wise */}
+                <div className="inline-flex rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setDemandSortBy('REVENUE')}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                      demandSortBy === 'REVENUE'
+                        ? 'bg-white text-emerald-700 font-bold shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
+                    Revenue Wise
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDemandSortBy('ORDERS')}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                      demandSortBy === 'ORDERS'
+                        ? 'bg-white text-emerald-700 font-bold shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <ShoppingBag className="h-3.5 w-3.5 text-emerald-600" />
+                    Order Wise
+                  </button>
+                </div>
+
+                {selectedCategory !== 'ALL' && (
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedCategory('ALL')}>
+                    Reset Category Filter
+                  </Button>
+                )}
+              </div>
             </div>
 
             {filteredProducts.length === 0 ? (

@@ -80,27 +80,45 @@ export async function getOrgPlanRequests(req: Request, res: Response) {
 
   const allPlans = await prisma.plan.findMany();
   const planMap = new Map(allPlans.map((p) => [p.id, p.name]));
+  const planPriceMap = new Map(allPlans.map((p) => [p.id, p.price]));
 
-  const formatted = requests.map((r) => ({
-    id: r.id,
-    organizationId: r.organizationId,
-    organizationName: r.organization?.name || 'Organization',
-    currentPlanId: r.currentPlanId,
-    currentPlanName: planMap.get(r.currentPlanId) || 'Standard Plan',
-    requestedPlanId: r.requestedPlanId,
-    requestedPlanName: r.requestedPlan?.name || 'Standard Plan',
-    requestType:
-      r.currentPlanId === r.requestedPlanId || r.reason?.toLowerCase().includes('renewal')
-        ? 'RENEWAL'
-        : 'UPGRADE',
-    reason: r.reason || '',
-    status: r.status,
-    adminNotes: r.adminNotes || '',
-    createdAt: r.requestedAt,
-    updatedAt: r.requestedAt,
-    reviewedAt: r.reviewedAt,
-    reviewedBy: r.reviewedByUserId,
-  }));
+  const formatted = requests.map((r) => {
+    let autoType: 'UPGRADE' | 'DOWNGRADE' | 'RENEWAL' = 'UPGRADE';
+    if (r.currentPlanId === r.requestedPlanId || r.reason?.toLowerCase().includes('renewal')) {
+      autoType = 'RENEWAL';
+    } else {
+      const currentPrice = planPriceMap.get(r.currentPlanId) ?? 0;
+      const requestedPrice = r.requestedPlan?.price ?? planPriceMap.get(r.requestedPlanId) ?? 0;
+      if (requestedPrice < currentPrice) {
+        autoType = 'DOWNGRADE';
+      } else if (requestedPrice > currentPrice) {
+        autoType = 'UPGRADE';
+      } else {
+        const tierOrder: Record<string, number> = { starter: 1, standard: 2, premium: 3, enterprise: 4 };
+        const curRank = tierOrder[(planMap.get(r.currentPlanId) || '').toLowerCase()] ?? 0;
+        const reqRank = tierOrder[(r.requestedPlan?.name || '').toLowerCase()] ?? 0;
+        autoType = reqRank < curRank ? 'DOWNGRADE' : 'UPGRADE';
+      }
+    }
+
+    return {
+      id: r.id,
+      organizationId: r.organizationId,
+      organizationName: r.organization?.name || 'Organization',
+      currentPlanId: r.currentPlanId,
+      currentPlanName: planMap.get(r.currentPlanId) || 'Standard Plan',
+      requestedPlanId: r.requestedPlanId,
+      requestedPlanName: r.requestedPlan?.name || 'Standard Plan',
+      requestType: autoType,
+      reason: r.reason || '',
+      status: r.status,
+      adminNotes: r.adminNotes || '',
+      createdAt: r.requestedAt,
+      updatedAt: r.requestedAt,
+      reviewedAt: r.reviewedAt,
+      reviewedBy: r.reviewedByUserId,
+    };
+  });
 
   return sendSuccess(res, formatted);
 }
@@ -123,6 +141,23 @@ export async function createOrgPlanRequest(req: Request, res: Response) {
 
   if (!targetPlan) {
     return sendError(res, 404, 'NOT_FOUND', 'Requested plan not found');
+  }
+
+  // An organization can only have ONE active pending plan change request at a time
+  const existingPending = await prisma.planChangeRequest.findFirst({
+    where: {
+      organizationId: orgId,
+      status: 'PENDING',
+    },
+  });
+
+  if (existingPending) {
+    return sendError(
+      res,
+      400,
+      'REQUEST_ALREADY_PENDING',
+      'An organization can only make one plan change request at a time. Please wait until your pending request is approved or rejected by Super Admin before submitting another request.',
+    );
   }
 
   const newRequest = await prisma.planChangeRequest.create({

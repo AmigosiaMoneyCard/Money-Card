@@ -164,4 +164,131 @@ describe('Peak & Demand Analysis: Food Category Filter Logic', () => {
       expect(result).toHaveLength(0);
     });
   });
+
+  describe('sortProductDemand (Revenue Wise vs Order Wise Prioritization)', () => {
+    const products: ProductDemandMetric[] = [
+      {
+        productId: 'prod_1',
+        productName: 'Chai Tea',
+        category: 'Beverage',
+        quantitySold: 120, // highest orders
+        revenue: 2400,
+        peakHourQuantity: 80,
+        offPeakQuantity: 40,
+        stockStatus: 'NORMAL',
+        currentStock: 50,
+      },
+      {
+        productId: 'prod_2',
+        productName: 'Paneer Thali',
+        category: 'Main Course',
+        quantitySold: 40,
+        revenue: 8800, // highest revenue
+        peakHourQuantity: 30,
+        offPeakQuantity: 10,
+        stockStatus: 'NORMAL',
+        currentStock: 25,
+      },
+      {
+        productId: 'prod_3',
+        productName: 'Veg Sandwich',
+        category: 'Snack',
+        quantitySold: 60,
+        revenue: 3600,
+        peakHourQuantity: 40,
+        offPeakQuantity: 20,
+        stockStatus: 'LOW',
+        currentStock: 8,
+      },
+      {
+        productId: 'prod_4',
+        productName: 'Cold Coffee',
+        category: 'Beverage',
+        quantitySold: 60,
+        revenue: 3600, // same revenue as Sandwich, but higher stock
+        peakHourQuantity: 45,
+        offPeakQuantity: 15,
+        stockStatus: 'NORMAL',
+        currentStock: 40,
+      },
+    ];
+
+    it('prioritizes highest revenue and stocks first in REVENUE wise sorting', async () => {
+      const { sortProductDemand } = await import('@/features/peak/PeakPage');
+      const sorted = sortProductDemand(products, 'REVENUE');
+
+      // Top item should be Paneer Thali with ₹8800 revenue
+      expect(sorted[0].productName).toBe('Paneer Thali');
+      expect(sorted[0].revenue).toBe(8800);
+
+      // When revenue is equal (₹3600), Cold Coffee (stock: 40) is prioritized before Veg Sandwich (stock: 8)
+      expect(sorted[1].productName).toBe('Cold Coffee');
+      expect(sorted[2].productName).toBe('Veg Sandwich');
+
+      // Lowest revenue item is Chai Tea (₹2400)
+      expect(sorted[3].productName).toBe('Chai Tea');
+    });
+
+    it('prioritizes highest order units first in ORDERS wise sorting', async () => {
+      const { sortProductDemand } = await import('@/features/peak/PeakPage');
+      const sorted = sortProductDemand(products, 'ORDERS');
+
+      // Top item should be Chai Tea with 120 units sold
+      expect(sorted[0].productName).toBe('Chai Tea');
+      expect(sorted[0].quantitySold).toBe(120);
+
+      // Next are items with 60 units sold (Cold Coffee & Veg Sandwich)
+      expect(sorted[1].quantitySold).toBe(60);
+      expect(sorted[2].quantitySold).toBe(60);
+
+      // Last item should be Paneer Thali with 40 units sold
+      expect(sorted[3].productName).toBe('Paneer Thali');
+      expect(sorted[3].quantitySold).toBe(40);
+    });
+  });
+
+  describe('Time Window Presets (getPeakPresetDates)', () => {
+    it('calculates thisMonth preset from 1st of current month to today without timezone shift', async () => {
+      const { getPeakPresetDates } = await import('@/features/peak/PeakPage');
+      const dates = getPeakPresetDates('thisMonth');
+
+      const now = new Date();
+      const expectedStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      const expectedEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+      expect(dates.startDate).toBe(expectedStart);
+      expect(dates.endDate).toBe(expectedEnd);
+    });
+
+    it('calculates today preset as current calendar day', async () => {
+      const { getPeakPresetDates } = await import('@/features/peak/PeakPage');
+      const dates = getPeakPresetDates('today');
+
+      const now = new Date();
+      const expected = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+      expect(dates.startDate).toBe(expected);
+      expect(dates.endDate).toBe(expected);
+    });
+
+    it('calculates custom preset using customStart and customEnd when provided', async () => {
+      const { getPeakPresetDates } = await import('@/features/peak/PeakPage');
+      const dates = getPeakPresetDates('custom', '2026-02-01', '2026-02-15');
+
+      expect(dates.startDate).toBe('2026-02-01');
+      expect(dates.endDate).toBe('2026-02-15');
+    });
+
+    it('falls back to 1st of current month and today for custom preset when dates not provided', async () => {
+      const { getPeakPresetDates } = await import('@/features/peak/PeakPage');
+      const dates = getPeakPresetDates('custom');
+
+      const now = new Date();
+      const expectedStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      const expectedEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+      expect(dates.startDate).toBe(expectedStart);
+      expect(dates.endDate).toBe(expectedEnd);
+    });
+  });
 });

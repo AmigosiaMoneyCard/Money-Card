@@ -68,6 +68,9 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     products,
     activeSessionsList,
     settledSessionsCount,
+    staffUsers,
+    historyEvents,
+    allSessions,
   ] = await Promise.all([
     prisma.transaction.findMany({
       where: txWhere,
@@ -128,6 +131,44 @@ export async function getOrgAnalytics(req: Request, res: Response) {
         status: 'SETTLED',
       },
     }),
+    prisma.user.findMany({
+      where: {
+        ...(orgId ? { organizationId: orgId } : {}),
+        role: { in: ['STAFF', 'ORG_ADMIN'] as any },
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        assignedBranches: {
+          select: {
+            branchId: true,
+            branch: { select: { name: true } },
+          },
+        },
+      },
+    }),
+    prisma.customerHistoryEvent.findMany({
+      where: {
+        ...(orgId ? { organizationId: orgId } : {}),
+        ...(branchId && branchId !== 'ALL' ? { branchId } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 300,
+    }),
+    prisma.cardSession.findMany({
+      where: {
+        ...(orgId ? { organizationId: orgId } : {}),
+        ...(branchId && branchId !== 'ALL' ? { branchId } : {}),
+      },
+      include: {
+        card: { select: { physicalCardNumber: true } },
+        branch: { select: { name: true } },
+      },
+      orderBy: { issuedAt: 'desc' },
+      take: 300,
+    }),
   ]);
 
   let totalRechargeVolume = 0;
@@ -143,6 +184,12 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     purchaseVolume: number;
     rechargeCount: number;
     rechargeVolume: number;
+    cardRechargeCount: number;
+    cardRechargeVolume: number;
+    cashRechargeCount: number;
+    cashRechargeVolume: number;
+    upiRechargeCount: number;
+    upiRechargeVolume: number;
     refundCount: number;
     refundVolume: number;
     totalRevenue: number;
@@ -183,6 +230,12 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       purchaseVolume: 0,
       rechargeCount: 0,
       rechargeVolume: 0,
+      cardRechargeCount: 0,
+      cardRechargeVolume: 0,
+      cashRechargeCount: 0,
+      cashRechargeVolume: 0,
+      upiRechargeCount: 0,
+      upiRechargeVolume: 0,
       refundCount: 0,
       refundVolume: 0,
       totalRevenue: 0,
@@ -224,6 +277,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
   transactions.forEach((tx) => {
     const bm = branchMetricsMap.get(tx.branchId);
     const txType = String(tx.type || '');
+    const paymentMethod = String((tx as any).paymentMethod || '').toUpperCase();
 
     if (txType === 'PURCHASE') {
       totalPurchaseVolume += tx.amount;
@@ -246,33 +300,50 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           bm.peakPeriods[2].purchaseVolume += tx.amount;
         }
       }
-    } else if (txType === 'RECHARGE_CASH' || (tx as any).paymentMethod === 'CASH' || txType === 'CASH') {
+    } else if (txType === 'RECHARGE_CASH' || paymentMethod === 'CASH' || paymentMethod === 'CARD' || txType === 'CASH') {
       totalRechargeVolume += tx.amount;
       cashRechargeVolume += tx.amount;
       if (bm) {
         bm.transactionCount++;
         bm.rechargeCount++;
         bm.rechargeVolume += tx.amount;
+        bm.cardRechargeCount++;
+        bm.cardRechargeVolume += tx.amount;
+        bm.cashRechargeCount++;
+        bm.cashRechargeVolume += tx.amount;
       }
-    } else if (txType === 'RECHARGE_UPI' || (tx as any).paymentMethod === 'UPI' || txType === 'UPI') {
+    } else if (txType === 'RECHARGE_UPI' || paymentMethod === 'UPI' || txType === 'UPI') {
       totalRechargeVolume += tx.amount;
       upiRechargeVolume += tx.amount;
       if (bm) {
         bm.transactionCount++;
         bm.rechargeCount++;
         bm.rechargeVolume += tx.amount;
+        bm.upiRechargeCount++;
+        bm.upiRechargeVolume += tx.amount;
       }
     } else if (txType.includes('RECHARGE') || txType === 'ISSUANCE') {
       totalRechargeVolume += tx.amount;
-      if ((tx as any).paymentMethod === 'UPI') {
+      if (paymentMethod === 'UPI') {
         upiRechargeVolume += tx.amount;
+        if (bm) {
+          bm.transactionCount++;
+          bm.rechargeCount++;
+          bm.rechargeVolume += tx.amount;
+          bm.upiRechargeCount++;
+          bm.upiRechargeVolume += tx.amount;
+        }
       } else {
         cashRechargeVolume += tx.amount;
-      }
-      if (bm) {
-        bm.transactionCount++;
-        bm.rechargeCount++;
-        bm.rechargeVolume += tx.amount;
+        if (bm) {
+          bm.transactionCount++;
+          bm.rechargeCount++;
+          bm.rechargeVolume += tx.amount;
+          bm.cardRechargeCount++;
+          bm.cardRechargeVolume += tx.amount;
+          bm.cashRechargeCount++;
+          bm.cashRechargeVolume += tx.amount;
+        }
       }
     } else if (txType.includes('REFUND') || txType.includes('RETURN') || txType.includes('SETTLE')) {
       totalRefundVolume += tx.amount;
@@ -289,6 +360,9 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     bm.avgPurchaseValue = bm.purchaseCount > 0 ? Number((bm.purchaseVolume / bm.purchaseCount).toFixed(2)) : 0;
     bm.purchaseVolume = Number(bm.purchaseVolume.toFixed(2));
     bm.rechargeVolume = Number(bm.rechargeVolume.toFixed(2));
+    bm.cardRechargeVolume = Number((bm.cardRechargeVolume || 0).toFixed(2));
+    bm.cashRechargeVolume = Number((bm.cashRechargeVolume || 0).toFixed(2));
+    bm.upiRechargeVolume = Number((bm.upiRechargeVolume || 0).toFixed(2));
     bm.refundVolume = Number(bm.refundVolume.toFixed(2));
     bm.totalRevenue = Number(bm.totalRevenue.toFixed(2));
   });
@@ -304,6 +378,160 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     }
   });
 
+  const staffPerformance = staffUsers.map((st) => {
+    const staffSessions = allSessions.filter((s) => s.issuedByUserId === st.id);
+    const settledSessions = allSessions.filter((s) => s.settledByUserId === st.id);
+    const staffTxns = transactions.filter((t) => t.staffUserId === st.id);
+    const staffEvts = historyEvents.filter((e) => e.performedByUserId === st.id);
+
+    let purchaseCount = 0;
+    let purchaseVolume = 0;
+    let cardRechargeCount = 0;
+    let cardRechargeVolume = 0;
+    let upiRechargeCount = 0;
+    let upiRechargeVolume = 0;
+    let refundCount = 0;
+    let refundVolume = 0;
+
+    const activities: any[] = [];
+
+    staffSessions.forEach((sess) => {
+      activities.push({
+        id: `act_act_${sess.id}`,
+        type: 'CARD_ACTIVATION',
+        title: 'Card Activated & Issued',
+        description: `Issued card ${sess.card?.physicalCardNumber || 'MC-Card'} to ${sess.customerName || 'Customer'}`,
+        cardNumber: sess.card?.physicalCardNumber,
+        customerName: sess.customerName || 'Customer',
+        customerPhone: sess.customerPhone || '—',
+        branchName: (sess as any).branch?.name || 'Main Cafeteria',
+        timestamp: sess.issuedAt ? sess.issuedAt.toISOString() : new Date().toISOString(),
+        amount: sess.balance,
+      });
+    });
+
+    settledSessions.forEach((sess) => {
+      activities.push({
+        id: `act_stl_${sess.id}`,
+        type: 'CARD_SETTLEMENT',
+        title: 'Card Settled & Returned',
+        description: `Settled card ${sess.card?.physicalCardNumber || 'MC-Card'} for ${sess.customerName || 'Customer'}`,
+        cardNumber: sess.card?.physicalCardNumber,
+        customerName: sess.customerName || 'Customer',
+        customerPhone: sess.customerPhone || '—',
+        branchName: (sess as any).branch?.name || 'Main Cafeteria',
+        timestamp: sess.settledAt ? sess.settledAt.toISOString() : new Date().toISOString(),
+        amount: sess.refundAmount || 0,
+      });
+    });
+
+    staffEvts.forEach((ev) => {
+      if (ev.action === 'CARD_BLOCKED' || ev.action === 'CARD_UNBLOCKED') {
+        activities.push({
+          id: `act_ev_${ev.id}`,
+          type: ev.action === 'CARD_BLOCKED' ? 'CARD_BLOCKED' : 'CARD_UNBLOCKED',
+          title: ev.action === 'CARD_BLOCKED' ? 'Card Blocked' : 'Card Unblocked',
+          description: `${ev.action === 'CARD_BLOCKED' ? 'Blocked' : 'Unblocked'} card ${ev.physicalCardNumber}. Reason: ${ev.reason || 'N/A'}`,
+          cardNumber: ev.physicalCardNumber,
+          customerName: ev.customerName || 'Customer',
+          customerPhone: ev.customerPhone || '—',
+          branchName: ev.branchName || 'Main Cafeteria',
+          timestamp: ev.createdAt.toISOString(),
+        });
+      }
+    });
+
+    staffTxns.forEach((tx) => {
+      const txType = String(tx.type || '');
+      const pMethod = String(tx.paymentMethod || '').toUpperCase();
+      const bName = tx.branch?.name || 'Branch';
+
+      if (txType === 'PURCHASE') {
+        purchaseCount++;
+        purchaseVolume += tx.amount;
+        activities.push({
+          id: `act_tx_${tx.id}`,
+          type: 'PURCHASE',
+          title: 'POS Purchase Processed',
+          description: `Processed POS order amounting to ₹${tx.amount}`,
+          amount: tx.amount,
+          branchName: bName,
+          timestamp: tx.createdAt.toISOString(),
+          paymentMethod: 'CARD_BALANCE',
+        });
+      } else if (txType === 'RECHARGE_CASH' || pMethod === 'CASH' || pMethod === 'CARD' || txType === 'CASH') {
+        cardRechargeCount++;
+        cardRechargeVolume += tx.amount;
+        activities.push({
+          id: `act_tx_${tx.id}`,
+          type: 'RECHARGE_CASH',
+          title: 'Card / Cash Recharge',
+          description: `Loaded ₹${tx.amount} onto card via Cash/Card POS`,
+          amount: tx.amount,
+          branchName: bName,
+          timestamp: tx.createdAt.toISOString(),
+          paymentMethod: 'CASH',
+        });
+      } else if (txType === 'RECHARGE_UPI' || pMethod === 'UPI' || txType === 'UPI') {
+        upiRechargeCount++;
+        upiRechargeVolume += tx.amount;
+        activities.push({
+          id: `act_tx_${tx.id}`,
+          type: 'RECHARGE_UPI',
+          title: 'UPI Recharge',
+          description: `Loaded ₹${tx.amount} onto card via UPI QR`,
+          amount: tx.amount,
+          branchName: bName,
+          timestamp: tx.createdAt.toISOString(),
+          paymentMethod: 'UPI',
+        });
+      } else if (txType.includes('REFUND') || txType.includes('RETURN')) {
+        refundCount++;
+        refundVolume += tx.amount;
+        activities.push({
+          id: `act_tx_${tx.id}`,
+          type: 'REFUND',
+          title: 'Customer Refund Processed',
+          description: `Processed refund of ₹${tx.amount}`,
+          amount: tx.amount,
+          branchName: bName,
+          timestamp: tx.createdAt.toISOString(),
+        });
+      }
+    });
+
+    activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    const totalRechargeVol = cardRechargeVolume + upiRechargeVolume;
+    const totalTransactions = purchaseCount + cardRechargeCount + upiRechargeCount + refundCount;
+    const totalVolume = Number((purchaseVolume + totalRechargeVol + refundVolume).toFixed(2));
+
+    return {
+      staffId: st.id,
+      staffName: st.name || 'Staff Member',
+      staffEmail: st.email || '',
+      role: st.role || 'STAFF',
+      status: 'ACTIVE',
+      branchId: st.assignedBranches?.[0]?.branchId || undefined,
+      branchName: st.assignedBranches?.[0]?.branch?.name || undefined,
+      cardsActivatedCount: staffSessions.length,
+      cardsSettledCount: settledSessions.length,
+      totalTransactionsCount: totalTransactions,
+      totalVolumeHandled: totalVolume,
+      rechargeCount: cardRechargeCount + upiRechargeCount,
+      rechargeVolume: Number(totalRechargeVol.toFixed(2)),
+      cardRechargeCount,
+      cardRechargeVolume: Number(cardRechargeVolume.toFixed(2)),
+      upiRechargeCount,
+      upiRechargeVolume: Number(upiRechargeVolume.toFixed(2)),
+      purchaseCount,
+      purchaseVolume: Number(purchaseVolume.toFixed(2)),
+      refundCount,
+      refundVolume: Number(refundVolume.toFixed(2)),
+      activities,
+    };
+  });
+
   return sendSuccess(res, {
     totalTransactions: transactions.length,
     totalRechargeVolume: Number(totalRechargeVolume.toFixed(2)),
@@ -315,6 +543,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     activeCardsCount: totalCards,
     lowStockItemsCount: lowStockCount,
     branchPerformance: Array.from(branchMetricsMap.values()),
+    staffPerformance,
     activeCardsRechargeCount,
     reRechargedCardsCount,
     closedCardsCount: settledSessionsCount,
@@ -449,7 +678,9 @@ export async function getPeakAnalytics(req: Request, res: Response) {
 
   // 2. Product Demand
   let productDemand = products.map((p) => {
-    const totalStock = p.inventoryItems.reduce((sum, inv) => sum + inv.quantity, 0);
+    const totalStock = p.inventoryItems
+      .filter((inv) => (!branchId || branchId === 'ALL' || inv.branchId === branchId))
+      .reduce((sum, inv) => sum + inv.quantity, 0);
     const stockStatus = totalStock <= 0 ? 'OUT_OF_STOCK' : totalStock <= 10 ? 'LOW' : 'NORMAL';
 
     return {
@@ -461,6 +692,7 @@ export async function getPeakAnalytics(req: Request, res: Response) {
       peakHourQuantity: 7,
       offPeakQuantity: 3,
       stockStatus: stockStatus as 'NORMAL' | 'LOW' | 'OUT_OF_STOCK',
+      currentStock: totalStock,
     };
   });
 

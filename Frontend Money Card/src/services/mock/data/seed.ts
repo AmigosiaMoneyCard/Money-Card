@@ -235,6 +235,48 @@ export const SEED_STAFF_ENTITIES: Staff[] = [
     createdAt: '2026-01-02T00:00:00.000Z',
     updatedAt: '2026-01-02T00:00:00.000Z',
   },
+  {
+    id: 'usr_staff_eros',
+    organizationId: 'org_001',
+    name: 'Eros Counter Staff',
+    email: 'eros@staff.com',
+    status: 'ACTIVE',
+    permissions: [
+      'CARD_VIEW',
+      'CARD_ISSUE',
+      'CARD_RETURN',
+      'CARD_BLOCK',
+      'CARD_UNBLOCK',
+      'RECHARGE',
+      'PURCHASE',
+      'REFUND',
+      'SESSION_VIEW',
+      'PRODUCT_VIEW',
+      'INVENTORY_VIEW',
+      'VIEW_ANALYTICS',
+    ],
+    assignedBranchIds: ['branch_001', 'branch_002'],
+    createdAt: '2026-01-10T00:00:00.000Z',
+    updatedAt: '2026-01-10T00:00:00.000Z',
+  },
+  {
+    id: 'staff_002',
+    organizationId: 'org_001',
+    name: 'Sarah Jenkins',
+    email: 'sarah.jenkins@maincafe.com',
+    status: 'ACTIVE',
+    permissions: [
+      'CARD_VIEW',
+      'CARD_ISSUE',
+      'CARD_RETURN',
+      'RECHARGE',
+      'PURCHASE',
+      'SESSION_VIEW',
+    ],
+    assignedBranchIds: ['branch_001'],
+    createdAt: '2026-02-01T00:00:00.000Z',
+    updatedAt: '2026-02-01T00:00:00.000Z',
+  },
 ];
 
 export const SEED_CARDS: Card[] = [
@@ -636,6 +678,20 @@ export const SEED_SUBSCRIPTION_PAYMENTS: SubscriptionPayment[] = [
 ];
 
 export const SEED_PLAN_REQUESTS: PlanChangeRequest[] = [
+  {
+    id: 'req_005',
+    organizationId: 'org_003',
+    organizationName: 'Metro Eats',
+    currentPlanId: 'plan_003',
+    currentPlanName: 'Enterprise',
+    requestedPlanId: 'plan_002',
+    requestedPlanName: 'Standard',
+    requestType: 'DOWNGRADE',
+    reason: 'Downsizing cafeteria counters, requesting shift from Enterprise to Standard tier.',
+    status: 'PENDING',
+    createdAt: '2026-09-08T09:30:00.000Z',
+    updatedAt: '2026-09-08T09:30:00.000Z',
+  },
   {
     id: 'req_001',
     organizationId: 'org_001',

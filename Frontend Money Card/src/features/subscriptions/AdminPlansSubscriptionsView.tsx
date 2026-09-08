@@ -569,20 +569,69 @@ export function AdminPlansSubscriptionsView() {
     return planRequests.filter((r) => r.status === 'PENDING');
   }, [planRequests]);
 
+  // Auto-detect whether a plan change request is an UPGRADE, DOWNGRADE, or RENEWAL
+  const getAutoRequestType = useCallback(
+    (req: PlanChangeRequest): 'UPGRADE' | 'DOWNGRADE' | 'RENEWAL' => {
+      if (
+        req.requestType === 'RENEWAL' ||
+        req.currentPlanId === req.requestedPlanId ||
+        (req.reason && req.reason.toLowerCase().includes('renewal'))
+      ) {
+        return 'RENEWAL';
+      }
+
+      const curPlan = plans.find(
+        (p) =>
+          p.id === req.currentPlanId ||
+          p.name.toLowerCase() === (req.currentPlanName || '').toLowerCase()
+      );
+      const reqPlan = plans.find(
+        (p) =>
+          p.id === req.requestedPlanId ||
+          p.name.toLowerCase() === (req.requestedPlanName || '').toLowerCase()
+      );
+
+      if (curPlan && reqPlan) {
+        if (reqPlan.price < curPlan.price) return 'DOWNGRADE';
+        if (reqPlan.price > curPlan.price) return 'UPGRADE';
+
+        const tierOrder: Record<string, number> = { starter: 1, standard: 2, premium: 3, enterprise: 4 };
+        const curRank = tierOrder[curPlan.name.toLowerCase()] ?? 0;
+        const reqRank = tierOrder[reqPlan.name.toLowerCase()] ?? 0;
+        if (curRank !== 0 && reqRank !== 0) {
+          return reqRank < curRank ? 'DOWNGRADE' : 'UPGRADE';
+        }
+      }
+
+      // Fallback: compare plan names directly
+      const tierOrder: Record<string, number> = { starter: 1, standard: 2, premium: 3, enterprise: 4 };
+      const curRank = tierOrder[(req.currentPlanName || '').toLowerCase()] ?? 0;
+      const reqRank = tierOrder[(req.requestedPlanName || '').toLowerCase()] ?? 0;
+      if (curRank !== 0 && reqRank !== 0) {
+        return reqRank < curRank ? 'DOWNGRADE' : 'UPGRADE';
+      }
+
+      return req.requestType === 'DOWNGRADE' ? 'DOWNGRADE' : 'UPGRADE';
+    },
+    [plans]
+  );
+
   const filteredAndSortedRequests = useMemo(() => {
     return pendingRequestsList
       .filter((req) => {
         if (!requestSearchQuery.trim()) return true;
         const q = requestSearchQuery.toLowerCase().trim();
+        const autoType = getAutoRequestType(req).toLowerCase();
         return (
           (req.organizationName || '').toLowerCase().includes(q) ||
           (req.requestedPlanName || '').toLowerCase().includes(q) ||
           (req.currentPlanName || '').toLowerCase().includes(q) ||
+          autoType.includes(q) ||
           req.id.toLowerCase().includes(q)
         );
       })
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [pendingRequestsList, requestSearchQuery]);
+  }, [pendingRequestsList, requestSearchQuery, getAutoRequestType]);
 
   // Selected Plan for Org Sub Modal (for real-time default vs override preview)
   const previewSelectedPlan = plans.find((p) => p.id === subFormPlanId) || plans[0];
@@ -791,6 +840,7 @@ export function AdminPlansSubscriptionsView() {
       render: (req: PlanChangeRequest) => (
         <div>
           <span className="font-bold text-slate-900">{req.requestedPlanName}</span>
+          <p className="text-[11px] text-slate-500">From {req.currentPlanName}</p>
         </div>
       ),
     },
@@ -798,16 +848,24 @@ export function AdminPlansSubscriptionsView() {
       key: 'requestType',
       header: 'Request Type',
       render: (req: PlanChangeRequest) => {
-        if (req.requestType === 'RENEWAL') {
+        const detectedType = getAutoRequestType(req);
+        if (detectedType === 'RENEWAL') {
           return (
             <Badge variant="success" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold">
               Subscription Renewal
             </Badge>
           );
         }
+        if (detectedType === 'DOWNGRADE') {
+          return (
+            <Badge variant="warning" className="bg-amber-50 text-amber-800 border-amber-300 font-bold">
+              Downgrade
+            </Badge>
+          );
+        }
         return (
-          <Badge variant="outline" className="text-emerald-700 border-emerald-200 bg-emerald-50">
-            {(req.requestType || 'UPGRADE').replace(/_/g, ' ')}
+          <Badge variant="outline" className="text-emerald-700 border-emerald-300 bg-emerald-50 font-bold">
+            Upgrade
           </Badge>
         );
       },
@@ -1580,7 +1638,7 @@ export function AdminPlansSubscriptionsView() {
                 </strong>
               </div>
 
-              {selectedRequest.requestType === 'RENEWAL' ? (
+              {getAutoRequestType(selectedRequest) === 'RENEWAL' ? (
                 <>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500">Plan to Renew:</span>
@@ -1599,13 +1657,22 @@ export function AdminPlansSubscriptionsView() {
                 <>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500">Transition:</span>
-                    <span className="font-bold text-emerald-700">
+                    <span className="font-bold text-slate-900">
                       {selectedRequest.currentPlanName} → {selectedRequest.requestedPlanName}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500">Request Type:</span>
-                    <Badge variant="outline">{selectedRequest.requestType}</Badge>
+                    <Badge
+                      variant={getAutoRequestType(selectedRequest) === 'DOWNGRADE' ? 'warning' : 'outline'}
+                      className={
+                        getAutoRequestType(selectedRequest) === 'DOWNGRADE'
+                          ? 'bg-amber-50 text-amber-800 border-amber-300 font-bold'
+                          : 'text-emerald-700 border-emerald-300 bg-emerald-50 font-bold'
+                      }
+                    >
+                      {getAutoRequestType(selectedRequest) === 'DOWNGRADE' ? 'Downgrade' : 'Upgrade'}
+                    </Badge>
                   </div>
                 </>
               )}
@@ -1618,18 +1685,25 @@ export function AdminPlansSubscriptionsView() {
               )}
             </div>
 
-            {selectedRequest.requestType === 'RENEWAL' ? (
+            {getAutoRequestType(selectedRequest) === 'RENEWAL' ? (
               <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3.5 text-xs text-emerald-800 space-y-1">
                 <span className="font-bold block text-emerald-700">Super Admin Renewal Acceptance:</span>
                 <p className="leading-relaxed">
                   Accepting this renewal will extend the active subscription date by 1 billing cycle, ensure organization access remains uninterrupted, and log a verified payment record in the billing ledger.
                 </p>
               </div>
+            ) : getAutoRequestType(selectedRequest) === 'DOWNGRADE' ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3.5 text-xs text-amber-900 space-y-1">
+                <span className="font-bold block text-amber-800">Plan Downgrade Application:</span>
+                <p className="leading-relaxed">
+                  Approving this request will downgrade the organization active plan to {selectedRequest.requestedPlanName} and apply reduced resource limits.
+                </p>
+              </div>
             ) : (
               <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3.5 text-xs text-emerald-800 space-y-1">
-                <span className="font-bold block text-emerald-700">Plan Change Application:</span>
+                <span className="font-bold block text-emerald-700">Plan Upgrade Application:</span>
                 <p className="leading-relaxed">
-                  Approving this request will switch the organization active plan to {selectedRequest.requestedPlanName} and update their resource limits.
+                  Approving this request will upgrade the organization active plan to {selectedRequest.requestedPlanName} and allocate higher resource limits.
                 </p>
               </div>
             )}
@@ -1639,13 +1713,16 @@ export function AdminPlansSubscriptionsView() {
               value={reviewStatus}
               onChange={(e) => setReviewStatus(e.target.value as 'APPROVED' | 'REJECTED')}
               options={
-                selectedRequest.requestType === 'RENEWAL'
+                getAutoRequestType(selectedRequest) === 'RENEWAL'
                   ? [
                       { value: 'APPROVED', label: 'Accept & Extend Active Subscription' },
                       { value: 'REJECTED', label: 'Reject Renewal Request' },
                     ]
                   : [
-                      { value: 'APPROVED', label: 'Approve & Apply Plan Change' },
+                      {
+                        value: 'APPROVED',
+                        label: `Approve & Apply Plan ${getAutoRequestType(selectedRequest) === 'DOWNGRADE' ? 'Downgrade' : 'Upgrade'}`,
+                      },
                       { value: 'REJECTED', label: 'Reject Request' },
                     ]
               }

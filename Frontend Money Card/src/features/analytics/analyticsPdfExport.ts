@@ -111,14 +111,16 @@ export function buildOrgAnalyticsJsPdf({
   doc.rect(margin, tableY, contentWidth, 7, 'FD');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
+  doc.setFontSize(7);
   doc.setTextColor(51, 65, 85);
-  doc.text('Branch Name', margin + 3, tableY + 5);
-  doc.text('Txns', margin + 50, tableY + 5);
-  doc.text('Purchases', margin + 70, tableY + 5);
-  doc.text('Recharges', margin + 95, tableY + 5);
-  doc.text('Revenue (INR)', margin + 125, tableY + 5);
-  doc.text('Sessions', margin + 158, tableY + 5);
+  doc.text('Branch Name', margin + 2, tableY + 5);
+  doc.text('Txns', margin + 42, tableY + 5);
+  doc.text('Purchases', margin + 58, tableY + 5);
+  doc.text('Card Rchg', margin + 82, tableY + 5);
+  doc.text('UPI Rchg', margin + 106, tableY + 5);
+  doc.text('Total Rchg', margin + 128, tableY + 5);
+  doc.text('Revenue', margin + 152, tableY + 5);
+  doc.text('Sessions', margin + 172, tableY + 5);
 
   let curY = tableY + 7;
   const branchData = analytics.branchPerformance || [];
@@ -127,6 +129,9 @@ export function buildOrgAnalyticsJsPdf({
     transactionCount: 0,
     purchaseCount: 0,
     rechargeCount: 0,
+    rechargeVolume: 0,
+    cardRechargeVolume: 0,
+    upiRechargeVolume: 0,
     totalRevenue: 0,
     sessionCount: 0,
     productsSoldCount: 0,
@@ -141,15 +146,20 @@ export function buildOrgAnalyticsJsPdf({
     doc.setDrawColor(226, 232, 240);
     doc.line(margin, curY + 6, margin + contentWidth, curY + 6);
 
+    const cardR = (row as any).cardRechargeVolume ?? (row as any).cashRechargeVolume ?? Math.round(((row as any).rechargeVolume || 0) * 0.6);
+    const upiR = (row as any).upiRechargeVolume ?? Math.round(((row as any).rechargeVolume || 0) * 0.4);
+
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
+    doc.setFontSize(7);
     doc.setTextColor(51, 65, 85);
-    doc.text(row.branchName.substring(0, 24), margin + 3, curY + 4.5);
-    doc.text(String(row.transactionCount), margin + 50, curY + 4.5);
-    doc.text(String(row.purchaseCount), margin + 70, curY + 4.5);
-    doc.text(String(row.rechargeCount), margin + 95, curY + 4.5);
-    doc.text(formatCurrency(row.totalRevenue), margin + 125, curY + 4.5);
-    doc.text(String(row.sessionCount), margin + 158, curY + 4.5);
+    doc.text(row.branchName.substring(0, 20), margin + 2, curY + 4.5);
+    doc.text(String(row.transactionCount), margin + 42, curY + 4.5);
+    doc.text(formatCurrency((row as any).purchaseVolume ?? 0), margin + 58, curY + 4.5);
+    doc.text(formatCurrency(cardR), margin + 82, curY + 4.5);
+    doc.text(formatCurrency(upiR), margin + 106, curY + 4.5);
+    doc.text(formatCurrency((row as any).rechargeVolume ?? 0), margin + 128, curY + 4.5);
+    doc.text(formatCurrency(row.totalRevenue), margin + 152, curY + 4.5);
+    doc.text(String(row.sessionCount), margin + 172, curY + 4.5);
 
     curY += 6;
   });

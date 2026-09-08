@@ -46,7 +46,32 @@ import {
   Send,
   Clock,
   ChevronDown,
+  ArrowUpRight,
+  ArrowDownRight,
 } from 'lucide-react';
+
+/**
+ * Automatically detects whether a plan change request is an UPGRADE or DOWNGRADE
+ * based on plan price and tier hierarchy.
+ */
+export const detectPlanRequestType = (
+  target: Plan,
+  current?: Plan | null
+): 'UPGRADE' | 'DOWNGRADE' => {
+  if (!current) return 'UPGRADE';
+  if (target.price < current.price) return 'DOWNGRADE';
+  if (target.price > current.price) return 'UPGRADE';
+
+  const tierOrder: Record<string, number> = {
+    starter: 1,
+    standard: 2,
+    premium: 3,
+    enterprise: 4,
+  };
+  const targetRank = tierOrder[target.name.toLowerCase()] ?? 0;
+  const currentRank = tierOrder[current.name.toLowerCase()] ?? 0;
+  return targetRank < currentRank ? 'DOWNGRADE' : 'UPGRADE';
+};
 
 export function SubscriptionsPage() {
   const { user, isLoading } = useAuth();
@@ -171,6 +196,7 @@ function OrgAdminSubscriptionsView() {
   }, []);
 
   const currentPlan = plans.find((p) => p.id === subscription?.planId) || plans[0];
+  const selectedTargetPlan = plans.find((p) => p.id === formRequestedPlanId);
 
   // Authoritative Effective Limits: Custom Override > Plan Default
   const branchUsage = branches.length;
@@ -199,21 +225,41 @@ function OrgAdminSubscriptionsView() {
 
   // ── Contact Super Admin Handler ───────────────────────────
   const handleOpenContactSuperAdmin = (targetPlan?: Plan) => {
+    if (pendingRequest) {
+      notify.warning(
+        'An organization can only make one plan change request at a time. Please wait until your pending request is approved or rejected by Super Admin before submitting another request.'
+      );
+      return;
+    }
+
     setFormValidationError(null);
     setModalApiError(null);
-    const selected = targetPlan || plans.find((p) => p.id !== currentPlan?.id) || plans[0];
+
+    // Auto-detect target plan if not explicitly provided
+    let selected = targetPlan;
+    if (!selected) {
+      if (currentPlan) {
+        if (currentPlan.name.toLowerCase().includes('enterprise')) {
+          // If current is Enterprise (highest tier), auto-detect Standard for downgrade
+          selected =
+            plans.find((p) => p.name.toLowerCase().includes('standard')) ||
+            plans.find((p) => p.id !== currentPlan.id);
+        } else {
+          // If current is lower tier, auto-detect the next upgrade plan
+          const upgradePlans = plans.filter((p) => p.price > currentPlan.price);
+          selected = upgradePlans[0] || plans.find((p) => p.id !== currentPlan.id);
+        }
+      }
+      if (!selected) {
+        selected = plans.find((p) => p.id !== currentPlan?.id) || plans[0];
+      }
+    }
+
     setFormRequestedPlanId(selected.id);
     setFormReason('');
 
-    if (selected.id === 'plan_004' || selected.name.toLowerCase().includes('enterprise')) {
-      setFormRequestType('ENTERPRISE');
-    } else if (selected.price > (currentPlan?.price || 0)) {
-      setFormRequestType('UPGRADE');
-    } else if (selected.price < (currentPlan?.price || 0)) {
-      setFormRequestType('DOWNGRADE');
-    } else {
-      setFormRequestType('CHANGE_PLAN');
-    }
+    // Automatically detect UPGRADE or DOWNGRADE
+    setFormRequestType(detectPlanRequestType(selected, currentPlan));
 
     setShowContactModal(true);
   };
@@ -222,6 +268,13 @@ function OrgAdminSubscriptionsView() {
     e.preventDefault();
     setFormValidationError(null);
     setModalApiError(null);
+
+    if (pendingRequest) {
+      setModalApiError(
+        'An organization can only make one plan change request at a time. Please wait until your pending request is approved or rejected by Super Admin before submitting another request.'
+      );
+      return;
+    }
 
     const selectedTarget = plans.find((p) => p.id === formRequestedPlanId);
     if (!selectedTarget) {
@@ -434,11 +487,17 @@ function OrgAdminSubscriptionsView() {
 
         <div className="flex flex-wrap items-center gap-3">
           <Button
-            variant="primary"
+            variant={pendingRequest ? 'outline' : 'primary'}
             onClick={() => handleOpenContactSuperAdmin()}
+            disabled={!!pendingRequest}
+            title={
+              pendingRequest
+                ? 'An organization can only make one plan change request at a time. Please wait until your pending request is approved or rejected.'
+                : 'Contact Super Admin'
+            }
             leftIcon={<MessageSquare className="h-4 w-4" />}
           >
-            Contact Super Admin
+            {pendingRequest ? 'Plan Request Pending' : 'Contact Super Admin'}
           </Button>
 
           {subscription && (
@@ -476,20 +535,18 @@ function OrgAdminSubscriptionsView() {
                   </>
                 ) : (
                   <>
-                    Your request to transition to <strong className="text-slate-900 font-bold">{pendingRequest.requestedPlanName}</strong> ({pendingRequest.requestType.replace('_', ' ')}) was submitted on {formatDate(pendingRequest.createdAt)}. Pay Super Admin directly via offline invoice / bank transfer for activation.
+                    Your request to transition to <strong className="text-slate-900 font-bold">{pendingRequest.requestedPlanName}</strong> ({pendingRequest.requestType.replace('_', ' ')}) was submitted on {formatDate(pendingRequest.createdAt)}. Super Admin will review and approve or reject this request.
                   </>
                 )}
               </p>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleOpenContactSuperAdmin()}
-            leftIcon={<MessageSquare className="h-3.5 w-3.5" />}
-          >
-            Submit New Note
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 shadow-xs">
+              <span className="h-2 w-2 rounded-full bg-amber-500 animate-ping" />
+              Awaiting Super Admin Decision
+            </span>
+          </div>
         </div>
       )}
 
@@ -680,11 +737,21 @@ function OrgAdminSubscriptionsView() {
                       </ul>
                     </div>
 
-                    {/* Action CTA: [ Contact Super Admin ] */}
+                    {/* Action CTA: [ Request Upgrade / Request Downgrade ] */}
                     <div className="mt-6">
                       {isCurrent ? (
                         <Button variant="outline" size="sm" className="w-full" disabled>
                           Current Plan
+                        </Button>
+                      ) : pendingRequest ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full text-slate-400 bg-slate-100 border-slate-200 cursor-not-allowed font-medium"
+                          disabled
+                          title="You already have a plan change request awaiting Super Admin review"
+                        >
+                          Request Pending
                         </Button>
                       ) : (
                         <Button
@@ -692,9 +759,17 @@ function OrgAdminSubscriptionsView() {
                           size="sm"
                           className="w-full"
                           onClick={() => handleOpenContactSuperAdmin(plan)}
-                          leftIcon={<MessageSquare className="h-3.5 w-3.5" />}
+                          leftIcon={
+                            detectPlanRequestType(plan, currentPlan) === 'UPGRADE' ? (
+                              <ArrowUpRight className="h-3.5 w-3.5" />
+                            ) : (
+                              <ArrowDownRight className="h-3.5 w-3.5" />
+                            )
+                          }
                         >
-                          Contact Super Admin
+                          {detectPlanRequestType(plan, currentPlan) === 'UPGRADE'
+                            ? `Upgrade to ${plan.name}`
+                            : `Downgrade to ${plan.name}`}
                         </Button>
                       )}
                     </div>
@@ -843,43 +918,25 @@ function OrgAdminSubscriptionsView() {
             </div>
           </div>
 
-          {/* Requested Plan Select */}
-          <Select
-            label="Requested Plan *"
-            value={formRequestedPlanId}
-            onChange={(e) => {
-              const planId = e.target.value;
-              setFormRequestedPlanId(planId);
-              const p = plans.find((pl) => pl.id === planId);
-              if (p) {
-                if (p.id === 'plan_004' || p.name.toLowerCase().includes('enterprise')) {
-                  setFormRequestType('ENTERPRISE');
-                } else if (p.price > (currentPlan?.price || 0)) {
-                  setFormRequestType('UPGRADE');
-                } else if (p.price < (currentPlan?.price || 0)) {
-                  setFormRequestType('DOWNGRADE');
-                } else {
-                  setFormRequestType('CHANGE_PLAN');
-                }
-              }
-            }}
-            options={plans.map((p) => ({
-              value: p.id,
-              label: `${p.name} (${formatCurrency(p.price)}/${p.billingInterval.toLowerCase()})${p.id === currentPlan?.id ? ' - Current' : ''}`,
-            }))}
-            disabled={isSubmitting}
-          />
+          {/* Requested Plan * */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-1 text-xs">
+            <span className="text-slate-500 font-semibold uppercase tracking-wider">Requested Plan *</span>
+            <div className="flex justify-between items-center pt-1">
+              <span className="text-sm font-bold text-slate-900">
+                {selectedTargetPlan?.name || 'Standard'} ({formatCurrency(selectedTargetPlan?.price || 0)}/{selectedTargetPlan?.billingInterval.toLowerCase() || 'monthly'})
+              </span>
+            </div>
+          </div>
 
-          {/* Request Type Select */}
+          {/* Request Type * (only Upgrade & Downgrade) */}
           <Select
             label="Request Type *"
+            id="contact-plan-request-type"
             value={formRequestType}
-            onChange={(e) => setFormRequestType(e.target.value as PlanRequestType)}
+            onChange={(e) => setFormRequestType(e.target.value as 'UPGRADE' | 'DOWNGRADE')}
             options={[
               { value: 'UPGRADE', label: 'Upgrade' },
               { value: 'DOWNGRADE', label: 'Downgrade' },
-              { value: 'CHANGE_PLAN', label: 'Change Plan' },
-              { value: 'ENTERPRISE', label: 'Enterprise / Custom Plan' },
             ]}
             disabled={isSubmitting}
           />

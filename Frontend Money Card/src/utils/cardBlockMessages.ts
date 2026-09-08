@@ -1,5 +1,5 @@
 // ─── Card Block Reason & Business Logic Messages ───────────────
-// Converts technical or raw card block strings into clear, accurate business messages.
+// Converts technical or raw card block strings into clear, minimal business messages.
 
 export function buildCardBlockReason(
   category: string,
@@ -23,38 +23,38 @@ export function buildCardBlockReason(
   switch (category) {
     case 'Administrative Block':
       return cleanNotes
-        ? `Card administratively suspended by ${blocker}: ${cleanNotes}. All cafeteria purchases and recharges are disabled.`
-        : `Card administratively suspended by ${blocker}. All cafeteria purchases and recharges are disabled.`;
+        ? `Administratively suspended by ${blocker}: ${cleanNotes}`
+        : `Administratively suspended by ${blocker}.`;
 
     case 'Lost or Stolen Card':
       return cleanNotes
-        ? `Card reported lost or stolen (recorded by ${blocker}): ${cleanNotes}. Usage immediately halted for balance protection.`
-        : `Card reported lost or stolen (recorded by ${blocker}). Usage immediately halted for balance protection.`;
+        ? `Reported lost or stolen by ${blocker}: ${cleanNotes}`
+        : `Reported lost or stolen by ${blocker}.`;
 
     case 'Suspicious Activity / Fraud':
       return cleanNotes
-        ? `Card frozen for suspicious activity by ${blocker}: ${cleanNotes}. Pending security review.`
-        : `Card frozen for suspicious activity by ${blocker}. Pending security review.`;
+        ? `Suspicious activity flagged by ${blocker}: ${cleanNotes}`
+        : `Suspicious activity flagged by ${blocker}.`;
 
     case 'Damaged / Hardware Fault':
       return cleanNotes
-        ? `Card taken out of service due to damage (${blocker}): ${cleanNotes}. Replacement required.`
-        : `Card taken out of service due to hardware or QR surface damage (${blocker}). Replacement required.`;
+        ? `Damaged card reported by ${blocker}: ${cleanNotes}`
+        : `Damaged card reported by ${blocker}.`;
 
     case 'Customer Request':
       return cleanNotes
-        ? `Card temporarily suspended per customer request (${blocker}): ${cleanNotes}.`
-        : `Card temporarily suspended per customer request (${blocker}).`;
+        ? `Blocked per customer request by ${blocker}: ${cleanNotes}`
+        : `Blocked per customer request by ${blocker}.`;
 
     case 'Staff Discretion':
       return cleanNotes
-        ? `Card blocked by staff discretion (${blocker}): ${cleanNotes}. Counter verification required.`
-        : `Card blocked by staff discretion (${blocker}). Counter verification required.`;
+        ? `Blocked by staff discretion (${blocker}): ${cleanNotes}`
+        : `Blocked by staff discretion (${blocker}).`;
 
     default:
       return cleanNotes
-        ? `${category} (${blocker}): ${cleanNotes}`
-        : `${category} by ${blocker}. All transactions are disabled.`;
+        ? `${category} by ${blocker}: ${cleanNotes}`
+        : `${category} by ${blocker}.`;
   }
 }
 
@@ -63,7 +63,7 @@ export function formatBlockedCardMessage(
   fallbackBlocker?: string | null,
 ): string {
   if (!rawReason || !rawReason.trim()) {
-    return 'This card is blocked by an administrator. All cafeteria purchases and recharges are disabled.';
+    return 'Card blocked by administrator.';
   }
 
   const trimmed = rawReason.trim();
@@ -77,58 +77,84 @@ export function formatBlockedCardMessage(
 
     if (cat === 'Administrative Block') {
       return cleanNotes
-        ? `Card administratively suspended by ${blocker}: ${cleanNotes}. All cafeteria purchases and recharges are disabled.`
-        : `Card administratively suspended by ${blocker}. All cafeteria purchases and recharges are disabled.`;
+        ? `Administratively suspended by ${blocker}: ${cleanNotes}`
+        : `Administratively suspended by ${blocker}.`;
     }
     if (cat === 'Lost or Stolen Card') {
       return cleanNotes
-        ? `Card reported lost or stolen (recorded by ${blocker}): ${cleanNotes}. Usage immediately halted for balance protection.`
-        : `Card reported lost or stolen (recorded by ${blocker}). Usage immediately halted for balance protection.`;
+        ? `Reported lost or stolen by ${blocker}: ${cleanNotes}`
+        : `Reported lost or stolen by ${blocker}.`;
     }
     if (cat === 'Suspicious Activity / Fraud') {
       return cleanNotes
-        ? `Card frozen for suspicious activity by ${blocker}: ${cleanNotes}. Pending security review.`
-        : `Card frozen for suspicious activity by ${blocker}. Pending security review.`;
+        ? `Suspicious activity flagged by ${blocker}: ${cleanNotes}`
+        : `Suspicious activity flagged by ${blocker}.`;
     }
     if (cat === 'Damaged / Hardware Fault') {
       return cleanNotes
-        ? `Card taken out of service due to damage (${blocker}): ${cleanNotes}. Replacement required.`
-        : `Card taken out of service due to hardware or QR damage (${blocker}). Replacement required.`;
+        ? `Damaged card reported by ${blocker}: ${cleanNotes}`
+        : `Damaged card reported by ${blocker}.`;
     }
     if (cat === 'Customer Request') {
       return cleanNotes
-        ? `Card temporarily suspended per customer request (${blocker}): ${cleanNotes}.`
-        : `Card temporarily suspended per customer request (${blocker}).`;
+        ? `Blocked per customer request by ${blocker}: ${cleanNotes}`
+        : `Blocked per customer request by ${blocker}.`;
     }
     if (cat === 'Staff Discretion') {
       return cleanNotes
-        ? `Card blocked by staff discretion (${blocker}): ${cleanNotes}. Counter verification required.`
-        : `Card blocked by staff discretion (${blocker}). Counter verification required.`;
+        ? `Blocked by staff discretion (${blocker}): ${cleanNotes}`
+        : `Blocked by staff discretion (${blocker}).`;
     }
 
     return cleanNotes
-      ? `${cat} (${blocker}): ${cleanNotes}. All transactions are disabled.`
-      : `${cat} by ${blocker}. All cafeteria purchases and recharges are disabled.`;
+      ? `${cat} by ${blocker}: ${cleanNotes}`
+      : `${cat} by ${blocker}.`;
   }
 
   // Pattern 2: Standalone category string like "Administrative Block"
   if (trimmed === 'Administrative Block') {
-    const byStr = fallbackBlocker ? ` by ${fallbackBlocker}` : ' by management';
-    return `Card administratively suspended${byStr}. All cafeteria purchases and recharges are disabled.`;
+    const byStr = fallbackBlocker ? ` by ${fallbackBlocker}` : '';
+    return `Administratively suspended${byStr}.`;
   }
   if (trimmed === 'Lost or Stolen Card') {
-    return 'Card reported lost or stolen. Usage immediately halted for balance protection.';
+    const byStr = fallbackBlocker ? ` by ${fallbackBlocker}` : '';
+    return `Reported lost or stolen${byStr}.`;
   }
   if (trimmed === 'Suspicious Activity / Fraud') {
-    return 'Card frozen for suspicious activity. Pending security review.';
+    return 'Suspicious activity flagged.';
   }
   if (trimmed === 'Damaged / Hardware Fault') {
-    return 'Card taken out of service due to hardware or QR surface damage. Replacement required.';
+    return 'Damaged card reported.';
   }
   if (trimmed === 'Customer Request') {
-    return 'Card temporarily suspended per customer request.';
+    return 'Blocked per customer request.';
+  }
+
+  // If it's a legacy long sentence, strip out the verbose policy boilerplate if present
+  if (trimmed.includes('Usage immediately halted for balance protection.')) {
+    return trimmed.replace(/\.?\s*Usage immediately halted for balance protection\./, '.').trim();
+  }
+  if (trimmed.includes('All cafeteria purchases and recharges are disabled.')) {
+    return trimmed.replace(/\.?\s*All cafeteria purchases and recharges are disabled\./, '.').trim();
   }
 
   // Already a descriptive sentence
   return trimmed;
 }
+
+export function countWords(text?: string | null): number {
+  if (!text) return 0;
+  return text.trim() ? text.trim().split(/\s+/).filter(Boolean).length : 0;
+}
+
+export function validateBlockReasonWordCount(text?: string | null, maxWords: number = 30): {
+  wordCount: number;
+  isValid: boolean;
+} {
+  const wordCount = countWords(text);
+  return {
+    wordCount,
+    isValid: wordCount <= maxWords,
+  };
+}
+

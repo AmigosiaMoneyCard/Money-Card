@@ -7,6 +7,12 @@ export interface BranchPerformanceMetric {
   purchaseVolume: number;
   rechargeCount: number;
   rechargeVolume: number;
+  cardRechargeCount?: number;
+  cardRechargeVolume?: number;
+  cashRechargeCount?: number;
+  cashRechargeVolume?: number;
+  upiRechargeCount?: number;
+  upiRechargeVolume?: number;
   refundCount: number;
   refundVolume: number;
   totalRevenue: number;
@@ -20,6 +26,53 @@ export interface BranchPerformanceMetric {
   lowStockItemCount: number;
 }
 
+export interface StaffActivityItem {
+  id: string;
+  type:
+    | 'CARD_ACTIVATION'
+    | 'RECHARGE_CASH'
+    | 'RECHARGE_UPI'
+    | 'PURCHASE'
+    | 'REFUND'
+    | 'CARD_SETTLEMENT'
+    | 'CARD_BLOCKED'
+    | 'CARD_UNBLOCKED';
+  title: string;
+  description: string;
+  amount?: number;
+  cardNumber?: string;
+  customerName?: string;
+  customerPhone?: string;
+  branchName?: string;
+  timestamp: string;
+  paymentMethod?: string;
+}
+
+export interface StaffPerformanceMetric {
+  staffId: string;
+  staffName: string;
+  staffEmail: string;
+  role: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  branchId?: string;
+  branchName?: string;
+  cardsActivatedCount: number;
+  cardsSettledCount: number;
+  totalTransactionsCount: number;
+  totalVolumeHandled: number;
+  rechargeCount: number;
+  rechargeVolume: number;
+  cardRechargeCount: number;
+  cardRechargeVolume: number;
+  upiRechargeCount: number;
+  upiRechargeVolume: number;
+  purchaseCount: number;
+  purchaseVolume: number;
+  refundCount: number;
+  refundVolume: number;
+  activities: StaffActivityItem[];
+}
+
 export interface AnalyticsOverview {
   totalTransactions: number;
   totalRechargeVolume: number;
@@ -29,6 +82,7 @@ export interface AnalyticsOverview {
   activeCardsCount: number;
   lowStockItemsCount: number;
   branchPerformance?: BranchPerformanceMetric[];
+  staffPerformance?: StaffPerformanceMetric[];
   activeCardsRechargeCount?: number;
   reRechargedCardsCount?: number;
   closedCardsCount?: number;
@@ -78,6 +132,7 @@ export interface ProductDemandMetric {
   peakHourQuantity: number;
   offPeakQuantity: number;
   stockStatus: 'NORMAL' | 'LOW' | 'OUT_OF_STOCK';
+  currentStock?: number;
 }
 
 export interface PeakPeriodComparison {

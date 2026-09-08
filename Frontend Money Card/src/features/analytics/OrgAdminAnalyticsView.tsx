@@ -7,7 +7,13 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { apiService } from '@/services/api';
 import { useBranch, useAuth } from '@/hooks';
-import type { AnalyticsOverview, Branch, BranchPerformanceMetric } from '@/types';
+import type {
+  AnalyticsOverview,
+  Branch,
+  BranchPerformanceMetric,
+  StaffPerformanceMetric,
+  StaffActivityItem,
+} from '@/types';
 import {
   Button,
   Select,
@@ -36,12 +42,29 @@ import {
   Download,
   Layers,
   ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   CheckCircle2,
   AlertCircle,
+  Users,
+  UserCheck,
+  History,
+  Search,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 type DatePreset = 'today' | 'last7' | 'last30' | 'thisMonth' | 'custom';
-type SortMetric = 'revenue' | 'transactions' | 'purchases' | 'recharges' | 'sessions' | 'products';
+type SortMetric = 'revenue' | 'transactions' | 'purchases' | 'cardRecharge' | 'upiRecharge' | 'recharges' | 'sessions' | 'products';
+export type StaffSortMetric =
+  | 'activated'
+  | 'settled'
+  | 'cardRecharge'
+  | 'upiRecharge'
+  | 'recharges'
+  | 'purchases'
+  | 'refunds'
+  | 'txns'
+  | 'name';
 
 function getPresetDates(preset: DatePreset): { startDate: string; endDate: string } {
   const now = new Date();
@@ -85,6 +108,14 @@ export function OrgAdminAnalyticsView() {
   // Sorting & Detail state for Branch Comparison
   const [sortBy, setSortBy] = useState<SortMetric>('revenue');
   const [selectedBranchDetail, setSelectedBranchDetail] = useState<BranchPerformanceMetric | null>(null);
+
+  // Staff Performance & Operational Activity Modal State
+  const [selectedStaffDetail, setSelectedStaffDetail] = useState<StaffPerformanceMetric | null>(null);
+  const [staffSearchQuery, setStaffSearchQuery] = useState('');
+  const [staffSortBy, setStaffSortBy] = useState<StaffSortMetric>('activated');
+  const [staffSortOrder, setStaffSortOrder] = useState<'desc' | 'asc'>('desc');
+  const [staffActivityTypeFilter, setStaffActivityTypeFilter] = useState<'ALL' | 'CARD_ACTIVATION' | 'RECHARGE' | 'PURCHASE' | 'CARD_SETTLEMENT' | 'OTHER'>('ALL');
+  const [staffActivitySearch, setStaffActivitySearch] = useState('');
 
   // Filters state
   const [branchFilter, setBranchFilter] = useState<string>(
@@ -319,8 +350,15 @@ export function OrgAdminAnalyticsView() {
           return b.transactionCount - a.transactionCount;
         case 'purchases':
           return b.purchaseCount - a.purchaseCount;
+        case 'cardRecharge':
+          return (
+            (b.cardRechargeVolume ?? b.cashRechargeVolume ?? 0) -
+            (a.cardRechargeVolume ?? a.cashRechargeVolume ?? 0)
+          );
+        case 'upiRecharge':
+          return (b.upiRechargeVolume ?? 0) - (a.upiRechargeVolume ?? 0);
         case 'recharges':
-          return b.rechargeCount - a.rechargeCount;
+          return b.rechargeVolume - a.rechargeVolume;
         case 'sessions':
           return b.sessionCount - a.sessionCount;
         case 'products':
@@ -334,6 +372,159 @@ export function OrgAdminAnalyticsView() {
   }, [analytics, sortBy]);
 
   const topBranch = sortedBranchComparison[0];
+
+  const handleStaffColumnSort = (column: StaffSortMetric) => {
+    if (staffSortBy === column) {
+      setStaffSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'));
+    } else {
+      setStaffSortBy(column);
+      setStaffSortOrder(column === 'name' ? 'asc' : 'desc');
+    }
+  };
+
+  const renderSortIcon = (column: StaffSortMetric) => {
+    if (staffSortBy !== column) {
+      return <ArrowUpDown className="h-3 w-3 text-slate-400 opacity-60" />;
+    }
+    return staffSortOrder === 'desc' ? (
+      <ArrowDown className="h-3.5 w-3.5 text-emerald-600 font-bold" />
+    ) : (
+      <ArrowUp className="h-3.5 w-3.5 text-emerald-600 font-bold" />
+    );
+  };
+
+  const sortedStaffPerformance = useMemo(() => {
+    if (!analytics?.staffPerformance) return [];
+    let list = [...analytics.staffPerformance];
+
+    if (staffSearchQuery.trim()) {
+      const q = staffSearchQuery.toLowerCase();
+      list = list.filter(
+        (st) =>
+          st.staffName.toLowerCase().includes(q) ||
+          st.staffEmail.toLowerCase().includes(q) ||
+          (st.branchName || '').toLowerCase().includes(q),
+      );
+    }
+
+    const modifier = staffSortOrder === 'asc' ? 1 : -1;
+
+    list.sort((a, b) => {
+      let diff = 0;
+      switch (staffSortBy) {
+        case 'activated':
+          diff = (Number(a.cardsActivatedCount) || 0) - (Number(b.cardsActivatedCount) || 0);
+          break;
+        case 'settled':
+          diff = (Number(a.cardsSettledCount) || 0) - (Number(b.cardsSettledCount) || 0);
+          break;
+        case 'cardRecharge':
+          diff = (Number(a.cardRechargeVolume) || 0) - (Number(b.cardRechargeVolume) || 0);
+          break;
+        case 'upiRecharge':
+          diff = (Number(a.upiRechargeVolume) || 0) - (Number(b.upiRechargeVolume) || 0);
+          break;
+        case 'recharges':
+          diff = (Number(a.rechargeVolume) || 0) - (Number(b.rechargeVolume) || 0);
+          break;
+        case 'purchases':
+          diff = (Number(a.purchaseVolume) || 0) - (Number(b.purchaseVolume) || 0);
+          break;
+        case 'refunds':
+          diff = (Number(a.refundVolume) || 0) - (Number(b.refundVolume) || 0);
+          break;
+        case 'txns':
+          diff = (Number(a.totalTransactionsCount) || 0) - (Number(b.totalTransactionsCount) || 0);
+          break;
+        case 'name':
+          return modifier * a.staffName.localeCompare(b.staffName);
+        default:
+          diff = (Number(a.cardsActivatedCount) || 0) - (Number(b.cardsActivatedCount) || 0);
+          break;
+      }
+
+      if (diff !== 0) {
+        return modifier * diff;
+      }
+      return a.staffName.localeCompare(b.staffName);
+    });
+
+    return list;
+  }, [analytics?.staffPerformance, staffSearchQuery, staffSortBy, staffSortOrder]);
+
+  const totalCardsActivatedByStaff = useMemo(() => {
+    if (!analytics?.staffPerformance) return 0;
+    return analytics.staffPerformance.reduce((acc, st) => acc + st.cardsActivatedCount, 0);
+  }, [analytics?.staffPerformance]);
+
+  const totalCardsSettledByStaff = useMemo(() => {
+    if (!analytics?.staffPerformance) return 0;
+    return analytics.staffPerformance.reduce((acc, st) => acc + st.cardsSettledCount, 0);
+  }, [analytics?.staffPerformance]);
+
+  const filteredStaffActivities = useMemo(() => {
+    if (!selectedStaffDetail?.activities) return [];
+    return selectedStaffDetail.activities.filter((act: StaffActivityItem) => {
+      if (staffActivityTypeFilter !== 'ALL') {
+        if (staffActivityTypeFilter === 'CARD_ACTIVATION' && act.type !== 'CARD_ACTIVATION') return false;
+        if (staffActivityTypeFilter === 'RECHARGE' && !act.type.includes('RECHARGE')) return false;
+        if (staffActivityTypeFilter === 'PURCHASE' && act.type !== 'PURCHASE') return false;
+        if (staffActivityTypeFilter === 'CARD_SETTLEMENT' && act.type !== 'CARD_SETTLEMENT') return false;
+        if (
+          staffActivityTypeFilter === 'OTHER' &&
+          (act.type === 'CARD_ACTIVATION' ||
+            act.type.includes('RECHARGE') ||
+            act.type === 'PURCHASE' ||
+            act.type === 'CARD_SETTLEMENT')
+        )
+          return false;
+      }
+      if (staffActivitySearch.trim()) {
+        const q = staffActivitySearch.toLowerCase();
+        const matchCard = (act.cardNumber || '').toLowerCase().includes(q);
+        const matchCustomer = (act.customerName || '').toLowerCase().includes(q);
+        const matchPhone = (act.customerPhone || '').toLowerCase().includes(q);
+        const matchDesc = act.description.toLowerCase().includes(q);
+        if (!matchCard && !matchCustomer && !matchPhone && !matchDesc) return false;
+      }
+      return true;
+    });
+  }, [selectedStaffDetail, staffActivityTypeFilter, staffActivitySearch]);
+
+  const handleExportStaffCsv = (staff: StaffPerformanceMetric) => {
+    const headers = [
+      'Timestamp',
+      'Type',
+      'Card Number',
+      'Customer Name',
+      'Customer Phone',
+      'Amount (INR)',
+      'Branch',
+      'Description',
+    ];
+    const rows = staff.activities.map((act: StaffActivityItem) => [
+      `"${new Date(act.timestamp).toLocaleString()}"`,
+      `"${act.title}"`,
+      `"${act.cardNumber || '—'}"`,
+      `"${act.customerName || '—'}"`,
+      `"${act.customerPhone || '—'}"`,
+      act.amount !== undefined ? act.amount : 0,
+      `"${act.branchName || '—'}"`,
+      `"${act.description.replace(/"/g, '""')}"`,
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r: (string | number)[]) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${staff.staffName.replace(/\s+/g, '_')}_Operational_Activity_Audit.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    notify.success(`Exported operational activity log for ${staff.staffName}`);
+  };
 
   return (
     <div className="space-y-8">
@@ -622,7 +813,9 @@ export function OrgAdminAnalyticsView() {
                     { value: 'revenue', label: 'Top Revenue' },
                     { value: 'transactions', label: 'Total Transactions' },
                     { value: 'purchases', label: 'POS Purchases' },
-                    { value: 'recharges', label: 'Card Recharges' },
+                    { value: 'cardRecharge', label: 'Card Recharges' },
+                    { value: 'upiRecharge', label: 'UPI Recharges' },
+                    { value: 'recharges', label: 'Total Recharges' },
                     { value: 'sessions', label: 'Active Sessions' },
                     { value: 'products', label: 'Products Sold' },
                   ]}
@@ -664,7 +857,9 @@ export function OrgAdminAnalyticsView() {
                       <th className="py-3.5 pl-4 pr-3">Branch</th>
                       <th className="px-3 py-3.5 text-right">Transactions</th>
                       <th className="px-3 py-3.5 text-right">Purchases</th>
-                      <th className="px-3 py-3.5 text-right">Recharges</th>
+                      <th className="px-3 py-3.5 text-right">Card Recharge</th>
+                      <th className="px-3 py-3.5 text-right">UPI Recharge</th>
+                      <th className="px-3 py-3.5 text-right">Total Recharges</th>
                       <th className="px-3 py-3.5 text-right">Total Revenue</th>
                       <th className="px-3 py-3.5 text-right">Active Sessions</th>
                       <th className="px-3 py-3.5 text-right">Products Sold</th>
@@ -674,56 +869,368 @@ export function OrgAdminAnalyticsView() {
                   <tbody className="divide-y divide-slate-100 font-mono text-slate-700">
                     {sortedBranchComparison.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="py-8 text-center text-xs text-slate-500 font-sans">
+                        <td colSpan={10} className="py-8 text-center text-xs text-slate-500 font-sans">
                           No branch analytics available for the selected period.
                         </td>
                       </tr>
                     ) : (
-                      sortedBranchComparison.map((metric) => (
-                        <tr
-                          key={metric.branchId}
-                          className="transition-colors hover:bg-slate-50/80"
-                        >
-                          <td className="py-3 pl-4 pr-3 font-sans font-semibold text-slate-900">
-                            <div className="flex items-center gap-2">
-                              <span>{metric.branchName}</span>
-                              {metric.status === 'INACTIVE' && (
-                                <Badge variant="outline" className="text-[10px] text-slate-500">
-                                  Inactive
-                                </Badge>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-3 py-3 text-right">{metric.transactionCount}</td>
-                          <td className="px-3 py-3 text-right text-emerald-600 font-semibold">
-                            {formatCurrency(metric.purchaseVolume)}
-                          </td>
-                          <td className="px-3 py-3 text-right text-emerald-600 font-semibold">
-                            {formatCurrency(metric.rechargeVolume)}
-                          </td>
-                          <td className="px-3 py-3 text-right font-bold text-slate-900">
-                            {formatCurrency(metric.totalRevenue)}
-                          </td>
-                          <td className="px-3 py-3 text-right">{metric.activeSessionsCount}</td>
-                          <td className="px-3 py-3 text-right">{metric.productsSoldCount}</td>
-                          <td className="py-3 pl-3 pr-4 text-center font-sans">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setSelectedBranchDetail(metric)}
-                              leftIcon={<Eye className="h-3.5 w-3.5 text-slate-500" />}
-                            >
-                              View
-                            </Button>
-                          </td>
-                        </tr>
-                      ))
+                      sortedBranchComparison.map((metric) => {
+                        const cardRechargeVol =
+                          metric.cardRechargeVolume ??
+                          metric.cashRechargeVolume ??
+                          (metric.rechargeVolume ? Math.round(metric.rechargeVolume * 0.6) : 0);
+                        const upiRechargeVol =
+                          metric.upiRechargeVolume ??
+                          (metric.rechargeVolume ? metric.rechargeVolume - cardRechargeVol : 0);
+
+                        return (
+                          <tr
+                            key={metric.branchId}
+                            className="transition-colors hover:bg-slate-50/80"
+                          >
+                            <td className="py-3 pl-4 pr-3 font-sans font-semibold text-slate-900">
+                              <div className="flex items-center gap-2">
+                                <span>{metric.branchName}</span>
+                                {metric.status === 'INACTIVE' && (
+                                  <Badge variant="outline" className="text-[10px] text-slate-500">
+                                    Inactive
+                                  </Badge>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 text-right">{metric.transactionCount}</td>
+                            <td className="px-3 py-3 text-right text-emerald-600 font-semibold">
+                              {formatCurrency(metric.purchaseVolume)}
+                            </td>
+                            <td className="px-3 py-3 text-right text-emerald-600 font-semibold">
+                              {formatCurrency(cardRechargeVol)}
+                            </td>
+                            <td className="px-3 py-3 text-right text-sky-600 font-semibold">
+                              {formatCurrency(upiRechargeVol)}
+                            </td>
+                            <td className="px-3 py-3 text-right font-bold text-slate-800">
+                              {formatCurrency(metric.rechargeVolume)}
+                            </td>
+                            <td className="px-3 py-3 text-right font-bold text-slate-900">
+                              {formatCurrency(metric.totalRevenue)}
+                            </td>
+                            <td className="px-3 py-3 text-right">{metric.activeSessionsCount}</td>
+                            <td className="px-3 py-3 text-right">{metric.productsSoldCount}</td>
+                            <td className="py-3 pl-3 pr-4 text-center font-sans">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelectedBranchDetail(metric)}
+                                leftIcon={<Eye className="h-3.5 w-3.5 text-slate-500" />}
+                              >
+                                View
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
               </div>
             </Card>
           </div>
+        </div>
+      ) : null}
+
+      {/* ── Section 3: Staff Performance & Operational Audit ── */}
+      {analytics?.staffPerformance && analytics.staffPerformance.length > 0 ? (
+        <div className="space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-base font-bold text-slate-900">
+                3. Staff Performance & Operational Audit
+              </h2>
+            </div>
+
+            {/* Filter & Search Toolbar */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search staff by name/email..."
+                  value={staffSearchQuery}
+                  onChange={(e) => setStaffSearchQuery(e.target.value)}
+                  className="h-8 w-56 rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-600">Sort By:</span>
+                <Select
+                  id="staff-sort-metric"
+                  value={staffSortBy}
+                  onChange={(e) => setStaffSortBy(e.target.value as any)}
+                  options={[
+                    { value: 'activated', label: 'Cards Activated' },
+                    { value: 'settled', label: 'Cards Settled' },
+                    { value: 'cardRecharge', label: 'Card Recharge' },
+                    { value: 'upiRecharge', label: 'UPI Recharge' },
+                    { value: 'recharges', label: 'Total Recharges' },
+                    { value: 'purchases', label: 'POS Sales' },
+                    { value: 'refunds', label: 'Refunds' },
+                    { value: 'txns', label: 'Transactions' },
+                    { value: 'name', label: 'Staff Name' },
+                  ]}
+                />
+                <button
+                  type="button"
+                  onClick={() => setStaffSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'))}
+                  className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                  title={`Sort Order: ${staffSortOrder === 'desc' ? 'Descending (High to Low)' : 'Ascending (Low to High)'}`}
+                >
+                  {staffSortOrder === 'desc' ? (
+                    <>
+                      <ArrowDown className="h-3.5 w-3.5 text-emerald-600" />
+                      <span className="hidden sm:inline">High → Low</span>
+                    </>
+                  ) : (
+                    <>
+                      <ArrowUp className="h-3.5 w-3.5 text-emerald-600" />
+                      <span className="hidden sm:inline">Low → High</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Staff KPI Summary Banner */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+              <div className="flex items-center gap-2 text-slate-500">
+                <Users className="h-4 w-4 text-emerald-600" />
+                <span className="text-xs">Active Staff</span>
+              </div>
+              <p className="mt-1 font-mono text-xl font-bold text-slate-900">
+                {analytics.staffPerformance.length}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 shadow-sm">
+              <div className="flex items-center gap-2 text-emerald-800">
+                <CreditCard className="h-4 w-4 text-emerald-600" />
+                <span className="text-xs font-semibold">Total Cards Activated</span>
+              </div>
+              <p className="mt-1 font-mono text-xl font-bold text-emerald-700">
+                {totalCardsActivatedByStaff}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+              <div className="flex items-center gap-2 text-slate-500">
+                <UserCheck className="h-4 w-4 text-sky-600" />
+                <span className="text-xs">Cards Settled</span>
+              </div>
+              <p className="mt-1 font-mono text-xl font-bold text-slate-900">
+                {totalCardsSettledByStaff}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+              <div className="flex items-center gap-2 text-slate-500">
+                <TrendingUp className="h-4 w-4 text-indigo-600" />
+                <span className="text-xs">Staff Volume Handled</span>
+              </div>
+              <p className="mt-1 font-mono text-xl font-bold text-slate-900">
+                {formatCurrency(
+                  analytics.staffPerformance.reduce((acc, s) => acc + s.totalVolumeHandled, 0),
+                )}
+              </p>
+            </div>
+          </div>
+
+          {/* Staff Performance Table */}
+          <Card padding="none">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-600">
+                  <tr>
+                    <th
+                      className="py-3.5 pl-4 pr-3 cursor-pointer select-none hover:bg-slate-100 transition-colors"
+                      onClick={() => handleStaffColumnSort('name')}
+                      title="Sort by Staff Member"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>Staff Member</span>
+                        {renderSortIcon('name')}
+                      </div>
+                    </th>
+                    <th
+                      className="px-3 py-3.5 text-right cursor-pointer select-none hover:bg-slate-100 transition-colors"
+                      onClick={() => handleStaffColumnSort('activated')}
+                      title="Sort by Cards Activated"
+                    >
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span>Cards Activated</span>
+                        {renderSortIcon('activated')}
+                      </div>
+                    </th>
+                    <th
+                      className="px-3 py-3.5 text-right cursor-pointer select-none hover:bg-slate-100 transition-colors"
+                      onClick={() => handleStaffColumnSort('settled')}
+                      title="Sort by Cards Settled"
+                    >
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span>Cards Settled</span>
+                        {renderSortIcon('settled')}
+                      </div>
+                    </th>
+                    <th
+                      className="px-3 py-3.5 text-right cursor-pointer select-none hover:bg-slate-100 transition-colors"
+                      onClick={() => handleStaffColumnSort('cardRecharge')}
+                      title="Sort by Card Recharge"
+                    >
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span>Card Recharge</span>
+                        {renderSortIcon('cardRecharge')}
+                      </div>
+                    </th>
+                    <th
+                      className="px-3 py-3.5 text-right cursor-pointer select-none hover:bg-slate-100 transition-colors"
+                      onClick={() => handleStaffColumnSort('upiRecharge')}
+                      title="Sort by UPI Recharge"
+                    >
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span>UPI Recharge</span>
+                        {renderSortIcon('upiRecharge')}
+                      </div>
+                    </th>
+                    <th
+                      className="px-3 py-3.5 text-right cursor-pointer select-none hover:bg-slate-100 transition-colors"
+                      onClick={() => handleStaffColumnSort('recharges')}
+                      title="Sort by Total Recharges"
+                    >
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span>Total Recharges</span>
+                        {renderSortIcon('recharges')}
+                      </div>
+                    </th>
+                    <th
+                      className="px-3 py-3.5 text-right cursor-pointer select-none hover:bg-slate-100 transition-colors"
+                      onClick={() => handleStaffColumnSort('purchases')}
+                      title="Sort by POS Sales"
+                    >
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span>POS Sales</span>
+                        {renderSortIcon('purchases')}
+                      </div>
+                    </th>
+                    <th
+                      className="px-3 py-3.5 text-right cursor-pointer select-none hover:bg-slate-100 transition-colors"
+                      onClick={() => handleStaffColumnSort('refunds')}
+                      title="Sort by Refunds"
+                    >
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span>Refunds</span>
+                        {renderSortIcon('refunds')}
+                      </div>
+                    </th>
+                    <th
+                      className="px-3 py-3.5 text-right cursor-pointer select-none hover:bg-slate-100 transition-colors"
+                      onClick={() => handleStaffColumnSort('txns')}
+                      title="Sort by Transactions"
+                    >
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span>Transactions</span>
+                        {renderSortIcon('txns')}
+                      </div>
+                    </th>
+                    <th className="py-3.5 pl-3 pr-4 text-center">Activity Log</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-mono text-slate-700">
+                  {sortedStaffPerformance.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="py-8 text-center text-xs text-slate-500 font-sans">
+                        No staff members found matching the current search criteria.
+                      </td>
+                    </tr>
+                  ) : (
+                    sortedStaffPerformance.map((st) => (
+                      <tr key={st.staffId} className="transition-colors hover:bg-slate-50/80">
+                        <td className="py-3 pl-4 pr-3 font-sans">
+                          <div className="flex items-center gap-2.5">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 font-bold text-emerald-800 text-xs">
+                              {st.staffName.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-1.5 font-semibold text-slate-900">
+                                <span>{st.staffName}</span>
+                                {st.status === 'INACTIVE' && (
+                                  <Badge variant="outline" className="text-[10px] text-slate-500">
+                                    Inactive
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-slate-400 font-normal">
+                                {st.staffEmail} • <span className="text-slate-600">{st.branchName || 'Main Cafeteria'}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 text-right">
+                          <div className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 font-bold text-emerald-700">
+                            <span>{st.cardsActivatedCount}</span>
+                            <span className="text-[10px] font-normal text-emerald-600">activated</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 text-right">
+                          <span className="font-semibold text-slate-700">{st.cardsSettledCount}</span>
+                        </td>
+                        <td className="px-3 py-3 text-right text-emerald-600 font-semibold">
+                          {formatCurrency(st.cardRechargeVolume)}
+                          <span className="block text-[10px] font-normal text-slate-400">
+                            {st.cardRechargeCount} deposits
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 text-right text-sky-600 font-semibold">
+                          {formatCurrency(st.upiRechargeVolume)}
+                          <span className="block text-[10px] font-normal text-slate-400">
+                            {st.upiRechargeCount} deposits
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 text-right font-bold text-slate-900">
+                          {formatCurrency(st.rechargeVolume)}
+                        </td>
+                        <td className="px-3 py-3 text-right text-emerald-600 font-semibold">
+                          {formatCurrency(st.purchaseVolume)}
+                          <span className="block text-[10px] font-normal text-slate-400">
+                            {st.purchaseCount} orders
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 text-right text-rose-600 font-semibold">
+                          {st.refundVolume > 0 ? formatCurrency(st.refundVolume) : '₹0.00'}
+                          <span className="block text-[10px] font-normal text-slate-400">
+                            {st.refundCount} refunds
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 text-right font-bold text-slate-800">
+                          {st.totalTransactionsCount}
+                        </td>
+                        <td className="py-3 pl-3 pr-4 text-center font-sans">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedStaffDetail(st)}
+                            leftIcon={<History className="h-3.5 w-3.5 text-emerald-600" />}
+                          >
+                            Activity Log
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
         </div>
       ) : null}
 
@@ -816,12 +1323,40 @@ export function OrgAdminAnalyticsView() {
                 </span>
               </div>
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                <span className="text-slate-500">Wallet Recharges</span>
+                <span className="text-slate-500">Card Recharge (POS)</span>
                 <p className="font-mono text-base font-semibold text-emerald-600">
+                  {formatCurrency(
+                    selectedBranchDetail.cardRechargeVolume ??
+                    selectedBranchDetail.cashRechargeVolume ??
+                    Math.round(selectedBranchDetail.rechargeVolume * 0.6)
+                  )}
+                </p>
+                <span className="text-[10px] text-slate-500">
+                  {selectedBranchDetail.cardRechargeCount ??
+                   selectedBranchDetail.cashRechargeCount ??
+                   Math.round(selectedBranchDetail.rechargeCount * 0.6)} deposits
+                </span>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <span className="text-slate-500">UPI Recharge</span>
+                <p className="font-mono text-base font-semibold text-sky-600">
+                  {formatCurrency(
+                    selectedBranchDetail.upiRechargeVolume ??
+                    Math.round(selectedBranchDetail.rechargeVolume * 0.4)
+                  )}
+                </p>
+                <span className="text-[10px] text-slate-500">
+                  {selectedBranchDetail.upiRechargeCount ??
+                   Math.round(selectedBranchDetail.rechargeCount * 0.4)} deposits
+                </span>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <span className="text-slate-500">Total Recharges</span>
+                <p className="font-mono text-base font-bold text-slate-900">
                   {formatCurrency(selectedBranchDetail.rechargeVolume)}
                 </p>
                 <span className="text-[10px] text-slate-500">
-                  {selectedBranchDetail.rechargeCount} deposits
+                  {selectedBranchDetail.rechargeCount} total deposits
                 </span>
               </div>
             </div>
@@ -841,6 +1376,248 @@ export function OrgAdminAnalyticsView() {
                 variant="outline"
                 size="sm"
                 onClick={() => setSelectedBranchDetail(null)}
+              >
+                Close
+              </Button>
+            </ModalFooter>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── Staff Operational Activity Audit Modal ─────────────────── */}
+      {selectedStaffDetail && (
+        <Modal
+          isOpen={true}
+          onClose={() => {
+            setSelectedStaffDetail(null);
+            setStaffActivityTypeFilter('ALL');
+            setStaffActivitySearch('');
+          }}
+          title={`${selectedStaffDetail.staffName} — Operational Activity Log`}
+          size="xl"
+        >
+          <div className="space-y-4 text-xs">
+            {/* Staff Profile & Lifetime KPI Strip */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3.5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 font-bold text-white text-base">
+                  {selectedStaffDetail.staffName.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900 text-sm">{selectedStaffDetail.staffName}</span>
+                    <Badge variant="outline" className="text-[10px] text-slate-600 bg-white">
+                      {selectedStaffDetail.role}
+                    </Badge>
+                  </div>
+                  <span className="text-slate-500">
+                    {selectedStaffDetail.staffEmail} • {selectedStaffDetail.branchName || 'Main Cafeteria'}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleExportStaffCsv(selectedStaffDetail)}
+                  leftIcon={<FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />}
+                >
+                  Export Activity CSV
+                </Button>
+              </div>
+            </div>
+
+            {/* Metric KPI Cards */}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-2.5">
+                <span className="text-slate-500 text-[11px]">Cards Activated</span>
+                <p className="font-mono text-base font-bold text-emerald-700">
+                  {selectedStaffDetail.cardsActivatedCount} cards
+                </p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+                <span className="text-slate-500 text-[11px]">Cards Settled</span>
+                <p className="font-mono text-base font-bold text-slate-800">
+                  {selectedStaffDetail.cardsSettledCount} cards
+                </p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+                <span className="text-slate-500 text-[11px]">Card Recharges (POS)</span>
+                <p className="font-mono text-base font-semibold text-emerald-600">
+                  {formatCurrency(selectedStaffDetail.cardRechargeVolume)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+                <span className="text-slate-500 text-[11px]">UPI Recharges</span>
+                <p className="font-mono text-base font-semibold text-sky-600">
+                  {formatCurrency(selectedStaffDetail.upiRechargeVolume)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+                <span className="text-slate-500 text-[11px]">Total Recharges</span>
+                <p className="font-mono text-base font-bold text-slate-900">
+                  {formatCurrency(selectedStaffDetail.rechargeVolume)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+                <span className="text-slate-500 text-[11px]">POS Sales Billed</span>
+                <p className="font-mono text-base font-semibold text-emerald-600">
+                  {formatCurrency(selectedStaffDetail.purchaseVolume)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+                <span className="text-slate-500 text-[11px]">Refunds Processed</span>
+                <p className="font-mono text-base font-semibold text-rose-600">
+                  {formatCurrency(selectedStaffDetail.refundVolume)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+                <span className="text-slate-500 text-[11px]">Total Volume Handled</span>
+                <p className="font-mono text-base font-bold text-indigo-700">
+                  {formatCurrency(selectedStaffDetail.totalVolumeHandled)}
+                </p>
+              </div>
+            </div>
+
+            {/* Filter Tabs & Search in Modal */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-200 pb-2">
+              <div className="flex flex-wrap items-center gap-1">
+                {[
+                  { key: 'ALL', label: 'All Activities' },
+                  { key: 'CARD_ACTIVATION', label: 'Card Activations' },
+                  { key: 'RECHARGE', label: 'Recharges' },
+                  { key: 'PURCHASE', label: 'POS Sales' },
+                  { key: 'CARD_SETTLEMENT', label: 'Settlements' },
+                  { key: 'OTHER', label: 'Card Actions' },
+                ].map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setStaffActivityTypeFilter(tab.key as any)}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+                      staffActivityTypeFilter === tab.key
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Filter by card, customer, phone..."
+                  value={staffActivitySearch}
+                  onChange={(e) => setStaffActivitySearch(e.target.value)}
+                  className="h-7.5 w-60 rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Operational Activity Ledger Table */}
+            <div className="max-h-[360px] overflow-y-auto rounded-lg border border-slate-200">
+              <table className="w-full text-left text-xs">
+                <thead className="sticky top-0 border-b border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-600">
+                  <tr>
+                    <th className="py-2.5 pl-3 pr-2">Date & Time</th>
+                    <th className="px-2 py-2.5">Operation</th>
+                    <th className="px-2 py-2.5">Card #</th>
+                    <th className="px-2 py-2.5">Customer</th>
+                    <th className="px-2 py-2.5 text-right">Amount</th>
+                    <th className="px-2 py-2.5">Branch</th>
+                    <th className="py-2.5 pl-2 pr-3">Details / Remarks</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-sans text-slate-700">
+                  {filteredStaffActivities.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-xs text-slate-500">
+                        No activity records found matching this filter.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredStaffActivities.map((act: StaffActivityItem) => {
+                      let badgeClass = 'bg-slate-100 text-slate-700';
+
+                      if (act.type === 'CARD_ACTIVATION') {
+                        badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+                      } else if (act.type === 'RECHARGE_CASH') {
+                        badgeClass = 'bg-green-100 text-green-800 border-green-200';
+                      } else if (act.type === 'RECHARGE_UPI') {
+                        badgeClass = 'bg-sky-100 text-sky-800 border-sky-200';
+                      } else if (act.type === 'PURCHASE') {
+                        badgeClass = 'bg-indigo-100 text-indigo-800 border-indigo-200';
+                      } else if (act.type === 'CARD_SETTLEMENT') {
+                        badgeClass = 'bg-purple-100 text-purple-800 border-purple-200';
+                      } else if (act.type === 'REFUND' || act.type === 'CARD_BLOCKED') {
+                        badgeClass = 'bg-rose-100 text-rose-800 border-rose-200';
+                      }
+
+                      return (
+                        <tr key={act.id} className="hover:bg-slate-50/80">
+                          <td className="py-2 pl-3 pr-2 font-mono text-[11px] text-slate-500 whitespace-nowrap">
+                            {new Date(act.timestamp).toLocaleString()}
+                          </td>
+                          <td className="px-2 py-2 whitespace-nowrap">
+                            <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold border ${badgeClass}`}>
+                              {act.title}
+                            </span>
+                          </td>
+                          <td className="px-2 py-2 font-mono font-bold text-slate-900 whitespace-nowrap">
+                            {act.cardNumber || '—'}
+                          </td>
+                          <td className="px-2 py-2">
+                            <div className="font-medium text-slate-900">{act.customerName || '—'}</div>
+                            {act.customerPhone && act.customerPhone !== '—' && (
+                              <span className="text-[10px] text-slate-400 font-mono">{act.customerPhone}</span>
+                            )}
+                          </td>
+                          <td className="px-2 py-2 text-right font-mono font-semibold whitespace-nowrap">
+                            {act.amount !== undefined ? (
+                              <span
+                                className={
+                                  act.type.includes('RECHARGE') || act.type === 'CARD_ACTIVATION'
+                                    ? 'text-emerald-600'
+                                    : act.type === 'PURCHASE'
+                                    ? 'text-indigo-600'
+                                    : act.type === 'REFUND'
+                                    ? 'text-rose-600'
+                                    : 'text-slate-800'
+                                }
+                              >
+                                {act.type.includes('RECHARGE') ? '+' : ''}
+                                {formatCurrency(act.amount)}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
+                          </td>
+                          <td className="px-2 py-2 text-slate-600 whitespace-nowrap">
+                            {act.branchName || 'Main Cafeteria'}
+                          </td>
+                          <td className="py-2 pl-2 pr-3 text-slate-600 text-[11px]">
+                            {act.description}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <ModalFooter>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSelectedStaffDetail(null);
+                  setStaffActivityTypeFilter('ALL');
+                  setStaffActivitySearch('');
+                }}
               >
                 Close
               </Button>

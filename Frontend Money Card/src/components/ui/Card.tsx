@@ -8,6 +8,7 @@ interface CardProps {
   className?: string;
   padding?: 'none' | 'sm' | 'md' | 'lg';
   hover?: boolean;
+  onClick?: () => void;
 }
 
 const paddingStyles = {
@@ -17,9 +18,10 @@ const paddingStyles = {
   lg: 'p-8',
 };
 
-export function Card({ children, className, padding = 'md', hover = false }: CardProps) {
+export function Card({ children, className, padding = 'md', hover = false, onClick }: CardProps) {
   return (
     <div
+      onClick={onClick}
       className={cn(
         'rounded-xl border border-slate-200 bg-white shadow-xs',
         paddingStyles[padding],
