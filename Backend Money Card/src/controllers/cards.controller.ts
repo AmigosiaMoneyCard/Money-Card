@@ -11,24 +11,35 @@ export async function getCards(req: Request, res: Response) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'User has no associated organization');
   }
 
-  const { status, assignmentStatus, search, page = '1', limit = '50' } = req.query as Record<string, string>;
+  const { status, assignmentStatus, search, page = '1', limit = '50', branchId } = req.query as Record<string, string>;
   const pageNum = parseInt(page, 10) || 1;
   const limitNum = parseInt(limit, 10) || 50;
   const skip = (pageNum - 1) * limitNum;
 
-  const whereClause: any = { organizationId: orgId };
+  const conditions: any[] = [{ organizationId: orgId }];
   if (status && ['AVAILABLE', 'ACTIVE', 'BLOCKED'].includes(status)) {
-    whereClause.status = status as CardStatus;
+    conditions.push({ status: status as CardStatus });
   }
   if (assignmentStatus && ['ASSIGNED', 'UNASSIGNED'].includes(assignmentStatus)) {
-    whereClause.assignmentStatus = assignmentStatus as CardAssignmentStatus;
+    conditions.push({ assignmentStatus: assignmentStatus as CardAssignmentStatus });
+  }
+  if (branchId && branchId !== 'ALL') {
+    conditions.push({
+      OR: [
+        { sessions: { some: { status: 'ACTIVE', branchId } } },
+        { status: 'AVAILABLE' },
+      ],
+    });
   }
   if (search) {
-    whereClause.OR = [
-      { physicalCardNumber: { contains: search, mode: 'insensitive' } },
-      { qrToken: { contains: search, mode: 'insensitive' } },
-    ];
+    conditions.push({
+      OR: [
+        { physicalCardNumber: { contains: search, mode: 'insensitive' } },
+        { qrToken: { contains: search, mode: 'insensitive' } },
+      ],
+    });
   }
+  const whereClause: any = { AND: conditions };
 
   const [cards, total] = await Promise.all([
     prisma.card.findMany({

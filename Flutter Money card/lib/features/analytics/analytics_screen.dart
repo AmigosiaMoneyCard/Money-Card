@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/permission_constants.dart';
+import '../../models/analytics.dart';
 import '../../models/branch.dart';
 import '../../providers/analytics_provider.dart';
 import '../../providers/branch_provider.dart';
+import '../../widgets/analytics/analytics_pdf_preview_dialog.dart';
 import '../../widgets/common/app_badge.dart';
 import '../../widgets/common/app_card.dart';
 import '../../widgets/common/section_header.dart';
@@ -22,7 +24,14 @@ class AnalyticsScreen extends ConsumerStatefulWidget {
 }
 
 class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
-  final List<String> _ranges = ['Today', 'This Week', 'This Month'];
+  final List<String> _ranges = [
+    'Today',
+    'Yesterday',
+    'This Week',
+    'This Month',
+    'Last 30 Days',
+    'All Time',
+  ];
 
   @override
   void initState() {
@@ -32,8 +41,28 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     });
   }
 
+  void _openPdfPreview(
+    BuildContext context,
+    BranchPerformanceMetric analytics,
+    String branchName,
+    String timeWindow,
+  ) {
+    AnalyticsPdfPreviewDialog.show(
+      context: context,
+      analytics: analytics,
+      branchName: branchName,
+      timeWindow: timeWindow,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref.listen<Branch?>(currentBranchProvider, (previous, next) {
+      if (next != null && next.id != previous?.id) {
+        ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
+      }
+    });
+
     final analyticsState = ref.watch(analyticsNotifierProvider);
     final notifier = ref.read(analyticsNotifierProvider.notifier);
     final branchState = ref.watch(branchNotifierProvider);
@@ -51,7 +80,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Branch Analytics'),
+                    const Text('Analytics & Reports'),
                     if (currentBranch != null)
                       Text(
                         currentBranch.name,
@@ -68,25 +97,93 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         ),
         body: Column(
           children: [
-            // Date Range Filter Chips
+            // Filter Toolbar: Time Window Dropdown & View PDF Action
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.md,
                 vertical: AppSpacing.sm,
               ),
               child: Row(
-                children: _ranges.map((range) {
-                  final isSelected = analyticsState.selectedRange == range;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: AppSpacing.sm),
-                    child: ChoiceChip(
-                      label: Text(range),
-                      selected: isSelected,
-                      onSelected: (_) => notifier.setRange(range),
-                      selectedColor: AppColors.primaryLight,
+                children: [
+                  // Time Window Dropdown
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: AppSpacing.roundedSm,
+                        border: Border.all(color: AppColors.borderLight),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.03),
+                            blurRadius: 3,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.schedule, size: 16, color: AppColors.primary),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: _ranges.contains(analyticsState.selectedRange)
+                                    ? analyticsState.selectedRange
+                                    : _ranges.first,
+                                isExpanded: true,
+                                icon: const Icon(Icons.arrow_drop_down, color: AppColors.primary),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimaryLight,
+                                ),
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    notifier.setRange(value);
+                                  }
+                                },
+                                items: _ranges.map((range) {
+                                  return DropdownMenuItem<String>(
+                                    value: range,
+                                    child: Text(range),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  );
-                }).toList(),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+
+                  // View PDF Action Button
+                  ElevatedButton.icon(
+                    onPressed: (analyticsState.isLoading || analyticsState.analytics == null)
+                        ? null
+                        : () => _openPdfPreview(
+                              context,
+                              analyticsState.analytics!,
+                              currentBranch?.name ?? 'Main Cafeteria',
+                              analyticsState.selectedRange,
+                            ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: AppColors.borderLight,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: AppSpacing.roundedSm,
+                      ),
+                    ),
+                    icon: const Icon(Icons.picture_as_pdf, size: 16),
+                    label: const Text(
+                      'View PDF',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
               ),
             ),
             const Divider(height: 1),

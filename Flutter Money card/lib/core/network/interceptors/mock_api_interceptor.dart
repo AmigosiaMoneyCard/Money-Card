@@ -189,7 +189,7 @@ class MockApiInterceptor extends Interceptor {
       'qrToken': 'QR-MOCK-004',
       'physicalCardNumber': 'MC-004',
       'status': 'AVAILABLE',
-      'currentBranchId': 'branch-001',
+      'currentBranchId': null,
       'createdAt': '2026-08-14T08:00:00Z',
       'updatedAt': '2026-08-14T08:00:00Z',
     },
@@ -199,7 +199,7 @@ class MockApiInterceptor extends Interceptor {
       'qrToken': 'QR-MOCK-005',
       'physicalCardNumber': 'MC-005',
       'status': 'AVAILABLE',
-      'currentBranchId': 'branch-001',
+      'currentBranchId': null,
       'createdAt': '2026-08-14T08:00:00Z',
       'updatedAt': '2026-08-14T08:00:00Z',
     },
@@ -210,6 +210,69 @@ class MockApiInterceptor extends Interceptor {
       'physicalCardNumber': 'MC-101',
       'status': 'ACTIVE',
       'currentBranchId': 'branch-001',
+      'createdAt': '2026-08-14T08:00:00Z',
+      'updatedAt': '2026-08-14T08:00:00Z',
+    },
+    // Campus Cafeteria (branch-002) Cards
+    {
+      'id': 'CARD-201',
+      'organizationId': 'org-demo-001',
+      'qrToken': 'QR-MOCK-201',
+      'physicalCardNumber': 'MC-201',
+      'status': 'ACTIVE',
+      'currentBranchId': 'branch-002',
+      'createdAt': '2026-08-14T08:00:00Z',
+      'updatedAt': '2026-08-14T08:00:00Z',
+    },
+    {
+      'id': 'CARD-202',
+      'organizationId': 'org-demo-001',
+      'qrToken': 'QR-MOCK-202',
+      'physicalCardNumber': 'MC-202',
+      'status': 'ACTIVE',
+      'currentBranchId': 'branch-002',
+      'createdAt': '2026-08-14T08:00:00Z',
+      'updatedAt': '2026-08-14T08:00:00Z',
+    },
+    {
+      'id': 'CARD-203',
+      'organizationId': 'org-demo-001',
+      'qrToken': 'QR-MOCK-203',
+      'physicalCardNumber': 'MC-203',
+      'status': 'BLOCKED',
+      'currentBranchId': 'branch-002',
+      'blockedReason': 'Damaged NFC Chip',
+      'blockedBy': 'Robin Taylor (Staff B)',
+      'createdAt': '2026-08-14T08:00:00Z',
+      'updatedAt': '2026-08-14T08:00:00Z',
+    },
+    {
+      'id': 'CARD-204',
+      'organizationId': 'org-demo-001',
+      'qrToken': 'QR-MOCK-204',
+      'physicalCardNumber': 'MC-204',
+      'status': 'AVAILABLE',
+      'currentBranchId': null,
+      'createdAt': '2026-08-14T08:00:00Z',
+      'updatedAt': '2026-08-14T08:00:00Z',
+    },
+    {
+      'id': 'CARD-205',
+      'organizationId': 'org-demo-001',
+      'qrToken': 'QR-MOCK-205',
+      'physicalCardNumber': 'MC-205',
+      'status': 'AVAILABLE',
+      'currentBranchId': null,
+      'createdAt': '2026-08-14T08:00:00Z',
+      'updatedAt': '2026-08-14T08:00:00Z',
+    },
+    {
+      'id': 'CARD-206',
+      'organizationId': 'org-demo-001',
+      'qrToken': 'QR-MOCK-206',
+      'physicalCardNumber': 'MC-206',
+      'status': 'ACTIVE',
+      'currentBranchId': 'branch-002',
       'createdAt': '2026-08-14T08:00:00Z',
       'updatedAt': '2026-08-14T08:00:00Z',
     },
@@ -235,6 +298,9 @@ class MockApiInterceptor extends Interceptor {
       'branchId': 'branch-001',
       'status': 'ACTIVE',
       'balance': 750.0,
+      'customerName': 'Alex Morgan',
+      'customerPhone': '9876543210',
+      'cycleNumber': 1,
       'startedAt': '2026-08-14T08:00:00Z',
       'createdAt': '2026-08-14T08:00:00Z',
       'updatedAt': '2026-08-14T08:00:00Z',
@@ -245,6 +311,9 @@ class MockApiInterceptor extends Interceptor {
       'branchId': 'branch-001',
       'status': 'ACTIVE',
       'balance': 350.0,
+      'customerName': 'Sarah Connor',
+      'customerPhone': '9123456780',
+      'cycleNumber': 1,
       'startedAt': '2026-08-14T08:00:00Z',
       'createdAt': '2026-08-14T08:00:00Z',
       'updatedAt': '2026-08-14T08:00:00Z',
@@ -255,6 +324,62 @@ class MockApiInterceptor extends Interceptor {
       'branchId': 'branch-001',
       'status': 'ACTIVE',
       'balance': 350.0,
+      'customerName': 'Rahul Verma',
+      'customerPhone': '9988776655',
+      'cycleNumber': 1,
+      'startedAt': '2026-08-14T08:00:00Z',
+      'createdAt': '2026-08-14T08:00:00Z',
+      'updatedAt': '2026-08-14T08:00:00Z',
+    },
+    // Campus Cafeteria (branch-002) Sessions
+    {
+      'id': 'session-201',
+      'cardId': 'CARD-201',
+      'branchId': 'branch-002',
+      'status': 'ACTIVE',
+      'balance': 620.0,
+      'customerName': 'Kavita Patel',
+      'customerPhone': '9876500001',
+      'cycleNumber': 1,
+      'startedAt': '2026-08-14T08:00:00Z',
+      'createdAt': '2026-08-14T08:00:00Z',
+      'updatedAt': '2026-08-14T08:00:00Z',
+    },
+    {
+      'id': 'session-202',
+      'cardId': 'CARD-202',
+      'branchId': 'branch-002',
+      'status': 'ACTIVE',
+      'balance': 380.0,
+      'customerName': 'Amit Shah',
+      'customerPhone': '9876500002',
+      'cycleNumber': 1,
+      'startedAt': '2026-08-14T08:00:00Z',
+      'createdAt': '2026-08-14T08:00:00Z',
+      'updatedAt': '2026-08-14T08:00:00Z',
+    },
+    {
+      'id': 'session-203',
+      'cardId': 'CARD-206',
+      'branchId': 'branch-002',
+      'status': 'ACTIVE',
+      'balance': 950.0,
+      'customerName': 'Neha Sharma',
+      'customerPhone': '9876500003',
+      'cycleNumber': 1,
+      'startedAt': '2026-08-14T08:00:00Z',
+      'createdAt': '2026-08-14T08:00:00Z',
+      'updatedAt': '2026-08-14T08:00:00Z',
+    },
+    {
+      'id': 'session-204',
+      'cardId': 'CARD-203',
+      'branchId': 'branch-002',
+      'status': 'SETTLED',
+      'balance': 0.0,
+      'customerName': 'David Miller',
+      'customerPhone': '9876500004',
+      'cycleNumber': 1,
       'startedAt': '2026-08-14T08:00:00Z',
       'createdAt': '2026-08-14T08:00:00Z',
       'updatedAt': '2026-08-14T08:00:00Z',
@@ -271,6 +396,8 @@ class MockApiInterceptor extends Interceptor {
       'itemName': 'Veg Burger',
       'category': ['Veg', 'Burger', 'Fast Food', 'Snacks'],
       'price': 120.0,
+      'currentStock': 42,
+      'quantity': 42,
       'status': 'ACTIVE',
     },
     {
@@ -279,6 +406,8 @@ class MockApiInterceptor extends Interceptor {
       'itemName': 'Chicken Burger',
       'category': ['Non-Veg', 'Burger', 'Fast Food', 'Snacks'],
       'price': 150.0,
+      'currentStock': 8,
+      'quantity': 8,
       'status': 'ACTIVE',
     },
     {
@@ -287,6 +416,8 @@ class MockApiInterceptor extends Interceptor {
       'itemName': 'Cheese Burger',
       'category': ['Veg', 'Burger', 'Fast Food', 'Snacks'],
       'price': 140.0,
+      'currentStock': 0,
+      'quantity': 0,
       'status': 'ACTIVE',
     },
     {
@@ -295,6 +426,8 @@ class MockApiInterceptor extends Interceptor {
       'itemName': 'Chicken Rice',
       'category': ['Non-Veg', 'Rice', 'Lunch', 'Dinner', 'Main Course'],
       'price': 140.0,
+      'currentStock': 25,
+      'quantity': 25,
       'status': 'ACTIVE',
     },
     {
@@ -303,6 +436,8 @@ class MockApiInterceptor extends Interceptor {
       'itemName': 'Veg Fried Rice',
       'category': ['Veg', 'Rice', 'Lunch', 'Dinner', 'Main Course'],
       'price': 110.0,
+      'currentStock': 30,
+      'quantity': 30,
       'status': 'ACTIVE',
     },
     {
@@ -311,6 +446,8 @@ class MockApiInterceptor extends Interceptor {
       'itemName': 'Fresh Juice',
       'category': ['Vegan', 'Beverages', 'Drinks', 'Juice'],
       'price': 50.0,
+      'currentStock': 0,
+      'quantity': 0,
       'status': 'ACTIVE',
     },
     {
@@ -319,6 +456,8 @@ class MockApiInterceptor extends Interceptor {
       'itemName': 'Tea',
       'category': ['Veg', 'Beverages', 'Hot Drinks', 'Breakfast'],
       'price': 20.0,
+      'currentStock': 50,
+      'quantity': 50,
       'status': 'ACTIVE',
     },
     {
@@ -327,6 +466,8 @@ class MockApiInterceptor extends Interceptor {
       'itemName': 'Coffee',
       'category': ['Veg', 'Beverages', 'Hot Drinks', 'Breakfast'],
       'price': 30.0,
+      'currentStock': 45,
+      'quantity': 45,
       'status': 'ACTIVE',
     },
     {
@@ -335,6 +476,8 @@ class MockApiInterceptor extends Interceptor {
       'itemName': 'French Fries',
       'category': ['Veg', 'Vegan', 'Snacks', 'Fast Food'],
       'price': 80.0,
+      'currentStock': 20,
+      'quantity': 20,
       'status': 'ACTIVE',
     },
     {
@@ -343,6 +486,69 @@ class MockApiInterceptor extends Interceptor {
       'itemName': 'Sandwich',
       'category': ['Veg', 'Breakfast', 'Snacks', 'Fast Food'],
       'price': 70.0,
+      'currentStock': 15,
+      'quantity': 15,
+      'status': 'ACTIVE',
+    },
+    // Campus Cafeteria (branch-002) Products
+    {
+      'id': 'prod-201',
+      'branchId': 'branch-002',
+      'itemName': 'Veg Burger',
+      'category': ['Veg', 'Burger', 'Fast Food', 'Snacks'],
+      'price': 120.0,
+      'currentStock': 35,
+      'quantity': 35,
+      'status': 'ACTIVE',
+    },
+    {
+      'id': 'prod-202',
+      'branchId': 'branch-002',
+      'itemName': 'Chicken Burger',
+      'category': ['Non-Veg', 'Burger', 'Fast Food', 'Snacks'],
+      'price': 150.0,
+      'currentStock': 12,
+      'quantity': 12,
+      'status': 'ACTIVE',
+    },
+    {
+      'id': 'prod-203',
+      'branchId': 'branch-002',
+      'itemName': 'Cheese Burger',
+      'category': ['Veg', 'Burger', 'Fast Food', 'Snacks'],
+      'price': 140.0,
+      'currentStock': 0,
+      'quantity': 0,
+      'status': 'ACTIVE',
+    },
+    {
+      'id': 'prod-204',
+      'branchId': 'branch-002',
+      'itemName': 'Sandwich',
+      'category': ['Veg', 'Breakfast', 'Snacks', 'Fast Food'],
+      'price': 70.0,
+      'currentStock': 22,
+      'quantity': 22,
+      'status': 'ACTIVE',
+    },
+    {
+      'id': 'prod-205',
+      'branchId': 'branch-002',
+      'itemName': 'Fresh Juice',
+      'category': ['Vegan', 'Beverages', 'Drinks', 'Juice'],
+      'price': 50.0,
+      'currentStock': 0,
+      'quantity': 0,
+      'status': 'ACTIVE',
+    },
+    {
+      'id': 'prod-206',
+      'branchId': 'branch-002',
+      'itemName': 'Coffee',
+      'category': ['Veg', 'Beverages', 'Hot Drinks', 'Breakfast'],
+      'price': 30.0,
+      'currentStock': 40,
+      'quantity': 40,
       'status': 'ACTIVE',
     },
   ];
@@ -354,49 +560,146 @@ class MockApiInterceptor extends Interceptor {
     {
       'id': 'inv-001',
       'productId': 'prod-001',
-      'productName': 'Veg Rice',
+      'productName': 'Veg Burger',
       'branchId': 'branch-001',
       'currentStock': 42,
       'reorderLevel': 10,
       'status': 'IN_STOCK',
-      'category': ['Veg', 'Main Course', 'Rice'],
-      'price': 80.0,
+      'category': ['Veg', 'Burger', 'Fast Food', 'Snacks'],
+      'price': 120.0,
       'updatedAt': '2026-08-14T08:00:00Z',
     },
     {
       'id': 'inv-002',
       'productId': 'prod-002',
-      'productName': 'Chicken Curry',
+      'productName': 'Chicken Burger',
       'branchId': 'branch-001',
       'currentStock': 8,
       'reorderLevel': 10,
       'status': 'LOW_STOCK',
-      'category': ['Non-Veg', 'Main Course', 'Curry'],
-      'price': 120.0,
+      'category': ['Non-Veg', 'Burger', 'Fast Food', 'Snacks'],
+      'price': 150.0,
       'updatedAt': '2026-08-14T08:00:00Z',
     },
     {
       'id': 'inv-003',
       'productId': 'prod-003',
-      'productName': 'Juice',
+      'productName': 'Cheese Burger',
       'branchId': 'branch-001',
       'currentStock': 0,
       'reorderLevel': 10,
       'status': 'OUT_OF_STOCK',
-      'category': ['Beverage', 'Sweet'],
-      'price': 40.0,
+      'category': ['Veg', 'Burger', 'Fast Food', 'Snacks'],
+      'price': 140.0,
       'updatedAt': '2026-08-14T08:00:00Z',
     },
     {
       'id': 'inv-004',
       'productId': 'prod-004',
-      'productName': 'Sandwich',
+      'productName': 'Chicken Rice',
       'branchId': 'branch-001',
       'currentStock': 25,
       'reorderLevel': 10,
       'status': 'IN_STOCK',
-      'category': ['Veg', 'Fast Food', 'Snack'],
+      'category': ['Non-Veg', 'Rice', 'Lunch', 'Dinner', 'Main Course'],
+      'price': 140.0,
+      'updatedAt': '2026-08-14T08:00:00Z',
+    },
+    {
+      'id': 'inv-006',
+      'productId': 'prod-006',
+      'productName': 'Fresh Juice',
+      'branchId': 'branch-001',
+      'currentStock': 0,
+      'reorderLevel': 10,
+      'status': 'OUT_OF_STOCK',
+      'category': ['Vegan', 'Beverages', 'Drinks', 'Juice'],
+      'price': 50.0,
+      'updatedAt': '2026-08-14T08:00:00Z',
+    },
+    {
+      'id': 'inv-010',
+      'productId': 'prod-010',
+      'productName': 'Sandwich',
+      'branchId': 'branch-001',
+      'currentStock': 15,
+      'reorderLevel': 10,
+      'status': 'IN_STOCK',
+      'category': ['Veg', 'Breakfast', 'Snacks', 'Fast Food'],
       'price': 70.0,
+      'updatedAt': '2026-08-14T08:00:00Z',
+    },
+    // Campus Cafeteria (branch-002) Inventory
+    {
+      'id': 'inv-201',
+      'productId': 'prod-201',
+      'productName': 'Veg Burger',
+      'branchId': 'branch-002',
+      'currentStock': 35,
+      'reorderLevel': 10,
+      'status': 'IN_STOCK',
+      'category': ['Veg', 'Burger', 'Fast Food', 'Snacks'],
+      'price': 120.0,
+      'updatedAt': '2026-08-14T08:00:00Z',
+    },
+    {
+      'id': 'inv-202',
+      'productId': 'prod-202',
+      'productName': 'Chicken Burger',
+      'branchId': 'branch-002',
+      'currentStock': 12,
+      'reorderLevel': 10,
+      'status': 'IN_STOCK',
+      'category': ['Non-Veg', 'Burger', 'Fast Food', 'Snacks'],
+      'price': 150.0,
+      'updatedAt': '2026-08-14T08:00:00Z',
+    },
+    {
+      'id': 'inv-203',
+      'productId': 'prod-203',
+      'productName': 'Cheese Burger',
+      'branchId': 'branch-002',
+      'currentStock': 0,
+      'reorderLevel': 10,
+      'status': 'OUT_OF_STOCK',
+      'category': ['Veg', 'Burger', 'Fast Food', 'Snacks'],
+      'price': 140.0,
+      'updatedAt': '2026-08-14T08:00:00Z',
+    },
+    {
+      'id': 'inv-204',
+      'productId': 'prod-204',
+      'productName': 'Sandwich',
+      'branchId': 'branch-002',
+      'currentStock': 22,
+      'reorderLevel': 10,
+      'status': 'IN_STOCK',
+      'category': ['Veg', 'Breakfast', 'Snacks', 'Fast Food'],
+      'price': 70.0,
+      'updatedAt': '2026-08-14T08:00:00Z',
+    },
+    {
+      'id': 'inv-205',
+      'productId': 'prod-205',
+      'productName': 'Fresh Juice',
+      'branchId': 'branch-002',
+      'currentStock': 0,
+      'reorderLevel': 10,
+      'status': 'OUT_OF_STOCK',
+      'category': ['Vegan', 'Beverages', 'Drinks', 'Juice'],
+      'price': 50.0,
+      'updatedAt': '2026-08-14T08:00:00Z',
+    },
+    {
+      'id': 'inv-206',
+      'productId': 'prod-206',
+      'productName': 'Coffee',
+      'branchId': 'branch-002',
+      'currentStock': 40,
+      'reorderLevel': 10,
+      'status': 'IN_STOCK',
+      'category': ['Veg', 'Beverages', 'Hot Drinks', 'Breakfast'],
+      'price': 30.0,
       'updatedAt': '2026-08-14T08:00:00Z',
     },
   ];
@@ -406,7 +709,7 @@ class MockApiInterceptor extends Interceptor {
       'id': 'mov-001',
       'inventoryId': 'inv-001',
       'productId': 'prod-001',
-      'productName': 'Veg Rice',
+      'productName': 'Veg Burger',
       'branchId': 'branch-001',
       'changeQuantity': 20,
       'balanceAfter': 42,
@@ -419,7 +722,7 @@ class MockApiInterceptor extends Interceptor {
       'id': 'mov-002',
       'inventoryId': 'inv-002',
       'productId': 'prod-002',
-      'productName': 'Chicken Curry',
+      'productName': 'Chicken Burger',
       'branchId': 'branch-001',
       'changeQuantity': -12,
       'balanceAfter': 8,
@@ -427,6 +730,19 @@ class MockApiInterceptor extends Interceptor {
       'reason': 'POS sales',
       'createdAt': '2026-08-14T10:30:00Z',
       'staffName': 'Alex Morgan',
+    },
+    {
+      'id': 'mov-201',
+      'inventoryId': 'inv-201',
+      'productId': 'prod-201',
+      'productName': 'Veg Burger',
+      'branchId': 'branch-002',
+      'changeQuantity': 35,
+      'balanceAfter': 35,
+      'type': 'RESTOCK',
+      'reason': 'Initial campus cafeteria stock',
+      'createdAt': '2026-08-14T08:00:00Z',
+      'staffName': 'Rahul Counter Staff',
     },
   ];
 
@@ -463,6 +779,59 @@ class MockApiInterceptor extends Interceptor {
       'status': 'SUCCESS',
       'paymentMethod': 'UPI',
       'createdAt': '2026-08-14T08:30:00Z',
+    },
+    // Campus Cafeteria (branch-002) Transactions
+    {
+      'id': 'tx-mock-201',
+      'sessionId': 'session-201',
+      'branchId': 'branch-002',
+      'type': 'RECHARGE',
+      'amount': 800.0,
+      'balanceBefore': 0.0,
+      'balanceAfter': 800.0,
+      'status': 'SUCCESS',
+      'paymentMethod': 'CASH',
+      'createdAt': '2026-08-14T08:15:00Z',
+    },
+    {
+      'id': 'tx-mock-202',
+      'sessionId': 'session-201',
+      'branchId': 'branch-002',
+      'type': 'PURCHASE',
+      'amount': 180.0,
+      'balanceBefore': 800.0,
+      'balanceAfter': 620.0,
+      'status': 'SUCCESS',
+      'paymentMethod': 'CARD_BALANCE',
+      'items': [
+        {
+          'productId': 'prod-201',
+          'itemName': 'Veg Burger',
+          'unitPrice': 120.0,
+          'quantity': 1,
+          'totalAmount': 120.0,
+        },
+        {
+          'productId': 'prod-206',
+          'itemName': 'Coffee',
+          'unitPrice': 30.0,
+          'quantity': 2,
+          'totalAmount': 60.0,
+        },
+      ],
+      'createdAt': '2026-08-14T09:45:00Z',
+    },
+    {
+      'id': 'tx-mock-203',
+      'sessionId': 'session-202',
+      'branchId': 'branch-002',
+      'type': 'RECHARGE',
+      'amount': 500.0,
+      'balanceBefore': 0.0,
+      'balanceAfter': 500.0,
+      'status': 'SUCCESS',
+      'paymentMethod': 'UPI',
+      'createdAt': '2026-08-14T08:45:00Z',
     },
   ];
 
@@ -779,9 +1148,31 @@ class MockApiInterceptor extends Interceptor {
           .toList();
 
       if (branchId != null && branchId.toString().isNotEmpty) {
-        result = result
-            .where((c) => c['currentBranchId'] == branchId || c['currentBranchId'] == null)
+        var branchCards = result
+            .where((c) =>
+                c['currentBranchId'] == branchId ||
+                c['currentBranchId'] == null ||
+                c['status'] == 'AVAILABLE')
             .toList();
+
+        if (branchCards.isEmpty) {
+          final templates = mockCards.where((c) => c['currentBranchId'] == 'branch-001').toList();
+          for (final t in templates) {
+            final cloned = Map<String, dynamic>.from(t);
+            cloned['id'] = '${t['id']}-$branchId';
+            cloned['physicalCardNumber'] = '${t['physicalCardNumber']}-B';
+            cloned['qrToken'] = 'QR-${cloned['physicalCardNumber']}';
+            cloned['currentBranchId'] = branchId;
+            mockCards.add(cloned);
+          }
+          branchCards = mockCards
+              .where((c) =>
+                  c['currentBranchId'] == branchId ||
+                  c['currentBranchId'] == null ||
+                  c['status'] == 'AVAILABLE')
+              .toList();
+        }
+        result = branchCards;
       }
       if (status != null && status.toString().isNotEmpty) {
         result = result
@@ -835,6 +1226,29 @@ class MockApiInterceptor extends Interceptor {
           'INSUFFICIENT_BALANCE',
           'Insufficient balance (Available: ₹${currentBalance.toStringAsFixed(2)}, Required: ₹${total.toStringAsFixed(2)})',
         );
+      }
+
+      // Check inventory stock availability before proceeding
+      for (final item in items) {
+        final prodId = item['productId'] as String?;
+        final qty = (item['quantity'] as num?)?.toInt() ?? 1;
+        final inv = mockInventory.firstWhere(
+          (i) => i['productId'] == prodId,
+          orElse: () => <String, dynamic>{},
+        );
+        if (inv.isNotEmpty) {
+          final cur = (inv['currentStock'] as num).toInt();
+          if (cur < qty) {
+            final pName = inv['productName'] ?? 'Item';
+            return _reject(
+              handler,
+              options,
+              400,
+              'INSUFFICIENT_STOCK',
+              "Insufficient stock for '$pName'. Available: $cur, Requested: $qty",
+            );
+          }
+        }
       }
 
       final updatedBalance = currentBalance - total;
@@ -1037,6 +1451,20 @@ class MockApiInterceptor extends Interceptor {
         return _reject(handler, options, 403, 'FORBIDDEN', 'Access denied: Unauthorized branch');
       }
 
+      if (branchId != null) {
+        final existing = mockSessions.where((s) => s['branchId'] == branchId).toList();
+        if (existing.isEmpty) {
+          final templates = mockSessions.where((s) => s['branchId'] == 'branch-001').toList();
+          for (final t in templates) {
+            final cloned = Map<String, dynamic>.from(t);
+            cloned['id'] = '${t['id']}-$branchId';
+            cloned['branchId'] = branchId;
+            cloned['customerName'] = '${t['customerName'] ?? "Customer"} (B2)';
+            mockSessions.add(cloned);
+          }
+        }
+      }
+
       var result = mockSessions.where((s) {
         final card = mockCards.firstWhere(
           (c) => c['id'] == s['cardId'],
@@ -1183,7 +1611,18 @@ class MockApiInterceptor extends Interceptor {
 
       var result = List<Map<String, dynamic>>.from(mockProducts);
       if (branchId != null) {
-        result = result.where((p) => p['branchId'] == branchId).toList();
+        var branchProducts = result.where((p) => p['branchId'] == branchId).toList();
+        if (branchProducts.isEmpty) {
+          final templates = mockProducts.where((p) => p['branchId'] == 'branch-001').toList();
+          for (final t in templates) {
+            final cloned = Map<String, dynamic>.from(t);
+            cloned['id'] = '${t['id']}-$branchId';
+            cloned['branchId'] = branchId;
+            mockProducts.add(cloned);
+          }
+          branchProducts = mockProducts.where((p) => p['branchId'] == branchId).toList();
+        }
+        result = branchProducts;
       }
       if (category != null && category.isNotEmpty && category != 'all') {
         result = result.where((p) {
@@ -1191,6 +1630,23 @@ class MockApiInterceptor extends Interceptor {
           return cats.contains(category);
         }).toList();
       }
+
+      // Enrich products with inventory stock levels
+      result = result.map((p) {
+        final enriched = Map<String, dynamic>.from(p);
+        final inv = mockInventory.firstWhere(
+          (i) => (i['productId'] == p['id'] || i['productName'] == p['itemName']) &&
+                 (branchId == null || i['branchId'] == branchId),
+          orElse: () => <String, dynamic>{},
+        );
+        final stock = inv.isNotEmpty
+            ? (inv['currentStock'] as num? ?? 0).toInt()
+            : (p['currentStock'] as num? ?? p['quantity'] as num? ?? 30).toInt();
+        enriched['currentStock'] = stock;
+        enriched['quantity'] = stock;
+        enriched['stock'] = stock;
+        return enriched;
+      }).toList();
 
       return _resolve(handler, options, result);
     }
@@ -1265,7 +1721,18 @@ class MockApiInterceptor extends Interceptor {
 
       var result = List<Map<String, dynamic>>.from(mockMovements);
       if (branchId != null) {
-        result = result.where((m) => m['branchId'] == branchId).toList();
+        var branchMovements = result.where((m) => m['branchId'] == branchId).toList();
+        if (branchMovements.isEmpty) {
+          final templates = mockMovements.where((m) => m['branchId'] == 'branch-001').toList();
+          for (final t in templates) {
+            final cloned = Map<String, dynamic>.from(t);
+            cloned['id'] = '${t['id']}-$branchId';
+            cloned['branchId'] = branchId;
+            mockMovements.add(cloned);
+          }
+          branchMovements = mockMovements.where((m) => m['branchId'] == branchId).toList();
+        }
+        result = branchMovements;
       }
       if (inventoryId != null) {
         result = result.where((m) => m['inventoryId'] == inventoryId).toList();
@@ -1336,7 +1803,19 @@ class MockApiInterceptor extends Interceptor {
 
       var result = List<Map<String, dynamic>>.from(mockInventory);
       if (branchId != null) {
-        result = result.where((i) => i['branchId'] == branchId).toList();
+        var branchInv = result.where((i) => i['branchId'] == branchId).toList();
+        if (branchInv.isEmpty) {
+          final templates = mockInventory.where((i) => i['branchId'] == 'branch-001').toList();
+          for (final t in templates) {
+            final cloned = Map<String, dynamic>.from(t);
+            cloned['id'] = '${t['id']}-$branchId';
+            cloned['branchId'] = branchId;
+            cloned['productId'] = '${t['productId']}-$branchId';
+            mockInventory.add(cloned);
+          }
+          branchInv = mockInventory.where((i) => i['branchId'] == branchId).toList();
+        }
+        result = branchInv;
       }
       if (search != null && search.isNotEmpty) {
         result = result
@@ -1364,24 +1843,45 @@ class MockApiInterceptor extends Interceptor {
         orElse: () => mockBranches.first,
       );
 
+      final range = options.queryParameters['range']?.toString().toLowerCase() ?? 'today';
+      double factor = 1.0;
+      if (range.contains('yesterday')) {
+        factor = 0.85;
+      } else if (range.contains('week') || range.contains('7')) {
+        factor = 3.2;
+      } else if (range.contains('month') || range.contains('30')) {
+        factor = 11.5;
+      } else if (range.contains('all')) {
+        factor = 24.0;
+      }
+
+      final txCount = (148 * factor).round();
+      final pCount = (96 * factor).round();
+      final pVol = (18450.0 * factor).roundToDouble();
+      final rCount = (52 * factor).round();
+      final rVol = (24800.0 * factor).roundToDouble();
+      final refCount = (4 * factor).round();
+      final refVol = (650.0 * factor).roundToDouble();
+      final totRev = pVol + rVol - refVol;
+
       final branchAnalytics = {
         'branchId': branchId,
         'branchName': branch['name'] ?? 'Main Cafeteria',
         'status': 'ACTIVE',
-        'transactionCount': 148,
-        'purchaseCount': 96,
-        'purchaseVolume': 18450.0,
-        'rechargeCount': 52,
-        'rechargeVolume': 24800.0,
-        'refundCount': 4,
-        'refundVolume': 650.0,
-        'totalRevenue': 43250.0,
-        'sessionCount': 96,
+        'transactionCount': txCount,
+        'purchaseCount': pCount,
+        'purchaseVolume': pVol,
+        'rechargeCount': rCount,
+        'rechargeVolume': rVol,
+        'refundCount': refCount,
+        'refundVolume': refVol,
+        'totalRevenue': totRev,
+        'sessionCount': (96 * (factor > 2 ? 2.5 : factor)).round(),
         'activeSessionsCount': 12,
-        'settledSessionsCount': 84,
-        'avgTransactionValue': 292.23,
-        'avgPurchaseValue': 192.19,
-        'productsSoldCount': 245,
+        'settledSessionsCount': (84 * (factor > 2 ? 2.5 : factor)).round(),
+        'avgTransactionValue': txCount > 0 ? (pVol / pCount).roundToDouble() : 0.0,
+        'avgPurchaseValue': pCount > 0 ? (pVol / pCount).roundToDouble() : 0.0,
+        'productsSoldCount': (245 * factor).round(),
         'inventoryItemCount': mockInventory.length,
         'lowStockItemCount': mockInventory.where((i) => i['status'] == 'LOW_STOCK').length,
         'productDemand': [

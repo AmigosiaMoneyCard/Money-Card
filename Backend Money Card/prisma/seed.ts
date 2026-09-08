@@ -379,6 +379,22 @@ async function main() {
           lowStockThreshold: 10,
         },
       });
+
+      await prisma.branchInventory.upsert({
+        where: {
+          branchId_productId: {
+            branchId: branchTwo.id,
+            productId: prodId,
+          },
+        },
+        update: {},
+        create: {
+          branchId: branchTwo.id,
+          productId: prodId,
+          quantity: prod.stock,
+          lowStockThreshold: 10,
+        },
+      });
     }
   }
 
@@ -422,6 +438,7 @@ async function main() {
       balance: 450.0,
       status: 'ACTIVE',
       cycle: 1,
+      branchId: mainBranch.id,
     },
     {
       cardNum: 'MC-002',
@@ -430,6 +447,7 @@ async function main() {
       balance: 320.0,
       status: 'ACTIVE',
       cycle: 1,
+      branchId: mainBranch.id,
     },
     {
       cardNum: 'MC-003',
@@ -438,6 +456,7 @@ async function main() {
       balance: 150.0,
       status: 'ACTIVE',
       cycle: 1,
+      branchId: mainBranch.id,
     },
     {
       cardNum: 'MC 104',
@@ -446,6 +465,7 @@ async function main() {
       balance: 600.0,
       status: 'ACTIVE',
       cycle: 2,
+      branchId: branchTwo.id,
     },
     {
       cardNum: 'MC 105',
@@ -454,6 +474,7 @@ async function main() {
       balance: 450.0,
       status: 'ACTIVE',
       cycle: 1,
+      branchId: branchTwo.id,
     },
   ];
 
@@ -466,11 +487,13 @@ async function main() {
       where: { cardId: card.id, status: 'ACTIVE' },
     });
 
+    const targetBranchId = sc.branchId || mainBranch.id;
+
     if (!existingSession) {
       const createdSession = await prisma.cardSession.create({
         data: {
           organizationId: org.id,
-          branchId: mainBranch.id,
+          branchId: targetBranchId,
           cardId: card.id,
           sessionToken: `stok_${card.physicalCardNumber.replace(/\s+/g, '_')}_${Date.now()}`,
           balance: sc.balance,
@@ -488,7 +511,7 @@ async function main() {
       await prisma.transaction.create({
         data: {
           sessionId: createdSession.id,
-          branchId: mainBranch.id,
+          branchId: targetBranchId,
           staffUserId: staffUser.id,
           type: 'RECHARGE_CASH' as any,
           amount: sc.balance + 100,
@@ -501,7 +524,7 @@ async function main() {
       await prisma.transaction.create({
         data: {
           sessionId: createdSession.id,
-          branchId: mainBranch.id,
+          branchId: targetBranchId,
           staffUserId: staffUser.id,
           type: 'PURCHASE' as any,
           amount: 100,

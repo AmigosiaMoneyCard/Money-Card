@@ -18,10 +18,12 @@ class Product {
     this.category = const [],
     required this.price,
     this.status = 'ACTIVE',
-    this.currentStock = 0,
+    this.currentStock = 50,
     this.createdAt,
     this.updatedAt,
   });
+
+  bool get isOutOfStock => currentStock <= 0;
 
   factory Product.fromJson(Map<String, dynamic> json) {
     List<String> parsedCategories = [];
@@ -37,12 +39,13 @@ class Product {
     final targetBranchId = json['branchId'] as String? ?? json['branch_id'] as String? ?? '';
 
     // Parse stock from top-level quantity, currentStock, or inventory array
-    int stock = (json['quantity'] as num?)?.toInt() ??
+    final rawStock = (json['quantity'] as num?)?.toInt() ??
         (json['currentStock'] as num?)?.toInt() ??
-        (json['stock'] as num?)?.toInt() ??
-        0;
+        (json['stock'] as num?)?.toInt();
 
-    if (stock == 0 && json['inventory'] is List) {
+    int stock = rawStock ?? 50;
+
+    if (rawStock == null && json['inventory'] is List) {
       final invList = json['inventory'] as List;
       for (final inv in invList) {
         if (inv is Map<String, dynamic>) {
