@@ -7,12 +7,20 @@ import type { AnalyticsOverview, Branch } from '@/types';
 import { formatCurrency } from '@/utils';
 
 // ─── 1. Organization Admin Analytics PDF ──────────────────────────────────
+// ─── 1. Organization Admin Analytics PDF ──────────────────────────────────
+export interface OrgPdfSectionOptions {
+  includeExecutiveKpis: boolean;
+  includeBranchComparison: boolean;
+  includeStaffPerformance: boolean;
+}
+
 export interface GenerateOrgPdfOptions {
   analytics: AnalyticsOverview;
   branches: Branch[];
   selectedBranchName: string;
   dateRangeLabel: string;
   organizationName?: string;
+  sections?: Partial<OrgPdfSectionOptions>;
 }
 
 export function buildOrgAnalyticsJsPdf({
@@ -21,6 +29,7 @@ export function buildOrgAnalyticsJsPdf({
   selectedBranchName,
   dateRangeLabel,
   organizationName = 'Organization Portal',
+  sections,
 }: GenerateOrgPdfOptions): jsPDF {
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -28,23 +37,46 @@ export function buildOrgAnalyticsJsPdf({
     format: 'a4',
   });
 
+  const effectiveSections: OrgPdfSectionOptions = {
+    includeExecutiveKpis: sections?.includeExecutiveKpis ?? true,
+    includeBranchComparison: sections?.includeBranchComparison ?? true,
+    includeStaffPerformance: sections?.includeStaffPerformance ?? true,
+  };
+
   const pageWidth = 210;
   const margin = 14;
   const contentWidth = pageWidth - margin * 2;
 
-  // Header Banner
-  doc.setFillColor(15, 23, 42); // Slate-900
-  doc.rect(margin, 12, contentWidth, 24, 'F');
+  function drawPageHeader(isContinuation = false) {
+    doc.setFillColor(15, 23, 42); // Slate-900
+    const h = isContinuation ? 14 : 24;
+    doc.rect(margin, 12, contentWidth, h, 'F');
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.setTextColor(255, 255, 255);
-  doc.text(`${organizationName.toUpperCase()} - ANALYTICS REPORT`, margin + 6, 22);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(isContinuation ? 10 : 13);
+    doc.setTextColor(255, 255, 255);
+    const title = isContinuation
+      ? `${organizationName.toUpperCase()} - ANALYTICS REPORT (CONT.)`
+      : `${organizationName.toUpperCase()} - ANALYTICS REPORT`;
+    doc.text(title, margin + 6, isContinuation ? 21 : 22);
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(148, 163, 184);
-  doc.text(`Scope: Organization Admin  |  Generated: ${new Date().toLocaleString()}`, margin + 6, 30);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(isContinuation ? 7.5 : 8);
+    doc.setTextColor(148, 163, 184);
+    const sub = isContinuation
+      ? `Branch Scope: ${selectedBranchName}  |  Period: ${dateRangeLabel}`
+      : `Scope: Organization Admin  |  Generated: ${new Date().toLocaleString()}`;
+    doc.text(sub, margin + (isContinuation ? 90 : 6), isContinuation ? 21 : 30);
+  }
+
+  function addNewPage(): number {
+    doc.addPage();
+    drawPageHeader(true);
+    return 32;
+  }
+
+  // Draw Page 1 header & filter bar
+  drawPageHeader(false);
 
   // Filter Bar
   doc.setFillColor(241, 245, 249);
@@ -58,125 +90,275 @@ export function buildOrgAnalyticsJsPdf({
   doc.text(`Date Range: ${dateRangeLabel}`, margin + 70, 44);
   doc.text('Status: Verified M0 Ledger', margin + 130, 44);
 
-  // Section 1: Executive KPIs
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(15, 23, 42);
-  doc.text('1. Executive Financial & Operational Metrics', margin, 54);
+  let curY = 54;
+  let hasAnySection = false;
+  let sectionCounter = 1;
 
-  const kpis = [
-    { label: 'POS Revenue', val: formatCurrency(analytics.totalPurchaseVolume) },
-    { label: 'Recharges', val: formatCurrency(analytics.totalRechargeVolume) },
-    { label: 'Total Txns', val: analytics.totalTransactions.toLocaleString() },
-    { label: 'Active Sessions', val: `${analytics.activeSessionsCount} active` },
-  ];
+  // ── Section 1: Executive KPIs ──
+  if (effectiveSections.includeExecutiveKpis) {
+    hasAnySection = true;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${sectionCounter}. Executive Financial & Operational Metrics`, margin, curY);
+    sectionCounter++;
 
-  const cardW = (contentWidth - 9) / 4;
-  kpis.forEach((kpi, idx) => {
-    const x = margin + idx * (cardW + 3);
+    const kpis = [
+      { label: 'POS Revenue', val: formatCurrency(analytics.totalPurchaseVolume) },
+      { label: 'Recharges', val: formatCurrency(analytics.totalRechargeVolume) },
+      { label: 'Total Txns', val: (analytics.totalTransactions ?? (analytics as any).transactionCount ?? 0).toLocaleString() },
+      { label: 'Active Sessions', val: `${analytics.activeSessionsCount ?? 0} active` },
+    ];
+
+    const cardW = (contentWidth - 9) / 4;
+    kpis.forEach((kpi, idx) => {
+      const x = margin + idx * (cardW + 3);
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(x, curY + 4, cardW, 18, 2, 2, 'FD');
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(kpi.label, x + 3, curY + 10);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(kpi.val, x + 3, curY + 17);
+    });
+
+    // Card Lifecycle Highlights
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(71, 85, 105);
+    doc.text(
+      `Card Lifecycle: Active Recharges: ${analytics.activeCardsRechargeCount ?? 0}  |  Closed Cards: ${analytics.closedCardsCount ?? 0}  |  Zero Balance Active: ${analytics.zeroBalanceActiveCardsCount ?? 0}`,
+      margin + 1,
+      curY + 27,
+    );
+
+    curY += 34;
+  }
+
+  // ── Section 2: Branch Comparison Table ──
+  if (effectiveSections.includeBranchComparison) {
+    hasAnySection = true;
+    if (curY > 230) {
+      curY = addNewPage();
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${sectionCounter}. Branch Performance Comparison`, margin, curY);
+    sectionCounter++;
+
+    const tableY = curY + 4;
+    doc.setFillColor(241, 245, 249);
+    doc.setDrawColor(203, 213, 225);
+    doc.rect(margin, tableY, contentWidth, 7, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(51, 65, 85);
+    doc.text('Branch Name', margin + 2, tableY + 5);
+    doc.text('Txns', margin + 42, tableY + 5);
+    doc.text('Purchases', margin + 58, tableY + 5);
+    doc.text('Card Rchg', margin + 82, tableY + 5);
+    doc.text('UPI Rchg', margin + 106, tableY + 5);
+    doc.text('Total Rchg', margin + 128, tableY + 5);
+    doc.text('Revenue', margin + 152, tableY + 5);
+    doc.text('Sessions', margin + 172, tableY + 5);
+
+    curY = tableY + 7;
+    const branchData = analytics.branchPerformance || [];
+    const rows = branchData.length > 0 ? branchData : branches.map((b) => ({
+      branchName: b.name,
+      transactionCount: 0,
+      purchaseCount: 0,
+      rechargeCount: 0,
+      rechargeVolume: 0,
+      cardRechargeVolume: 0,
+      upiRechargeVolume: 0,
+      totalRevenue: 0,
+      sessionCount: 0,
+      productsSoldCount: 0,
+    }));
+
+    rows.forEach((row, idx) => {
+      if (curY > 265) {
+        curY = addNewPage();
+        doc.setFillColor(241, 245, 249);
+        doc.setDrawColor(203, 213, 225);
+        doc.rect(margin, curY, contentWidth, 7, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7);
+        doc.setTextColor(51, 65, 85);
+        doc.text('Branch Name (Cont.)', margin + 2, curY + 5);
+        doc.text('Txns', margin + 42, curY + 5);
+        doc.text('Purchases', margin + 58, curY + 5);
+        doc.text('Card Rchg', margin + 82, curY + 5);
+        doc.text('UPI Rchg', margin + 106, curY + 5);
+        doc.text('Total Rchg', margin + 128, curY + 5);
+        doc.text('Revenue', margin + 152, curY + 5);
+        doc.text('Sessions', margin + 172, curY + 5);
+        curY += 7;
+      }
+
+      if (idx % 2 === 1) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(margin, curY, contentWidth, 6, 'F');
+      }
+      doc.setDrawColor(226, 232, 240);
+      doc.line(margin, curY + 6, margin + contentWidth, curY + 6);
+
+      const cardR = (row as any).cardRechargeVolume ?? (row as any).cashRechargeVolume ?? Math.round(((row as any).rechargeVolume || 0) * 0.6);
+      const upiR = (row as any).upiRechargeVolume ?? Math.round(((row as any).rechargeVolume || 0) * 0.4);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(51, 65, 85);
+      doc.text(row.branchName.substring(0, 20), margin + 2, curY + 4.5);
+      doc.text(String(row.transactionCount), margin + 42, curY + 4.5);
+      doc.text(formatCurrency((row as any).purchaseVolume ?? 0), margin + 58, curY + 4.5);
+      doc.text(formatCurrency(cardR), margin + 82, curY + 4.5);
+      doc.text(formatCurrency(upiR), margin + 106, curY + 4.5);
+      doc.text(formatCurrency((row as any).rechargeVolume ?? 0), margin + 128, curY + 4.5);
+      doc.text(formatCurrency(row.totalRevenue), margin + 152, curY + 4.5);
+      doc.text(String(row.sessionCount), margin + 172, curY + 4.5);
+
+      curY += 6;
+    });
+
+    curY += 8;
+  }
+
+  // ── Section 3: Staff Performance & Operational Audit ──
+  if (effectiveSections.includeStaffPerformance) {
+    hasAnySection = true;
+    if (curY > 220) {
+      curY = addNewPage();
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${sectionCounter}. Staff Performance & Operational Audit`, margin, curY);
+    sectionCounter++;
+
+    const staffTableY = curY + 4;
+    doc.setFillColor(241, 245, 249);
+    doc.setDrawColor(203, 213, 225);
+    doc.rect(margin, staffTableY, contentWidth, 7, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(51, 65, 85);
+    doc.text('Staff Member', margin + 2, staffTableY + 5);
+    doc.text('Activated', margin + 50, staffTableY + 5);
+    doc.text('Settled', margin + 72, staffTableY + 5);
+    doc.text('Card Recharge', margin + 94, staffTableY + 5);
+    doc.text('POS Sales', margin + 122, staffTableY + 5);
+    doc.text('Refunds', margin + 150, staffTableY + 5);
+    doc.text('Txns', margin + 174, staffTableY + 5);
+
+    curY = staffTableY + 7;
+    const staffList = analytics.staffPerformance || [];
+
+    if (staffList.length === 0) {
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text('No staff activity records registered for this scope.', margin + 2, curY + 5);
+      curY += 8;
+    } else {
+      staffList.forEach((st, idx) => {
+        if (curY > 265) {
+          curY = addNewPage();
+          doc.setFillColor(241, 245, 249);
+          doc.setDrawColor(203, 213, 225);
+          doc.rect(margin, curY, contentWidth, 7, 'FD');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7);
+          doc.setTextColor(51, 65, 85);
+          doc.text('Staff Member (Cont.)', margin + 2, curY + 5);
+          doc.text('Activated', margin + 50, curY + 5);
+          doc.text('Settled', margin + 72, curY + 5);
+          doc.text('Card Recharge', margin + 94, curY + 5);
+          doc.text('POS Sales', margin + 122, curY + 5);
+          doc.text('Refunds', margin + 150, curY + 5);
+          doc.text('Txns', margin + 174, curY + 5);
+          curY += 7;
+        }
+
+        if (idx % 2 === 1) {
+          doc.setFillColor(248, 250, 252);
+          doc.rect(margin, curY, contentWidth, 6, 'F');
+        }
+        doc.setDrawColor(226, 232, 240);
+        doc.line(margin, curY + 6, margin + contentWidth, curY + 6);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(51, 65, 85);
+        doc.text(st.staffName.substring(0, 22), margin + 2, curY + 4.5);
+        doc.text(String(st.cardsActivatedCount), margin + 50, curY + 4.5);
+        doc.text(String(st.cardsSettledCount), margin + 72, curY + 4.5);
+        doc.text(formatCurrency(st.cardRechargeVolume), margin + 94, curY + 4.5);
+        doc.text(formatCurrency(st.purchaseVolume), margin + 122, curY + 4.5);
+        doc.text(st.refundVolume > 0 ? formatCurrency(st.refundVolume) : '₹0.00', margin + 150, curY + 4.5);
+        doc.text(String(st.totalTransactionsCount), margin + 174, curY + 4.5);
+
+        curY += 6;
+      });
+      curY += 6;
+    }
+  }
+
+  // Empty state if no section is selected
+  if (!hasAnySection) {
     doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(x, 58, cardW, 18, 2, 2, 'FD');
+    doc.setDrawColor(203, 213, 225);
+    doc.roundedRect(margin, 70, contentWidth, 36, 3, 3, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(51, 65, 85);
+    doc.text('No Report Sections Selected', margin + 10, 84);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text(
+      'Please select at least one report section (Executive KPIs, Branch Comparison, or Staff Performance)',
+      margin + 10,
+      92,
+    );
+    doc.text(
+      'using the option toggles in the preview window to generate and download content.',
+      margin + 10,
+      98,
+    );
+  }
+
+  // Draw Footer on all generated pages
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setDrawColor(203, 213, 225);
+    doc.line(margin, 279, margin + contentWidth, 279);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
-    doc.setTextColor(100, 116, 139);
-    doc.text(kpi.label, x + 3, 64);
+    doc.setTextColor(148, 163, 184);
+    doc.text('Money Card Enterprise Ledger - Organization Performance & Financial Audit', margin, 283.5);
+    doc.text(`Page ${i} of ${totalPages}  •  Confidential - Verified Tenant Ledger`, margin + 110, 283.5);
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.setTextColor(15, 23, 42);
-    doc.text(kpi.val, x + 3, 71);
-  });
-
-  // Card Lifecycle Highlights
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(71, 85, 105);
-  doc.text(
-    `Card Lifecycle: Active Recharges: ${analytics.activeCardsRechargeCount ?? 0}  |  Closed Cards: ${analytics.closedCardsCount ?? 0}  |  Zero Balance Active: ${analytics.zeroBalanceActiveCardsCount ?? 0}`,
-    margin + 1,
-    80,
-  );
-
-  // Section 2: Branch Comparison Table
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(15, 23, 42);
-  doc.text('2. Branch Performance Comparison', margin, 86);
-
-  const tableY = 90;
-  doc.setFillColor(241, 245, 249);
-  doc.setDrawColor(203, 213, 225);
-  doc.rect(margin, tableY, contentWidth, 7, 'FD');
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.setTextColor(51, 65, 85);
-  doc.text('Branch Name', margin + 2, tableY + 5);
-  doc.text('Txns', margin + 42, tableY + 5);
-  doc.text('Purchases', margin + 58, tableY + 5);
-  doc.text('Card Rchg', margin + 82, tableY + 5);
-  doc.text('UPI Rchg', margin + 106, tableY + 5);
-  doc.text('Total Rchg', margin + 128, tableY + 5);
-  doc.text('Revenue', margin + 152, tableY + 5);
-  doc.text('Sessions', margin + 172, tableY + 5);
-
-  let curY = tableY + 7;
-  const branchData = analytics.branchPerformance || [];
-  const rows = branchData.length > 0 ? branchData : branches.map((b) => ({
-    branchName: b.name,
-    transactionCount: 0,
-    purchaseCount: 0,
-    rechargeCount: 0,
-    rechargeVolume: 0,
-    cardRechargeVolume: 0,
-    upiRechargeVolume: 0,
-    totalRevenue: 0,
-    sessionCount: 0,
-    productsSoldCount: 0,
-  }));
-
-  rows.forEach((row, idx) => {
-    if (curY > 260) return;
-    if (idx % 2 === 1) {
-      doc.setFillColor(248, 250, 252);
-      doc.rect(margin, curY, contentWidth, 6, 'F');
-    }
-    doc.setDrawColor(226, 232, 240);
-    doc.line(margin, curY + 6, margin + contentWidth, curY + 6);
-
-    const cardR = (row as any).cardRechargeVolume ?? (row as any).cashRechargeVolume ?? Math.round(((row as any).rechargeVolume || 0) * 0.6);
-    const upiR = (row as any).upiRechargeVolume ?? Math.round(((row as any).rechargeVolume || 0) * 0.4);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(51, 65, 85);
-    doc.text(row.branchName.substring(0, 20), margin + 2, curY + 4.5);
-    doc.text(String(row.transactionCount), margin + 42, curY + 4.5);
-    doc.text(formatCurrency((row as any).purchaseVolume ?? 0), margin + 58, curY + 4.5);
-    doc.text(formatCurrency(cardR), margin + 82, curY + 4.5);
-    doc.text(formatCurrency(upiR), margin + 106, curY + 4.5);
-    doc.text(formatCurrency((row as any).rechargeVolume ?? 0), margin + 128, curY + 4.5);
-    doc.text(formatCurrency(row.totalRevenue), margin + 152, curY + 4.5);
-    doc.text(String(row.sessionCount), margin + 172, curY + 4.5);
-
-    curY += 6;
-  });
-
-  // Footer
-  doc.setDrawColor(203, 213, 225);
-  doc.line(margin, 279, margin + contentWidth, 279);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(148, 163, 184);
-  doc.text('Money Card Enterprise Ledger - Organization Performance & Financial Audit', margin, 283.5);
-  doc.text('Page 1 of 1  •  Confidential - Verified Tenant Ledger', margin + 112, 283.5);
-
-  doc.setFontSize(6.5);
-  doc.setTextColor(160, 174, 192);
-  doc.text('Automated financial reconciliation record • Encrypted multi-tenant isolation compliance', margin, 287.5);
+    doc.setFontSize(6.5);
+    doc.setTextColor(160, 174, 192);
+    doc.text('Automated financial reconciliation record • Encrypted multi-tenant isolation compliance', margin, 287.5);
+  }
 
   return doc;
 }
