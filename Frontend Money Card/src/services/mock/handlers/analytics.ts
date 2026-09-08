@@ -69,14 +69,45 @@ export const mockAnalyticsHandlers = {
     }
 
     let totalRechargeVolume = 0;
+    let cashRechargeVolume = 0;
+    let cashRechargeCount = 0;
+    let upiRechargeVolume = 0;
+    let upiRechargeCount = 0;
     let totalPurchaseVolume = 0;
+    let totalPurchaseCount = 0;
     let totalRefundVolume = 0;
+    let totalRefundCount = 0;
 
     for (const t of filteredTransactions) {
-      if (t.type === 'RECHARGE') totalRechargeVolume += t.amount;
-      if (t.type === 'PURCHASE') totalPurchaseVolume += t.amount;
-      if (t.type === 'REFUND') totalRefundVolume += t.amount;
+      const pMethod = String((t as any).paymentMethod || '').toUpperCase();
+      if (t.type === 'PURCHASE') {
+        totalPurchaseVolume += t.amount;
+        totalPurchaseCount += 1;
+      } else if (
+        t.type === 'RECHARGE_CASH' ||
+        (t.type === 'RECHARGE' && (pMethod === 'CASH' || pMethod === 'CARD' || !pMethod))
+      ) {
+        totalRechargeVolume += t.amount;
+        cashRechargeVolume += t.amount;
+        cashRechargeCount += 1;
+      } else if (
+        t.type === 'RECHARGE_UPI' ||
+        (t.type === 'RECHARGE' && pMethod === 'UPI')
+      ) {
+        totalRechargeVolume += t.amount;
+        upiRechargeVolume += t.amount;
+        upiRechargeCount += 1;
+      } else if (t.type === 'REFUND') {
+        totalRefundVolume += t.amount;
+        totalRefundCount += 1;
+      }
     }
+
+    totalPurchaseVolume = Number(totalPurchaseVolume.toFixed(2));
+    totalRechargeVolume = Number(totalRechargeVolume.toFixed(2));
+    cashRechargeVolume = Number(cashRechargeVolume.toFixed(2));
+    upiRechargeVolume = Number(upiRechargeVolume.toFixed(2));
+    totalRefundVolume = Number(totalRefundVolume.toFixed(2));
 
     const targetBranchIds = targetOrgId
       ? mockStore.branches.filter((b) => b.organizationId === targetOrgId).map((b) => b.id)
@@ -109,7 +140,7 @@ export const mockAnalyticsHandlers = {
     // 3. Already active card recharges & repeat top-ups count
     const activeSessionIds = new Set(activeSessions.map((s) => s.id));
     const activeSessionsRechargeMap = new Map<string, number>();
-    for (const t of mockStore.transactions) {
+    for (const t of filteredTransactions) {
       if (activeSessionIds.has(t.sessionId) && (t.type === 'RECHARGE' || String(t.type).includes('RECHARGE'))) {
         activeSessionsRechargeMap.set(t.sessionId, (activeSessionsRechargeMap.get(t.sessionId) || 0) + 1);
       }
@@ -127,6 +158,7 @@ export const mockAnalyticsHandlers = {
     const activeCardsCount = mockStore.cards.filter((c) => {
       if (c.status !== 'ACTIVE' && c.status !== 'AVAILABLE') return false;
       if (targetOrgId && c.organizationId !== targetOrgId) return false;
+      if (branchId && branchId !== 'ALL' && c.currentBranchId && c.currentBranchId !== branchId) return false;
       return true;
     }).length;
 
@@ -143,125 +175,110 @@ export const mockAnalyticsHandlers = {
       return true;
     });
 
-    const branchPerformance: BranchPerformanceMetric[] = orgBranches.map((b) => {
-      const bTxns = filteredTransactions.filter((t) => t.branchId === b.id);
-      let bPurchaseCount = 0;
-      let bPurchaseVol = 0;
-      let bRechargeCount = 0;
-      let bRechargeVol = 0;
-      let bCardRechargeCount = 0;
-      let bCardRechargeVol = 0;
-      let bUpiRechargeCount = 0;
-      let bUpiRechargeVol = 0;
-      let bRefundCount = 0;
-      let bRefundVol = 0;
+    const branchPerformance: BranchPerformanceMetric[] = orgBranches
+      .filter((b) => !branchId || branchId === 'ALL' || b.id === branchId)
+      .map((b) => {
+        const bTxns = filteredTransactions.filter((t) => t.branchId === b.id);
+        let bPurchaseCount = 0;
+        let bPurchaseVol = 0;
+        let bCardRechargeCount = 0;
+        let bCardRechargeVol = 0;
+        let bUpiRechargeCount = 0;
+        let bUpiRechargeVol = 0;
+        let bRefundCount = 0;
+        let bRefundVol = 0;
 
-      for (const t of bTxns) {
-        const pMethod = String((t as any).paymentMethod || '').toUpperCase();
-        if (t.type === 'PURCHASE') {
-          bPurchaseCount++;
-          bPurchaseVol += t.amount;
-        } else if (
-          t.type === 'RECHARGE_CASH' ||
-          (t.type === 'RECHARGE' && (pMethod === 'CASH' || pMethod === 'CARD'))
-        ) {
-          bRechargeCount++;
-          bRechargeVol += t.amount;
-          bCardRechargeCount++;
-          bCardRechargeVol += t.amount;
-        } else if (
-          t.type === 'RECHARGE_UPI' ||
-          (t.type === 'RECHARGE' && pMethod === 'UPI')
-        ) {
-          bRechargeCount++;
-          bRechargeVol += t.amount;
-          bUpiRechargeCount++;
-          bUpiRechargeVol += t.amount;
-        } else if (t.type === 'RECHARGE') {
-          bRechargeCount++;
-          bRechargeVol += t.amount;
-          if (pMethod === 'UPI') {
-            bUpiRechargeCount++;
-            bUpiRechargeVol += t.amount;
-          } else {
+        for (const t of bTxns) {
+          const pMethod = String((t as any).paymentMethod || '').toUpperCase();
+          if (t.type === 'PURCHASE') {
+            bPurchaseCount++;
+            bPurchaseVol += t.amount;
+          } else if (
+            t.type === 'RECHARGE_CASH' ||
+            (t.type === 'RECHARGE' && (pMethod === 'CASH' || pMethod === 'CARD' || !pMethod))
+          ) {
             bCardRechargeCount++;
             bCardRechargeVol += t.amount;
+          } else if (
+            t.type === 'RECHARGE_UPI' ||
+            (t.type === 'RECHARGE' && pMethod === 'UPI')
+          ) {
+            bUpiRechargeCount++;
+            bUpiRechargeVol += t.amount;
+          } else if (t.type === 'REFUND') {
+            bRefundCount++;
+            bRefundVol += t.amount;
           }
-        } else if (t.type === 'REFUND') {
-          bRefundCount++;
-          bRefundVol += t.amount;
         }
-      }
 
-      // If simulated recharges did not record paymentMethod explicitly, provide realistic breakdown
-      if (bRechargeVol > 0 && bCardRechargeVol === 0 && bUpiRechargeVol === 0) {
-        bCardRechargeVol = Number((bRechargeVol * 0.6).toFixed(2));
-        bUpiRechargeVol = Number((bRechargeVol - bCardRechargeVol).toFixed(2));
-        bCardRechargeCount = Math.max(1, Math.round(bRechargeCount * 0.6));
-        bUpiRechargeCount = Math.max(0, bRechargeCount - bCardRechargeCount);
-      }
+        const bRechargeCount = bCardRechargeCount + bUpiRechargeCount;
+        const bRechargeVol = Number((bCardRechargeVol + bUpiRechargeVol).toFixed(2));
+        const bSessions = mockStore.sessions.filter((s) => s.branchId === b.id);
+        const activeSess = bSessions.filter((s) => s.status === 'ACTIVE').length;
+        const settledSess = bSessions.filter((s) => s.status === 'SETTLED').length;
 
-      const bSessions = mockStore.sessions.filter((s) => s.branchId === b.id);
-      const activeSess = bSessions.filter((s) => s.status === 'ACTIVE').length;
-      const settledSess = bSessions.filter((s) => s.status === 'SETTLED').length;
+        const bInventory = mockStore.inventory.filter((i) => i.branchId === b.id);
+        const lowStock = bInventory.filter((i) => i.quantity < 10).length;
 
-      const bInventory = mockStore.inventory.filter((i) => i.branchId === b.id);
-      const lowStock = bInventory.filter((i) => i.quantity < 10).length;
+        const totalProductsSold = Math.round(bPurchaseCount * 1.8) || 0;
+        const avgTxn = bTxns.length > 0 ? Number(((bPurchaseVol + bRechargeVol) / bTxns.length).toFixed(2)) : 0;
+        const avgPurchase = bPurchaseCount > 0 ? Number((bPurchaseVol / bPurchaseCount).toFixed(2)) : 0;
 
-      const totalProductsSold = Math.round(bPurchaseCount * 1.8) || 0;
-      const avgTxn = bTxns.length > 0 ? Number(((bPurchaseVol + bRechargeVol) / bTxns.length).toFixed(2)) : 0;
-      const avgPurchase = bPurchaseCount > 0 ? Number((bPurchaseVol / bPurchaseCount).toFixed(2)) : 0;
-
-      return {
-        branchId: b.id,
-        branchName: b.name,
-        status: (b.status === 'ACTIVE' ? 'ACTIVE' : 'INACTIVE') as 'ACTIVE' | 'INACTIVE',
-        transactionCount: bTxns.length,
-        purchaseCount: bPurchaseCount,
-        purchaseVolume: Number(bPurchaseVol.toFixed(2)),
-        rechargeCount: bRechargeCount,
-        rechargeVolume: Number(bRechargeVol.toFixed(2)),
-        cardRechargeCount: bCardRechargeCount,
-        cardRechargeVolume: Number(bCardRechargeVol.toFixed(2)),
-        cashRechargeCount: bCardRechargeCount,
-        cashRechargeVolume: Number(bCardRechargeVol.toFixed(2)),
-        upiRechargeCount: bUpiRechargeCount,
-        upiRechargeVolume: Number(bUpiRechargeVol.toFixed(2)),
-        refundCount: bRefundCount,
-        refundVolume: Number(bRefundVol.toFixed(2)),
-        totalRevenue: Number(bPurchaseVol.toFixed(2)),
-        sessionCount: bSessions.length,
-        activeSessionsCount: activeSess,
-        settledSessionsCount: settledSess,
-        avgTransactionValue: avgTxn,
-        avgPurchaseValue: avgPurchase,
-        productsSoldCount: totalProductsSold,
-        inventoryItemCount: bInventory.length,
-        lowStockItemCount: lowStock,
-      };
-    });
+        return {
+          branchId: b.id,
+          branchName: b.name,
+          status: (b.status === 'ACTIVE' ? 'ACTIVE' : 'INACTIVE') as 'ACTIVE' | 'INACTIVE',
+          transactionCount: bTxns.length,
+          purchaseCount: bPurchaseCount,
+          purchaseVolume: Number(bPurchaseVol.toFixed(2)),
+          rechargeCount: bRechargeCount,
+          rechargeVolume: bRechargeVol,
+          cardRechargeCount: bCardRechargeCount,
+          cardRechargeVolume: Number(bCardRechargeVol.toFixed(2)),
+          cashRechargeCount: bCardRechargeCount,
+          cashRechargeVolume: Number(bCardRechargeVol.toFixed(2)),
+          upiRechargeCount: bUpiRechargeCount,
+          upiRechargeVolume: Number(bUpiRechargeVol.toFixed(2)),
+          refundCount: bRefundCount,
+          refundVolume: Number(bRefundVol.toFixed(2)),
+          totalRevenue: Number(bPurchaseVol.toFixed(2)),
+          sessionCount: bSessions.length,
+          activeSessionsCount: activeSess,
+          settledSessionsCount: settledSess,
+          avgTransactionValue: avgTxn,
+          avgPurchaseValue: avgPurchase,
+          productsSoldCount: totalProductsSold,
+          inventoryItemCount: bInventory.length,
+          lowStockItemCount: lowStock,
+        };
+      });
 
     // ── Staff Performance & Activity Aggregation ─────────────
     const orgStaffList = mockStore.staffEntities.filter((s) => {
       if (targetOrgId && s.organizationId !== targetOrgId) return false;
-      if (branchId && branchId !== 'ALL' && !s.assignedBranchIds.includes(branchId)) return false;
+      if (branchId && branchId !== 'ALL' && !s.assignedBranchIds?.includes(branchId)) return false;
       return true;
     });
 
-    const staffPerformance: StaffPerformanceMetric[] = orgStaffList.map((st, idx) => {
-      // Sessions issued by this staff
-      const issuedSessions = mockStore.sessions.filter(
-        (s) => (s as any).issuedByUserId === st.id || (idx === 0 && !(s as any).issuedByUserId),
-      );
-      // Sessions settled by this staff
-      const settledSessions = mockStore.sessions.filter(
-        (s) => (s as any).settledByUserId === st.id,
-      );
+    const activeStaffCount = orgStaffList.filter((s) => s.status === 'ACTIVE').length;
 
-      // Transactions performed under this staff
-      const staffTxns = filteredTransactions.filter(
-        (t) => (t as any).staffUserId === st.id || (idx === 0 && !(t as any).staffUserId),
-      );
+    const staffPerformance: StaffPerformanceMetric[] = orgStaffList.map((st) => {
+      // Sessions issued by this staff member in filtered scope
+      const issuedSessions = mockStore.sessions.filter((s) => {
+        if (branchId && branchId !== 'ALL' && s.branchId !== branchId) return false;
+        if (targetBranchIds && !targetBranchIds.includes(s.branchId)) return false;
+        return (s as any).issuedByUserId === st.id;
+      });
+
+      // Sessions settled by this staff member in filtered scope
+      const settledSessions = mockStore.sessions.filter((s) => {
+        if (branchId && branchId !== 'ALL' && s.branchId !== branchId) return false;
+        if (targetBranchIds && !targetBranchIds.includes(s.branchId)) return false;
+        return (s as any).settledByUserId === st.id;
+      });
+
+      // Transactions performed under this staff member in filtered scope
+      const staffTxns = filteredTransactions.filter((t) => (t as any).staffUserId === st.id);
 
       let purchaseCount = 0;
       let purchaseVol = 0;
@@ -390,44 +407,14 @@ export const mockAnalyticsHandlers = {
         }
       });
 
-      // Distribute fallback metrics so all demo staff have realistic, rich data
-      if (idx === 1 && activities.length === 0) {
-        cardRechargeCount = 4;
-        cardRechargeVol = 1200;
-        upiRechargeCount = 2;
-        upiRechargeVol = 500;
-        purchaseCount = 5;
-        purchaseVol = 450;
-        activities.push({
-          id: 'act_demo_1',
-          type: 'CARD_ACTIVATION',
-          title: 'Card Activated & Issued',
-          description: 'Issued new card session for Michael Scott (Card: MC-104)',
-          cardNumber: 'MC 104',
-          customerName: 'Michael Scott',
-          customerPhone: '9765432109',
-          branchName: 'Main Cafeteria',
-          timestamp: '2026-08-28T08:30:00.000Z',
-          amount: 600,
-        });
-        activities.push({
-          id: 'act_demo_2',
-          type: 'RECHARGE_UPI',
-          title: 'UPI QR Recharge',
-          description: 'Deposited ₹300 onto card balance via UPI QR',
-          amount: 300,
-          cardNumber: 'MC 104',
-          branchName: 'Main Cafeteria',
-          timestamp: '2026-08-28T09:15:00.000Z',
-          paymentMethod: 'UPI',
-        });
-      }
-
       const totalRechargeVol = cardRechargeVol + upiRechargeVol;
       const totalTransactions = purchaseCount + cardRechargeCount + upiRechargeCount + refundCount;
       const totalVolume = Number((purchaseVol + totalRechargeVol + refundVol).toFixed(2));
 
       activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+      const assignedBranches = mockStore.branches.filter((b) => st.assignedBranchIds?.includes(b.id));
+      const branchDisplayName = assignedBranches.map((b) => b.name).join(', ') || 'Unassigned';
 
       return {
         staffId: st.id,
@@ -435,12 +422,12 @@ export const mockAnalyticsHandlers = {
         staffEmail: st.email,
         role: 'Counter Staff',
         status: (st.status || 'ACTIVE') as 'ACTIVE' | 'INACTIVE',
-        branchId: st.assignedBranchIds[0] || 'branch_001',
-        branchName: mockStore.branches.find((b) => st.assignedBranchIds.includes(b.id))?.name || 'Main Cafeteria',
-        cardsActivatedCount: issuedSessions.length || (idx === 1 ? 2 : 0),
+        branchId: st.assignedBranchIds?.[0] || 'branch_001',
+        branchName: branchDisplayName,
+        cardsActivatedCount: issuedSessions.length,
         cardsSettledCount: settledSessions.length,
-        totalTransactionsCount: totalTransactions || (idx === 1 ? 6 : 0),
-        totalVolumeHandled: totalVolume || (idx === 1 ? 2150 : 0),
+        totalTransactionsCount: totalTransactions,
+        totalVolumeHandled: totalVolume,
         rechargeCount: cardRechargeCount + upiRechargeCount,
         rechargeVolume: Number(totalRechargeVol.toFixed(2)),
         cardRechargeCount,
@@ -458,6 +445,10 @@ export const mockAnalyticsHandlers = {
     return createMockSuccess({
       totalTransactions: filteredTransactions.length,
       totalRechargeVolume: Number(totalRechargeVolume.toFixed(2)),
+      cashRechargeVolume: Number(cashRechargeVolume.toFixed(2)),
+      cashRechargeCount,
+      upiRechargeVolume: Number(upiRechargeVolume.toFixed(2)),
+      upiRechargeCount,
       totalPurchaseVolume: Number(totalPurchaseVolume.toFixed(2)),
       totalRefundVolume: Number(totalRefundVolume.toFixed(2)),
       activeSessionsCount,
@@ -469,6 +460,8 @@ export const mockAnalyticsHandlers = {
       reRechargedCardsCount,
       closedCardsCount,
       zeroBalanceActiveCardsCount,
+      activeStaffCount,
+      totalStaffCount: orgStaffList.length,
     });
   },
 

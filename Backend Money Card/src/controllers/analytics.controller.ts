@@ -134,13 +134,21 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     prisma.user.findMany({
       where: {
         ...(orgId ? { organizationId: orgId } : {}),
-        role: { in: ['STAFF', 'ORG_ADMIN'] as any },
+        role: Role.STAFF,
+        ...(branchId && branchId !== 'ALL'
+          ? {
+              assignedBranches: {
+                some: { branchId },
+              },
+            }
+          : {}),
       },
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
+        status: true,
         assignedBranches: {
           select: {
             branchId: true,
@@ -506,14 +514,16 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     const totalTransactions = purchaseCount + cardRechargeCount + upiRechargeCount + refundCount;
     const totalVolume = Number((purchaseVolume + totalRechargeVol + refundVolume).toFixed(2));
 
+    const branchDisplayName = st.assignedBranches?.map((ab: any) => ab.branch?.name).filter(Boolean).join(', ') || 'Unassigned';
+
     return {
       staffId: st.id,
       staffName: st.name || 'Staff Member',
       staffEmail: st.email || '',
-      role: st.role || 'STAFF',
-      status: 'ACTIVE',
+      role: 'Counter Staff',
+      status: (st as any).status || 'ACTIVE',
       branchId: st.assignedBranches?.[0]?.branchId || undefined,
-      branchName: st.assignedBranches?.[0]?.branch?.name || undefined,
+      branchName: branchDisplayName,
       cardsActivatedCount: staffSessions.length,
       cardsSettledCount: settledSessions.length,
       totalTransactionsCount: totalTransactions,
@@ -548,6 +558,8 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     reRechargedCardsCount,
     closedCardsCount: settledSessionsCount,
     zeroBalanceActiveCardsCount,
+    activeStaffCount: staffPerformance.filter((s) => s.status === 'ACTIVE').length,
+    totalStaffCount: staffPerformance.length,
   });
 }
 

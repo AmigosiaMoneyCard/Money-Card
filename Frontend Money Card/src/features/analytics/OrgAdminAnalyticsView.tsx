@@ -51,6 +51,7 @@ import {
   History,
   Search,
   FileSpreadsheet,
+  X,
 } from 'lucide-react';
 
 type DatePreset = 'today' | 'last7' | 'last30' | 'thisMonth' | 'custom';
@@ -327,13 +328,13 @@ export function OrgAdminAnalyticsView() {
     }
   };
 
-  // Calculated estimates
-  const cashRechargeEstimate = useMemo(
-    () => (analytics ? Number((analytics.totalRechargeVolume * 0.6).toFixed(2)) : 0),
+  // Dynamic exact breakdown from ledger analytics
+  const cashRechargeAmount = useMemo(
+    () => (analytics?.cashRechargeVolume !== undefined ? analytics.cashRechargeVolume : 0),
     [analytics],
   );
-  const upiRechargeEstimate = useMemo(
-    () => (analytics ? Number((analytics.totalRechargeVolume * 0.4).toFixed(2)) : 0),
+  const upiRechargeAmount = useMemo(
+    () => (analytics?.upiRechargeVolume !== undefined ? analytics.upiRechargeVolume : 0),
     [analytics],
   );
 
@@ -393,9 +394,23 @@ export function OrgAdminAnalyticsView() {
     );
   };
 
-  const sortedStaffPerformance = useMemo(() => {
+  // Filter out any non-staff users (e.g., Org Admin accounts) to strictly represent operational staff
+  const staffOnlyPerformance = useMemo(() => {
     if (!analytics?.staffPerformance) return [];
-    let list = [...analytics.staffPerformance];
+    return analytics.staffPerformance.filter(
+      (st) =>
+        st.role !== 'ORG_ADMIN' &&
+        st.role !== 'SUPER_ADMIN' &&
+        !st.role?.toLowerCase().includes('admin'),
+    );
+  }, [analytics?.staffPerformance]);
+
+  const activeStaffList = useMemo(() => {
+    return staffOnlyPerformance.filter((st) => st.status === 'ACTIVE');
+  }, [staffOnlyPerformance]);
+
+  const sortedStaffPerformance = useMemo(() => {
+    let list = [...staffOnlyPerformance];
 
     if (staffSearchQuery.trim()) {
       const q = staffSearchQuery.toLowerCase();
@@ -450,17 +465,15 @@ export function OrgAdminAnalyticsView() {
     });
 
     return list;
-  }, [analytics?.staffPerformance, staffSearchQuery, staffSortBy, staffSortOrder]);
+  }, [staffOnlyPerformance, staffSearchQuery, staffSortBy, staffSortOrder]);
 
   const totalCardsActivatedByStaff = useMemo(() => {
-    if (!analytics?.staffPerformance) return 0;
-    return analytics.staffPerformance.reduce((acc, st) => acc + st.cardsActivatedCount, 0);
-  }, [analytics?.staffPerformance]);
+    return staffOnlyPerformance.reduce((acc, st) => acc + (st.cardsActivatedCount || 0), 0);
+  }, [staffOnlyPerformance]);
 
   const totalCardsSettledByStaff = useMemo(() => {
-    if (!analytics?.staffPerformance) return 0;
-    return analytics.staffPerformance.reduce((acc, st) => acc + st.cardsSettledCount, 0);
-  }, [analytics?.staffPerformance]);
+    return staffOnlyPerformance.reduce((acc, st) => acc + (st.cardsSettledCount || 0), 0);
+  }, [staffOnlyPerformance]);
 
   const filteredStaffActivities = useMemo(() => {
     if (!selectedStaffDetail?.activities) return [];
@@ -766,7 +779,7 @@ export function OrgAdminAnalyticsView() {
                 <DollarSign className="h-4 w-4 text-emerald-600" />
               </div>
               <p className="font-mono text-2xl font-bold text-slate-900">
-                {formatCurrency(cashRechargeEstimate)}
+                {formatCurrency(cashRechargeAmount)}
               </p>
             </Card>
 
@@ -778,7 +791,7 @@ export function OrgAdminAnalyticsView() {
                 <CreditCard className="h-4 w-4 text-emerald-600" />
               </div>
               <p className="font-mono text-2xl font-bold text-slate-900">
-                {formatCurrency(upiRechargeEstimate)}
+                {formatCurrency(upiRechargeAmount)}
               </p>
             </Card>
 
@@ -956,9 +969,23 @@ export function OrgAdminAnalyticsView() {
                   type="text"
                   placeholder="Search staff by name/email..."
                   value={staffSearchQuery}
-                  onChange={(e) => setStaffSearchQuery(e.target.value)}
-                  className="h-8 w-56 rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none"
+                  maxLength={30}
+                  onChange={(e) => {
+                    const sanitized = e.target.value.replace(/[^a-zA-Z0-9\s@._-]/g, '').slice(0, 30);
+                    setStaffSearchQuery(sanitized);
+                  }}
+                  className="h-8 w-56 rounded-lg border border-slate-200 bg-white pl-8 pr-7 text-xs text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none"
                 />
+                {staffSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setStaffSearchQuery('')}
+                    className="absolute right-2 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    aria-label="Clear staff search"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
 
               <div className="flex items-center gap-2">
@@ -1009,7 +1036,7 @@ export function OrgAdminAnalyticsView() {
                 <span className="text-xs">Active Staff</span>
               </div>
               <p className="mt-1 font-mono text-xl font-bold text-slate-900">
-                {analytics.staffPerformance.length}
+                {activeStaffList.length}
               </p>
             </div>
 
@@ -1040,7 +1067,7 @@ export function OrgAdminAnalyticsView() {
               </div>
               <p className="mt-1 font-mono text-xl font-bold text-slate-900">
                 {formatCurrency(
-                  analytics.staffPerformance.reduce((acc, s) => acc + s.totalVolumeHandled, 0),
+                  staffOnlyPerformance.reduce((acc, s) => acc + (s.totalVolumeHandled || 0), 0),
                 )}
               </p>
             </div>
@@ -1511,9 +1538,23 @@ export function OrgAdminAnalyticsView() {
                   type="text"
                   placeholder="Filter by card, customer, phone..."
                   value={staffActivitySearch}
-                  onChange={(e) => setStaffActivitySearch(e.target.value)}
-                  className="h-7.5 w-60 rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none"
+                  maxLength={30}
+                  onChange={(e) => {
+                    const sanitized = e.target.value.replace(/[^a-zA-Z0-9\s@._-]/g, '').slice(0, 30);
+                    setStaffActivitySearch(sanitized);
+                  }}
+                  className="h-7.5 w-60 rounded-lg border border-slate-200 bg-white pl-8 pr-7 text-xs text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none"
                 />
+                {staffActivitySearch && (
+                  <button
+                    type="button"
+                    onClick={() => setStaffActivitySearch('')}
+                    className="absolute right-2 top-1.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    aria-label="Clear activity filter"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
             </div>
 

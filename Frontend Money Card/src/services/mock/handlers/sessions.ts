@@ -160,6 +160,7 @@ export const mockSessionsHandlers = {
       branchId: req.branchId,
       status: 'ACTIVE',
       balance: 0,
+      issuedByUserId: currentUser.id,
       startedAt: mockStore.getTimestamp(),
       createdAt: mockStore.getTimestamp(),
       updatedAt: mockStore.getTimestamp(),
@@ -226,6 +227,7 @@ export const mockSessionsHandlers = {
       status: 'SUCCESS',
       paymentMethod: req.paymentMethod,
       externalReference: req.externalReference,
+      staffUserId: currentUser.id,
       createdAt: mockStore.getTimestamp(),
     };
 
@@ -385,6 +387,7 @@ export const mockSessionsHandlers = {
       balanceAfter: newBalance,
       status: 'SUCCESS',
       items: itemsDetail,
+      staffUserId: currentUser.id,
       createdAt: mockStore.getTimestamp(),
     };
 
@@ -441,6 +444,8 @@ export const mockSessionsHandlers = {
 
     session.balance = 0;
     session.status = 'SETTLED';
+    session.settledByUserId = currentUser.id;
+    session.refundAmount = refundAmount;
     session.settledAt = mockStore.getTimestamp();
     session.updatedAt = mockStore.getTimestamp();
 
@@ -461,6 +466,7 @@ export const mockSessionsHandlers = {
       amount: refundAmount,
       balanceAfter: 0,
       status: 'SUCCESS',
+      staffUserId: currentUser.id,
       createdAt: mockStore.getTimestamp(),
     };
 
