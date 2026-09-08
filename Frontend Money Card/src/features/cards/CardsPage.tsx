@@ -1111,26 +1111,11 @@ export function CardsPage() {
             }
           />
         ) : (
-          <div className="space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 rounded-xl border border-rose-200 bg-rose-50/70 text-xs text-rose-900">
-              <div className="flex items-center gap-2.5">
-                <ShieldAlert className="h-5 w-5 text-rose-600 shrink-0" />
-                <div>
-                  <p className="font-bold text-rose-800">
-                    Blocked Cards Security Center ({filteredBlockedCards.length} {filteredBlockedCards.length === 1 ? 'card' : 'cards'})
-                  </p>
-                  <p className="text-rose-700 text-[11px] mt-0.5">
-                    Locked cards cannot be used for POS purchases or balance top-ups. Click Details to view full audit logs or Unblock to restore card functionality.
-                  </p>
-                </div>
-              </div>
-            </div>
-            <DataTable
-              data={filteredBlockedCards}
-              columns={blockedCardColumns}
-              keyExtractor={(c) => c.id}
-            />
-          </div>
+          <DataTable
+            data={filteredBlockedCards}
+            columns={blockedCardColumns}
+            keyExtractor={(c) => c.id}
+          />
         )
       ) : filteredCards.length === 0 ? (
         <EmptyState
