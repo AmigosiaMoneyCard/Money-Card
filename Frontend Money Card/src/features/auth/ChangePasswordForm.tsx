@@ -78,8 +78,8 @@ export function ChangePasswordForm() {
       } else if (newPassword.length < 8) {
         setNewPwError('Password must be at least 8 characters long');
         hasErrors = true;
-      } else if (newPassword.length > 128) {
-        setNewPwError('Password cannot exceed 128 characters');
+      } else if (newPassword.length > 30) {
+        setNewPwError('Password cannot exceed 30 characters');
         hasErrors = true;
       } else if (!/[A-Z]/.test(newPassword)) {
         setNewPwError('Password must contain at least one uppercase letter [A-Z]');
@@ -172,8 +172,9 @@ export function ChangePasswordForm() {
           type={showCurrentPw ? 'text' : 'password'}
           autoComplete="current-password"
           value={currentPassword}
+          maxLength={30}
           onChange={(e) => {
-            setCurrentPassword(e.target.value);
+            setCurrentPassword(e.target.value.slice(0, 30));
             if (currentPwError) setCurrentPwError(null);
             if (apiError) setApiError(null);
             if (isSuccess) setIsSuccess(false);
@@ -182,7 +183,7 @@ export function ChangePasswordForm() {
             <button
               type="button"
               onClick={() => setShowCurrentPw(!showCurrentPw)}
-              className="hover:text-slate-700 transition-colors focus:outline-none"
+              className="hover:text-slate-700 transition-colors focus:outline-none cursor-pointer"
               tabIndex={-1}
               aria-label={showCurrentPw ? 'Hide password' : 'Show password'}
             >
@@ -201,8 +202,9 @@ export function ChangePasswordForm() {
           type={showNewPw ? 'text' : 'password'}
           autoComplete="new-password"
           value={newPassword}
+          maxLength={30}
           onChange={(e) => {
-            setNewPassword(e.target.value);
+            setNewPassword(e.target.value.slice(0, 30));
             if (newPwError) setNewPwError(null);
             if (apiError) setApiError(null);
             if (isSuccess) setIsSuccess(false);
@@ -211,7 +213,7 @@ export function ChangePasswordForm() {
             <button
               type="button"
               onClick={() => setShowNewPw(!showNewPw)}
-              className="hover:text-slate-700 transition-colors focus:outline-none"
+              className="hover:text-slate-700 transition-colors focus:outline-none cursor-pointer"
               tabIndex={-1}
               aria-label={showNewPw ? 'Hide password' : 'Show password'}
             >
@@ -246,8 +248,9 @@ export function ChangePasswordForm() {
           type={showConfirmPw ? 'text' : 'password'}
           autoComplete="new-password"
           value={confirmPassword}
+          maxLength={30}
           onChange={(e) => {
-            setConfirmPassword(e.target.value);
+            setConfirmPassword(e.target.value.slice(0, 30));
             if (confirmPwError) setConfirmPwError(null);
             if (isSuccess) setIsSuccess(false);
           }}
@@ -255,7 +258,7 @@ export function ChangePasswordForm() {
             <button
               type="button"
               onClick={() => setShowConfirmPw(!showConfirmPw)}
-              className="hover:text-slate-700 transition-colors focus:outline-none"
+              className="hover:text-slate-700 transition-colors focus:outline-none cursor-pointer"
               tabIndex={-1}
               aria-label={showConfirmPw ? 'Hide password' : 'Show password'}
             >
