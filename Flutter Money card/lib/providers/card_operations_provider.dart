@@ -96,7 +96,9 @@ final StateNotifierProvider<CardListNotifier, CardListState> cardListNotifierPro
     StateNotifierProvider<CardListNotifier, CardListState>((ref) {
   final cardRepository = ref.watch(cardRepositoryProvider);
   final currentBranch = ref.watch(currentBranchProvider);
-  return CardListNotifier(cardRepository, currentBranch?.id);
+  final notifier = CardListNotifier(cardRepository, currentBranch?.id);
+  notifier.loadCards();
+  return notifier;
 });
 
 // ==========================================
@@ -183,7 +185,9 @@ final StateNotifierProvider<AvailableCardsNotifier, AvailableCardsState> availab
     StateNotifierProvider<AvailableCardsNotifier, AvailableCardsState>((ref) {
   final cardRepository = ref.watch(cardRepositoryProvider);
   final currentBranch = ref.watch(currentBranchProvider);
-  return AvailableCardsNotifier(cardRepository, currentBranch?.id);
+  final notifier = AvailableCardsNotifier(cardRepository, currentBranch?.id);
+  notifier.loadAvailableCards();
+  return notifier;
 });
 
 // ==========================================

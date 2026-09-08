@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
+import '../../models/branch.dart';
 import '../../models/card_session.dart';
 import '../../models/receipt_bill.dart';
 import '../../providers/auth_provider.dart';
@@ -147,8 +148,16 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
                                 style: const TextStyle(fontWeight: FontWeight.bold),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.add_circle_outline, size: 20),
-                                onPressed: () => cartNotifier.increaseQuantity(item.product.id),
+                                icon: Icon(
+                                  Icons.add_circle_outline,
+                                  size: 20,
+                                  color: item.quantity >= item.product.currentStock
+                                      ? AppColors.textTertiaryLight
+                                      : null,
+                                ),
+                                onPressed: item.quantity >= item.product.currentStock
+                                    ? null
+                                    : () => cartNotifier.increaseQuantity(item.product.id),
                               ),
                             ],
                           ),
@@ -179,13 +188,48 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
                   ],
                 ),
               ),
-              AppButton(
-                label: 'Confirm & Charge Balance',
-                icon: Icons.check_circle_outline,
-                isLoading: cartState.isSubmitting,
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  _handleConfirmPurchase();
+              Builder(
+                builder: (context) {
+                  final hasOutOfStock = cartState.items.values.any(
+                    (i) => i.product.currentStock <= 0 || i.quantity > i.product.currentStock,
+                  );
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (hasOutOfStock)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                          padding: const EdgeInsets.all(AppSpacing.xs),
+                          decoration: BoxDecoration(
+                            color: AppColors.errorLight.withValues(alpha: 0.2),
+                            borderRadius: AppSpacing.roundedSm,
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.warning_amber, size: 16, color: AppColors.error),
+                              SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'Some items in your cart exceed available stock.',
+                                  style: TextStyle(fontSize: 11, color: AppColors.error, fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      AppButton(
+                        label: 'Confirm & Charge Balance',
+                        icon: Icons.check_circle_outline,
+                        isLoading: cartState.isSubmitting,
+                        onPressed: hasOutOfStock
+                            ? null
+                            : () {
+                                Navigator.of(context).pop();
+                                _handleConfirmPurchase();
+                              },
+                      ),
+                    ],
+                  );
                 },
               ),
             ],
@@ -200,6 +244,28 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
     final sessionState = ref.read(sessionDetailsNotifierProvider);
 
     if (cartState.isEmpty) return;
+
+    // Reject purchase if any cart item is out of stock or exceeds stock
+    for (final item in cartState.items.values) {
+      if (item.product.currentStock <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("'${item.product.itemName}' is out of stock and cannot be purchased."),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        return;
+      }
+      if (item.quantity > item.product.currentStock) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Cannot purchase ${item.quantity}x '${item.product.itemName}'. Only ${item.product.currentStock} available in stock."),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        return;
+      }
+    }
 
     final currentBalance = sessionState.session?.balance ?? 0.0;
     if (cartState.totalAmount > currentBalance) {
@@ -348,6 +414,27 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
     final cartNotifier = ref.read(posCartNotifierProvider.notifier);
     final sessionState = ref.watch(sessionDetailsNotifierProvider);
     final session = sessionState.session;
+
+    // React to branch changes
+    ref.listen<Branch?>(currentBranchProvider, (previous, next) {
+      if (next != null && next.id != previous?.id) {
+        ref.read(posCatalogNotifierProvider.notifier).loadProducts(force: true);
+      }
+    });
+
+    // Notify user of cart errors (such as out-of-stock prevention)
+    ref.listen<PosCartState>(posCartNotifierProvider, (previous, next) {
+      if (next.errorMessage != null && next.errorMessage != previous?.errorMessage) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.errorMessage!),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -648,7 +735,24 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
               ),
 
               // Add (+) / Quantity Controls
-              if (quantityInCart == 0)
+              if (product.currentStock <= 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.errorLight.withValues(alpha: 0.15),
+                    borderRadius: AppSpacing.roundedSm,
+                    border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                  ),
+                  child: const Text(
+                    'Out of Stock',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.error,
+                    ),
+                  ),
+                )
+              else if (quantityInCart == 0)
                 AppButton(
                   label: 'Add',
                   icon: Icons.add,
@@ -677,8 +781,16 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.add, size: 18, color: AppColors.primaryDark),
-                        onPressed: () => cartNotifier.increaseQuantity(product.id),
+                        icon: Icon(
+                          Icons.add,
+                          size: 18,
+                          color: quantityInCart >= product.currentStock
+                              ? AppColors.textTertiaryLight
+                              : AppColors.primaryDark,
+                        ),
+                        onPressed: quantityInCart >= product.currentStock
+                            ? null
+                            : () => cartNotifier.increaseQuantity(product.id),
                       ),
                     ],
                   ),

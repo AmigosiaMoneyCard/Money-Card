@@ -195,5 +195,10 @@ final StateNotifierProvider<InventoryNotifier, InventoryListState> inventoryNoti
     StateNotifierProvider<InventoryNotifier, InventoryListState>((ref) {
   final inventoryRepository = ref.watch(inventoryRepositoryProvider);
   final currentBranch = ref.watch(currentBranchProvider);
-  return InventoryNotifier(inventoryRepository, currentBranch?.id);
+  final notifier = InventoryNotifier(inventoryRepository, currentBranch?.id);
+  if (currentBranch != null) {
+    notifier.loadInventory(force: true);
+    notifier.loadMovements();
+  }
+  return notifier;
 });

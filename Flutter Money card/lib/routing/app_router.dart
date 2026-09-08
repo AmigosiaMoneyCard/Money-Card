@@ -43,7 +43,7 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: '/app/home',
+    initialLocation: '/login',
     refreshListenable: refreshListenable,
     debugLogDiagnostics: false,
     redirect: (context, state) {

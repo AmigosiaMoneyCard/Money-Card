@@ -29,7 +29,9 @@ import { notify, formatCurrency } from '@/utils';
 import {
   generateAnalyticsPdfBlob,
   downloadOrgAnalyticsPdf,
+  type OrgPdfSectionOptions,
 } from './analyticsPdfExport';
+import { filterStaffActivities, calculateScopedStaffMetrics } from './staffActivityFilter';
 import {
   BarChart3,
   CreditCard,
@@ -37,7 +39,6 @@ import {
   RefreshCw,
   Building2,
   DollarSign,
-  FileText,
   Eye,
   Download,
   Layers,
@@ -51,35 +52,44 @@ import {
   History,
   Search,
   FileSpreadsheet,
-  X,
+  Calendar,
+  Filter,
+  Check,
+  SlidersHorizontal,
 } from 'lucide-react';
 
-type DatePreset = 'today' | 'last7' | 'last30' | 'thisMonth' | 'custom';
+export type DatePreset = 'thisMonth' | 'today' | 'yesterday' | 'last7' | 'last30' | 'custom';
 type SortMetric = 'revenue' | 'transactions' | 'purchases' | 'cardRecharge' | 'upiRecharge' | 'recharges' | 'sessions' | 'products';
 export type StaffSortMetric =
   | 'activated'
   | 'settled'
   | 'cardRecharge'
-  | 'upiRecharge'
-  | 'recharges'
   | 'purchases'
   | 'refunds'
   | 'txns'
   | 'name';
 
-function getPresetDates(preset: DatePreset): { startDate: string; endDate: string } {
+export function getPresetDates(preset: DatePreset): { startDate: string; endDate: string } {
   const now = new Date();
   const endStr = now.toISOString().split('T')[0];
 
   if (preset === 'today') {
     return { startDate: endStr, endDate: endStr };
   }
+  if (preset === 'yesterday') {
+    const yest = new Date(now);
+    yest.setDate(yest.getDate() - 1);
+    const yestStr = yest.toISOString().split('T')[0];
+    return { startDate: yestStr, endDate: yestStr };
+  }
   if (preset === 'last7') {
-    const start = new Date(now.setDate(now.getDate() - 7));
+    const start = new Date(now);
+    start.setDate(start.getDate() - 7);
     return { startDate: start.toISOString().split('T')[0], endDate: endStr };
   }
   if (preset === 'last30') {
-    const start = new Date(now.setDate(now.getDate() - 30));
+    const start = new Date(now);
+    start.setDate(start.getDate() - 30);
     return { startDate: start.toISOString().split('T')[0], endDate: endStr };
   }
   if (preset === 'thisMonth') {
@@ -102,9 +112,23 @@ export function OrgAdminAnalyticsView() {
   const [error, setError] = useState<string | null>(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
-  // PDF Viewer Modal State
+  // PDF Viewer Modal & Option-Wise Customizer State
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [pdfSections, setPdfSections] = useState<OrgPdfSectionOptions>({
+    includeExecutiveKpis: true,
+    includeBranchComparison: true,
+    includeStaffPerformance: true,
+  });
+
+  // Clean up object URL when component unmounts or preview changes
+  useEffect(() => {
+    return () => {
+      if (pdfPreviewUrl) {
+        URL.revokeObjectURL(pdfPreviewUrl);
+      }
+    };
+  }, [pdfPreviewUrl]);
 
   // Sorting & Detail state for Branch Comparison
   const [sortBy, setSortBy] = useState<SortMetric>('revenue');
@@ -250,38 +274,89 @@ export function OrgAdminAnalyticsView() {
     setSearchParams(newParams);
   };
 
-  // Helper to compile Org Admin PDF Options
-  const getOrgReportOptions = () => {
+  const selectedBranchObj = useMemo(
+    () => branches.find((b) => b.id === branchFilter),
+    [branches, branchFilter],
+  );
+  const selectedBranchName = branchFilter === 'ALL' ? 'All Branches' : selectedBranchObj?.name || branchFilter;
+
+  const dateRangeLabel = useMemo(() => {
+    return datePreset === 'today'
+      ? 'Today'
+      : datePreset === 'yesterday'
+      ? 'Yesterday'
+      : datePreset === 'last7'
+      ? 'Last 7 Days'
+      : datePreset === 'last30'
+      ? 'Last 30 Days'
+      : datePreset === 'thisMonth'
+      ? 'This Month'
+      : `${startDate} to ${endDate}`;
+  }, [datePreset, startDate, endDate]);
+
+  // Helper to compile Org Admin PDF Options with dynamic section toggles
+  const getOrgReportOptions = (overrideSections?: Partial<OrgPdfSectionOptions>) => {
     if (!analytics) return null;
-
-    const selectedBranchObj = branches.find((b) => b.id === branchFilter);
-    const selectedBranchName = branchFilter === 'ALL' ? 'All Branches' : selectedBranchObj?.name || branchFilter;
-
-    const dateLabel =
-      datePreset === 'today'
-        ? 'Today'
-        : datePreset === 'last7'
-        ? 'Last 7 Days'
-        : datePreset === 'last30'
-        ? 'Last 30 Days'
-        : datePreset === 'thisMonth'
-        ? 'This Month'
-        : `${startDate} to ${endDate}`;
 
     return {
       analytics,
       branches,
       selectedBranchName,
-      dateRangeLabel: dateLabel,
+      dateRangeLabel,
       organizationName: user?.organizationId ? `Organization ${user.organizationId}` : 'Organization Portal',
+      sections: overrideSections ?? pdfSections,
     };
+  };
+
+  const activeSectionsCount = useMemo(() => {
+    let count = 0;
+    if (pdfSections.includeExecutiveKpis) count++;
+    if (pdfSections.includeBranchComparison) count++;
+    if (pdfSections.includeStaffPerformance) count++;
+    return count;
+  }, [pdfSections]);
+
+  // Real-time PDF preview refresh when an option is modified
+  const refreshPdfPreview = (sectionsToUse: OrgPdfSectionOptions) => {
+    try {
+      const options = getOrgReportOptions(sectionsToUse);
+      if (!options) return;
+      const blob = generateAnalyticsPdfBlob(options);
+      if (pdfPreviewUrl) {
+        URL.revokeObjectURL(pdfPreviewUrl);
+      }
+      const url = URL.createObjectURL(blob);
+      setPdfPreviewUrl(url);
+    } catch (err) {
+      console.error('Failed to refresh PDF preview:', err);
+    }
+  };
+
+  // Interactive Section Toggle handler (immediately modifies PDF preview)
+  const handleToggleSection = (sectionKey: keyof OrgPdfSectionOptions) => {
+    const updated = {
+      ...pdfSections,
+      [sectionKey]: !pdfSections[sectionKey],
+    };
+    setPdfSections(updated);
+    refreshPdfPreview(updated);
+  };
+
+  const handleSetAllSections = (enable: boolean) => {
+    const updated: OrgPdfSectionOptions = {
+      includeExecutiveKpis: enable,
+      includeBranchComparison: enable,
+      includeStaffPerformance: enable,
+    };
+    setPdfSections(updated);
+    refreshPdfPreview(updated);
   };
 
   // ── 1. View PDF Action ─────────────────────────────────────
   const handleViewPdf = () => {
     setIsExportingPdf(true);
     try {
-      const options = getOrgReportOptions();
+      const options = getOrgReportOptions(pdfSections);
       if (!options) {
         notify.error('No analytics data available to render PDF.');
         return;
@@ -304,11 +379,11 @@ export function OrgAdminAnalyticsView() {
     }
   };
 
-  // ── 2. Download PDF Action (Guaranteed .pdf via doc.save) ──
+  // ── 2. Download PDF Action (Accurately downloads selected options via doc.save) ──
   const handleDownloadPdf = () => {
     setIsExportingPdf(true);
     try {
-      const options = getOrgReportOptions();
+      const options = getOrgReportOptions(pdfSections);
       if (!options) {
         notify.error('No analytics data available to download.');
         return;
@@ -317,7 +392,7 @@ export function OrgAdminAnalyticsView() {
       const dateStr = new Date().toISOString().split('T')[0];
       const filename = `MoneyCard_OrgAdmin_Analytics_${dateStr}.pdf`;
 
-      // Execute native jsPDF file download
+      // Execute native jsPDF file download strictly matching enabled options
       downloadOrgAnalyticsPdf(options, filename);
 
       notify.success(`Analytics report downloaded: ${filename}`);
@@ -436,12 +511,6 @@ export function OrgAdminAnalyticsView() {
         case 'cardRecharge':
           diff = (Number(a.cardRechargeVolume) || 0) - (Number(b.cardRechargeVolume) || 0);
           break;
-        case 'upiRecharge':
-          diff = (Number(a.upiRechargeVolume) || 0) - (Number(b.upiRechargeVolume) || 0);
-          break;
-        case 'recharges':
-          diff = (Number(a.rechargeVolume) || 0) - (Number(b.rechargeVolume) || 0);
-          break;
         case 'purchases':
           diff = (Number(a.purchaseVolume) || 0) - (Number(b.purchaseVolume) || 0);
           break;
@@ -475,34 +544,49 @@ export function OrgAdminAnalyticsView() {
     return staffOnlyPerformance.reduce((acc, st) => acc + (st.cardsSettledCount || 0), 0);
   }, [staffOnlyPerformance]);
 
-  const filteredStaffActivities = useMemo(() => {
+  // Activities filtered strictly by Branch Scope and Time Window
+  const scopedStaffActivities = useMemo(() => {
     if (!selectedStaffDetail?.activities) return [];
-    return selectedStaffDetail.activities.filter((act: StaffActivityItem) => {
-      if (staffActivityTypeFilter !== 'ALL') {
-        if (staffActivityTypeFilter === 'CARD_ACTIVATION' && act.type !== 'CARD_ACTIVATION') return false;
-        if (staffActivityTypeFilter === 'RECHARGE' && !act.type.includes('RECHARGE')) return false;
-        if (staffActivityTypeFilter === 'PURCHASE' && act.type !== 'PURCHASE') return false;
-        if (staffActivityTypeFilter === 'CARD_SETTLEMENT' && act.type !== 'CARD_SETTLEMENT') return false;
-        if (
-          staffActivityTypeFilter === 'OTHER' &&
-          (act.type === 'CARD_ACTIVATION' ||
-            act.type.includes('RECHARGE') ||
-            act.type === 'PURCHASE' ||
-            act.type === 'CARD_SETTLEMENT')
-        )
-          return false;
-      }
-      if (staffActivitySearch.trim()) {
-        const q = staffActivitySearch.toLowerCase();
-        const matchCard = (act.cardNumber || '').toLowerCase().includes(q);
-        const matchCustomer = (act.customerName || '').toLowerCase().includes(q);
-        const matchPhone = (act.customerPhone || '').toLowerCase().includes(q);
-        const matchDesc = act.description.toLowerCase().includes(q);
-        if (!matchCard && !matchCustomer && !matchPhone && !matchDesc) return false;
-      }
-      return true;
+    return filterStaffActivities({
+      activities: selectedStaffDetail.activities,
+      branchFilter,
+      branchName: selectedBranchObj?.name,
+      startDate,
+      endDate,
     });
-  }, [selectedStaffDetail, staffActivityTypeFilter, staffActivitySearch]);
+  }, [selectedStaffDetail, branchFilter, selectedBranchObj, startDate, endDate]);
+
+  // Further filtered by Modal Tab (Activity Type) and in-modal Search Query
+  const filteredStaffActivities = useMemo(() => {
+    return filterStaffActivities({
+      activities: scopedStaffActivities,
+      branchFilter: 'ALL',
+      typeFilter: staffActivityTypeFilter,
+      searchQuery: staffActivitySearch,
+    });
+  }, [scopedStaffActivities, staffActivityTypeFilter, staffActivitySearch]);
+
+  // Dynamic KPI Metrics for the Modal based on active branch scope & time window
+  const modalScopedStaffMetrics = useMemo(() => {
+    if (!selectedStaffDetail) {
+      return {
+        cardsActivatedCount: 0,
+        cardsSettledCount: 0,
+        cardRechargeVolume: 0,
+        upiRechargeVolume: 0,
+        rechargeVolume: 0,
+        purchaseVolume: 0,
+        refundVolume: 0,
+        totalVolumeHandled: 0,
+      };
+    }
+
+    if (scopedStaffActivities.length === 0 && selectedStaffDetail.activities.length === 0) {
+      return selectedStaffDetail;
+    }
+
+    return calculateScopedStaffMetrics(scopedStaffActivities);
+  }, [selectedStaffDetail, scopedStaffActivities]);
 
   const handleExportStaffCsv = (staff: StaffPerformanceMetric) => {
     const headers = [
@@ -515,7 +599,8 @@ export function OrgAdminAnalyticsView() {
       'Branch',
       'Description',
     ];
-    const rows = staff.activities.map((act: StaffActivityItem) => [
+    const exportList = filteredStaffActivities.length > 0 ? filteredStaffActivities : scopedStaffActivities;
+    const rows = exportList.map((act: StaffActivityItem) => [
       `"${new Date(act.timestamp).toLocaleString()}"`,
       `"${act.title}"`,
       `"${act.cardNumber || '—'}"`,
@@ -531,12 +616,14 @@ export function OrgAdminAnalyticsView() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `${staff.staffName.replace(/\s+/g, '_')}_Operational_Activity_Audit.csv`);
+    const sanitizedStaff = staff.staffName.replace(/\s+/g, '_');
+    const sanitizedBranch = selectedBranchName.replace(/\s+/g, '_');
+    link.setAttribute('download', `${sanitizedStaff}_${sanitizedBranch}_Operational_Activity_Audit.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    notify.success(`Exported operational activity log for ${staff.staffName}`);
+    notify.success(`Exported ${exportList.length} operational activity records for ${staff.staffName}`);
   };
 
   return (
@@ -552,27 +639,16 @@ export function OrgAdminAnalyticsView() {
           </div>
         </div>
 
-        {/* Action Buttons: [ View PDF ] and [ Download PDF ] */}
+        {/* Action Button: [ View PDF ] */}
         <div className="flex flex-wrap items-center gap-2.5">
           <Button
-            variant="secondary"
+            variant="primary"
             size="sm"
             onClick={handleViewPdf}
             disabled={isExportingPdf || isLoading || !analytics}
             leftIcon={<Eye className="h-4 w-4" />}
           >
             View PDF
-          </Button>
-
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleDownloadPdf}
-            disabled={isExportingPdf || isLoading || !analytics}
-            isLoading={isExportingPdf}
-            leftIcon={<Download className="h-4 w-4" />}
-          >
-            Download PDF
           </Button>
         </div>
       </div>
@@ -602,10 +678,11 @@ export function OrgAdminAnalyticsView() {
               value={datePreset}
               onChange={(e) => handlePresetChange(e.target.value as DatePreset)}
               options={[
+                { value: 'thisMonth', label: 'This Month' },
                 { value: 'today', label: 'Today' },
+                { value: 'yesterday', label: 'Yesterday' },
                 { value: 'last7', label: 'Last 7 Days' },
                 { value: 'last30', label: 'Last 30 Days' },
-                { value: 'thisMonth', label: 'This Month' },
                 { value: 'custom', label: 'Custom Range' },
               ]}
             />
@@ -998,8 +1075,6 @@ export function OrgAdminAnalyticsView() {
                     { value: 'activated', label: 'Cards Activated' },
                     { value: 'settled', label: 'Cards Settled' },
                     { value: 'cardRecharge', label: 'Card Recharge' },
-                    { value: 'upiRecharge', label: 'UPI Recharge' },
-                    { value: 'recharges', label: 'Total Recharges' },
                     { value: 'purchases', label: 'POS Sales' },
                     { value: 'refunds', label: 'Refunds' },
                     { value: 'txns', label: 'Transactions' },
@@ -1121,26 +1196,6 @@ export function OrgAdminAnalyticsView() {
                     </th>
                     <th
                       className="px-3 py-3.5 text-right cursor-pointer select-none hover:bg-slate-100 transition-colors"
-                      onClick={() => handleStaffColumnSort('upiRecharge')}
-                      title="Sort by UPI Recharge"
-                    >
-                      <div className="flex items-center justify-end gap-1.5">
-                        <span>UPI Recharge</span>
-                        {renderSortIcon('upiRecharge')}
-                      </div>
-                    </th>
-                    <th
-                      className="px-3 py-3.5 text-right cursor-pointer select-none hover:bg-slate-100 transition-colors"
-                      onClick={() => handleStaffColumnSort('recharges')}
-                      title="Sort by Total Recharges"
-                    >
-                      <div className="flex items-center justify-end gap-1.5">
-                        <span>Total Recharges</span>
-                        {renderSortIcon('recharges')}
-                      </div>
-                    </th>
-                    <th
-                      className="px-3 py-3.5 text-right cursor-pointer select-none hover:bg-slate-100 transition-colors"
                       onClick={() => handleStaffColumnSort('purchases')}
                       title="Sort by POS Sales"
                     >
@@ -1175,7 +1230,7 @@ export function OrgAdminAnalyticsView() {
                 <tbody className="divide-y divide-slate-100 font-mono text-slate-700">
                   {sortedStaffPerformance.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="py-8 text-center text-xs text-slate-500 font-sans">
+                      <td colSpan={8} className="py-8 text-center text-xs text-slate-500 font-sans">
                         No staff members found matching the current search criteria.
                       </td>
                     </tr>
@@ -1216,15 +1271,6 @@ export function OrgAdminAnalyticsView() {
                           <span className="block text-[10px] font-normal text-slate-400">
                             {st.cardRechargeCount} deposits
                           </span>
-                        </td>
-                        <td className="px-3 py-3 text-right text-sky-600 font-semibold">
-                          {formatCurrency(st.upiRechargeVolume)}
-                          <span className="block text-[10px] font-normal text-slate-400">
-                            {st.upiRechargeCount} deposits
-                          </span>
-                        </td>
-                        <td className="px-3 py-3 text-right font-bold text-slate-900">
-                          {formatCurrency(st.rechargeVolume)}
                         </td>
                         <td className="px-3 py-3 text-right text-emerald-600 font-semibold">
                           {formatCurrency(st.purchaseVolume)}
@@ -1275,12 +1321,107 @@ export function OrgAdminAnalyticsView() {
         size="xl"
       >
         <div className="space-y-4">
-          <div className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-2 text-xs text-slate-600 border border-slate-200">
-            <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-emerald-600" />
-              <span>Verified Organization Scope Report</span>
+          {/* Option-Wise Report Section Customizer Toolbar */}
+          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-2xs">
+            <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
+                  <SlidersHorizontal className="h-4 w-4" />
+                </div>
+                <h4 className="text-xs font-bold text-slate-900">Customize Report Sections</h4>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  id="pdf-opt-select-all"
+                  onClick={() => handleSetAllSections(true)}
+                  className="rounded-md px-2 py-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors cursor-pointer"
+                >
+                  Select All
+                </button>
+                <span className="text-slate-300">|</span>
+                <button
+                  type="button"
+                  id="pdf-opt-clear-all"
+                  onClick={() => handleSetAllSections(false)}
+                  className="rounded-md px-2 py-1 text-[11px] font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
+                >
+                  Clear All
+                </button>
+              </div>
             </div>
-            <span className="font-mono text-emerald-600">PDF-1.3 Standard</span>
+
+            {/* Option Pills / Interactive Toggle Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2.5">
+              {/* Option 1: Executive KPIs */}
+              <button
+                type="button"
+                id="pdf-toggle-executive-kpis"
+                onClick={() => handleToggleSection('includeExecutiveKpis')}
+                className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all cursor-pointer ${
+                  pdfSections.includeExecutiveKpis
+                    ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
+                    : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
+                }`}
+              >
+                <div
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                    pdfSections.includeExecutiveKpis
+                      ? 'border-emerald-600 bg-emerald-600 text-white'
+                      : 'border-slate-300 bg-white'
+                  }`}
+                >
+                  {pdfSections.includeExecutiveKpis && <Check className="h-3 w-3 stroke-[3]" />}
+                </div>
+                <span className="text-xs font-semibold">1. Executive KPIs</span>
+              </button>
+
+              {/* Option 2: Branch Comparison */}
+              <button
+                type="button"
+                id="pdf-toggle-branch-comparison"
+                onClick={() => handleToggleSection('includeBranchComparison')}
+                className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all cursor-pointer ${
+                  pdfSections.includeBranchComparison
+                    ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
+                    : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
+                }`}
+              >
+                <div
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                    pdfSections.includeBranchComparison
+                      ? 'border-emerald-600 bg-emerald-600 text-white'
+                      : 'border-slate-300 bg-white'
+                  }`}
+                >
+                  {pdfSections.includeBranchComparison && <Check className="h-3 w-3 stroke-[3]" />}
+                </div>
+                <span className="text-xs font-semibold">2. Branch Comparison</span>
+              </button>
+
+              {/* Option 3: Staff Performance */}
+              <button
+                type="button"
+                id="pdf-toggle-staff-performance"
+                onClick={() => handleToggleSection('includeStaffPerformance')}
+                className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all cursor-pointer ${
+                  pdfSections.includeStaffPerformance
+                    ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
+                    : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
+                }`}
+              >
+                <div
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                    pdfSections.includeStaffPerformance
+                      ? 'border-emerald-600 bg-emerald-600 text-white'
+                      : 'border-slate-300 bg-white'
+                  }`}
+                >
+                  {pdfSections.includeStaffPerformance && <Check className="h-3 w-3 stroke-[3]" />}
+                </div>
+                <span className="text-xs font-semibold">3. Staff Performance</span>
+              </button>
+            </div>
           </div>
 
           {pdfPreviewUrl && (
@@ -1312,8 +1453,11 @@ export function OrgAdminAnalyticsView() {
               size="sm"
               onClick={handleDownloadPdf}
               leftIcon={<Download className="h-4 w-4" />}
+              id="download-customized-pdf-btn"
             >
-              Download PDF
+              {activeSectionsCount === 0
+                ? 'Download PDF (Empty)'
+                : `Download PDF (${activeSectionsCount} Section${activeSectionsCount > 1 ? 's' : ''})`}
             </Button>
           </ModalFooter>
         </div>
@@ -1454,54 +1598,57 @@ export function OrgAdminAnalyticsView() {
               </div>
             </div>
 
+            {/* Active Filter Scope Strip */}
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50/60 px-3 py-2 text-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-semibold text-slate-700 flex items-center gap-1">
+                  <Filter className="h-3.5 w-3.5 text-emerald-600" />
+                  Active Filter Scope:
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 font-semibold text-slate-800 border border-slate-200 shadow-2xs">
+                  <Building2 className="h-3 w-3 text-emerald-600" />
+                  {selectedBranchName}
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 font-semibold text-slate-800 border border-slate-200 shadow-2xs">
+                  <Calendar className="h-3 w-3 text-emerald-600" />
+                  {dateRangeLabel}
+                </span>
+              </div>
+              <span className="text-[11px] text-slate-500 font-medium">
+                Showing <strong className="text-slate-900 font-mono">{filteredStaffActivities.length}</strong> {filteredStaffActivities.length === 1 ? 'activity' : 'activities'}
+              </span>
+            </div>
+
             {/* Metric KPI Cards */}
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
               <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-2.5">
                 <span className="text-slate-500 text-[11px]">Cards Activated</span>
                 <p className="font-mono text-base font-bold text-emerald-700">
-                  {selectedStaffDetail.cardsActivatedCount} cards
+                  {modalScopedStaffMetrics.cardsActivatedCount} cards
                 </p>
               </div>
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
                 <span className="text-slate-500 text-[11px]">Cards Settled</span>
                 <p className="font-mono text-base font-bold text-slate-800">
-                  {selectedStaffDetail.cardsSettledCount} cards
+                  {modalScopedStaffMetrics.cardsSettledCount} cards
                 </p>
               </div>
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
                 <span className="text-slate-500 text-[11px]">Card Recharges (POS)</span>
                 <p className="font-mono text-base font-semibold text-emerald-600">
-                  {formatCurrency(selectedStaffDetail.cardRechargeVolume)}
-                </p>
-              </div>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
-                <span className="text-slate-500 text-[11px]">UPI Recharges</span>
-                <p className="font-mono text-base font-semibold text-sky-600">
-                  {formatCurrency(selectedStaffDetail.upiRechargeVolume)}
-                </p>
-              </div>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
-                <span className="text-slate-500 text-[11px]">Total Recharges</span>
-                <p className="font-mono text-base font-bold text-slate-900">
-                  {formatCurrency(selectedStaffDetail.rechargeVolume)}
+                  {formatCurrency(modalScopedStaffMetrics.cardRechargeVolume)}
                 </p>
               </div>
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
                 <span className="text-slate-500 text-[11px]">POS Sales Billed</span>
                 <p className="font-mono text-base font-semibold text-emerald-600">
-                  {formatCurrency(selectedStaffDetail.purchaseVolume)}
+                  {formatCurrency(modalScopedStaffMetrics.purchaseVolume)}
                 </p>
               </div>
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
                 <span className="text-slate-500 text-[11px]">Refunds Processed</span>
                 <p className="font-mono text-base font-semibold text-rose-600">
-                  {formatCurrency(selectedStaffDetail.refundVolume)}
-                </p>
-              </div>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
-                <span className="text-slate-500 text-[11px]">Total Volume Handled</span>
-                <p className="font-mono text-base font-bold text-indigo-700">
-                  {formatCurrency(selectedStaffDetail.totalVolumeHandled)}
+                  {formatCurrency(modalScopedStaffMetrics.refundVolume)}
                 </p>
               </div>
             </div>
@@ -1576,7 +1723,7 @@ export function OrgAdminAnalyticsView() {
                   {filteredStaffActivities.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="py-8 text-center text-xs text-slate-500">
-                        No activity records found matching this filter.
+                        No activity records found for this staff member in {selectedBranchName} ({dateRangeLabel}).
                       </td>
                     </tr>
                   ) : (

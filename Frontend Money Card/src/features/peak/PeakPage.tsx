@@ -1,4 +1,8 @@
-import { buildPeakDemandJsPdf } from "./peakPdfExport";
+import {
+  generatePeakDemandPdfBlob,
+  downloadPeakDemandPdf,
+  type PeakPdfSectionOptions,
+} from './peakPdfExport';
 // ─── Peak & Demand Analysis Page (M-Peak) ──────────────────────
 // Dedicated Peak Hours, Food Demand, and Operational Traffic Analysis for ORG_ADMIN.
 // Uses apiService abstraction strictly — does NOT import mock handlers directly.
@@ -22,6 +26,8 @@ import {
   LoadingState,
   EmptyState,
   ErrorState,
+  Modal,
+  ModalFooter,
 } from '@/components/ui';
 import { DataTable } from '@/components/tables';
 import { notify, formatCurrency } from '@/utils';
@@ -34,9 +40,12 @@ import {
   ShoppingBag,
   Building2,
   Calendar,
+  Eye,
+  Check,
+  SlidersHorizontal,
 } from 'lucide-react';
 
-export type TimeWindowPreset = 'thisMonth' | 'today' | 'last7' | 'last30' | 'custom';
+export type TimeWindowPreset = 'thisMonth' | 'today' | 'yesterday' | 'last7' | 'last30' | 'custom';
 
 function formatLocalDate(d: Date): string {
   const year = d.getFullYear();
@@ -61,6 +70,11 @@ export function getPeakPresetDates(
   }
   if (preset === 'today') {
     return { startDate: endStr, endDate: endStr };
+  }
+  if (preset === 'yesterday') {
+    const yest = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const yestStr = formatLocalDate(yest);
+    return { startDate: yestStr, endDate: yestStr };
   }
   if (preset === 'last7') {
     const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -201,6 +215,24 @@ export function PeakPage() {
   const [demandSortBy, setDemandSortBy] = useState<'REVENUE' | 'ORDERS'>('REVENUE');
   const [isExporting, setIsExporting] = useState(false);
 
+  // PDF Viewer Modal & Option-Wise Customizer State
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [pdfSections, setPdfSections] = useState<PeakPdfSectionOptions>({
+    includeRushKpis: true,
+    includeTrafficDistribution: true,
+    includeFoodDemand: true,
+  });
+
+  // Clean up object URL when component unmounts or preview changes
+  useEffect(() => {
+    return () => {
+      if (pdfPreviewUrl) {
+        URL.revokeObjectURL(pdfPreviewUrl);
+      }
+    };
+  }, [pdfPreviewUrl]);
+
   const handlePresetChange = (preset: TimeWindowPreset) => {
     setSelectedDateRange(preset);
     if (preset !== 'custom') {
@@ -307,47 +339,116 @@ export function PeakPage() {
   }, [selectedBranchId, startDate, endDate]);
 
   // ── CSV Export Handler ────────────────────────────────────
-  // ── PDF Download Handler ──────────────────────────────────────────
-  const handleDownloadPdf = async () => {
-    if (!data) {
-      notify.error('No peak demand data available to export.');
-      return;
-    }
+  // ── PDF Options & Handlers ──────────────────────────────────────────
+  const getPeakReportOptions = (overrideSections?: Partial<PeakPdfSectionOptions>) => {
+    if (!data) return null;
 
+    const selectedBranchObj = allBranches.find((b) => b.id === selectedBranchId);
+    const selectedBranchName = selectedBranchId === 'ALL'
+      ? 'All Branches'
+      : (selectedBranchObj?.name || 'Selected Branch');
+
+    const dateRangeLabel =
+      selectedDateRange === 'today'
+        ? 'Today'
+        : selectedDateRange === 'yesterday'
+        ? 'Yesterday'
+        : selectedDateRange === 'last7'
+        ? 'Last 7 Days'
+        : selectedDateRange === 'last30'
+        ? 'Last 30 Days'
+        : selectedDateRange === 'custom'
+        ? `Custom Range (${startDate} to ${endDate})`
+        : 'This Month';
+
+    const sortLabel = demandSortBy === 'REVENUE' ? 'Revenue Wise' : 'Order Wise';
+
+    return {
+      data: {
+        ...data,
+        productDemand: filteredProducts,
+      },
+      selectedBranchName,
+      dateRangeLabel:
+        selectedCategory !== 'ALL'
+          ? `${dateRangeLabel} (${sortLabel}, Category: ${selectedCategory})`
+          : `${dateRangeLabel} (${sortLabel})`,
+      organizationName: 'Money Card Cafeteria',
+      sections: overrideSections ?? pdfSections,
+    };
+  };
+
+  const refreshPdfPreview = (sectionsToUse: PeakPdfSectionOptions) => {
+    try {
+      const options = getPeakReportOptions(sectionsToUse);
+      if (!options) return;
+      const blob = generatePeakDemandPdfBlob(options);
+      if (pdfPreviewUrl) {
+        URL.revokeObjectURL(pdfPreviewUrl);
+      }
+      const url = URL.createObjectURL(blob);
+      setPdfPreviewUrl(url);
+    } catch (err) {
+      console.error('Failed to refresh Peak PDF preview:', err);
+    }
+  };
+
+  const handleToggleSection = (sectionKey: keyof PeakPdfSectionOptions) => {
+    const updated = {
+      ...pdfSections,
+      [sectionKey]: !pdfSections[sectionKey],
+    };
+    setPdfSections(updated);
+    refreshPdfPreview(updated);
+  };
+
+  const handleSetAllSections = (enable: boolean) => {
+    const updated: PeakPdfSectionOptions = {
+      includeRushKpis: enable,
+      includeTrafficDistribution: enable,
+      includeFoodDemand: enable,
+    };
+    setPdfSections(updated);
+    refreshPdfPreview(updated);
+  };
+
+  const handleViewPdf = () => {
     setIsExporting(true);
     try {
+      const options = getPeakReportOptions(pdfSections);
+      if (!options) {
+        notify.error('No peak demand data available to export.');
+        return;
+      }
+
+      const blob = generatePeakDemandPdfBlob(options);
+      if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+      const url = URL.createObjectURL(blob);
+      setPdfPreviewUrl(url);
+      setShowPdfModal(true);
+    } catch (err: any) {
+      notify.error(err?.message || 'Failed to generate Peak & Demand PDF preview.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleDownloadPdf = () => {
+    setIsExporting(true);
+    try {
+      const options = getPeakReportOptions(pdfSections);
+      if (!options) {
+        notify.error('No peak demand data available to export.');
+        return;
+      }
+
       const selectedBranchObj = allBranches.find((b) => b.id === selectedBranchId);
       const selectedBranchName = selectedBranchId === 'ALL'
         ? 'All Branches'
         : (selectedBranchObj?.name || 'Selected Branch');
 
-      const dateRangeLabel =
-        selectedDateRange === 'today'
-          ? 'Today'
-          : selectedDateRange === 'last7'
-          ? 'Last 7 Days'
-          : selectedDateRange === 'last30'
-          ? 'Last 30 Days'
-          : selectedDateRange === 'custom'
-          ? `Custom Range (${startDate} to ${endDate})`
-          : 'This Month';
-
-      const sortLabel = demandSortBy === 'REVENUE' ? 'Revenue Wise' : 'Order Wise';
-      const doc = buildPeakDemandJsPdf({
-        data: {
-          ...data,
-          productDemand: filteredProducts,
-        },
-        selectedBranchName,
-        dateRangeLabel:
-          selectedCategory !== 'ALL'
-            ? `${dateRangeLabel} (${sortLabel}, Category: ${selectedCategory})`
-            : `${dateRangeLabel} (${sortLabel})`,
-        organizationName: 'Money Card Cafeteria',
-      });
-
       const filename = `Peak_Demand_Report_${selectedBranchName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
-      doc.save(filename);
+      downloadPeakDemandPdf(options, filename);
 
       notify.success('Peak & Demand PDF downloaded successfully.');
     } catch (err: any) {
@@ -492,11 +593,12 @@ export function PeakPage() {
           <Button
             variant="primary"
             size="sm"
-            onClick={handleDownloadPdf}
-            isLoading={isExporting}
-            leftIcon={<Download className="h-4 w-4" />}
+            onClick={handleViewPdf}
+            disabled={isExporting || isLoading || !data}
+            leftIcon={<Eye className="h-4 w-4" />}
+            id="view-peak-pdf-btn"
           >
-            Download PDF
+            View PDF
           </Button>
         </div>
       </div>
@@ -532,6 +634,7 @@ export function PeakPage() {
                 options={[
                   { value: 'thisMonth', label: 'This Month' },
                   { value: 'today', label: 'Today' },
+                  { value: 'yesterday', label: 'Yesterday' },
                   { value: 'last7', label: 'Last 7 Days' },
                   { value: 'last30', label: 'Last 30 Days' },
                   { value: 'custom', label: 'Custom Range' },
@@ -781,6 +884,160 @@ export function PeakPage() {
           </div>
         </div>
       ) : null}
+
+      {/* ── Peak & Demand PDF Viewer Modal ── */}
+      <Modal
+        isOpen={showPdfModal}
+        onClose={() => {
+          setShowPdfModal(false);
+          if (pdfPreviewUrl) {
+            URL.revokeObjectURL(pdfPreviewUrl);
+            setPdfPreviewUrl(null);
+          }
+        }}
+        title="Peak & Demand Analytics Report — PDF Preview"
+        size="xl"
+      >
+        <div className="space-y-4">
+          {/* Option-Wise Report Section Customizer Toolbar */}
+          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-2xs">
+            <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
+                  <SlidersHorizontal className="h-4 w-4" />
+                </div>
+                <h4 className="text-xs font-bold text-slate-900">Customize Report Sections</h4>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  id="peak-pdf-select-all"
+                  onClick={() => handleSetAllSections(true)}
+                  className="rounded-md px-2 py-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors cursor-pointer"
+                >
+                  Select All
+                </button>
+                <span className="text-slate-300">|</span>
+                <button
+                  type="button"
+                  id="peak-pdf-clear-all"
+                  onClick={() => handleSetAllSections(false)}
+                  className="rounded-md px-2 py-1 text-[11px] font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
+                >
+                  Clear All
+                </button>
+              </div>
+            </div>
+
+            {/* Option Pills / Interactive Toggle Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2.5">
+              {/* Option 1: Rush KPIs */}
+              <button
+                type="button"
+                id="peak-toggle-rush-kpis"
+                onClick={() => handleToggleSection('includeRushKpis')}
+                className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all cursor-pointer ${
+                  pdfSections.includeRushKpis
+                    ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
+                    : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
+                }`}
+              >
+                <div
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                    pdfSections.includeRushKpis
+                      ? 'border-emerald-600 bg-emerald-600 text-white'
+                      : 'border-slate-300 bg-white'
+                  }`}
+                >
+                  {pdfSections.includeRushKpis && <Check className="h-3 w-3 stroke-[3]" />}
+                </div>
+                <span className="text-xs font-semibold">1. Peak Hour Metrics</span>
+              </button>
+
+              {/* Option 2: 24-Hour Traffic */}
+              <button
+                type="button"
+                id="peak-toggle-traffic-distribution"
+                onClick={() => handleToggleSection('includeTrafficDistribution')}
+                className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all cursor-pointer ${
+                  pdfSections.includeTrafficDistribution
+                    ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
+                    : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
+                }`}
+              >
+                <div
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                    pdfSections.includeTrafficDistribution
+                      ? 'border-emerald-600 bg-emerald-600 text-white'
+                      : 'border-slate-300 bg-white'
+                  }`}
+                >
+                  {pdfSections.includeTrafficDistribution && <Check className="h-3 w-3 stroke-[3]" />}
+                </div>
+                <span className="text-xs font-semibold">2. 24-Hour Traffic</span>
+              </button>
+
+              {/* Option 3: Food Demand */}
+              <button
+                type="button"
+                id="peak-toggle-food-demand"
+                onClick={() => handleToggleSection('includeFoodDemand')}
+                className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all cursor-pointer ${
+                  pdfSections.includeFoodDemand
+                    ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
+                    : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
+                }`}
+              >
+                <div
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                    pdfSections.includeFoodDemand
+                      ? 'border-emerald-600 bg-emerald-600 text-white'
+                      : 'border-slate-300 bg-white'
+                  }`}
+                >
+                  {pdfSections.includeFoodDemand && <Check className="h-3 w-3 stroke-[3]" />}
+                </div>
+                <span className="text-xs font-semibold">3. Food Demand Summary</span>
+              </button>
+            </div>
+          </div>
+
+          {pdfPreviewUrl && (
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-lg">
+              <iframe
+                src={`${pdfPreviewUrl}#toolbar=0`}
+                className="w-full h-[70vh] rounded-lg"
+                title="Peak & Demand Analytics Report PDF Preview"
+              />
+            </div>
+          )}
+
+          <ModalFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setShowPdfModal(false);
+                if (pdfPreviewUrl) {
+                  URL.revokeObjectURL(pdfPreviewUrl);
+                  setPdfPreviewUrl(null);
+                }
+              }}
+            >
+              Close
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleDownloadPdf}
+              leftIcon={<Download className="h-4 w-4" />}
+              id="download-peak-customized-pdf-btn"
+            >
+              Download PDF
+            </Button>
+          </ModalFooter>
+        </div>
+      </Modal>
     </div>
   );
 }

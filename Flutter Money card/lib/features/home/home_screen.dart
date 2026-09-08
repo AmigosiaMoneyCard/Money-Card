@@ -8,7 +8,9 @@ import '../../core/constants/permission_constants.dart';
 import '../../models/card_session.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/branch_provider.dart';
+import '../../providers/card_operations_provider.dart';
 import '../../providers/permission_provider.dart';
+import '../../providers/pos_cart_provider.dart';
 import '../../providers/session_operations_provider.dart';
 import '../../widgets/common/app_badge.dart';
 import '../../widgets/common/app_card.dart';
@@ -59,6 +61,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.listen(currentBranchProvider, (previous, next) {
       if (previous?.id != next?.id) {
         ref.read(sessionListNotifierProvider.notifier).loadSessions(force: true);
+        ref.read(cardListNotifierProvider.notifier).loadCards(force: true);
+        ref.read(posCatalogNotifierProvider.notifier).loadProducts(force: true);
       }
     });
 

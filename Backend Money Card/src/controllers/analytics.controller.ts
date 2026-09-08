@@ -31,14 +31,23 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     if (rangeLower.includes('today')) {
       fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       toDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-    } else if (rangeLower.includes('week')) {
-      const day = now.getDay();
-      const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Monday
-      fromDate = new Date(now.getFullYear(), now.getMonth(), diff);
-      toDate = new Date(now.getFullYear(), now.getMonth(), diff + 6, 23, 59, 59, 999);
+    } else if (rangeLower.includes('yesterday')) {
+      const yest = new Date(now);
+      yest.setDate(yest.getDate() - 1);
+      fromDate = new Date(yest.getFullYear(), yest.getMonth(), yest.getDate());
+      toDate = new Date(yest.getFullYear(), yest.getMonth(), yest.getDate(), 23, 59, 59, 999);
+    } else if (rangeLower.includes('week') || rangeLower.includes('last7') || rangeLower.includes('7')) {
+      fromDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      toDate = new Date();
+    } else if (rangeLower.includes('last30') || rangeLower.includes('30')) {
+      fromDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      toDate = new Date();
     } else if (rangeLower.includes('month')) {
       fromDate = new Date(now.getFullYear(), now.getMonth(), 1);
       toDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    } else if (rangeLower.includes('all')) {
+      fromDate = undefined;
+      toDate = undefined;
     }
   }
 
@@ -161,6 +170,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       where: {
         ...(orgId ? { organizationId: orgId } : {}),
         ...(branchId && branchId !== 'ALL' ? { branchId } : {}),
+        ...(fromDate || toDate ? { createdAt: dateFilter } : {}),
       },
       orderBy: { createdAt: 'desc' },
       take: 300,
@@ -169,6 +179,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       where: {
         ...(orgId ? { organizationId: orgId } : {}),
         ...(branchId && branchId !== 'ALL' ? { branchId } : {}),
+        ...(fromDate || toDate ? { issuedAt: dateFilter } : {}),
       },
       include: {
         card: { select: { physicalCardNumber: true } },
@@ -412,6 +423,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
         cardNumber: sess.card?.physicalCardNumber,
         customerName: sess.customerName || 'Customer',
         customerPhone: sess.customerPhone || '—',
+        branchId: sess.branchId,
         branchName: (sess as any).branch?.name || 'Main Cafeteria',
         timestamp: sess.issuedAt ? sess.issuedAt.toISOString() : new Date().toISOString(),
         amount: sess.balance,
@@ -427,6 +439,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
         cardNumber: sess.card?.physicalCardNumber,
         customerName: sess.customerName || 'Customer',
         customerPhone: sess.customerPhone || '—',
+        branchId: sess.branchId,
         branchName: (sess as any).branch?.name || 'Main Cafeteria',
         timestamp: sess.settledAt ? sess.settledAt.toISOString() : new Date().toISOString(),
         amount: sess.refundAmount || 0,
@@ -443,6 +456,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           cardNumber: ev.physicalCardNumber,
           customerName: ev.customerName || 'Customer',
           customerPhone: ev.customerPhone || '—',
+          branchId: ev.branchId,
           branchName: ev.branchName || 'Main Cafeteria',
           timestamp: ev.createdAt.toISOString(),
         });
@@ -463,6 +477,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           title: 'POS Purchase Processed',
           description: `Processed POS order amounting to ₹${tx.amount}`,
           amount: tx.amount,
+          branchId: tx.branchId,
           branchName: bName,
           timestamp: tx.createdAt.toISOString(),
           paymentMethod: 'CARD_BALANCE',
@@ -476,6 +491,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           title: 'Card / Cash Recharge',
           description: `Loaded ₹${tx.amount} onto card via Cash/Card POS`,
           amount: tx.amount,
+          branchId: tx.branchId,
           branchName: bName,
           timestamp: tx.createdAt.toISOString(),
           paymentMethod: 'CASH',
@@ -489,6 +505,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           title: 'UPI Recharge',
           description: `Loaded ₹${tx.amount} onto card via UPI QR`,
           amount: tx.amount,
+          branchId: tx.branchId,
           branchName: bName,
           timestamp: tx.createdAt.toISOString(),
           paymentMethod: 'UPI',
@@ -502,6 +519,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           title: 'Customer Refund Processed',
           description: `Processed refund of ₹${tx.amount}`,
           amount: tx.amount,
+          branchId: tx.branchId,
           branchName: bName,
           timestamp: tx.createdAt.toISOString(),
         });

@@ -271,6 +271,17 @@ describe('Peak & Demand Analysis: Food Category Filter Logic', () => {
       expect(dates.endDate).toBe(expected);
     });
 
+    it('calculates yesterday preset as previous calendar day', async () => {
+      const { getPeakPresetDates } = await import('@/features/peak/PeakPage');
+      const dates = getPeakPresetDates('yesterday');
+
+      const yest = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const expected = `${yest.getFullYear()}-${String(yest.getMonth() + 1).padStart(2, '0')}-${String(yest.getDate()).padStart(2, '0')}`;
+
+      expect(dates.startDate).toBe(expected);
+      expect(dates.endDate).toBe(expected);
+    });
+
     it('calculates custom preset using customStart and customEnd when provided', async () => {
       const { getPeakPresetDates } = await import('@/features/peak/PeakPage');
       const dates = getPeakPresetDates('custom', '2026-02-01', '2026-02-15');

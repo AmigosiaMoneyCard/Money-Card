@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/config/app_config.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
+import '../../models/branch.dart';
 import '../../models/card.dart';
 import '../../providers/branch_provider.dart';
 import '../../providers/card_operations_provider.dart';
@@ -296,13 +297,27 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<Branch?>(currentBranchProvider, (previous, next) {
+      if (next != null && next.id != previous?.id) {
+        ref.read(availableCardsNotifierProvider.notifier).loadAvailableCards();
+      }
+    });
+
     final branch = ref.watch(currentBranchProvider);
+    final assignedBranches = ref.watch(branchNotifierProvider).assignedBranches;
     final availableState = ref.watch(availableCardsNotifierProvider);
     final cardDetailsState = ref.watch(cardDetailsNotifierProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Issue New Card'),
+        actions: [
+          if (assignedBranches.length > 1 && branch != null)
+            Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.sm),
+              child: _buildBranchSwitcher(context, ref, branch, assignedBranches),
+            ),
+        ],
       ),
       body: SafeArea(
         child: Column(
@@ -831,6 +846,79 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildBranchSwitcher(
+    BuildContext context,
+    WidgetRef ref,
+    Branch currentBranch,
+    List<Branch> assignedBranches,
+  ) {
+    return PopupMenuButton<Branch>(
+      initialValue: currentBranch,
+      onSelected: (branch) {
+        ref.read(branchNotifierProvider.notifier).selectBranch(branch);
+        ref.read(availableCardsNotifierProvider.notifier).loadAvailableCards();
+      },
+      itemBuilder: (context) {
+        return assignedBranches.map((branch) {
+          final isSelected = branch.id == currentBranch.id;
+          return PopupMenuItem<Branch>(
+            value: branch,
+            child: Row(
+              children: [
+                Icon(
+                  Icons.storefront,
+                  size: 18,
+                  color: isSelected ? AppColors.primary : AppColors.textSecondaryLight,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  branch.name,
+                  style: TextStyle(
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected ? AppColors.primary : AppColors.textPrimaryLight,
+                  ),
+                ),
+                if (isSelected) ...[
+                  const Spacer(),
+                  const Icon(Icons.check, size: 16, color: AppColors.primary),
+                ],
+              ],
+            ),
+          );
+        }).toList();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.primaryLight,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.storefront, size: 16, color: AppColors.primary),
+            const SizedBox(width: 6),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 110),
+              child: Text(
+                currentBranch.name,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(Icons.arrow_drop_down, size: 18, color: AppColors.primary),
+          ],
+        ),
+      ),
     );
   }
 }

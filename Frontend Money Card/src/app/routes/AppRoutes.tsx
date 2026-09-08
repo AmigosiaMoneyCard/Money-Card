@@ -171,7 +171,7 @@ export function AppRoutes() {
       </Route>
 
       {/* ── Redirects ── */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/" element={<Navigate to="/login" replace />} />
       <Route
         path="*"
         element={
