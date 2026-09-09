@@ -268,33 +268,33 @@ export function AllBranchesOverviewModal({
         {/* Top Executive KPI Cards */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {/* Total Branches */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1 min-w-0">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Counters</span>
-              <Building2 className="h-4 w-4 text-emerald-600" />
+              <Building2 className="h-4 w-4 text-emerald-600 shrink-0" />
             </div>
-            <p className="text-xl font-bold text-slate-900">{overallMetrics.totalBranches}</p>
-            <p className="text-[11px] text-emerald-600 font-medium">
+            <p className="text-xl font-bold text-slate-900 tracking-tight">{overallMetrics.totalBranches}</p>
+            <p className="text-[11px] text-emerald-600 font-medium truncate">
               {overallMetrics.activeBranches} Active for ops
             </p>
           </div>
 
           {/* Assigned Staff */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1 min-w-0">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Staff</span>
-              <Users className="h-4 w-4 text-indigo-600" />
+              <Users className="h-4 w-4 text-indigo-600 shrink-0" />
             </div>
-            <p className="text-xl font-bold text-slate-900">{overallMetrics.totalStaffCount}</p>
+            <p className="text-xl font-bold text-slate-900 tracking-tight">{overallMetrics.totalStaffCount}</p>
           </div>
 
           {/* Menu Catalog */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1 min-w-0">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Menu Items</span>
-              <UtensilsCrossed className="h-4 w-4 text-emerald-600" />
+              <UtensilsCrossed className="h-4 w-4 text-emerald-600 shrink-0" />
             </div>
-            <p className="text-xl font-bold text-slate-900">{overallMetrics.totalProductsCount}</p>
+            <p className="text-xl font-bold text-slate-900 tracking-tight">{overallMetrics.totalProductsCount}</p>
           </div>
 
           {/* Stock Units */}
@@ -303,7 +303,7 @@ export function AllBranchesOverviewModal({
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Stock Units</span>
               <Package className="h-4 w-4 text-sky-600 shrink-0" />
             </div>
-            <p className="text-xl font-bold text-slate-900 truncate" title={`${overallMetrics.totalStockUnits.toLocaleString('en-IN')} units`}>
+            <p className="text-base sm:text-lg lg:text-xl font-bold text-slate-900 tracking-tight font-mono whitespace-nowrap overflow-hidden" title={`${overallMetrics.totalStockUnits.toLocaleString('en-IN')} units`}>
               {formatCompactNumber(overallMetrics.totalStockUnits)}
             </p>
           </div>
@@ -314,18 +314,18 @@ export function AllBranchesOverviewModal({
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Valuation</span>
               <TrendingUp className="h-4 w-4 text-teal-600 shrink-0" />
             </div>
-            <p className="text-xl font-bold text-teal-700 truncate" title={formatCurrency(overallMetrics.totalValuation)}>
+            <p className="text-base sm:text-lg lg:text-xl font-bold text-teal-700 tracking-tight font-mono whitespace-nowrap overflow-hidden" title={formatCurrency(overallMetrics.totalValuation)}>
               {formatCompactCurrency(overallMetrics.totalValuation)}
             </p>
           </div>
 
           {/* Stock Alerts */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1 min-w-0">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Stock Alerts</span>
-              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
             </div>
-            <p className="text-xl font-bold text-amber-700">{overallMetrics.totalAlerts}</p>
+            <p className="text-xl font-bold text-amber-700 tracking-tight">{overallMetrics.totalAlerts}</p>
           </div>
         </div>
 
@@ -552,7 +552,7 @@ export function AllBranchesOverviewModal({
                         </div>
                         <div className="min-w-0">
                           <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Valuation</p>
-                          <p className="font-bold text-teal-700 font-mono leading-tight text-sm" title={formatCurrency(totalValuation)}>
+                          <p className="font-bold text-teal-700 font-mono leading-tight text-sm whitespace-nowrap" title={formatCurrency(totalValuation)}>
                             {formatCompactCurrency(totalValuation)}
                           </p>
                           <p className="text-[10px] text-slate-500 truncate" title={`${totalStockUnits.toLocaleString('en-IN')} units in stock`}>

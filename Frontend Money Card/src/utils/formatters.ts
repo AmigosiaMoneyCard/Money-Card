@@ -10,20 +10,31 @@ export function formatCurrency(amount: number, currency: string = 'INR'): string
   }).format(amount);
 }
 
-// ─── Format Compact Currency (e.g., ₹25,130.58 Cr, ₹45.20 L, ₹12.5k) ─
+// ─── Format Compact Currency (e.g., ₹25.13 L Cr, ₹12.5k Cr, ₹45.20 Cr, ₹45.20 L, ₹12.5k) ─
 export function formatCompactCurrency(amount: number, currency: string = 'INR'): string {
   if (isNaN(amount) || amount === 0) return '₹0';
   const isNegative = amount < 0;
   const abs = Math.abs(amount);
 
   let formatted = '';
-  if (abs >= 10000000) {
+  if (abs >= 1000000000000) {
+    // >= 1 Lakh Crore (10^12)
+    const val = abs / 1000000000000;
+    formatted = `₹${val.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} L Cr`;
+  } else if (abs >= 10000000000) {
+    // >= 1,000 Crore (10^10)
+    const val = abs / 10000000000;
+    formatted = `₹${val.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}k Cr`;
+  } else if (abs >= 10000000) {
+    // >= 1 Crore (10^7)
     const val = abs / 10000000;
     formatted = `₹${val.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} Cr`;
   } else if (abs >= 100000) {
+    // >= 1 Lakh (10^5)
     const val = abs / 100000;
     formatted = `₹${val.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} L`;
   } else if (abs >= 10000) {
+    // >= 10k (10^4)
     const val = abs / 1000;
     formatted = `₹${val.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}k`;
   } else {
@@ -33,20 +44,31 @@ export function formatCompactCurrency(amount: number, currency: string = 'INR'):
   return isNegative ? `-${formatted}` : formatted;
 }
 
-// ─── Format Compact Number (e.g., 56.66 Cr, 1.25 L, 15.2k) ────
+// ─── Format Compact Number (e.g., 56.66 L Cr, 12.5k Cr, 56.66 Cr, 1.25 L, 15.2k) ────
 export function formatCompactNumber(num: number): string {
   if (isNaN(num) || num === 0) return '0';
   const isNegative = num < 0;
   const abs = Math.abs(num);
 
   let formatted = '';
-  if (abs >= 10000000) {
+  if (abs >= 1000000000000) {
+    // >= 1 Lakh Crore (10^12)
+    const val = abs / 1000000000000;
+    formatted = `${val.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} L Cr`;
+  } else if (abs >= 10000000000) {
+    // >= 1,000 Crore (10^10)
+    const val = abs / 10000000000;
+    formatted = `${val.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}k Cr`;
+  } else if (abs >= 10000000) {
+    // >= 1 Crore (10^7)
     const val = abs / 10000000;
     formatted = `${val.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} Cr`;
   } else if (abs >= 100000) {
+    // >= 1 Lakh (10^5)
     const val = abs / 100000;
     formatted = `${val.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} L`;
   } else if (abs >= 10000) {
+    // >= 10k (10^4)
     const val = abs / 1000;
     formatted = `${val.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}k`;
   } else {

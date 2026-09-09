@@ -92,4 +92,24 @@ describe('All Branches End-to-End Overview Calculations & Consolidation Tests', 
     // Alerts: p2 (5) is low, p3 (0) is out => 2 alerts
     expect(totalAlerts).toBe(2);
   });
+
+  it('should format compact currency cleanly without overflowing large numbers', async () => {
+    const { formatCompactCurrency, formatCompactNumber } = await import('../utils/formatters');
+
+    // Normal values
+    expect(formatCompactCurrency(0)).toBe('₹0');
+    expect(formatCompactCurrency(500)).toBe('₹500');
+    expect(formatCompactCurrency(15000)).toBe('₹15k');
+    expect(formatCompactCurrency(250000)).toBe('₹2.5 L');
+    expect(formatCompactCurrency(45000000)).toBe('₹4.5 Cr');
+
+    // Extreme high-scale values (thousands & lakhs of crores)
+    expect(formatCompactCurrency(125000000000)).toBe('₹12.5k Cr');
+    expect(formatCompactCurrency(25130581800000)).toBe('₹25.13 L Cr');
+
+    // Compact Numbers
+    expect(formatCompactNumber(566600000)).toBe('56.66 Cr');
+    expect(formatCompactNumber(12500000000)).toBe('1.25k Cr');
+    expect(formatCompactNumber(5666000000000)).toBe('5.67 L Cr');
+  });
 });
