@@ -7,10 +7,7 @@ import { realClient } from './realClient';
 // When Developer 2's backend is ready, setting VITE_USE_MOCK_API=false
 // routes calls to `realClient` without altering feature components.
 
-const USE_MOCK_API =
-  typeof import.meta === 'undefined' ||
-  !import.meta.env ||
-  import.meta.env.VITE_USE_MOCK_API !== 'false'; // Defaults to TRUE
+const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API === 'true';
 
 export const apiService = USE_MOCK_API ? mockClient : realClient;
 
