@@ -21,11 +21,24 @@ const paddingStyles = {
 export function Card({ children, className, padding = 'md', hover = false, onClick }: CardProps) {
   return (
     <div
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
       onClick={onClick}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
       className={cn(
         'rounded-xl border border-slate-200 bg-white shadow-xs',
         paddingStyles[padding],
         hover && 'transition-all duration-200 hover:border-slate-300 hover:shadow-md',
+        onClick && 'cursor-pointer',
         className,
       )}
     >

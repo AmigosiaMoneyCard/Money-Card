@@ -57,6 +57,19 @@ export function ChangePasswordForm() {
     return { label: 'Strong', color: 'bg-emerald-500', text: 'text-emerald-400', width: '100%' };
   }, [newPassword, strengthCount]);
 
+function validatePasswordRules(pw: string): string | null {
+  if (!pw) return 'New password is required';
+  if (pw.length < 8) return 'Password must be at least 8 characters long';
+  if (pw.length > 30) return 'Password cannot exceed 30 characters';
+  if (!/[A-Z]/.test(pw)) return 'Password must contain at least one uppercase letter [A-Z]';
+  if (!/[a-z]/.test(pw)) return 'Password must contain at least one lowercase letter [a-z]';
+  if (!/[0-9]/.test(pw)) return 'Password must contain at least one number [0-9]';
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(pw)) {
+    return 'Password must contain at least one special character (!@#$%^&*...)';
+  }
+  return null;
+}
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
@@ -72,30 +85,9 @@ export function ChangePasswordForm() {
         setCurrentPwError(null);
       }
 
-      if (!newPassword) {
-        setNewPwError('New password is required');
-        hasErrors = true;
-      } else if (newPassword.length < 8) {
-        setNewPwError('Password must be at least 8 characters long');
-        hasErrors = true;
-      } else if (newPassword.length > 30) {
-        setNewPwError('Password cannot exceed 30 characters');
-        hasErrors = true;
-      } else if (!/[A-Z]/.test(newPassword)) {
-        setNewPwError('Password must contain at least one uppercase letter [A-Z]');
-        hasErrors = true;
-      } else if (!/[a-z]/.test(newPassword)) {
-        setNewPwError('Password must contain at least one lowercase letter [a-z]');
-        hasErrors = true;
-      } else if (!/[0-9]/.test(newPassword)) {
-        setNewPwError('Password must contain at least one number [0-9]');
-        hasErrors = true;
-      } else if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(newPassword)) {
-        setNewPwError('Password must contain at least one special character (!@#$%^&*...)');
-        hasErrors = true;
-      } else {
-        setNewPwError(null);
-      }
+      const pwError = validatePasswordRules(newPassword);
+      setNewPwError(pwError);
+      if (pwError) hasErrors = true;
 
       if (!confirmPassword) {
         setConfirmPwError('Please confirm your new password');

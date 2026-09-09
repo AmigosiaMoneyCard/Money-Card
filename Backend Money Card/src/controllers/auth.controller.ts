@@ -229,7 +229,6 @@ export async function forgotPassword(req: Request, res: Response) {
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const resetLink = `${frontendUrl}/reset-password?token=${rawToken}`;
-    const roleName = user.role === Role.SUPER_ADMIN ? 'Super Admin' : user.role === Role.ORG_ADMIN ? 'Organization Admin' : 'Staff';
 
     // Dispatch email via Resend
     await sendPasswordResetEmail(user.email, user.name, resetLink, user.role, user.organization?.name);

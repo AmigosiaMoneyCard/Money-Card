@@ -408,7 +408,7 @@ export function SuperAdminDashboard() {
             <div className="flex flex-wrap items-center gap-3">
               {/* Cafeteria Scope Filter */}
               <div className="w-full sm:w-56">
-                <label className="mb-1 block text-[11px] font-medium text-slate-600">Cafeteria Scope</label>
+                <label htmlFor="dashboard-cafeteria-filter" className="mb-1 block text-[11px] font-medium text-slate-600">Cafeteria Scope</label>
                 <Select
                   id="dashboard-cafeteria-filter"
                   value={selectedOrgId}
@@ -422,7 +422,7 @@ export function SuperAdminDashboard() {
 
               {/* Time Window Filter */}
               <div className="w-full sm:w-48">
-                <label className="mb-1 block text-[11px] font-medium text-slate-600">Time Window</label>
+                <label htmlFor="dashboard-preset-filter" className="mb-1 block text-[11px] font-medium text-slate-600">Time Window</label>
                 <Select
                   id="dashboard-preset-filter"
                   value={datePreset}
@@ -443,8 +443,9 @@ export function SuperAdminDashboard() {
               {datePreset === 'custom' && (
                 <div className="flex flex-wrap items-end gap-2">
                   <div>
-                    <label className="mb-1 block text-[11px] font-medium text-slate-600">Start Date</label>
+                    <label htmlFor="dashboard-start-date" className="mb-1 block text-[11px] font-medium text-slate-600">Start Date</label>
                     <input
+                      id="dashboard-start-date"
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
@@ -452,8 +453,9 @@ export function SuperAdminDashboard() {
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[11px] font-medium text-slate-600">End Date</label>
+                    <label htmlFor="dashboard-end-date" className="mb-1 block text-[11px] font-medium text-slate-600">End Date</label>
                     <input
+                      id="dashboard-end-date"
                       type="date"
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
@@ -575,6 +577,7 @@ export function SuperAdminDashboard() {
               <div
                 className="flex flex-wrap items-center gap-2.5 sm:gap-3"
                 onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
               >
                 {/* Search Cafeterias */}
                 <div className="relative">

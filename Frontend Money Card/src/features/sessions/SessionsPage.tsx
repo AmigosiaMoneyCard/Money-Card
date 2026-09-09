@@ -62,6 +62,69 @@ export interface CustomerHistoryItem {
   lastActivityAt: string;
 }
 
+function getTransactionTitle(tx: Transaction): string {
+  const isRecharge = tx.type === 'RECHARGE' || String(tx.type).startsWith('RECHARGE');
+  const isRefund = tx.type === 'REFUND' || String(tx.type).startsWith('REFUND');
+  const isPurchase = tx.type === 'PURCHASE';
+
+  if (isPurchase) {
+    const items = extractTransactionItems(tx.items);
+    return items.length > 0
+      ? items.map((i) => `${i.quantity}× ${i.name}`).join(', ')
+      : 'POS Purchase';
+  }
+  if (isRecharge) {
+    if (tx.type === 'RECHARGE_UPI') return 'Wallet Recharge (UPI)';
+    if (tx.type === 'RECHARGE_CASH') return 'Wallet Recharge (Cash)';
+    return 'Wallet Recharge';
+  }
+  if (isRefund) {
+    return 'Settlement Refund';
+  }
+  return 'Transaction';
+}
+
+function SessionTransactionItem({ tx }: { tx: Transaction }) {
+  const isRecharge = tx.type === 'RECHARGE' || String(tx.type).startsWith('RECHARGE');
+  const isPurchase = tx.type === 'PURCHASE';
+  const title = getTransactionTitle(tx);
+
+  const iconBg = isPurchase
+    ? 'bg-rose-50 text-rose-600'
+    : isRecharge
+    ? 'bg-emerald-50 text-emerald-600'
+    : 'bg-amber-50 text-amber-600';
+
+  return (
+    <div className="flex items-start justify-between p-3 rounded-lg border border-slate-200 text-sm hover:border-slate-300 hover:bg-slate-50/50 transition-colors">
+      <div className="flex items-start gap-2.5 flex-1 min-w-0 pr-3">
+        <div className={`p-2 rounded-lg shrink-0 mt-0.5 ${iconBg}`}>
+          {isPurchase ? (
+            <ShoppingBag className="h-4 w-4" />
+          ) : isRecharge ? (
+            <ArrowUpRight className="h-4 w-4" />
+          ) : (
+            <RotateCcw className="h-4 w-4" />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-slate-900 leading-snug break-words">{title}</p>
+          <p className="text-xs text-slate-500 mt-1">{formatDate(tx.createdAt)}</p>
+        </div>
+      </div>
+      <div className="text-right shrink-0">
+        <p className={`font-mono font-bold ${isRecharge ? 'text-emerald-600' : 'text-slate-900'}`}>
+          {isRecharge ? '+' : '-'}
+          {formatCurrency(tx.amount)}
+        </p>
+        {tx.balanceAfter !== undefined && (
+          <p className="text-xs text-slate-400">Bal: {formatCurrency(tx.balanceAfter)}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function SessionsPage() {
   const { hasPermission } = usePermissions();
   const { currentBranch, selectBranch } = useBranch();
@@ -584,79 +647,9 @@ export function SessionsPage() {
                 />
               ) : (
                 <div className="max-h-80 overflow-y-auto space-y-2.5 pr-1">
-                  {sessionTxns.map((tx) => {
-                    const isRecharge = tx.type === 'RECHARGE' || String(tx.type).startsWith('RECHARGE');
-                    const isRefund = tx.type === 'REFUND' || String(tx.type).startsWith('REFUND');
-                    const isPurchase = tx.type === 'PURCHASE';
-                    const items = extractTransactionItems(tx.items);
-
-                    let title = 'Transaction';
-                    if (isPurchase) {
-                      if (items.length > 0) {
-                        title = items
-                          .map((i) => `${i.quantity}× ${i.name}`)
-                          .join(', ');
-                      } else {
-                        title = 'POS Purchase';
-                      }
-                    } else if (isRecharge) {
-                      title =
-                        tx.type === 'RECHARGE_UPI'
-                          ? 'Wallet Recharge (UPI)'
-                          : tx.type === 'RECHARGE_CASH'
-                          ? 'Wallet Recharge (Cash)'
-                          : 'Wallet Recharge';
-                    } else if (isRefund) {
-                      title = 'Settlement Refund';
-                    }
-
-                    return (
-                      <div
-                        key={tx.id}
-                        className="flex items-start justify-between p-3 rounded-lg border border-slate-200 text-sm hover:border-slate-300 hover:bg-slate-50/50 transition-colors"
-                      >
-                        <div className="flex items-start gap-2.5 flex-1 min-w-0 pr-3">
-                          <div
-                            className={`p-2 rounded-lg shrink-0 mt-0.5 ${
-                              isPurchase
-                                ? 'bg-rose-50 text-rose-600'
-                                : isRecharge
-                                ? 'bg-emerald-50 text-emerald-600'
-                                : 'bg-amber-50 text-amber-600'
-                            }`}
-                          >
-                            {isPurchase ? (
-                              <ShoppingBag className="h-4 w-4" />
-                            ) : isRecharge ? (
-                              <ArrowUpRight className="h-4 w-4" />
-                            ) : (
-                              <RotateCcw className="h-4 w-4" />
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-semibold text-slate-900 leading-snug break-words">
-                              {title}
-                            </p>
-                            <p className="text-xs text-slate-500 mt-1">{formatDate(tx.createdAt)}</p>
-                          </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p
-                            className={`font-mono font-bold ${
-                              isRecharge
-                                ? 'text-emerald-600'
-                                : 'text-slate-900'
-                            }`}
-                          >
-                            {isRecharge ? '+' : '-'}{formatCurrency(tx.amount)}
-                          </p>
-                          {tx.balanceAfter !== undefined && (
-                            <p className="text-xs text-slate-400">Bal: {formatCurrency(tx.balanceAfter)}</p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {sessionTxns.map((tx) => (
+                    <SessionTransactionItem key={tx.id} tx={tx} />
+                  ))}
                 </div>
               )
             )}

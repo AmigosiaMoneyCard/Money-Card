@@ -191,22 +191,34 @@ export function SuperAdminAnalyticsView() {
     if (!analytics) return null;
 
     const orgMap = new Map<string, string>();
-    const dateLabel =
-      datePreset === 'all'
-        ? 'All Recorded History'
-        : datePreset === 'today'
-        ? 'Today'
-        : datePreset === 'yesterday'
-        ? 'Yesterday'
-        : datePreset === 'last7'
-        ? 'Last 7 Days'
-        : datePreset === 'last30'
-        ? 'Last 30 Days'
-        : datePreset === 'thisMonth'
-        ? 'This Month'
-        : startDate && endDate
-        ? `${startDate} to ${endDate}`
-        : 'Custom Range';
+    orgs.forEach((o) => orgMap.set(o.id, o.name));
+
+    let dateLabel = 'Custom Range';
+    switch (datePreset) {
+      case 'all':
+        dateLabel = 'All Recorded History';
+        break;
+      case 'today':
+        dateLabel = 'Today';
+        break;
+      case 'yesterday':
+        dateLabel = 'Yesterday';
+        break;
+      case 'last7':
+        dateLabel = 'Last 7 Days';
+        break;
+      case 'last30':
+        dateLabel = 'Last 30 Days';
+        break;
+      case 'thisMonth':
+        dateLabel = 'This Month';
+        break;
+      default:
+        if (startDate && endDate) {
+          dateLabel = `${startDate} to ${endDate}`;
+        }
+        break;
+    }
 
     return {
       reportDateRange: dateLabel,
@@ -460,7 +472,7 @@ export function SuperAdminAnalyticsView() {
             <div className="flex flex-wrap items-center gap-3">
               {/* Cafeteria Scope Filter */}
               <div className="w-full sm:w-56">
-                <label className="mb-1 block text-[11px] font-medium text-slate-600">Cafeteria Scope</label>
+                <label htmlFor="analytics-cafeteria-filter" className="mb-1 block text-[11px] font-medium text-slate-600">Cafeteria Scope</label>
                 <Select
                   id="analytics-cafeteria-filter"
                   value={selectedOrgId}
@@ -474,7 +486,7 @@ export function SuperAdminAnalyticsView() {
 
               {/* Time Window Filter */}
               <div className="w-full sm:w-48">
-                <label className="mb-1 block text-[11px] font-medium text-slate-600">Time Window</label>
+                <label htmlFor="analytics-preset-filter" className="mb-1 block text-[11px] font-medium text-slate-600">Time Window</label>
                 <Select
                   id="analytics-preset-filter"
                   value={datePreset}
@@ -495,8 +507,9 @@ export function SuperAdminAnalyticsView() {
               {datePreset === 'custom' && (
                 <div className="flex flex-wrap items-end gap-2">
                   <div>
-                    <label className="mb-1 block text-[11px] font-medium text-slate-600">Start Date</label>
+                    <label htmlFor="analytics-start-date" className="mb-1 block text-[11px] font-medium text-slate-600">Start Date</label>
                     <input
+                      id="analytics-start-date"
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
@@ -504,8 +517,9 @@ export function SuperAdminAnalyticsView() {
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[11px] font-medium text-slate-600">End Date</label>
+                    <label htmlFor="analytics-end-date" className="mb-1 block text-[11px] font-medium text-slate-600">End Date</label>
                     <input
+                      id="analytics-end-date"
                       type="date"
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
