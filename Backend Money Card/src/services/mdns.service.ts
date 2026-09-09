@@ -9,42 +9,39 @@ let isPublishing = false;
  * Discovers the active physical LAN/Wi-Fi IPv4 address on the host machine.
  * Skips virtual adapters (VirtualBox 192.168.56.x, Hyper-V vEthernet, WSL switches).
  */
+function findMatchingIp(
+  interfaces: NodeJS.Dict<os.NetworkInterfaceInfo[]>,
+  nameMatcher: (name: string) => boolean,
+  addrMatcher: (addr: os.NetworkInterfaceInfo) => boolean,
+): string | undefined {
+  for (const [name, addrs] of Object.entries(interfaces)) {
+    if (!addrs || !nameMatcher(name.toLowerCase())) continue;
+    const match = addrs.find(addrMatcher);
+    if (match) return match.address;
+  }
+  return undefined;
+}
+
 export function getPrimaryLanIp(): string | undefined {
   const interfaces = os.networkInterfaces();
 
   // 1. First priority: Physical Wi-Fi / Wireless adapter
-  for (const [name, addrs] of Object.entries(interfaces)) {
-    if (!addrs) continue;
-    const lower = name.toLowerCase();
-    if (lower.includes('wi-fi') || lower.includes('wireless') || lower.includes('wlan')) {
-      for (const a of addrs) {
-        if (a.family === 'IPv4' && !a.internal) {
-          return a.address;
-        }
-      }
-    }
-  }
+  const wifiIp = findMatchingIp(
+    interfaces,
+    (name) => name.includes('wi-fi') || name.includes('wireless') || name.includes('wlan'),
+    (a) => a.family === 'IPv4' && !a.internal,
+  );
+  if (wifiIp) return wifiIp;
 
   // 2. Second priority: Physical Ethernet adapter (excluding virtual switches)
-  for (const [name, addrs] of Object.entries(interfaces)) {
-    if (!addrs) continue;
-    const lower = name.toLowerCase();
-    if (
-      lower.includes('vethernet') ||
-      lower.includes('virtual') ||
-      lower.includes('switch') ||
-      lower.includes('vbox')
-    ) {
-      continue;
-    }
-    for (const a of addrs) {
-      if (a.family === 'IPv4' && !a.internal && !a.address.startsWith('192.168.56.')) {
-        return a.address;
-      }
-    }
-  }
+  const isExcluded = (name: string) =>
+    name.includes('vethernet') || name.includes('virtual') || name.includes('switch') || name.includes('vbox');
 
-  return undefined;
+  return findMatchingIp(
+    interfaces,
+    (name) => !isExcluded(name),
+    (a) => a.family === 'IPv4' && !a.internal && !a.address.startsWith('192.168.56.'),
+  );
 }
 
 /**

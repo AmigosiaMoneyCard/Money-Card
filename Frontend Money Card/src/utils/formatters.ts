@@ -98,12 +98,34 @@ export interface FormattedTransactionItem {
   total?: number;
 }
 
-export function extractTransactionItems(rawItems: any): FormattedTransactionItem[] {
-  if (!rawItems) return [];
-  let items = rawItems;
-  if (typeof rawItems === 'string') {
+function extractItemName(it: any): string {
+  if (it.itemName) return it.itemName;
+  if (it.name) return it.name;
+  if (it.productName) return it.productName;
+  if (it.title) return it.title;
+  if (it.productId) return `Product (${String(it.productId).slice(0, 6)})`;
+  return 'Item';
+}
+
+function extractItemUnitPrice(it: any): number | undefined {
+  if (typeof it.unitPrice === 'number') return it.unitPrice;
+  if (typeof it.price === 'number') return it.price;
+  return undefined;
+}
+
+function extractItemTotal(it: any, unitPrice: number | undefined, quantity: number): number | undefined {
+  if (typeof it.subtotal === 'number') return it.subtotal;
+  if (typeof it.totalAmount === 'number') return it.totalAmount;
+  if (typeof it.totalPrice === 'number') return it.totalPrice;
+  if (unitPrice !== undefined) return unitPrice * quantity;
+  return undefined;
+}
+
+export function extractTransactionItems(items: any): FormattedTransactionItem[] {
+  if (!items) return [];
+  if (typeof items === 'string') {
     try {
-      items = JSON.parse(rawItems);
+      items = JSON.parse(items);
     } catch {
       return [];
     }
@@ -122,29 +144,10 @@ export function extractTransactionItems(rawItems: any): FormattedTransactionItem
       if (typeof it === 'string') {
         return { name: it.trim(), quantity: 1 };
       }
-      const name =
-        it.itemName ||
-        it.name ||
-        it.productName ||
-        it.title ||
-        (it.productId ? `Product (${String(it.productId).slice(0, 6)})` : 'Item');
+      const name = extractItemName(it);
       const quantity = Math.max(1, Number(it.quantity || it.qty || it.count || 1));
-      const unitPrice =
-        typeof it.unitPrice === 'number'
-          ? it.unitPrice
-          : typeof it.price === 'number'
-          ? it.price
-          : undefined;
-      const total =
-        typeof it.subtotal === 'number'
-          ? it.subtotal
-          : typeof it.totalAmount === 'number'
-          ? it.totalAmount
-          : typeof it.totalPrice === 'number'
-          ? it.totalPrice
-          : unitPrice !== undefined
-          ? unitPrice * quantity
-          : undefined;
+      const unitPrice = extractItemUnitPrice(it);
+      const total = extractItemTotal(it, unitPrice, quantity);
 
       return {
         name,

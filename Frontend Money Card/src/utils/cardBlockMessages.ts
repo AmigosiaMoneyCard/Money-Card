@@ -1,6 +1,23 @@
 // ─── Card Block Reason & Business Logic Messages ───────────────
 // Converts technical or raw card block strings into clear, minimal business messages.
 
+const CATEGORY_MAP: Record<string, string> = {
+  'Administrative Block': 'Administratively suspended',
+  'Lost or Stolen Card': 'Reported lost or stolen',
+  'Suspicious Activity / Fraud': 'Suspicious activity flagged',
+  'Damaged / Hardware Fault': 'Damaged card reported',
+  'Customer Request': 'Blocked per customer request',
+  'Staff Discretion': 'Blocked by staff discretion',
+};
+
+function formatReasonString(prefix: string, blocker: string, notes?: string): string {
+  const cleanNotes = notes?.trim();
+  const lead = prefix.includes('staff discretion')
+    ? `${prefix} (${blocker})`
+    : `${prefix} by ${blocker}`;
+  return cleanNotes ? `${lead}: ${cleanNotes}` : `${lead}.`;
+}
+
 export function buildCardBlockReason(
   category: string,
   notes?: string,
@@ -16,47 +33,19 @@ export function buildCardBlockReason(
     MANAGER: 'Manager',
   };
   const roleLabel = blockerRole ? roleMap[blockerRole] || blockerRole : 'Administrator';
-
   const blocker = blockerName ? `${blockerName} (${roleLabel})` : 'Administrator';
-  const cleanNotes = notes?.trim();
 
-  switch (category) {
-    case 'Administrative Block':
-      return cleanNotes
-        ? `Administratively suspended by ${blocker}: ${cleanNotes}`
-        : `Administratively suspended by ${blocker}.`;
-
-    case 'Lost or Stolen Card':
-      return cleanNotes
-        ? `Reported lost or stolen by ${blocker}: ${cleanNotes}`
-        : `Reported lost or stolen by ${blocker}.`;
-
-    case 'Suspicious Activity / Fraud':
-      return cleanNotes
-        ? `Suspicious activity flagged by ${blocker}: ${cleanNotes}`
-        : `Suspicious activity flagged by ${blocker}.`;
-
-    case 'Damaged / Hardware Fault':
-      return cleanNotes
-        ? `Damaged card reported by ${blocker}: ${cleanNotes}`
-        : `Damaged card reported by ${blocker}.`;
-
-    case 'Customer Request':
-      return cleanNotes
-        ? `Blocked per customer request by ${blocker}: ${cleanNotes}`
-        : `Blocked per customer request by ${blocker}.`;
-
-    case 'Staff Discretion':
-      return cleanNotes
-        ? `Blocked by staff discretion (${blocker}): ${cleanNotes}`
-        : `Blocked by staff discretion (${blocker}).`;
-
-    default:
-      return cleanNotes
-        ? `${category} by ${blocker}: ${cleanNotes}`
-        : `${category} by ${blocker}.`;
-  }
+  const prefix = CATEGORY_MAP[category] || category;
+  return formatReasonString(prefix, blocker, notes);
 }
+
+const STANDALONE_MAP: Record<string, (fallback?: string | null) => string> = {
+  'Administrative Block': (fb) => `Administratively suspended${fb ? ` by ${fb}` : ''}.`,
+  'Lost or Stolen Card': (fb) => `Reported lost or stolen${fb ? ` by ${fb}` : ''}.`,
+  'Suspicious Activity / Fraud': () => 'Suspicious activity flagged.',
+  'Damaged / Hardware Fault': () => 'Damaged card reported.',
+  'Customer Request': () => 'Blocked per customer request.',
+};
 
 export function formatBlockedCardMessage(
   rawReason?: string | null,
@@ -73,61 +62,14 @@ export function formatBlockedCardMessage(
   if (bracketMatch) {
     const [, blocker, category, notes] = bracketMatch;
     const cat = category.trim();
-    const cleanNotes = (notes || '').trim();
-
-    if (cat === 'Administrative Block') {
-      return cleanNotes
-        ? `Administratively suspended by ${blocker}: ${cleanNotes}`
-        : `Administratively suspended by ${blocker}.`;
-    }
-    if (cat === 'Lost or Stolen Card') {
-      return cleanNotes
-        ? `Reported lost or stolen by ${blocker}: ${cleanNotes}`
-        : `Reported lost or stolen by ${blocker}.`;
-    }
-    if (cat === 'Suspicious Activity / Fraud') {
-      return cleanNotes
-        ? `Suspicious activity flagged by ${blocker}: ${cleanNotes}`
-        : `Suspicious activity flagged by ${blocker}.`;
-    }
-    if (cat === 'Damaged / Hardware Fault') {
-      return cleanNotes
-        ? `Damaged card reported by ${blocker}: ${cleanNotes}`
-        : `Damaged card reported by ${blocker}.`;
-    }
-    if (cat === 'Customer Request') {
-      return cleanNotes
-        ? `Blocked per customer request by ${blocker}: ${cleanNotes}`
-        : `Blocked per customer request by ${blocker}.`;
-    }
-    if (cat === 'Staff Discretion') {
-      return cleanNotes
-        ? `Blocked by staff discretion (${blocker}): ${cleanNotes}`
-        : `Blocked by staff discretion (${blocker}).`;
-    }
-
-    return cleanNotes
-      ? `${cat} by ${blocker}: ${cleanNotes}`
-      : `${cat} by ${blocker}.`;
+    const prefix = CATEGORY_MAP[cat] || cat;
+    return formatReasonString(prefix, blocker, notes);
   }
 
   // Pattern 2: Standalone category string like "Administrative Block"
-  if (trimmed === 'Administrative Block') {
-    const byStr = fallbackBlocker ? ` by ${fallbackBlocker}` : '';
-    return `Administratively suspended${byStr}.`;
-  }
-  if (trimmed === 'Lost or Stolen Card') {
-    const byStr = fallbackBlocker ? ` by ${fallbackBlocker}` : '';
-    return `Reported lost or stolen${byStr}.`;
-  }
-  if (trimmed === 'Suspicious Activity / Fraud') {
-    return 'Suspicious activity flagged.';
-  }
-  if (trimmed === 'Damaged / Hardware Fault') {
-    return 'Damaged card reported.';
-  }
-  if (trimmed === 'Customer Request') {
-    return 'Blocked per customer request.';
+  const standaloneFormatter = STANDALONE_MAP[trimmed];
+  if (standaloneFormatter) {
+    return standaloneFormatter(fallbackBlocker);
   }
 
   // If it's a legacy long sentence, strip out the verbose policy boilerplate if present
@@ -157,4 +99,3 @@ export function validateBlockReasonWordCount(text?: string | null, maxWords: num
     isValid: wordCount <= maxWords,
   };
 }
-

@@ -74,7 +74,6 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     activeSessionsCount,
     branches,
     lowStockCount,
-    products,
     activeSessionsList,
     settledSessionsCount,
     staffUsers,
@@ -111,10 +110,6 @@ export async function getOrgAnalytics(req: Request, res: Response) {
         ...(branchId && branchId !== 'ALL' ? { branchId } : {}),
         quantity: { lte: 5 },
       },
-    }),
-    prisma.product.findMany({
-      where: orgId ? { organizationId: orgId } : {},
-      include: { inventoryItems: true },
     }),
     prisma.cardSession.findMany({
       where: {

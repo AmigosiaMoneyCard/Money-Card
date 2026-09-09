@@ -553,43 +553,57 @@ export async function createPlan(req: Request, res: Response) {
   }
 }
 
-export async function updatePlan(req: Request, res: Response) {
-  const { id } = req.params;
-  const { name, price, billingInterval, branchLimit, staffLimit, cardLimit, description, features, isPopular } = req.body;
-
-  let trimmedName: string | undefined = undefined;
+function validatePlanFields(name: any, price: any): { error?: string; trimmedName?: string; numericPrice?: number } {
+  let trimmedName: string | undefined;
   if (name !== undefined) {
     if (typeof name !== 'string' || !name.trim()) {
-      return sendError(res, 400, 'VALIDATION_ERROR', 'Plan name cannot be empty');
+      return { error: 'Plan name cannot be empty' };
     }
     trimmedName = name.trim();
     if (trimmedName.length > 20) {
-      return sendError(res, 400, 'VALIDATION_ERROR', 'Plan name must be at most 20 characters');
+      return { error: 'Plan name must be at most 20 characters' };
     }
   }
 
-  let numericPrice: number | undefined = undefined;
+  let numericPrice: number | undefined;
   if (price !== undefined) {
     numericPrice = Number(price);
     if (!Number.isFinite(numericPrice) || numericPrice < 0) {
-      return sendError(res, 400, 'VALIDATION_ERROR', 'Price must be a valid non-negative number');
+      return { error: 'Price must be a valid non-negative number' };
     }
   }
 
+  return { trimmedName, numericPrice };
+}
+
+function buildPlanUpdateData(body: any, trimmedName?: string, numericPrice?: number) {
+  const data: any = {};
+  if (trimmedName !== undefined) data.name = trimmedName;
+  if (numericPrice !== undefined) data.price = numericPrice;
+  if (body.billingInterval) data.billingInterval = body.billingInterval;
+  if (body.branchLimit !== undefined) data.branchLimit = Number(body.branchLimit);
+  if (body.staffLimit !== undefined) data.staffLimit = Number(body.staffLimit);
+  if (body.cardLimit !== undefined) data.cardLimit = Number(body.cardLimit);
+  if (body.description !== undefined) data.description = body.description;
+  if (body.features) data.features = body.features;
+  if (body.isPopular !== undefined) data.isPopular = !!body.isPopular;
+  return data;
+}
+
+export async function updatePlan(req: Request, res: Response) {
+  const { id } = req.params;
+  const { name, price } = req.body;
+
+  const validation = validatePlanFields(name, price);
+  if (validation.error) {
+    return sendError(res, 400, 'VALIDATION_ERROR', validation.error);
+  }
+
   try {
+    const data = buildPlanUpdateData(req.body, validation.trimmedName, validation.numericPrice);
     const plan = await prisma.plan.update({
       where: { id },
-      data: {
-        ...(trimmedName ? { name: trimmedName } : {}),
-        ...(numericPrice !== undefined ? { price: numericPrice } : {}),
-        ...(billingInterval ? { billingInterval } : {}),
-        ...(branchLimit !== undefined ? { branchLimit: Number(branchLimit) } : {}),
-        ...(staffLimit !== undefined ? { staffLimit: Number(staffLimit) } : {}),
-        ...(cardLimit !== undefined ? { cardLimit: Number(cardLimit) } : {}),
-        ...(description !== undefined ? { description } : {}),
-        ...(features ? { features } : {}),
-        ...(isPopular !== undefined ? { isPopular: !!isPopular } : {}),
-      },
+      data,
     });
 
     return sendSuccess(res, plan);

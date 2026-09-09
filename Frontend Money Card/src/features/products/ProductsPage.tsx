@@ -1,7 +1,7 @@
 // ─── Products & Inventory Unified Hub (Org Admin) ──────────────────────────
 // Merged single view: Product catalog, live branch stock, pricing, and adjustments.
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, type FormEvent } from 'react';
 import { apiService } from '@/services/api';
 import { useBranch, usePermissions } from '@/hooks';
 import type { ProductWithInventory, Branch, InventoryItem } from '@/types';
@@ -49,42 +49,133 @@ interface ProductsPageProps {
   defaultTab?: string;
 }
 
-export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}) {
-  const { currentBranch, selectBranch } = useBranch();
-  const { hasPermission } = usePermissions();
+interface ProductsMetrics {
+  totalProducts: number;
+  activeProducts: number;
+  totalUnits: number;
+  totalValuation: number;
+  lowStock: number;
+  outOfStock: number;
+}
 
-  const canViewProducts = hasPermission('PRODUCT_VIEW');
-  const canManageProducts = hasPermission('PRODUCT_MANAGE');
-  const canViewInventory = hasPermission('INVENTORY_VIEW');
-  const canManageInventory = hasPermission('INVENTORY_MANAGE');
+function matchesProductSearch(product: UnifiedProductItem, query: string): boolean {
+  if (!query) return true;
+  const q = query.toLowerCase().trim();
+  if (product.itemName.toLowerCase().includes(q)) return true;
+  return Array.isArray(product.category) && product.category.some((c) => c.toLowerCase().includes(q));
+}
 
-  // Shared state
-  const [branches, setBranches] = useState<Branch[]>([]);
-  const [branchFilter, setBranchFilter] = useState<string>(currentBranch?.id || 'ALL');
+function matchesProductCategory(product: UnifiedProductItem, category: string): boolean {
+  if (category === 'ALL') return true;
+  const catLower = category.toLowerCase();
+  return Array.isArray(product.category) && product.category.some((c) => c.toLowerCase() === catLower);
+}
 
-  useEffect(() => {
-    setBranchFilter(currentBranch ? currentBranch.id : 'ALL');
-  }, [currentBranch]);
+function matchesProductStockStatus(product: UnifiedProductItem, filter: string): boolean {
+  switch (filter) {
+    case 'ACTIVE':
+      return product.status === 'ACTIVE';
+    case 'INACTIVE':
+      return product.status === 'INACTIVE';
+    case 'IN_STOCK':
+      return product.quantity >= 10;
+    case 'LOW_STOCK':
+      return product.quantity > 0 && product.quantity < 10;
+    case 'OUT_OF_STOCK':
+      return product.quantity === 0;
+    default:
+      return true;
+  }
+}
 
-  // Products & Inventory Data
-  const [products, setProducts] = useState<ProductWithInventory[]>([]);
-  const [inventoryList, setInventoryList] = useState<InventoryItemWithDetails[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+function matchesProductFilter(
+  product: UnifiedProductItem,
+  query: string,
+  category: string,
+  statusStock: string,
+): boolean {
+  return (
+    matchesProductSearch(product, query) &&
+    matchesProductCategory(product, category) &&
+    matchesProductStockStatus(product, statusStock)
+  );
+}
 
-  // Filters & Search
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusStockFilter, setStatusStockFilter] = useState('ALL');
-  const [categoryFilter, setCategoryFilter] = useState('ALL');
+function ProductsMetricsCards({ metrics }: { metrics: ProductsMetrics }) {
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <Card padding="md" className="space-y-1">
+        <div className="flex items-center justify-between text-slate-500">
+          <span className="text-xs font-semibold uppercase tracking-wider">Catalog Items</span>
+          <Package className="h-4 w-4 text-emerald-600" />
+        </div>
+        <p className="text-xl font-bold text-slate-900">{metrics.totalProducts}</p>
+        <p className="text-[11px] text-slate-500">Master products</p>
+      </Card>
 
-  // Modals state
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showAdjustModal, setShowAdjustModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [selectedProductToDelete, setSelectedProductToDelete] = useState<UnifiedProductItem | null>(null);
-  const [selectedInventory, setSelectedInventory] = useState<InventoryItemWithDetails | null>(null);
+      <Card padding="md" className="space-y-1">
+        <div className="flex items-center justify-between text-slate-500">
+          <span className="text-xs font-semibold uppercase tracking-wider">Active for Sale</span>
+          <Layers className="h-4 w-4 text-indigo-600" />
+        </div>
+        <p className="text-xl font-bold text-emerald-700">{metrics.activeProducts}</p>
+        <p className="text-[11px] text-slate-500">Available at counter</p>
+      </Card>
 
-  // Create Product Form State
+      <Card padding="md" className="space-y-1">
+        <div className="flex items-center justify-between text-slate-500">
+          <span className="text-xs font-semibold uppercase tracking-wider">Stock Units</span>
+          <Package className="h-4 w-4 text-sky-600" />
+        </div>
+        <p className="text-xl font-bold text-sky-700">{metrics.totalUnits}</p>
+        <p className="text-[11px] text-slate-500">Units in inventory</p>
+      </Card>
+
+      <Card padding="md" className="space-y-1">
+        <div className="flex items-center justify-between text-slate-500">
+          <span className="text-xs font-semibold uppercase tracking-wider">Stock Valuation</span>
+          <TrendingUp className="h-4 w-4 text-teal-600" />
+        </div>
+        <p className="text-xl font-bold text-teal-700 font-mono">
+          {formatCurrency(metrics.totalValuation)}
+        </p>
+        <p className="text-[11px] text-slate-500">Inventory worth</p>
+      </Card>
+
+      <Card padding="md" className="space-y-1">
+        <div className="flex items-center justify-between text-slate-500">
+          <span className="text-xs font-semibold uppercase tracking-wider">Low Stock (&lt; 10)</span>
+          <AlertTriangle className="h-4 w-4 text-amber-500" />
+        </div>
+        <p className="text-xl font-bold text-amber-600">{metrics.lowStock}</p>
+        <p className="text-[11px] text-slate-500">Needs restock</p>
+      </Card>
+
+      <Card padding="md" className="space-y-1">
+        <div className="flex items-center justify-between text-slate-500">
+          <span className="text-xs font-semibold uppercase tracking-wider">Out of Stock</span>
+          <AlertCircle className="h-4 w-4 text-rose-500" />
+        </div>
+        <p className="text-xl font-bold text-rose-600">{metrics.outOfStock}</p>
+        <p className="text-[11px] text-slate-500">Unavailable for POS</p>
+      </Card>
+    </div>
+  );
+}
+
+function ProductsCreateModal({
+  isOpen,
+  onClose,
+  branches,
+  currentBranch,
+  onCreated,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  branches: Branch[];
+  currentBranch: Branch | null;
+  onCreated: () => void;
+}) {
   const [formItemName, setFormItemName] = useState('');
   const [formCategories, setFormCategories] = useState<string[]>([]);
   const [formPrice, setFormPrice] = useState('');
@@ -95,11 +186,423 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
   const [modalApiError, setModalApiError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Stock Adjustment Form State
+  useEffect(() => {
+    if (isOpen) {
+      setFormItemName('');
+      setFormCategories([]);
+      setFormPrice('');
+      setFormBranchId(currentBranch?.id || branches[0]?.id || '');
+      setFormStockQty('0');
+      setFormStatus('ACTIVE');
+      setFormErrors({});
+      setModalApiError(null);
+    }
+  }, [isOpen, currentBranch, branches]);
+
+  const validateProductForm = () => {
+    const errs: Record<string, string> = {};
+    if (!formItemName.trim()) errs.itemName = 'Product name is required';
+    if (formItemName.trim().length > 40) errs.itemName = 'Product name must be 40 characters or less';
+    if (!formCategories || formCategories.length === 0) errs.categories = 'Select at least one category';
+
+    const priceNum = parseFloat(formPrice);
+    if (isNaN(priceNum) || priceNum <= 0) errs.price = 'Price must be greater than 0';
+
+    if (!formBranchId) errs.branchId = 'Select a branch';
+
+    const qtyNum = parseInt(formStockQty, 10);
+    if (isNaN(qtyNum) || qtyNum < 0) errs.stockQty = 'Stock quantity must be 0 or greater';
+
+    setFormErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!validateProductForm()) return;
+
+    setModalApiError(null);
+    setIsSubmitting(true);
+
+    try {
+      const res = await apiService.products.createProduct({
+        itemName: formItemName.trim(),
+        category: formCategories,
+        price: Math.round(parseFloat(formPrice)),
+        branchId: formBranchId,
+        initialQuantity: parseInt(formStockQty, 10),
+        status: formStatus,
+      });
+
+      if (!res.success) {
+        setModalApiError(res.error.message || 'Failed to create product');
+        return;
+      }
+
+      notify.success(`Product "${res.data.itemName}" created successfully`);
+      onClose();
+      onCreated();
+    } catch {
+      setModalApiError('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Create New Master Product"
+      description="Add a new item to catalog and set initial inventory stock"
+      size="lg"
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {modalApiError && (
+          <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-700">
+            <AlertCircle className="h-4 w-4 shrink-0 text-rose-500 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-semibold">Creation Failed</p>
+              <p>{modalApiError}</p>
+            </div>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 mb-1">
+            Product Name <span className="text-rose-500">*</span>
+          </label>
+          <Input
+            placeholder="e.g. Masala Chai, Veg Burger, Cold Coffee"
+            value={formItemName}
+            maxLength={40}
+            onChange={(e) => setFormItemName(e.target.value.slice(0, 40))}
+            error={formErrors.itemName}
+            autoFocus
+          />
+        </div>
+
+        <div>
+          <CategorySelector
+            selectedCategories={formCategories}
+            onChange={(cats) => setFormCategories(cats)}
+            error={formErrors.categories}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Selling Price (₹) <span className="text-rose-500">*</span>
+            </label>
+            <Input
+              type="number"
+              step="1"
+              min="0"
+              placeholder="e.g. ₹120.00"
+              value={formPrice}
+              onChange={(e) => setFormPrice(e.target.value)}
+              error={formErrors.price}
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Initial Counter <span className="text-rose-500">*</span>
+            </label>
+            <Select
+              value={formBranchId}
+              onChange={(e) => setFormBranchId(e.target.value)}
+              options={branches.map((b) => ({ value: b.id, label: b.name }))}
+              error={formErrors.branchId}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Initial Stock Quantity (Units)
+            </label>
+            <Input
+              type="number"
+              min="0"
+              placeholder="e.g. 50"
+              value={formStockQty}
+              onChange={(e) => setFormStockQty(e.target.value)}
+              error={formErrors.stockQty}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="create-product-status" className="block text-xs font-semibold text-slate-700 mb-1">Status</label>
+            <Select
+              id="create-product-status"
+              value={formStatus}
+              onChange={(e) => setFormStatus(e.target.value as 'ACTIVE' | 'INACTIVE')}
+              options={[
+                { value: 'ACTIVE', label: 'ACTIVE (Available for sale)' },
+                { value: 'INACTIVE', label: 'INACTIVE (Hidden from POS)' },
+              ]}
+            />
+          </div>
+        </div>
+
+        <ModalFooter>
+          <Button variant="ghost" type="button" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" type="submit" isLoading={isSubmitting}>
+            Create Product
+          </Button>
+        </ModalFooter>
+      </form>
+    </Modal>
+  );
+}
+
+function ProductsAdjustModal({
+  isOpen,
+  onClose,
+  selectedInventory,
+  onAdjusted,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  selectedInventory: InventoryItemWithDetails | null;
+  onAdjusted: () => void;
+}) {
   const [adjustQtyInput, setAdjustQtyInput] = useState('');
   const [qtyError, setQtyError] = useState<string | null>(null);
+  const [modalApiError, setModalApiError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // ─── Unified Data Fetching ────────────────────────────────────────────────
+  useEffect(() => {
+    if (isOpen && selectedInventory) {
+      setAdjustQtyInput(selectedInventory.quantity.toString());
+      setQtyError(null);
+      setModalApiError(null);
+    }
+  }, [isOpen, selectedInventory]);
+
+  if (!selectedInventory) return null;
+
+  const handleStepAdjustment = (delta: number) => {
+    const current = parseInt(adjustQtyInput, 10) || 0;
+    const nextVal = Math.max(0, current + delta);
+    setAdjustQtyInput(nextVal.toString());
+  };
+
+  const handleAdjustSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    const newQty = parseInt(adjustQtyInput, 10);
+    if (isNaN(newQty)) {
+      setQtyError('Please enter a valid numeric quantity');
+      return;
+    }
+    if (newQty < 0) {
+      setQtyError('Stock quantity cannot be negative');
+      return;
+    }
+
+    setQtyError(null);
+    setModalApiError(null);
+    setIsSubmitting(true);
+
+    try {
+      const res = await apiService.inventory.updateInventoryQuantity(selectedInventory.id, newQty);
+      if (!res.success) {
+        setModalApiError(res.error.message || 'Failed to adjust stock quantity');
+        return;
+      }
+
+      notify.success(`Stock for ${selectedInventory.productName} updated to ${newQty} units`);
+      onClose();
+      onAdjusted();
+    } catch {
+      setModalApiError('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Adjust Counter Stock"
+      size="md"
+    >
+      <form onSubmit={handleAdjustSubmit} className="space-y-4">
+        {modalApiError && (
+          <div className="flex items-center gap-2 rounded-lg bg-rose-500/10 p-3 text-sm text-rose-700 border border-rose-500/20">
+            <AlertCircle className="h-4 w-4 shrink-0 text-rose-500" />
+            <span>{modalApiError}</span>
+          </div>
+        )}
+
+        <div className="rounded-lg bg-slate-50 p-3 border border-slate-200">
+          <p className="font-semibold text-slate-900">{selectedInventory.productName}</p>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Counter: <span className="text-slate-800">{selectedInventory.branchName}</span> • Current:{' '}
+            <span className="text-emerald-700 font-bold">{selectedInventory.quantity} units</span>
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 mb-1">
+            New Stock Quantity (Units)
+          </label>
+          <Input
+            type="number"
+            min="0"
+            value={adjustQtyInput}
+            onChange={(e) => setAdjustQtyInput(e.target.value)}
+            error={qtyError || undefined}
+          />
+        </div>
+
+        <div className="flex flex-wrap gap-2 pt-1">
+          {[-10, -5, -1, 1, 5, 10, 50].map((delta) => (
+            <Button
+              key={delta}
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handleStepAdjustment(delta)}
+            >
+              {delta > 0 ? `+${delta}` : delta}
+            </Button>
+          ))}
+        </div>
+
+        <ModalFooter>
+          <Button variant="ghost" type="button" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" type="submit" isLoading={isSubmitting}>
+            Confirm Stock Update
+          </Button>
+        </ModalFooter>
+      </form>
+    </Modal>
+  );
+}
+
+function ProductsDeleteModal({
+  isOpen,
+  onClose,
+  selectedProduct,
+  onDeleted,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  selectedProduct: UnifiedProductItem | null;
+  onDeleted: () => void;
+}) {
+  const [modalApiError, setModalApiError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (!selectedProduct) return null;
+
+  const handleDeleteProductSubmit = async () => {
+    setIsSubmitting(true);
+    setModalApiError(null);
+
+    try {
+      const res = await apiService.products.deleteProduct(selectedProduct.id);
+      if (!res.success) {
+        setModalApiError(res.error.message || 'Failed to archive product');
+        return;
+      }
+
+      notify.success(`Product '${selectedProduct.itemName}' archived successfully`);
+      onClose();
+      onDeleted();
+    } catch {
+      setModalApiError('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={() => !isSubmitting && onClose()}
+      title="Delete Product"
+      description="Archive product from master catalog"
+      size="md"
+    >
+      <div className="space-y-4">
+        {modalApiError && (
+          <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-700">
+            <AlertCircle className="h-4 w-4 shrink-0 text-rose-500 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-semibold">Action Failed</p>
+              <p>{modalApiError}</p>
+            </div>
+          </div>
+        )}
+
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-2">
+          <p className="text-sm text-slate-800 font-medium">
+            Are you sure you want to delete{' '}
+            <span className="text-emerald-700 font-bold font-mono">
+              {selectedProduct.itemName}?
+            </span>
+          </p>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            This product will be archived and hidden from POS sale menus. All historical receipts, purchase items, and past financial reports will continue to safely preserve this product's name and accounting history.
+          </p>
+        </div>
+
+        <ModalFooter>
+          <Button variant="ghost" type="button" onClick={onClose} disabled={isSubmitting}>
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            type="button"
+            onClick={handleDeleteProductSubmit}
+            isLoading={isSubmitting}
+          >
+            Archive & Delete Product
+          </Button>
+        </ModalFooter>
+      </div>
+    </Modal>
+  );
+}
+
+// ─── Extracted Hook: Products Page State & Operations ───────────────────────
+interface UseProductsPageDataProps {
+  currentBranch: Branch | null;
+}
+
+function useProductsPageData({ currentBranch }: UseProductsPageDataProps) {
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [branchFilter, setBranchFilter] = useState<string>(currentBranch?.id || 'ALL');
+
+  useEffect(() => {
+    setBranchFilter(currentBranch ? currentBranch.id : 'ALL');
+  }, [currentBranch]);
+
+  const [products, setProducts] = useState<ProductWithInventory[]>([]);
+  const [inventoryList, setInventoryList] = useState<InventoryItemWithDetails[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusStockFilter, setStatusStockFilter] = useState('ALL');
+  const [categoryFilter, setCategoryFilter] = useState('ALL');
+
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showAdjustModal, setShowAdjustModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedProductToDelete, setSelectedProductToDelete] = useState<UnifiedProductItem | null>(null);
+  const [selectedInventory, setSelectedInventory] = useState<InventoryItemWithDetails | null>(null);
+
   const fetchUnifiedData = useCallback(async () => {
     setLoadError(null);
     try {
@@ -118,7 +621,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
       }
 
       if (branchRes.success) {
-        const bItems = Array.isArray(branchRes.data) ? branchRes.data : (branchRes.data?.items || []);
+        const bItems = Array.isArray(branchRes.data) ? branchRes.data : branchRes.data?.items || [];
         setBranches(bItems);
       }
 
@@ -132,14 +635,12 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
           : invRes.data?.items || []
         : [];
 
-      // Map branches
       const branchMap = new Map<string, string>();
       if (branchRes.success) {
-        const bItems = Array.isArray(branchRes.data) ? branchRes.data : (branchRes.data?.items || []);
+        const bItems = Array.isArray(branchRes.data) ? branchRes.data : branchRes.data?.items || [];
         bItems.forEach((b) => branchMap.set(b.id, b.name));
       }
 
-      // Map inventory
       const invDetailsList: InventoryItemWithDetails[] = rawInventory.map((item) => {
         const prod = rawProducts.find((p) => p.id === item.productId);
         return {
@@ -164,16 +665,15 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
     fetchUnifiedData();
   }, [fetchUnifiedData]);
 
-  // ─── Combined Unified Product Items ───────────────────────────────────────
   const unifiedProducts = useMemo<UnifiedProductItem[]>(() => {
     return products.map((product) => {
-      // Find matching inventory items
       const matchingInv = inventoryList.filter((i) => i.productId === product.id);
-      const totalQty = matchingInv.length > 0
-        ? matchingInv.reduce((sum, i) => sum + i.quantity, 0)
-        : (product.quantity || 0);
+      const totalQty =
+        matchingInv.length > 0
+          ? matchingInv.reduce((sum, i) => sum + i.quantity, 0)
+          : product.quantity || 0;
 
-      const branchName = product.branchName || (matchingInv[0]?.branchName) || undefined;
+      const branchName = product.branchName || matchingInv[0]?.branchName || undefined;
       const inventoryId = matchingInv[0]?.id;
 
       return {
@@ -185,135 +685,41 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
     });
   }, [products, inventoryList]);
 
-  // ─── Filtered Products ────────────────────────────────────────────────────
   const filteredProducts = useMemo(() => {
-    return unifiedProducts.filter((product) => {
-      // 1. Search filter
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const matchesName = product.itemName.toLowerCase().includes(q);
-        const matchesCat = Array.isArray(product.category) && product.category.some((c) => c.toLowerCase().includes(q));
-        if (!matchesName && !matchesCat) return false;
-      }
-
-      // 2. Category filter
-      if (categoryFilter !== 'ALL') {
-        const catLower = categoryFilter.toLowerCase();
-        const hasCat = Array.isArray(product.category) && product.category.some((c) => c.toLowerCase() === catLower);
-        if (!hasCat) return false;
-      }
-
-      // 3. Status & Stock filter
-      if (statusStockFilter === 'ACTIVE' && product.status !== 'ACTIVE') return false;
-      if (statusStockFilter === 'INACTIVE' && product.status !== 'INACTIVE') return false;
-      if (statusStockFilter === 'IN_STOCK' && product.quantity < 10) return false;
-      if (statusStockFilter === 'LOW_STOCK' && (product.quantity <= 0 || product.quantity >= 10)) return false;
-      if (statusStockFilter === 'OUT_OF_STOCK' && product.quantity > 0) return false;
-
-      return true;
-    });
+    return unifiedProducts.filter((product) =>
+      matchesProductFilter(product, searchQuery, categoryFilter, statusStockFilter),
+    );
   }, [unifiedProducts, searchQuery, categoryFilter, statusStockFilter]);
 
-  // ─── Summary Metrics ──────────────────────────────────────────────────────
-  const metrics = useMemo(() => {
+  const metrics = useMemo<ProductsMetrics>(() => {
     const totalProducts = unifiedProducts.length;
     const activeProducts = unifiedProducts.filter((p) => p.status === 'ACTIVE').length;
     const totalUnits = unifiedProducts.reduce((sum, p) => sum + (p.quantity || 0), 0);
-    const totalValuation = unifiedProducts.reduce((sum, p) => sum + ((p.quantity || 0) * p.price), 0);
+    const totalValuation = unifiedProducts.reduce((sum, p) => sum + (p.quantity || 0) * p.price, 0);
     const lowStock = unifiedProducts.filter((p) => p.quantity > 0 && p.quantity < 10).length;
     const outOfStock = unifiedProducts.filter((p) => p.quantity === 0).length;
 
     return { totalProducts, activeProducts, totalUnits, totalValuation, lowStock, outOfStock };
   }, [unifiedProducts]);
 
-  // ─── Handlers: Add Product ────────────────────────────────────────────────
-  const handleOpenCreate = () => {
-    setFormItemName('');
-    setFormCategories([]);
-    setFormPrice('');
-    setFormBranchId(currentBranch?.id || branches[0]?.id || '');
-    setFormStockQty('0');
-    setFormStatus('ACTIVE');
-    setFormErrors({});
-    setModalApiError(null);
-    setShowCreateModal(true);
-  };
-
-  const validateProductForm = () => {
-    const errs: Record<string, string> = {};
-    if (!formItemName.trim()) errs.itemName = 'Product name is required';
-    if (formItemName.trim().length > 30) errs.itemName = 'Product name must be 30 characters or less';
-    if (!formCategories || formCategories.length === 0) errs.categories = 'Select at least one category';
-
-    const priceNum = parseFloat(formPrice);
-    if (isNaN(priceNum) || priceNum <= 0) errs.price = 'Price must be greater than 0';
-
-    const qtyNum = parseInt(formStockQty, 10);
-    if (isNaN(qtyNum) || qtyNum < 0) errs.stockQty = 'Initial stock quantity must be 0 or more';
-
-    if (!formBranchId) {
-      errs.branchId = 'Please select an initial counter';
-    }
-
-    setFormErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
-
-  const handleCreateProductSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateProductForm()) return;
-
-    setModalApiError(null);
-    setIsSubmitting(true);
-
-    try {
-      const res = await apiService.products.createProduct({
-        itemName: formItemName.trim(),
-        category: formCategories,
-        price: Math.round(parseFloat(formPrice)),
-        branchId: formBranchId,
-        initialQuantity: parseInt(formStockQty, 10),
-        status: formStatus,
-      });
-
-      if (!res.success) {
-        setModalApiError(res.error.message || 'Failed to create product');
-        return;
-      }
-
-      notify.success(`Product "${res.data.itemName}" created successfully`);
-      setShowCreateModal(false);
-      fetchUnifiedData();
-    } catch {
-      setModalApiError('An unexpected network error occurred.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // ─── Handlers: Toggle Status ──────────────────────────────────────────────
   const handleToggleStatus = async (product: UnifiedProductItem) => {
     const newStatus = product.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     try {
       const res = await apiService.products.updateProduct(product.id, { status: newStatus });
       if (!res.success) {
-        notify.error(res.error.message || `Failed to ${newStatus.toLowerCase()} product`);
+        notify.error(res.error.message || `Failed to update status`);
         return;
       }
-      notify.success(`Product "${product.itemName}" set to ${newStatus}`);
+      notify.success(`Product "${product.itemName}" is now ${newStatus}`);
       fetchUnifiedData();
     } catch {
-      notify.error('Network error. Unable to change status.');
+      notify.error('Failed to change product status.');
     }
   };
 
-  // ─── Handlers: Adjust Stock ───────────────────────────────────────────────
   const handleOpenAdjust = (product: UnifiedProductItem) => {
-    const invItem = inventoryList.find((i) => i.productId === product.id);
-    if (invItem) {
-      setSelectedInventory(invItem);
-      setAdjustQtyInput(invItem.quantity.toString());
-    } else {
+    const inv = inventoryList.find((i) => i.productId === product.id);
+    if (!inv) {
       setSelectedInventory({
         id: product.inventoryId || product.id,
         productId: product.id,
@@ -325,662 +731,539 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
         branchName: product.branchName || currentBranch?.name || 'Main Cafeteria',
         updatedAt: new Date().toISOString(),
       });
-      setAdjustQtyInput((product.quantity || 0).toString());
+    } else {
+      setSelectedInventory(inv);
     }
-    setQtyError(null);
-    setModalApiError(null);
     setShowAdjustModal(true);
   };
 
-  const handleStepAdjustment = (delta: number) => {
-    const current = parseInt(adjustQtyInput, 10) || 0;
-    const nextVal = Math.max(0, current + delta);
-    setAdjustQtyInput(nextVal.toString());
-  };
-
-  const handleAdjustSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedInventory) return;
-
-    const newQty = parseInt(adjustQtyInput, 10);
-    if (isNaN(newQty)) {
-      setQtyError('Please enter a valid numeric quantity');
-      return;
-    }
-
-    if (newQty < 0) {
-      setQtyError('Stock quantity cannot be negative');
-      return;
-    }
-
-    setQtyError(null);
-    setModalApiError(null);
-    setIsSubmitting(true);
-
-    try {
-      const res = await apiService.inventory.updateInventoryQuantity(selectedInventory.id, newQty);
-
-      if (!res.success) {
-        setModalApiError(res.error.message || 'Failed to adjust stock quantity');
-        return;
-      }
-
-      notify.success(`Stock for ${selectedInventory.productName} updated to ${newQty} units`);
-      setShowAdjustModal(false);
-      fetchUnifiedData();
-    } catch {
-      setModalApiError('An unexpected error occurred. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // ─── Handlers: Delete Product ─────────────────────────────────────────────
-  const handleOpenDeleteProduct = (product: UnifiedProductItem) => {
+  const handleOpenDelete = (product: UnifiedProductItem) => {
     setSelectedProductToDelete(product);
-    setModalApiError(null);
     setShowDeleteModal(true);
   };
 
-  const handleDeleteProductSubmit = async () => {
-    if (!selectedProductToDelete) return;
-    setIsSubmitting(true);
-    setModalApiError(null);
-
-    try {
-      const res = await apiService.products.deleteProduct(selectedProductToDelete.id);
-      if (!res.success) {
-        setModalApiError(res.error.message || 'Failed to archive product');
-        return;
-      }
-
-      notify.success(`Product '${selectedProductToDelete.itemName}' archived successfully`);
-      setShowDeleteModal(false);
-      fetchUnifiedData();
-    } catch {
-      setModalApiError('An unexpected error occurred. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setCategoryFilter('ALL');
+    setStatusStockFilter('ALL');
   };
 
-  // ─── Menu Table Columns (Rows & Columns View) ───────────────────────────
-  const productColumns: Column<UnifiedProductItem>[] = useMemo(() => [
-    {
-      key: 'itemName',
-      header: 'Item Name',
-      className: 'min-w-[180px]',
-      render: (p: UnifiedProductItem) => (
-        <div className="flex flex-col">
-          <span className="font-semibold text-slate-900 text-sm">{p.itemName}</span>
-          {p.branchName && (
-            <span className="text-[11px] text-slate-500 mt-0.5">🏪 {p.branchName}</span>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'category',
-      header: 'Category',
-      className: 'min-w-[140px]',
-      render: (p: UnifiedProductItem) => {
-        const isVeg = Array.isArray(p.category) && p.category.some((c) => c.toLowerCase() === 'veg');
-        const isNonVeg = Array.isArray(p.category) && p.category.some((c) => c.toLowerCase() === 'non-veg');
-        const isBeverage = Array.isArray(p.category) && p.category.some((c) => c.toLowerCase() === 'beverage' || c.toLowerCase() === 'drink');
-        const otherCategories = Array.isArray(p.category)
-          ? p.category.filter((c) => !['veg', 'non-veg', 'beverage', 'drink'].includes(c.toLowerCase()))
-          : [];
+  return {
+    branches,
+    branchFilter,
+    setBranchFilter,
+    isLoading,
+    loadError,
+    searchQuery,
+    setSearchQuery,
+    statusStockFilter,
+    setStatusStockFilter,
+    categoryFilter,
+    setCategoryFilter,
+    showCreateModal,
+    setShowCreateModal,
+    showAdjustModal,
+    setShowAdjustModal,
+    showDeleteModal,
+    setShowDeleteModal,
+    selectedProductToDelete,
+    selectedInventory,
+    unifiedProducts,
+    filteredProducts,
+    metrics,
+    fetchUnifiedData,
+    handleToggleStatus,
+    handleOpenAdjust,
+    handleOpenDelete,
+    handleClearFilters,
+  };
+}
 
-        return (
-          <div className="flex flex-wrap items-center gap-1.5">
-            {isVeg && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                🟢 Veg
-              </span>
-            )}
-            {isNonVeg && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-                🔴 Non-Veg
-              </span>
-            )}
-            {isBeverage && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200">
-                ☕ Drink
-              </span>
-            )}
-            {otherCategories.map((cat) => (
-              <span key={cat} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                {cat}
-              </span>
-            ))}
-            {!isVeg && !isNonVeg && !isBeverage && otherCategories.length === 0 && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                Food
-              </span>
+function renderProductItemCategoryBadges(category: string | string[] | undefined) {
+  const isVeg = Array.isArray(category) && category.some((c) => c.toLowerCase() === 'veg');
+  const isNonVeg = Array.isArray(category) && category.some((c) => c.toLowerCase() === 'non-veg');
+  const isBeverage = Array.isArray(category) && category.some((c) => c.toLowerCase() === 'beverage' || c.toLowerCase() === 'drink');
+  const otherCategories = Array.isArray(category)
+    ? category.filter((c) => !['veg', 'non-veg', 'beverage', 'drink'].includes(c.toLowerCase()))
+    : [];
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {isVeg && (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          🟢 Veg
+        </span>
+      )}
+      {isNonVeg && (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+          🔴 Non-Veg
+        </span>
+      )}
+      {isBeverage && (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200">
+          ☕ Drink
+        </span>
+      )}
+      {otherCategories.map((cat) => (
+        <span
+          key={cat}
+          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200"
+        >
+          {cat}
+        </span>
+      ))}
+      {!isVeg && !isNonVeg && !isBeverage && otherCategories.length === 0 && (
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+          Food
+        </span>
+      )}
+    </div>
+  );
+}
+
+function renderProductItemStockBadge(quantity: number) {
+  if (quantity === 0) {
+    return (
+      <span className="inline-flex items-center font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200 text-xs">
+        Out of stock (0)
+      </span>
+    );
+  }
+  if (quantity < 10) {
+    return (
+      <span className="inline-flex items-center font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 text-xs">
+        Low: {quantity} units
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 text-xs">
+      {quantity} in stock
+    </span>
+  );
+}
+
+function useProductsPageColumns(
+  canManageInventory: boolean,
+  canManageProducts: boolean,
+  onAdjust: (p: UnifiedProductItem) => void,
+  onToggle: (p: UnifiedProductItem) => void,
+  onDelete: (p: UnifiedProductItem) => void,
+): Column<UnifiedProductItem>[] {
+  return useMemo(
+    () => [
+      {
+        key: 'itemName',
+        header: 'Item Name',
+        className: 'min-w-[180px]',
+        render: (p: UnifiedProductItem) => (
+          <div className="flex flex-col">
+            <span className="font-semibold text-slate-900 text-sm">{p.itemName}</span>
+            {p.branchName && (
+              <span className="text-[11px] text-slate-500 mt-0.5">🏪 {p.branchName}</span>
             )}
           </div>
-        );
+        ),
       },
-    },
-    {
-      key: 'price',
-      header: 'Price',
-      className: 'whitespace-nowrap',
-      render: (p: UnifiedProductItem) => (
-        <span className="font-mono text-sm font-bold text-emerald-700">
-          {formatCurrency(p.price)}
-        </span>
-      ),
-    },
-    {
-      key: 'quantity',
-      header: 'Live Stock',
-      className: 'whitespace-nowrap',
-      render: (p: UnifiedProductItem) => {
-        if (p.quantity === 0) {
-          return (
-            <span className="inline-flex items-center font-bold text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200 text-xs">
-              Out of stock (0)
-            </span>
-          );
-        }
-        if (p.quantity < 10) {
-          return (
-            <span className="inline-flex items-center font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200 text-xs">
-              Low: {p.quantity} units
-            </span>
-          );
-        }
-        return (
-          <span className="inline-flex items-center font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 text-xs">
-            {p.quantity} in stock
+      {
+        key: 'category',
+        header: 'Category',
+        className: 'min-w-[140px]',
+        render: (p: UnifiedProductItem) => renderProductItemCategoryBadges(p.category),
+      },
+      {
+        key: 'price',
+        header: 'Price',
+        className: 'whitespace-nowrap',
+        render: (p: UnifiedProductItem) => (
+          <span className="font-mono text-sm font-bold text-emerald-700">
+            {formatCurrency(p.price)}
           </span>
-        );
+        ),
       },
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      className: 'whitespace-nowrap',
-      render: (p: UnifiedProductItem) => (
-        <Badge variant={p.status === 'ACTIVE' ? 'success' : 'danger'} className="text-xs">
-          {p.status === 'ACTIVE' ? 'Active' : 'Inactive'}
-        </Badge>
-      ),
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
-      className: 'text-right whitespace-nowrap',
-      render: (p: UnifiedProductItem) => (
-        <div className="flex items-center justify-end gap-1.5">
-          {canManageInventory && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs py-1 px-2.5 border-slate-200 text-slate-700 hover:border-emerald-500 hover:text-emerald-700"
-              onClick={() => handleOpenAdjust(p)}
-              leftIcon={<Sliders className="h-3.5 w-3.5" />}
-              title="Adjust Stock"
-            >
-              Stock
-            </Button>
-          )}
+      {
+        key: 'quantity',
+        header: 'Counter Stock',
+        className: 'whitespace-nowrap',
+        render: (p: UnifiedProductItem) => renderProductItemStockBadge(p.quantity),
+      },
+      {
+        key: 'status',
+        header: 'Status',
+        className: 'whitespace-nowrap',
+        render: (p: UnifiedProductItem) => (
+          <Badge variant={p.status === 'ACTIVE' ? 'success' : 'danger'} className="text-xs">
+            {p.status === 'ACTIVE' ? 'Active' : 'Inactive'}
+          </Badge>
+        ),
+      },
+      {
+        key: 'actions',
+        header: 'Actions',
+        className: 'text-right whitespace-nowrap',
+        render: (p: UnifiedProductItem) => (
+          <div className="flex items-center justify-end gap-1.5">
+            {canManageInventory && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs h-7 px-2.5 border-slate-200 text-slate-700 hover:border-emerald-500 hover:text-emerald-700"
+                onClick={() => onAdjust(p)}
+                leftIcon={<Sliders className="h-3 w-3" />}
+              >
+                Adjust Stock
+              </Button>
+            )}
 
-          {canManageProducts && (
-            <Button
-              variant={p.status === 'ACTIVE' ? 'ghost' : 'outline'}
-              size="sm"
-              className="text-xs py-1 px-2.5"
-              onClick={() => handleToggleStatus(p)}
-              leftIcon={<Power className="h-3.5 w-3.5" />}
-              title={p.status === 'ACTIVE' ? 'Deactivate product' : 'Activate product'}
-            >
-              {p.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
-            </Button>
-          )}
+            {canManageProducts && (
+              <Button
+                variant={p.status === 'ACTIVE' ? 'ghost' : 'outline'}
+                size="sm"
+                className="text-xs h-7 px-2.5"
+                onClick={() => onToggle(p)}
+                leftIcon={<Power className="h-3 w-3" />}
+              >
+                {p.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+              </Button>
+            )}
 
-          {canManageProducts && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleOpenDeleteProduct(p)}
-              className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1.5"
-              title="Archive/Delete product"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      ),
-    },
-  ], [canManageInventory, canManageProducts]);
+            {canManageProducts && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onDelete(p)}
+                className="text-xs h-7 px-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50"
+                leftIcon={<Trash2 className="h-3 w-3" />}
+              >
+                Delete
+              </Button>
+            )}
+          </div>
+        ),
+      },
+    ],
+    [canManageInventory, canManageProducts, onAdjust, onToggle, onDelete],
+  );
+}
 
-  // ─── Guard Check ──────────────────────────────────────────────────────────
+interface ProductsPageTableContentProps {
+  isLoading: boolean;
+  loadError: string | null;
+  filteredProducts: UnifiedProductItem[];
+  productColumns: Column<UnifiedProductItem>[];
+  searchQuery: string;
+  categoryFilter: string;
+  statusStockFilter: string;
+  canManageProducts: boolean;
+  canManageInventory: boolean;
+  onRetry: () => void;
+  onOpenCreate: () => void;
+  onAdjust: (p: UnifiedProductItem) => void;
+  onToggle: (p: UnifiedProductItem) => void;
+  onDelete: (p: UnifiedProductItem) => void;
+}
+
+function ProductsPageTableContent({
+  isLoading,
+  loadError,
+  filteredProducts,
+  productColumns,
+  searchQuery,
+  categoryFilter,
+  statusStockFilter,
+  canManageProducts,
+  canManageInventory,
+  onRetry,
+  onOpenCreate,
+  onAdjust,
+  onToggle,
+  onDelete,
+}: ProductsPageTableContentProps) {
+  if (isLoading) {
+    return (
+      <div className="py-12">
+        <LoadingState message="Loading master products and counter stock..." />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="p-6">
+        <ErrorState message={loadError} onRetry={onRetry} />
+      </div>
+    );
+  }
+
+  const hasFilters = Boolean(searchQuery || categoryFilter !== 'ALL' || statusStockFilter !== 'ALL');
+
+  if (filteredProducts.length === 0) {
+    return (
+      <div className="py-12">
+        <EmptyState
+          title={hasFilters ? 'No matching products found' : 'No products in catalog yet'}
+          description={
+            hasFilters
+              ? 'Try broadening your search query or reset filter dropdowns.'
+              : 'Create your first product to configure cafeteria menus, counter pricing, and stock.'
+          }
+          action={
+            canManageProducts ? (
+              <Button variant="primary" onClick={onOpenCreate}>
+                Create First Product
+              </Button>
+            ) : undefined
+          }
+        />
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="hidden md:block">
+        <DataTable<UnifiedProductItem>
+          data={filteredProducts}
+          columns={productColumns}
+          keyExtractor={(item) => item.id}
+          rowClassName={(item) => (item.status !== 'ACTIVE' ? 'opacity-70 bg-slate-50/50' : undefined)}
+        />
+      </div>
+
+      <div className="md:hidden divide-y divide-slate-100 p-2 space-y-3">
+        {filteredProducts.map((p) => (
+          <div
+            key={p.id}
+            className={`rounded-xl border p-4 space-y-3 transition-all ${
+              p.status === 'ACTIVE'
+                ? 'border-slate-200 bg-white shadow-2xs'
+                : 'border-slate-200 bg-slate-50/80 opacity-75'
+            }`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h4 className="font-bold text-slate-900 text-sm">{p.itemName}</h4>
+                {p.branchName && (
+                  <span className="text-[11px] text-slate-500 block mt-0.5">🏪 {p.branchName}</span>
+                )}
+                <div className="mt-1.5">{renderProductItemCategoryBadges(p.category)}</div>
+              </div>
+
+              <div className="text-right shrink-0">
+                <span className="font-mono text-base font-bold text-emerald-700 block">
+                  {formatCurrency(p.price)}
+                </span>
+                <Badge variant={p.status === 'ACTIVE' ? 'success' : 'danger'} className="text-[10px] mt-1">
+                  {p.status}
+                </Badge>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+              <span className="text-slate-500 font-medium">Counter Stock:</span>
+              {renderProductItemStockBadge(p.quantity)}
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 pt-1">
+              {canManageInventory && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs py-1.5 justify-center border-slate-200 text-slate-700 hover:border-emerald-500 hover:text-emerald-700"
+                  onClick={() => onAdjust(p)}
+                  leftIcon={<Sliders className="h-3.5 w-3.5" />}
+                >
+                  Stock
+                </Button>
+              )}
+
+              {canManageProducts && (
+                <Button
+                  variant={p.status === 'ACTIVE' ? 'ghost' : 'outline'}
+                  size="sm"
+                  className="w-full text-xs py-1.5 justify-center"
+                  onClick={() => onToggle(p)}
+                  leftIcon={<Power className="h-3.5 w-3.5" />}
+                >
+                  {p.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                </Button>
+              )}
+
+              {canManageProducts && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onDelete(p)}
+                  className="w-full text-xs py-1.5 justify-center text-rose-500 hover:text-rose-700 hover:bg-rose-50"
+                  leftIcon={<Trash2 className="h-3.5 w-3.5" />}
+                >
+                  Delete
+                </Button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}) {
+  const { currentBranch, selectBranch } = useBranch();
+  const { hasPermission } = usePermissions();
+
+  const canViewProducts = hasPermission('PRODUCT_VIEW');
+  const canManageProducts = hasPermission('PRODUCT_MANAGE');
+  const canViewInventory = hasPermission('INVENTORY_VIEW');
+  const canManageInventory = hasPermission('INVENTORY_MANAGE');
+
+  const pageData = useProductsPageData({ currentBranch });
+  const productColumns = useProductsPageColumns(
+    canManageInventory,
+    canManageProducts,
+    pageData.handleOpenAdjust,
+    pageData.handleToggleStatus,
+    pageData.handleOpenDelete,
+  );
+
   if (!canViewProducts && !canViewInventory) {
     return <UnauthorizedPage />;
   }
 
   return (
     <div className="space-y-6">
-      {/* ─── Page Header & Global Controls ─── */}
+      {/* ─── Page Header ─── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Menu</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Products & Inventory Hub</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Master food catalog, real-time counter stock levels, and instant price management.
+          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Branch Filter Selector */}
-          <div className="w-48">
+        {canManageProducts && (
+          <Button
+            variant="primary"
+            onClick={() => pageData.setShowCreateModal(true)}
+            leftIcon={<Plus className="h-4 w-4" />}
+          >
+            Add New Product
+          </Button>
+        )}
+      </div>
+
+      <ProductsMetricsCards metrics={pageData.metrics} />
+
+      {/* ─── Filter & Search Bar ─── */}
+      <Card padding="md">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-4 flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by product name..."
+                value={pageData.searchQuery}
+                onChange={(e) => pageData.setSearchQuery(e.target.value.slice(0, 40))}
+                className="w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+            </div>
+
             <Select
-              value={branchFilter}
+              value={pageData.branchFilter}
               onChange={(e) => {
-                setBranchFilter(e.target.value);
+                pageData.setBranchFilter(e.target.value);
                 selectBranch(e.target.value);
               }}
               options={[
                 { value: 'ALL', label: 'All Counters' },
-                ...branches.map((b) => ({ value: b.id, label: b.name })),
+                ...pageData.branches.map((b) => ({ value: b.id, label: b.name })),
+              ]}
+            />
+
+            <Select
+              value={pageData.categoryFilter}
+              onChange={(e) => pageData.setCategoryFilter(e.target.value)}
+              options={[
+                { value: 'ALL', label: 'All Categories' },
+                { value: 'Veg', label: 'Veg' },
+                { value: 'Non-Veg', label: 'Non-Veg' },
+                { value: 'Beverage', label: 'Beverage' },
+                { value: 'Snack', label: 'Snack' },
+                { value: 'Breakfast', label: 'Breakfast' },
+                { value: 'Lunch', label: 'Lunch' },
+                { value: 'Dinner', label: 'Dinner' },
+              ]}
+            />
+
+            <Select
+              value={pageData.statusStockFilter}
+              onChange={(e) => pageData.setStatusStockFilter(e.target.value)}
+              options={[
+                { value: 'ALL', label: 'All Stock & Status' },
+                { value: 'ACTIVE', label: 'Active Items Only' },
+                { value: 'INACTIVE', label: 'Inactive / Hidden Items' },
+                { value: 'IN_STOCK', label: 'In Stock (10+)' },
+                { value: 'LOW_STOCK', label: 'Low Stock (< 10)' },
+                { value: 'OUT_OF_STOCK', label: 'Out of Stock (0)' },
               ]}
             />
           </div>
 
-          {canManageProducts && (
-            <Button
-              variant="primary"
-              onClick={handleOpenCreate}
-              leftIcon={<Plus className="h-4 w-4" />}
-            >
-              Add Product
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* ─── Unified Summary Metric Cards (5-Card Grid) ─── */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <Card className="flex items-center gap-3 p-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 shrink-0">
-            <Package className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-xs text-slate-500">Total Products</p>
-            <p className="text-lg font-bold text-slate-900">{metrics.totalProducts}</p>
-          </div>
-        </Card>
-
-        <Card className="flex items-center gap-3 p-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 shrink-0">
-            <TrendingUp className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-xs text-slate-500">Active for Sale</p>
-            <p className="text-lg font-bold text-emerald-700">{metrics.activeProducts}</p>
-          </div>
-        </Card>
-
-        <Card className="flex items-center gap-3 p-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sky-50 text-sky-700 shrink-0">
-            <Layers className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-xs text-slate-500">Units in Stock</p>
-            <p className="text-lg font-bold text-sky-700">{metrics.totalUnits}</p>
-          </div>
-        </Card>
-
-        <Card className="flex items-center gap-3 p-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-50 text-teal-700 shrink-0">
-            <Package className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-xs text-slate-500">Stock Valuation</p>
-            <p className="text-lg font-bold text-teal-700">
-              {formatCurrency(metrics.totalValuation)}
-            </p>
-          </div>
-        </Card>
-
-        <Card className="flex items-center gap-3 p-4 col-span-2 sm:col-span-1">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-700 shrink-0">
-            <AlertTriangle className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-xs text-slate-500">Stock Alerts</p>
-            <p className="text-lg font-bold text-amber-700">
-              {metrics.lowStock + metrics.outOfStock}{' '}
-              <span className="text-[11px] font-normal text-slate-500">
-                ({metrics.outOfStock} out)
-              </span>
-            </p>
-          </div>
-        </Card>
-      </div>
-
-      {/* ─── Search & Filters Control Bar ─── */}
-      <Card className="p-4 space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-xs font-semibold text-slate-700">
-            Menu Catalog & Live Branch Stock
-          </span>
-          <span className="text-xs text-slate-500">
-            Showing <strong className="text-slate-800">{filteredProducts.length}</strong> of {unifiedProducts.length} products
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 pt-3 border-t border-slate-200">
-          <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-            <Input
-              placeholder="Search food or product item..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value.slice(0, 30))}
-              maxLength={30}
-              className="pl-9"
-            />
-          </div>
-
-          <Select
-            value={statusStockFilter}
-            onChange={(e) => setStatusStockFilter(e.target.value)}
-            options={[
-              { value: 'ALL', label: 'All Statuses & Stock Levels' },
-              { value: 'ACTIVE', label: 'Active for Sale' },
-              { value: 'INACTIVE', label: 'Inactive / Hidden' },
-              { value: 'IN_STOCK', label: 'In Stock (>= 10 units)' },
-              { value: 'LOW_STOCK', label: 'Low Stock (< 10 units)' },
-              { value: 'OUT_OF_STOCK', label: 'Out of Stock (0 units)' },
-            ]}
-          />
-
-          <Select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            options={[
-              { value: 'ALL', label: 'All Categories' },
-              { value: 'Veg', label: 'Veg' },
-              { value: 'Non-Veg', label: 'Non-Veg' },
-              { value: 'Beverage', label: 'Beverage' },
-              { value: 'Snack', label: 'Snack' },
-              { value: 'Breakfast', label: 'Breakfast' },
-              { value: 'Lunch', label: 'Lunch' },
-            ]}
-          />
-        </div>
-      </Card>
-
-      {/* ─── Unified Products & Inventory Display ─── */}
-      <Card className="p-0">
-        {isLoading ? (
-          <div className="py-12">
-            <LoadingState message="Loading menu & inventory stock..." />
-          </div>
-        ) : loadError ? (
-          <div className="p-6">
-            <ErrorState message={loadError} onRetry={fetchUnifiedData} />
-          </div>
-        ) : filteredProducts.length === 0 ? (
-          <div className="py-12">
-            <EmptyState
-              title={searchQuery || statusStockFilter !== 'ALL' || categoryFilter !== 'ALL' ? "No matching products found" : "No products in menu yet"}
-              description={searchQuery || statusStockFilter !== 'ALL' || categoryFilter !== 'ALL' ? "Try clearing your search or category filters." : "Add food items and stock quantities to start selling at cafeteria counters."}
-              action={
-                searchQuery || statusStockFilter !== 'ALL' || categoryFilter !== 'ALL' ? (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setSearchQuery('');
-                      setStatusStockFilter('ALL');
-                      setCategoryFilter('ALL');
-                    }}
-                  >
-                    Clear Filters
-                  </Button>
-                ) : canManageProducts ? (
-                  <Button variant="primary" onClick={handleOpenCreate}>
-                    Add First Product
-                  </Button>
-                ) : undefined
-              }
-            />
-          </div>
-        ) : (
-          <DataTable<UnifiedProductItem>
-            data={filteredProducts}
-            columns={productColumns}
-            keyExtractor={(item) => item.id}
-            rowClassName={(item) =>
-              item.status !== 'ACTIVE' ? 'opacity-70 bg-slate-50' : undefined
-            }
-          />
-        )}
-      </Card>
-
-      {/* ─── CREATE PRODUCT MODAL ─── */}
-      <Modal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        title="Add New Product"
-        size="lg"
-      >
-        <form onSubmit={handleCreateProductSubmit} className="space-y-4">
-          {modalApiError && (
-            <div className="flex items-center gap-2 rounded-lg bg-rose-500/10 p-3 text-sm text-rose-700 border border-rose-500/20">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-500" />
-              <span>{modalApiError}</span>
-            </div>
-          )}
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Product Name <span className="text-rose-500">*</span>
-            </label>
-            <Input
-              placeholder="e.g. Chicken Roll, Veg Burger"
-              value={formItemName}
-              maxLength={40}
-              onChange={(e) => setFormItemName(e.target.value.slice(0, 40))}
-              error={formErrors.itemName}
-            />
-          </div>
-
-          <div>
-            <CategorySelector
-              selectedCategories={formCategories}
-              onChange={(cats) => setFormCategories(cats)}
-              error={formErrors.categories}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Selling Price (₹) <span className="text-rose-500">*</span>
-              </label>
-              <Input
-                type="number"
-                step="1"
-                min="0"
-                placeholder="e.g. ₹120.00"
-                value={formPrice}
-                onChange={(e) => setFormPrice(e.target.value)}
-                error={formErrors.price}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Initial Branch <span className="text-rose-500">*</span>
-              </label>
-              <Select
-                value={formBranchId}
-                onChange={(e) => setFormBranchId(e.target.value)}
-                options={branches.map((b) => ({ value: b.id, label: b.name }))}
-                error={formErrors.branchId}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Initial Stock Quantity (Units)
-              </label>
-              <Input
-                type="number"
-                min="0"
-                placeholder="e.g. 50"
-                value={formStockQty}
-                onChange={(e) => setFormStockQty(e.target.value)}
-                error={formErrors.stockQty}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Status
-              </label>
-              <Select
-                value={formStatus}
-                onChange={(e) => setFormStatus(e.target.value as 'ACTIVE' | 'INACTIVE')}
-                options={[
-                  { value: 'ACTIVE', label: 'ACTIVE (Available for sale)' },
-                  { value: 'INACTIVE', label: 'INACTIVE (Hidden from POS)' },
-                ]}
-              />
-            </div>
-          </div>
-
-          <ModalFooter>
-            <Button variant="ghost" onClick={() => setShowCreateModal(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit" isLoading={isSubmitting}>
-              Create Product
-            </Button>
-          </ModalFooter>
-        </form>
-      </Modal>
-
-      {/* ─── ADJUST STOCK MODAL ─── */}
-      <Modal
-        isOpen={showAdjustModal}
-        onClose={() => setShowAdjustModal(false)}
-        title="Adjust Counter Stock"
-        size="md"
-      >
-        <form onSubmit={handleAdjustSubmit} className="space-y-4">
-          {modalApiError && (
-            <div className="flex items-center gap-2 rounded-lg bg-rose-500/10 p-3 text-sm text-rose-700 border border-rose-500/20">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-500" />
-              <span>{modalApiError}</span>
-            </div>
-          )}
-
-          {selectedInventory && (
-            <div className="rounded-lg bg-slate-50 p-3 border border-slate-200">
-              <p className="font-semibold text-slate-900">{selectedInventory.productName}</p>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Branch: <span className="text-slate-800">{selectedInventory.branchName}</span> • Current: <span className="text-emerald-700 font-bold">{selectedInventory.quantity} units</span>
-              </p>
-            </div>
-          )}
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              New Stock Quantity (Units)
-            </label>
-            <Input
-              type="number"
-              min="0"
-              value={adjustQtyInput}
-              onChange={(e) => setAdjustQtyInput(e.target.value)}
-              error={qtyError || undefined}
-            />
-          </div>
-
-          {/* Quick Adjust Steppers */}
-          <div className="flex flex-wrap gap-2 pt-1">
-            <Button type="button" variant="outline" size="sm" onClick={() => handleStepAdjustment(-10)}>
-              -10
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => handleStepAdjustment(-5)}>
-              -5
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => handleStepAdjustment(-1)}>
-              -1
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => handleStepAdjustment(1)}>
-              +1
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => handleStepAdjustment(5)}>
-              +5
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => handleStepAdjustment(10)}>
-              +10
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => handleStepAdjustment(50)}>
-              +50
-            </Button>
-          </div>
-
-          <ModalFooter>
-            <Button variant="ghost" onClick={() => setShowAdjustModal(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit" isLoading={isSubmitting}>
-              Confirm Stock Update
-            </Button>
-          </ModalFooter>
-        </form>
-      </Modal>
-
-      {/* ─── DELETE PRODUCT CONFIRMATION MODAL ─── */}
-      <Modal
-        isOpen={showDeleteModal}
-        onClose={() => !isSubmitting && setShowDeleteModal(false)}
-        title="Delete Product"
-        description="Archive product from master catalog"
-        size="md"
-      >
-        <div className="space-y-4">
-          {modalApiError && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-700">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-500 mt-0.5" />
-              <div className="space-y-1">
-                <p className="font-semibold">Action Failed</p>
-                <p>{modalApiError}</p>
-              </div>
-            </div>
-          )}
-
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-2">
-            <p className="text-sm text-slate-800 font-medium">
-              Are you sure you want to delete <span className="text-emerald-700 font-bold font-mono">{selectedProductToDelete?.itemName}</span>?
-            </p>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              This product will be archived and hidden from POS sale menus. All historical receipts, purchase items, and past financial reports will continue to safely preserve this product's name and accounting history.
-            </p>
-          </div>
-
-          <ModalFooter>
+          {(pageData.searchQuery || pageData.categoryFilter !== 'ALL' || pageData.statusStockFilter !== 'ALL') && (
             <Button
               variant="ghost"
-              onClick={() => setShowDeleteModal(false)}
-              disabled={isSubmitting}
+              size="sm"
+              onClick={pageData.handleClearFilters}
+              className="text-xs text-slate-500"
             >
-              Cancel
+              Clear Filters
             </Button>
-            <Button
-              variant="danger"
-              onClick={handleDeleteProductSubmit}
-              isLoading={isSubmitting}
-            >
-              Archive & Delete Product
-            </Button>
-          </ModalFooter>
+          )}
         </div>
-      </Modal>
+      </Card>
+
+      {/* ─── Unified Data View (Table & Mobile Cards) ─── */}
+      <Card padding="none">
+        <ProductsPageTableContent
+          isLoading={pageData.isLoading}
+          loadError={pageData.loadError}
+          filteredProducts={pageData.filteredProducts}
+          productColumns={productColumns}
+          searchQuery={pageData.searchQuery}
+          categoryFilter={pageData.categoryFilter}
+          statusStockFilter={pageData.statusStockFilter}
+          canManageProducts={canManageProducts}
+          canManageInventory={canManageInventory}
+          onRetry={pageData.fetchUnifiedData}
+          onOpenCreate={() => pageData.setShowCreateModal(true)}
+          onAdjust={pageData.handleOpenAdjust}
+          onToggle={pageData.handleToggleStatus}
+          onDelete={pageData.handleOpenDelete}
+        />
+      </Card>
+
+      <ProductsCreateModal
+        isOpen={pageData.showCreateModal}
+        onClose={() => pageData.setShowCreateModal(false)}
+        branches={pageData.branches}
+        currentBranch={currentBranch}
+        onCreated={pageData.fetchUnifiedData}
+      />
+
+      <ProductsAdjustModal
+        isOpen={pageData.showAdjustModal}
+        onClose={() => pageData.setShowAdjustModal(false)}
+        selectedInventory={pageData.selectedInventory}
+        onAdjusted={pageData.fetchUnifiedData}
+      />
+
+      <ProductsDeleteModal
+        isOpen={pageData.showDeleteModal}
+        onClose={() => pageData.setShowDeleteModal(false)}
+        selectedProduct={pageData.selectedProductToDelete}
+        onDeleted={pageData.fetchUnifiedData}
+      />
     </div>
   );
 }

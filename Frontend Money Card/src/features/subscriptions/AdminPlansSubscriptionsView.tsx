@@ -48,6 +48,41 @@ import {
   CreditCard,
 } from 'lucide-react';
 
+const TIER_ORDER: Record<string, number> = {
+  starter: 1,
+  standard: 2,
+  premium: 3,
+  enterprise: 4,
+};
+
+function getPlanRank(planName?: string): number {
+  if (!planName) return 0;
+  return TIER_ORDER[planName.toLowerCase()] ?? 0;
+}
+
+function comparePlanTiers(curName?: string, reqName?: string): 'UPGRADE' | 'DOWNGRADE' | null {
+  const curRank = getPlanRank(curName);
+  const reqRank = getPlanRank(reqName);
+  if (curRank !== 0 && reqRank !== 0 && curRank !== reqRank) {
+    return reqRank < curRank ? 'DOWNGRADE' : 'UPGRADE';
+  }
+  return null;
+}
+
+function isRenewalRequest(req: PlanChangeRequest): boolean {
+  if (req.requestType === 'RENEWAL') return true;
+  if (req.currentPlanId && req.currentPlanId === req.requestedPlanId) return true;
+  return Boolean(req.reason?.toLowerCase().includes('renewal'));
+}
+
+function findPlanInList(plans: Plan[], id?: string, name?: string): Plan | undefined {
+  if (!id && !name) return undefined;
+  const lowerName = name?.toLowerCase();
+  return plans.find(
+    (p) => (id && p.id === id) || (lowerName && p.name.toLowerCase() === lowerName),
+  );
+}
+
 export function AdminPlansSubscriptionsView() {
   const [searchParams, setSearchParams] = useSearchParams();
   const urlTab = searchParams.get('tab') as 'plans' | 'org_subscriptions' | 'requests' | 'payments' | null;
@@ -572,48 +607,28 @@ export function AdminPlansSubscriptionsView() {
   // Auto-detect whether a plan change request is an UPGRADE, DOWNGRADE, or RENEWAL
   const getAutoRequestType = useCallback(
     (req: PlanChangeRequest): 'UPGRADE' | 'DOWNGRADE' | 'RENEWAL' => {
-      if (
-        req.requestType === 'RENEWAL' ||
-        req.currentPlanId === req.requestedPlanId ||
-        (req.reason && req.reason.toLowerCase().includes('renewal'))
-      ) {
+      if (isRenewalRequest(req)) {
         return 'RENEWAL';
       }
 
-      const curPlan = plans.find(
-        (p) =>
-          p.id === req.currentPlanId ||
-          p.name.toLowerCase() === (req.currentPlanName || '').toLowerCase()
-      );
-      const reqPlan = plans.find(
-        (p) =>
-          p.id === req.requestedPlanId ||
-          p.name.toLowerCase() === (req.requestedPlanName || '').toLowerCase()
-      );
+      const curPlan = findPlanInList(plans, req.currentPlanId, req.currentPlanName);
+      const reqPlan = findPlanInList(plans, req.requestedPlanId, req.requestedPlanName);
 
-      if (curPlan && reqPlan) {
-        if (reqPlan.price < curPlan.price) return 'DOWNGRADE';
-        if (reqPlan.price > curPlan.price) return 'UPGRADE';
-
-        const tierOrder: Record<string, number> = { starter: 1, standard: 2, premium: 3, enterprise: 4 };
-        const curRank = tierOrder[curPlan.name.toLowerCase()] ?? 0;
-        const reqRank = tierOrder[reqPlan.name.toLowerCase()] ?? 0;
-        if (curRank !== 0 && reqRank !== 0) {
-          return reqRank < curRank ? 'DOWNGRADE' : 'UPGRADE';
-        }
+      if (curPlan && reqPlan && curPlan.price !== reqPlan.price) {
+        return reqPlan.price < curPlan.price ? 'DOWNGRADE' : 'UPGRADE';
       }
 
-      // Fallback: compare plan names directly
-      const tierOrder: Record<string, number> = { starter: 1, standard: 2, premium: 3, enterprise: 4 };
-      const curRank = tierOrder[(req.currentPlanName || '').toLowerCase()] ?? 0;
-      const reqRank = tierOrder[(req.requestedPlanName || '').toLowerCase()] ?? 0;
-      if (curRank !== 0 && reqRank !== 0) {
-        return reqRank < curRank ? 'DOWNGRADE' : 'UPGRADE';
+      const tierComparison = comparePlanTiers(
+        curPlan?.name || req.currentPlanName,
+        reqPlan?.name || req.requestedPlanName,
+      );
+      if (tierComparison) {
+        return tierComparison;
       }
 
       return req.requestType === 'DOWNGRADE' ? 'DOWNGRADE' : 'UPGRADE';
     },
-    [plans]
+    [plans],
   );
 
   const filteredAndSortedRequests = useMemo(() => {
@@ -794,7 +809,11 @@ export function AdminPlansSubscriptionsView() {
         header: 'Actions',
         className: 'text-right',
         render: (org: OrganizationOverview) => (
-          <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="flex items-center justify-end gap-2"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
             <Button
               variant="outline"
               size="sm"

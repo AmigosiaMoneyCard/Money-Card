@@ -83,7 +83,7 @@ export async function getOrgPlanRequests(req: Request, res: Response) {
   const planPriceMap = new Map(allPlans.map((p) => [p.id, p.price]));
 
   const formatted = requests.map((r) => {
-    let autoType: 'UPGRADE' | 'DOWNGRADE' | 'RENEWAL' = 'UPGRADE';
+    let autoType: 'UPGRADE' | 'DOWNGRADE' | 'RENEWAL';
     if (r.currentPlanId === r.requestedPlanId || r.reason?.toLowerCase().includes('renewal')) {
       autoType = 'RENEWAL';
     } else {
