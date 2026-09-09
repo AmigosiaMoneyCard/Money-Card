@@ -131,7 +131,7 @@ function OrgActionMenu({
         onClick={handleToggle}
         aria-expanded={isOpen}
         aria-haspopup="true"
-        aria-label="Organization actions"
+        aria-label="Cafeteria actions"
         className="flex items-center gap-1.5 text-xs py-1 px-2.5 bg-white border-slate-200 hover:border-emerald-500 text-slate-700"
       >
         <MoreVertical className="h-3.5 w-3.5 text-slate-400" />
@@ -172,7 +172,7 @@ function OrgActionMenu({
               className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer text-left"
             >
               <Edit2 className="h-4 w-4 text-emerald-600" />
-              <span>Edit Organization</span>
+              <span>Edit Cafeteria</span>
             </button>
 
             <button
@@ -214,7 +214,7 @@ function OrgActionMenu({
               className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer text-left"
             >
               <Trash2 className="h-4 w-4" />
-              <span>Delete Organization</span>
+              <span>Delete Cafeteria</span>
             </button>
           </div>,
           document.body,
@@ -300,7 +300,7 @@ export function OrganizationsPage() {
       ]);
 
       if (!res.success) {
-        setError(res.error.message || 'Failed to load platform organizations');
+        setError(res.error.message || 'Failed to load platform cafeterias');
         return;
       }
 
@@ -327,7 +327,7 @@ export function OrganizationsPage() {
         if (isCancelled) return;
 
         if (!res.success) {
-          setError(res.error.message || 'Failed to load platform organizations');
+          setError(res.error.message || 'Failed to load platform cafeterias');
           return;
         }
 
@@ -432,9 +432,9 @@ export function OrganizationsPage() {
     const errs: Record<string, string> = {};
     const trimmedName = formName.trim();
     if (!trimmedName) {
-      errs.name = 'Organization name is required';
+      errs.name = 'Cafeteria name is required';
     } else if (trimmedName.length > 30) {
-      errs.name = 'Organization name must be at most 30 characters';
+      errs.name = 'Cafeteria name must be at most 30 characters';
     }
 
     const trimmedEmail = formAdminEmail.trim();
@@ -473,7 +473,7 @@ export function OrganizationsPage() {
       });
 
       if (!res.success) {
-        setModalApiError(res.error.message || 'Failed to create organization');
+        setModalApiError(res.error.message || 'Failed to create cafeteria');
         return;
       }
 
@@ -505,10 +505,10 @@ export function OrganizationsPage() {
     if (!selectedOrg) return;
     const trimmedEditName = editFormName.trim();
     if (!trimmedEditName) {
-      setEditFormErrors({ name: 'Organization name is required' });
+      setEditFormErrors({ name: 'Cafeteria name is required' });
       return;
     } else if (trimmedEditName.length > 30) {
-      setEditFormErrors({ name: 'Organization name must be at most 30 characters' });
+      setEditFormErrors({ name: 'Cafeteria name must be at most 30 characters' });
       return;
     }
 
@@ -522,11 +522,11 @@ export function OrganizationsPage() {
       });
 
       if (!res.success) {
-        setModalApiError(res.error.message || 'Failed to update organization');
+        setModalApiError(res.error.message || 'Failed to update cafeteria');
         return;
       }
 
-      notify.success(`Organization ${res.data.name} updated successfully!`);
+      notify.success(`Cafeteria ${res.data.name} updated successfully!`);
       setShowEditModal(false);
       if (showDetailsModal) {
         setShowDetailsModal(false);
@@ -573,11 +573,11 @@ export function OrganizationsPage() {
       });
 
       if (!res.success) {
-        setModalApiError(res.error.message || `Failed to ${newStatus.toLowerCase()} organization`);
+        setModalApiError(res.error.message || `Failed to ${newStatus.toLowerCase()} cafeteria`);
         return;
       }
 
-      notify.success(`Organization ${selectedOrg.name} is now ${newStatus.toLowerCase()}`);
+      notify.success(`Cafeteria ${selectedOrg.name} is now ${newStatus.toLowerCase()}`);
       setShowStatusModal(false);
       fetchOrganizations();
     } catch {
@@ -602,11 +602,11 @@ export function OrganizationsPage() {
     try {
       const res = await apiService.organizations.deleteAdminOrganization(selectedOrgToDelete.id);
       if (!res.success) {
-        setModalApiError(res.error.message || 'Failed to delete organization');
+        setModalApiError(res.error.message || 'Failed to delete cafeteria');
         return;
       }
 
-      notify.success(`Organization '${selectedOrgToDelete.name}' deleted successfully`);
+      notify.success(`Cafeteria '${selectedOrgToDelete.name}' deleted successfully`);
       setShowDeleteModal(false);
       setSelectedOrgToDelete(null);
       if (showDetailsModal) {
@@ -624,7 +624,7 @@ export function OrganizationsPage() {
   const columns = [
     {
       key: 'name',
-      header: 'Organization',
+      header: 'Cafeteria',
       sortable: true,
       render: (org: OrganizationOverview) => (
         <div className="flex flex-wrap items-center gap-3">
@@ -647,7 +647,7 @@ export function OrganizationsPage() {
           </Badge>
           {org.usage && (
             <div className="mt-1 flex items-center gap-2 text-[11px] text-slate-500">
-              <span>{org.usage.branchCount}/{org.usage.branchLimit} Branches</span>
+              <span>{org.usage.branchCount}/{org.usage.branchLimit} Counters</span>
               <span>•</span>
               <span>{org.usage.staffCount}/{org.usage.staffLimit} Staff</span>
             </div>
@@ -697,7 +697,7 @@ export function OrganizationsPage() {
       {/* ── Page Header ── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Tenant Organizations</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Platform Cafeterias</h1>
         </div>
 
         <div>
@@ -717,7 +717,7 @@ export function OrganizationsPage() {
         <div className="flex flex-wrap items-center gap-3">
           {/* Search */}
           <div className="w-full sm:w-72">
-            <label className="mb-1 block text-[11px] font-medium text-slate-600">Search Organization</label>
+            <label className="mb-1 block text-[11px] font-medium text-slate-600">Search Cafeteria</label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
@@ -779,16 +779,16 @@ export function OrganizationsPage() {
 
       {/* ── Main Data View ── */}
       {isLoading ? (
-        <LoadingState message="Loading tenant organizations..." />
+        <LoadingState message="Loading platform cafeterias..." />
       ) : error ? (
         <ErrorState message={error} onRetry={fetchOrganizations} />
       ) : filteredOrganizations.length === 0 ? (
         <EmptyState
-          title="No organizations found"
+          title="No cafeterias found"
           description={
             searchQuery || selectedPlanFilter !== 'ALL' || selectedStatusFilter !== 'ALL'
-              ? 'No organizations matched your search or filter criteria.'
-              : 'Get started by adding your first tenant organization.'
+              ? 'No cafeterias matched your search or filter criteria.'
+              : 'Get started by adding your first cafeteria.'
           }
           action={
             searchQuery || selectedPlanFilter !== 'ALL' || selectedStatusFilter !== 'ALL' ? (
@@ -824,7 +824,7 @@ export function OrganizationsPage() {
       <Modal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        title="Add New Organization"
+        title="Add New Cafeteria"
       >
         <div className="space-y-4 py-2">
           {modalApiError && (
@@ -836,7 +836,7 @@ export function OrganizationsPage() {
 
           <Input
             id="create-org-name"
-            label="Organization Name *"
+            label="Cafeteria Name *"
             placeholder="e.g. Acme Cafeterias"
             maxLength={30}
             value={formName}
@@ -915,7 +915,7 @@ export function OrganizationsPage() {
       <Modal
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
-        title="Edit Organization"
+        title="Edit Cafeteria"
       >
         <div className="space-y-4 py-2">
           {modalApiError && (
@@ -926,7 +926,7 @@ export function OrganizationsPage() {
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">Organization ID</label>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Cafeteria ID</label>
             <input
               type="text"
               disabled
@@ -937,7 +937,7 @@ export function OrganizationsPage() {
 
           <Input
             id="edit-org-name"
-            label="Organization Name *"
+            label="Cafeteria Name *"
             placeholder="e.g. Acme Cafeterias"
             maxLength={30}
             value={editFormName}
@@ -975,7 +975,7 @@ export function OrganizationsPage() {
       <Modal
         isOpen={showDetailsModal}
         onClose={() => setShowDetailsModal(false)}
-        title="Organization Overview"
+        title="Cafeteria Overview"
       >
         {selectedOrg && (
           <div className="space-y-6 py-2">
@@ -1055,7 +1055,7 @@ export function OrganizationsPage() {
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                     <div className="flex items-center gap-1 text-slate-500">
                       <Building2 className="h-3.5 w-3.5 text-emerald-600" />
-                      <span>Branches</span>
+                      <span>Counters</span>
                     </div>
                     <p className="mt-1 text-base font-bold text-slate-900">
                       {selectedOrg.usage.branchCount} / {selectedOrg.usage.branchLimit}
@@ -1108,7 +1108,7 @@ export function OrganizationsPage() {
       <Modal
         isOpen={showStatusModal}
         onClose={() => setShowStatusModal(false)}
-        title={selectedOrg?.status === 'ACTIVE' ? 'Deactivate Organization' : 'Activate Organization'}
+        title={selectedOrg?.status === 'ACTIVE' ? 'Deactivate Cafeteria' : 'Activate Cafeteria'}
       >
         <div className="space-y-4 py-2">
           {modalApiError && (
@@ -1123,7 +1123,7 @@ export function OrganizationsPage() {
             <strong className="text-slate-900">
               {selectedOrg?.status === 'ACTIVE' ? 'deactivate' : 'activate'}
             </strong>{' '}
-            the organization <span className="text-emerald-700 font-semibold">{selectedOrg?.name}</span>?
+            the cafeteria <span className="text-emerald-700 font-semibold">{selectedOrg?.name}</span>?
           </p>
 
           {selectedOrg?.status === 'ACTIVE' && (
@@ -1175,7 +1175,7 @@ export function OrganizationsPage() {
 
           <div className="space-y-2 text-xs border border-slate-200 rounded-lg p-3 bg-slate-50">
             <div className="flex justify-between">
-              <span className="text-slate-600">Organization:</span>
+              <span className="text-slate-600">Cafeteria:</span>
               <span className="font-semibold text-slate-900">{selectedOrg?.name}</span>
             </div>
             <div className="flex justify-between">
@@ -1261,8 +1261,8 @@ export function OrganizationsPage() {
       <Modal
         isOpen={showDeleteModal}
         onClose={() => !isSubmitting && setShowDeleteModal(false)}
-        title="Delete Organization"
-        description="Permanently remove tenant organization and all related data"
+        title="Delete Cafeteria"
+        description="Permanently remove cafeteria and all related data"
         size="md"
       >
         <div className="space-y-4">

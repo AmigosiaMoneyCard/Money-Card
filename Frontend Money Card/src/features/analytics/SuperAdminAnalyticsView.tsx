@@ -210,7 +210,7 @@ export function SuperAdminAnalyticsView() {
 
     return {
       reportDateRange: dateLabel,
-      selectedOrgFilter: 'All Platform Organizations',
+      selectedOrgFilter: 'All Platform Cafeterias',
       totalOrganizations: orgs.length,
       activeSubscriptions: activeOrgsCount,
       totalGatewayRevenue: subscriptionRevenue,
@@ -236,7 +236,7 @@ export function SuperAdminAnalyticsView() {
       branches: branches.map((b) => ({
         id: b.id,
         name: b.name,
-        orgName: orgMap.get(b.organizationId) || 'Platform Organization',
+        orgName: orgMap.get(b.organizationId) || 'Platform Cafeteria',
         status: b.status,
         transactionCount: 120,
         purchaseCount: 80,
@@ -376,7 +376,7 @@ export function SuperAdminAnalyticsView() {
   const orgColumns = [
     {
       key: 'name',
-      header: 'Organization',
+      header: 'Cafeteria',
       render: (org: OrganizationOverview) => (
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
@@ -530,7 +530,7 @@ export function SuperAdminAnalyticsView() {
           {/* Top Platform KPI Cards (Super Admin B2B SaaS Metrics) */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
-              label="Total Organizations"
+              label="Total Cafeterias"
               value={orgs.length}
               icon={<Building2 className="h-5 w-5 text-emerald-600" />}
             />
@@ -556,7 +556,7 @@ export function SuperAdminAnalyticsView() {
 
           {/* Section 1: Tenant Organizations Summary */}
           <div className="space-y-4">
-            <h2 className="text-lg font-bold text-slate-900">Platform Organizations Performance</h2>
+            <h2 className="text-lg font-bold text-slate-900">Platform Cafeterias Performance</h2>
             <Card padding="none">
               <DataTable<OrganizationOverview>
                 data={selectedOrgId ? orgs.filter((o) => o.id === selectedOrgId) : orgs}
@@ -599,7 +599,7 @@ export function SuperAdminAnalyticsView() {
             setPdfPreviewUrl(null);
           }
         }}
-        title="Organization Analytics Report — PDF Preview"
+        title="Cafeteria Analytics Report — PDF Preview"
         size="xl"
       >
         <div className="space-y-4">
@@ -638,8 +638,8 @@ export function SuperAdminAnalyticsView() {
               {[
                 { key: 'includePlatformKpis' as const, label: '1. Platform Overview', id: 'platform-toggle-kpis' },
                 { key: 'includeFinancialSummary' as const, label: '2. Financial & Revenue', id: 'platform-toggle-financial' },
-                { key: 'includeTenantOrgs' as const, label: '3. Organizations & Usage', id: 'platform-toggle-orgs' },
-                { key: 'includeBranchPerformance' as const, label: '4. Branch Performance', id: 'platform-toggle-branches' },
+                { key: 'includeTenantOrgs' as const, label: '3. Cafeterias & Usage', id: 'platform-toggle-orgs' },
+                { key: 'includeBranchPerformance' as const, label: '4. Counter Performance', id: 'platform-toggle-branches' },
                 { key: 'includeProductDemand' as const, label: '5. Top Selling Products', id: 'platform-toggle-products' },
                 { key: 'includePeakTraffic' as const, label: '6. Peak Hours & Traffic', id: 'platform-toggle-peak' },
                 { key: 'includeSubscriptionPlans' as const, label: '7. Subscription Plans', id: 'platform-toggle-plans' },
@@ -678,7 +678,7 @@ export function SuperAdminAnalyticsView() {
               <iframe
                 src={`${pdfPreviewUrl}#toolbar=0`}
                 className="w-full h-[70vh] rounded-lg"
-                title="Organization Analytics Report PDF Preview"
+                title="Cafeteria Analytics Report PDF Preview"
               />
             </div>
           )}

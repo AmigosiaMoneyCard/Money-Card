@@ -349,7 +349,7 @@ class DigitalReceiptService {
               _buildMetaRow('Payment:', bill.paymentMethod),
               if (bill.paymentReference != null && bill.paymentReference!.trim().isNotEmpty)
                 _buildMetaRow('Reference:', bill.paymentReference!.trim()),
-              _buildMetaRow('Branch:', bill.branchName),
+              _buildMetaRow('Counter:', bill.branchName),
 
               pw.SizedBox(height: 10),
               _buildDashedDivider(),

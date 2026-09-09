@@ -250,7 +250,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             const Icon(Icons.swap_horiz, size: 16, color: AppColors.primaryDark),
             const SizedBox(width: 4),
             const Text(
-              'Switch Branch',
+              'Switch Counter',
               style: TextStyle(
                 color: AppColors.primaryDark,
                 fontSize: 12,
@@ -270,7 +270,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     AnalyticsNotifier notifier,
   ) {
     if (state.isLoading) {
-      return const AppLoadingView(message: 'Loading branch analytics...');
+      return const AppLoadingView(message: 'Loading counter analytics...');
     }
 
     if (state.errorMessage != null) {
@@ -312,7 +312,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           SizedBox(height: 80),
           AppEmptyState(
             title: 'No Analytics Data',
-            description: 'No performance metrics available for this branch.',
+            description: 'No performance metrics available for this counter.',
             icon: Icons.bar_chart_outlined,
           ),
         ],
@@ -333,7 +333,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Branch Performance',
+                    'Counter Performance',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,

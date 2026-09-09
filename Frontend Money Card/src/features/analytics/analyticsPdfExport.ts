@@ -28,7 +28,7 @@ export function buildOrgAnalyticsJsPdf({
   branches,
   selectedBranchName,
   dateRangeLabel,
-  organizationName = 'Organization Portal',
+  organizationName = 'Cafeteria Portal',
   sections,
 }: GenerateOrgPdfOptions): jsPDF {
   const doc = new jsPDF({
@@ -64,8 +64,8 @@ export function buildOrgAnalyticsJsPdf({
     doc.setFontSize(isContinuation ? 7.5 : 8);
     doc.setTextColor(148, 163, 184);
     const sub = isContinuation
-      ? `Branch Scope: ${selectedBranchName}  |  Period: ${dateRangeLabel}`
-      : `Scope: Organization Admin  |  Generated: ${new Date().toLocaleString()}`;
+      ? `Counter Scope: ${selectedBranchName}  |  Period: ${dateRangeLabel}`
+      : `Scope: Cafeteria Admin  |  Generated: ${new Date().toLocaleString()}`;
     doc.text(sub, margin + (isContinuation ? 90 : 6), isContinuation ? 21 : 30);
   }
 
@@ -86,7 +86,7 @@ export function buildOrgAnalyticsJsPdf({
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.setTextColor(51, 65, 85);
-  doc.text(`Branch Scope: ${selectedBranchName}`, margin + 4, 44);
+  doc.text(`Counter Scope: ${selectedBranchName}`, margin + 4, 44);
   doc.text(`Date Range: ${dateRangeLabel}`, margin + 70, 44);
   doc.text('Status: Verified M0 Ledger', margin + 130, 44);
 
@@ -151,7 +151,7 @@ export function buildOrgAnalyticsJsPdf({
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(15, 23, 42);
-    doc.text(`${sectionCounter}. Branch Performance Comparison`, margin, curY);
+    doc.text(`${sectionCounter}. Counter Performance Comparison`, margin, curY);
     sectionCounter++;
 
     const tableY = curY + 4;
@@ -162,7 +162,7 @@ export function buildOrgAnalyticsJsPdf({
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7);
     doc.setTextColor(51, 65, 85);
-    doc.text('Branch Name', margin + 2, tableY + 5);
+    doc.text('Counter Name', margin + 2, tableY + 5);
     doc.text('Txns', margin + 42, tableY + 5);
     doc.text('Purchases', margin + 58, tableY + 5);
     doc.text('Card Rchg', margin + 82, tableY + 5);
@@ -563,7 +563,7 @@ export function buildPlatformAnalyticsJsPdf(params: GeneratePlatformAnalyticsPdf
       doc.text('1. Platform Overview', margin, curY);
 
       const topKpis = [
-        { label: 'Total Organizations', val: `${params.totalOrganizations} Organizations` },
+        { label: 'Total Cafeterias', val: `${params.totalOrganizations} Cafeterias` },
         { label: 'Active Subscriptions', val: `${params.activeSubscriptions} Active` },
         { label: 'Gateway Sub Revenue', val: formatCurrency(params.totalGatewayRevenue) },
         { label: 'Plan Requests', val: `${params.pendingRequestsCount ?? 0} Pending` },
@@ -588,7 +588,7 @@ export function buildPlatformAnalyticsJsPdf(params: GeneratePlatformAnalyticsPdf
       });
 
       const secondaryKpis = [
-        { label: 'Branches Deployed', val: `${params.branches.length} Locations` },
+        { label: 'Counters Deployed', val: `${params.branches.length} Locations` },
         { label: 'Subscription Plans', val: `${params.plans.length} Active Tiers` },
       ];
 
@@ -667,8 +667,8 @@ export function buildPlatformAnalyticsJsPdf(params: GeneratePlatformAnalyticsPdf
   if (hasPage2) {
     hasAnySection = true;
     preparePage(
-      'MONEY CARD - ORGANIZATIONS & BRANCHES',
-      `Organizations & Branch Operations  |  Generated: ${generatedTime}`,
+      'MONEY CARD - CAFETERIAS & COUNTERS',
+      `Cafeterias & Counter Operations  |  Generated: ${generatedTime}`,
     );
 
     let curOrgY = 42;
@@ -678,7 +678,7 @@ export function buildPlatformAnalyticsJsPdf(params: GeneratePlatformAnalyticsPdf
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(11);
       doc.setTextColor(15, 23, 42);
-      doc.text('3. Organizations & Usage', margin, curOrgY);
+      doc.text('3. Cafeterias & Usage', margin, curOrgY);
 
       const orgTableY = curOrgY + 4;
       doc.setFillColor(241, 245, 249);
@@ -688,10 +688,10 @@ export function buildPlatformAnalyticsJsPdf(params: GeneratePlatformAnalyticsPdf
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(7.5);
       doc.setTextColor(51, 65, 85);
-      doc.text('Organization Name', margin + 3, orgTableY + 5);
+      doc.text('Cafeteria Name', margin + 3, orgTableY + 5);
       doc.text('Subscribed Plan', margin + 60, orgTableY + 5);
       doc.text('Status', margin + 95, orgTableY + 5);
-      doc.text('Branches', margin + 118, orgTableY + 5);
+      doc.text('Counters', margin + 118, orgTableY + 5);
       doc.text('Staff', margin + 143, orgTableY + 5);
       doc.text('Cards', margin + 165, orgTableY + 5);
 
@@ -727,7 +727,7 @@ export function buildPlatformAnalyticsJsPdf(params: GeneratePlatformAnalyticsPdf
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(11);
       doc.setTextColor(15, 23, 42);
-      doc.text('4. Branch Performance', margin, branchSecY);
+      doc.text('4. Counter Performance', margin, branchSecY);
 
       const brTableY = branchSecY + 4;
       doc.setFillColor(241, 245, 249);
@@ -737,8 +737,8 @@ export function buildPlatformAnalyticsJsPdf(params: GeneratePlatformAnalyticsPdf
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(7.5);
       doc.setTextColor(51, 65, 85);
-      doc.text('Branch Name', margin + 3, brTableY + 5);
-      doc.text('Organization', margin + 48, brTableY + 5);
+      doc.text('Counter Name', margin + 3, brTableY + 5);
+      doc.text('Cafeteria', margin + 48, brTableY + 5);
       doc.text('Txns', margin + 90, brTableY + 5);
       doc.text('Purchases', margin + 108, brTableY + 5);
       doc.text('Recharges', margin + 130, brTableY + 5);

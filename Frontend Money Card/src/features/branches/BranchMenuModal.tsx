@@ -94,7 +94,7 @@ export function BranchMenuModal({ branch, isOpen, onClose }: BranchMenuModalProp
       ]);
 
       if (!prodRes.success) {
-        setLoadError(prodRes.error.message || 'Failed to load branch menu');
+        setLoadError(prodRes.error.message || 'Failed to load counter menu');
         return;
       }
 
@@ -410,7 +410,7 @@ export function BranchMenuModal({ branch, isOpen, onClose }: BranchMenuModalProp
     },
     {
       key: 'quantity',
-      header: 'Branch Stock',
+      header: 'Counter Stock',
       className: 'whitespace-nowrap',
       render: (p: UnifiedProductItem) => {
         if (p.quantity === 0) {
@@ -499,7 +499,7 @@ export function BranchMenuModal({ branch, isOpen, onClose }: BranchMenuModalProp
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        title={`Branch Menu: ${branch.name}`}
+        title={`Counter Menu: ${branch.name}`}
         description={`Manage food catalog items, categories, pricing, and live inventory stock for ${branch.name}.`}
         size="2xl"
       >
@@ -605,7 +605,7 @@ export function BranchMenuModal({ branch, isOpen, onClose }: BranchMenuModalProp
           <div className="rounded-xl border border-slate-200 overflow-hidden bg-white max-h-[50vh] overflow-y-auto">
             {isLoading ? (
               <div className="py-12">
-                <LoadingState message="Loading branch menu items..." />
+                <LoadingState message="Loading counter menu items..." />
               </div>
             ) : loadError ? (
               <div className="p-6">
@@ -617,7 +617,7 @@ export function BranchMenuModal({ branch, isOpen, onClose }: BranchMenuModalProp
                   title={
                     searchQuery || statusStockFilter !== 'ALL' || categoryFilter !== 'ALL'
                       ? 'No matching products'
-                      : 'No items in this branch menu yet'
+                      : 'No items in this counter menu yet'
                   }
                   description={
                     searchQuery || statusStockFilter !== 'ALL' || categoryFilter !== 'ALL'
@@ -718,7 +718,7 @@ export function BranchMenuModal({ branch, isOpen, onClose }: BranchMenuModalProp
 
                         {/* Card Stock Pill */}
                         <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-                          <span className="text-slate-500 font-medium">Branch Live Stock:</span>
+                          <span className="text-slate-500 font-medium">Counter Live Stock:</span>
                           {p.quantity === 0 ? (
                             <span className="inline-flex items-center font-bold text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200 text-xs">
                               Out of stock (0)
@@ -924,7 +924,7 @@ export function BranchMenuModal({ branch, isOpen, onClose }: BranchMenuModalProp
                 <span className="font-semibold text-slate-800">{selectedInventory.productName}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Branch Location:</span>
+                <span className="text-slate-500">Counter Location:</span>
                 <span className="font-semibold text-slate-800">{branch.name}</span>
               </div>
               <div className="flex justify-between border-t border-slate-200 pt-2">

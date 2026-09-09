@@ -159,7 +159,7 @@ function BranchActionMenu({
               className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer text-left"
             >
               <Edit2 className="h-4 w-4 text-emerald-600" />
-              <span>Edit Branch</span>
+              <span>Edit Counter</span>
             </button>
 
             <button
@@ -175,7 +175,7 @@ function BranchActionMenu({
               }`}
             >
               <Power className="h-4 w-4" />
-              <span>{branch.status === 'ACTIVE' ? 'Deactivate Branch' : 'Activate Branch'}</span>
+              <span>{branch.status === 'ACTIVE' ? 'Deactivate Counter' : 'Activate Counter'}</span>
             </button>
 
             <div className="my-1 border-t border-slate-200" />
@@ -189,7 +189,7 @@ function BranchActionMenu({
               className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer text-left"
             >
               <Trash2 className="h-4 w-4" />
-              <span>Delete Branch</span>
+              <span>Delete Counter</span>
             </button>
           </div>,
           document.body,
@@ -257,7 +257,7 @@ export function BranchesPage() {
       ]);
 
       if (!branchRes.success) {
-        setError(branchRes.error.message || 'Failed to load branches');
+        setError(branchRes.error.message || 'Failed to load counters');
         return;
       }
 
@@ -286,7 +286,7 @@ export function BranchesPage() {
         if (isCancelled) return;
 
         if (!branchRes.success) {
-          setError(branchRes.error.message || 'Failed to load branches');
+          setError(branchRes.error.message || 'Failed to load counters');
           return;
         }
 
@@ -324,7 +324,7 @@ export function BranchesPage() {
     return result.filter((b) => b.name.toLowerCase().includes(q));
   }, [branches, currentBranch, searchQuery]);
 
-  // ── Create Branch ─────────────────────────────────────────
+  // ── Create Counter ─────────────────────────────────────────
   const handleOpenCreate = () => {
     setBranchNameInput('');
     setNameError(null);
@@ -335,7 +335,7 @@ export function BranchesPage() {
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!branchNameInput.trim()) {
-      setNameError('Branch name is required');
+      setNameError('Counter name is required');
       return;
     }
     setNameError(null);
@@ -351,15 +351,15 @@ export function BranchesPage() {
         if (result.error.code === 'PLAN_LIMIT_REACHED') {
           setModalApiError(
             result.error.message ||
-              'Branch limit reached for your active plan. Please upgrade your subscription to create more branches.',
+              'Counter limit reached for your active plan. Please upgrade your subscription to create more counters.',
           );
         } else {
-          setModalApiError(result.error.message || 'Failed to create branch');
+          setModalApiError(result.error.message || 'Failed to create counter');
         }
         return;
       }
 
-      notify.success('Branch created successfully');
+      notify.success('Counter created successfully');
       setShowCreateModal(false);
       fetchBranches();
     } catch {
@@ -383,7 +383,7 @@ export function BranchesPage() {
     if (!selectedBranch) return;
 
     if (!branchNameInput.trim()) {
-      setNameError('Branch name is required');
+      setNameError('Counter name is required');
       return;
     }
     setNameError(null);
@@ -396,11 +396,11 @@ export function BranchesPage() {
       });
 
       if (!result.success) {
-        setModalApiError(result.error.message || 'Failed to update branch');
+        setModalApiError(result.error.message || 'Failed to update counter');
         return;
       }
 
-      notify.success('Branch updated successfully');
+      notify.success('Counter updated successfully');
       setShowEditModal(false);
       fetchBranches();
     } catch {
@@ -424,7 +424,7 @@ export function BranchesPage() {
 
     const newStatus = selectedBranch.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     if (selectedBranch.status === 'ACTIVE' && activeBranchesCount <= 1) {
-      setModalApiError('Cannot disable this branch. An organization must have at least one active branch.');
+      setModalApiError('Cannot disable this counter. A cafeteria must have at least one active counter.');
       return;
     }
 
@@ -437,12 +437,12 @@ export function BranchesPage() {
       });
 
       if (!result.success) {
-        setModalApiError(result.error.message || 'Failed to change branch status');
+        setModalApiError(result.error.message || 'Failed to change counter status');
         return;
       }
 
       notify.success(
-        `Branch ${newStatus === 'ACTIVE' ? 'activated' : 'deactivated'} successfully`,
+        `Counter ${newStatus === 'ACTIVE' ? 'activated' : 'deactivated'} successfully`,
       );
       setShowStatusModal(false);
 
@@ -487,14 +487,14 @@ export function BranchesPage() {
         if ((result.error as any)?.code === 'DEPENDENT_RECORDS_EXIST' || (result.error as any)?.status === 409) {
           setDeleteApiConflict(true);
         }
-        setModalApiError(result.error.message || 'Failed to delete branch');
+        setModalApiError(result.error.message || 'Failed to delete counter');
         return;
       }
 
       notify.success(
         result.data?.archived
-          ? 'Branch deactivated to preserve historical accounting records'
-          : 'Branch deleted successfully',
+          ? 'Counter deactivated to preserve historical accounting records'
+          : 'Counter deleted successfully',
       );
       setShowDeleteModal(false);
       fetchBranches();
@@ -509,7 +509,7 @@ export function BranchesPage() {
   const columns = [
     {
       key: 'name',
-      header: 'Branch Name',
+      header: 'Counter Name',
       render: (branch: Branch) => (
         <button
           type="button"
@@ -579,7 +579,7 @@ export function BranchesPage() {
       {/* Header Bar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Branches</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Counters</h1>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
@@ -588,7 +588,7 @@ export function BranchesPage() {
             onClick={() => setShowOverviewModal(true)}
             leftIcon={<Layers className="h-4 w-4 text-emerald-600" />}
             className="border-slate-200 hover:border-emerald-500 text-slate-700 bg-white shadow-2xs font-semibold cursor-pointer"
-            title="View consolidated overview across all branches"
+            title="View consolidated overview across all counters"
           >
             End-to-End Overview
           </Button>
@@ -599,7 +599,7 @@ export function BranchesPage() {
               onClick={handleOpenCreate}
               leftIcon={<Plus className="h-4 w-4" />}
             >
-              Create Branch
+              Create Counter
             </Button>
           )}
         </div>
@@ -610,7 +610,7 @@ export function BranchesPage() {
         <Card padding="sm" className="bg-slate-50 border border-slate-200">
           <div className="flex items-center justify-between text-xs font-medium">
             <span className="text-slate-600">
-              Branch Usage ({orgOverview.plan?.name || 'Active Plan'}):
+              Counter Usage ({orgOverview.plan?.name || 'Active Plan'}):
             </span>
             <span className="text-slate-800">
               <strong className="text-emerald-600">{orgOverview.usage.branchCount}</strong> /{' '}
@@ -637,7 +637,7 @@ export function BranchesPage() {
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search branches by name..."
+            placeholder="Search counters by name..."
             value={searchQuery}
             maxLength={30}
             onChange={(e) => setSearchQuery(e.target.value.slice(0, 30))}
@@ -661,18 +661,18 @@ export function BranchesPage() {
 
       {/* Main Content */}
       {isLoading ? (
-        <LoadingState message="Loading branches..." />
+        <LoadingState message="Loading counters..." />
       ) : error ? (
         <ErrorState
-          title="Failed to load branches"
+          title="Failed to load counters"
           message={error}
           onRetry={fetchBranches}
         />
       ) : branches.length === 0 ? (
         <EmptyState
           icon={<Building2 className="h-8 w-8 text-slate-500" />}
-          title="No branches found"
-          description="Get started by adding your first operational branch location."
+          title="No counters found"
+          description="Get started by adding your first operational counter."
           action={
             canManage ? (
               <Button variant="primary" onClick={handleOpenCreate} leftIcon={<Plus className="h-4 w-4" />}>
@@ -684,11 +684,11 @@ export function BranchesPage() {
       ) : filteredBranches.length === 0 ? (
         <EmptyState
           icon={<Building2 className="h-8 w-8 text-slate-500" />}
-          title="No matching branches"
+          title="No matching counters"
           description={
             searchQuery
-              ? `No branches match the name "${searchQuery}".`
-              : `No branches match the selected branch filter.`
+              ? `No counters match the name "${searchQuery}".`
+              : `No counters match the selected counter filter.`
           }
           action={
             searchQuery ? (
@@ -775,12 +775,12 @@ export function BranchesPage() {
         </>
       )}
 
-      {/* ── Create Branch Modal ───────────────────────────────────── */}
+      {/* ── Create Counter Modal ───────────────────────────────────── */}
       <Modal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        title="Create New Branch"
-        description="Add a new physical location or service desk for your organization."
+        title="Create New Counter"
+        description="Add a new food counter or service station for your cafeteria."
       >
         <form onSubmit={handleCreateSubmit} noValidate className="space-y-4">
           {modalApiError && (
@@ -792,7 +792,7 @@ export function BranchesPage() {
 
           <Input
             id="create-branch-name"
-            label="Branch Name"
+            label="Counter Name"
             placeholder="e.g. Downtown Cafeteria, North Campus..."
             value={branchNameInput}
             onChange={(e) => {
@@ -809,7 +809,7 @@ export function BranchesPage() {
               Cancel
             </Button>
             <Button type="submit" variant="primary" isLoading={isSubmitting} disabled={isSubmitting}>
-              Create Branch
+              Create Counter
             </Button>
           </ModalFooter>
         </form>
@@ -819,7 +819,7 @@ export function BranchesPage() {
       <Modal
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
-        title="Edit Branch"
+        title="Edit Counter"
         description={`Update information for ${selectedBranch?.name}.`}
       >
         <form onSubmit={handleEditSubmit} noValidate className="space-y-4">
@@ -832,7 +832,7 @@ export function BranchesPage() {
 
           <Input
             id="edit-branch-name"
-            label="Branch Name"
+            label="Counter Name"
             placeholder="e.g. Downtown Cafeteria..."
             value={branchNameInput}
             onChange={(e) => {
@@ -859,7 +859,7 @@ export function BranchesPage() {
       <Modal
         isOpen={showStatusModal}
         onClose={() => setShowStatusModal(false)}
-        title={selectedBranch?.status === 'ACTIVE' ? 'Deactivate Branch' : 'Activate Branch'}
+        title={selectedBranch?.status === 'ACTIVE' ? 'Deactivate Counter' : 'Activate Counter'}
       >
         <div className="space-y-4 py-2">
           {modalApiError && (
@@ -874,7 +874,7 @@ export function BranchesPage() {
             <strong className="text-slate-900">
               {selectedBranch?.status === 'ACTIVE' ? 'deactivate' : 'activate'}
             </strong>{' '}
-            the branch <span className="text-emerald-700 font-semibold">{selectedBranch?.name}</span>?
+            the counter <span className="text-emerald-700 font-semibold">{selectedBranch?.name}</span>?
           </p>
 
           {selectedBranch?.status === 'ACTIVE' && activeBranchesCount <= 1 && (
@@ -906,8 +906,8 @@ export function BranchesPage() {
       <Modal
         isOpen={showDeleteModal}
         onClose={() => !isSubmitting && setShowDeleteModal(false)}
-        title="Delete Branch"
-        description="Permanent removal or safe deactivation of branch"
+        title="Delete Counter"
+        description="Permanent removal or safe deactivation of counter"
         size="md"
       >
         <div className="space-y-4">
@@ -915,7 +915,7 @@ export function BranchesPage() {
             <div className="flex items-start gap-2.5 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
               <AlertCircle className="h-4 w-4 shrink-0 text-rose-500 mt-0.5" />
               <div className="space-y-1">
-                <p className="font-semibold">Cannot Delete Branch</p>
+                <p className="font-semibold">Cannot Delete Counter</p>
                 <p>{modalApiError}</p>
               </div>
             </div>
@@ -931,7 +931,7 @@ export function BranchesPage() {
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-2 text-xs text-amber-800">
               <p className="font-bold text-amber-700">Safe Deactivation Available</p>
               <p>
-                This branch cannot be permanently erased because customers have financial transactions recorded here. You can safely <strong>Deactivate</strong> it so it is hidden from operations while preserving all historical records.
+                This counter cannot be permanently erased because customers have financial transactions recorded here. You can safely <strong>Deactivate</strong> it so it is hidden from operations while preserving all historical records.
               </p>
             </div>
           )}

@@ -99,7 +99,7 @@ export function DashboardLayout() {
     if (userRole === 'SUPER_ADMIN') {
       return 'Platform Super Admin';
     }
-    return user?.organizationName || 'Organization Admin';
+    return user?.organizationName || 'Cafeteria Admin';
   }, [userRole, user?.organizationName]);
 
   if (isLoading && !user) {
@@ -159,12 +159,12 @@ export function DashboardLayout() {
                 id="sidebar-branch-selector"
                 onClick={() => setBranchDropdownOpen(!branchDropdownOpen)}
                 aria-expanded={branchDropdownOpen}
-                aria-label="Branch selector"
+                aria-label="Counter selector"
                 className="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 <Building2 className="h-4 w-4 shrink-0 text-emerald-600" />
                 <span className="flex-1 truncate text-left font-semibold text-slate-800">
-                  {currentBranch?.name || 'All Branches'}
+                  {currentBranch?.name || 'All Counters'}
                 </span>
                 <ChevronDown
                   className={cn(
@@ -190,7 +190,7 @@ export function DashboardLayout() {
                         : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
                     )}
                   >
-                    <span className="truncate">All Branches</span>
+                    <span className="truncate">All Counters</span>
                     {!currentBranch && (
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 shrink-0" />
                     )}
@@ -314,7 +314,7 @@ export function DashboardLayout() {
           {/* Organization Context Badge */}
           <div className="hidden md:flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700">
             <Shield className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-            <span className="text-slate-500">Org:</span>
+            <span className="text-slate-500">Cafeteria:</span>
             <span className="font-semibold text-slate-800 truncate max-w-[140px]">
               {orgContextLabel}
             </span>

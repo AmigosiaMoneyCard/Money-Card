@@ -60,7 +60,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
 
     if (branch == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select an active branch before issuing a card.')),
+        const SnackBar(content: Text('Please select an active counter before issuing a card.')),
       );
       return;
     }
@@ -115,7 +115,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Branch:', style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight)),
+                          const Text('Counter:', style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight)),
                           Text(branch?.name ?? 'Main Branch', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                         ],
                       ),
@@ -365,7 +365,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                     const Icon(Icons.storefront, size: 20, color: AppColors.primary),
                     const SizedBox(width: AppSpacing.xs),
                     Text(
-                      'Branch: ${branch?.name ?? "Not Assigned"}',
+                      'Counter: ${branch?.name ?? "Not Assigned"}',
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
@@ -500,7 +500,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                   : AppEmptyState(
                       title: 'No Available Cards',
                       description:
-                          'No available cards found for ${branch?.name ?? "this branch"}. Cards must first be created or imported by an Organization Admin via the Web Portal.',
+                          'No available cards found for ${branch?.name ?? "this branch"}. Cards must first be created or imported by a Cafeteria Admin via the Web Portal.',
                       icon: Icons.credit_card_off_outlined,
                     ))
               : RefreshIndicator(
@@ -608,7 +608,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
               ),
               const SizedBox(height: AppSpacing.sm),
               const Text(
-                'This QR card is not registered in your organization.',
+                'This QR card is not registered in your cafeteria.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,

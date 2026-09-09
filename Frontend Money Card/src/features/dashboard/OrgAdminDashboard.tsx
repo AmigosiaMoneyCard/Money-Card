@@ -271,11 +271,11 @@ export function OrgAdminDashboard() {
   const setupSteps = useMemo(() => [
     {
       id: 'branches',
-      title: '1. Create branch location',
+      title: '1. Create counter location',
       description: 'Define your cafeteria counter or store location.',
       completed: hasBranches,
       path: '/branches',
-      actionLabel: 'Add Branch',
+      actionLabel: 'Add Counter',
     },
     {
       id: 'staff',
@@ -328,7 +328,7 @@ export function OrgAdminDashboard() {
       {/* Header Bar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Organization Dashboard</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Cafeteria Dashboard</h1>
         </div>
       </div>
 
@@ -443,7 +443,7 @@ export function OrgAdminDashboard() {
             onClick={() => navigate('/branches')}
             leftIcon={<Building2 className="h-3.5 w-3.5" />}
           >
-            Branches
+            Counters
           </Button>
         )}
         {hasPermission('VIEW_ANALYTICS') && (
@@ -555,7 +555,7 @@ export function OrgAdminDashboard() {
       )}
 
       {isLoading ? (
-        <LoadingState message="Loading organization dashboard..." />
+        <LoadingState message="Loading cafeteria dashboard..." />
       ) : error ? (
         <ErrorState title="Failed to load dashboard" message={error} onRetry={() => fetchOrgDashboardData(false)} />
       ) : (
@@ -669,7 +669,7 @@ export function OrgAdminDashboard() {
                 <div className="flex flex-wrap items-center gap-3">
                   {/* Branch Scope Filter */}
                   <div className="w-full sm:w-52">
-                    <label className="mb-1 block text-[11px] font-medium text-slate-600">Branch Scope</label>
+                    <label className="mb-1 block text-[11px] font-medium text-slate-600">Counter Scope</label>
                     <Select
                       id="dashboard-branch-filter"
                       value={currentBranch?.id || ''}
@@ -683,7 +683,7 @@ export function OrgAdminDashboard() {
                         }
                       }}
                       options={[
-                        { value: '', label: 'All Branches' },
+                        { value: '', label: 'All Counters' },
                         ...branches.map((b) => ({ value: b.id, label: b.name })),
                       ]}
                     />

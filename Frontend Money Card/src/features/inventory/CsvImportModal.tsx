@@ -97,14 +97,14 @@ export function CsvImportModal({
   // Optional: Download Current Branch Data in Template Schema
   const handleDownloadCurrentData = async () => {
     if (!selectedBranchId) {
-      notify.error('Please select a branch first to download current data');
+      notify.error('Please select a counter first to download current data');
       return;
     }
     setIsExportingCurrent(true);
     try {
       const res = await apiService.products.getProducts({ branchId: selectedBranchId, limit: 200 });
       if (!res.success) {
-        notify.error('Failed to fetch current branch products');
+        notify.error('Failed to fetch current counter products');
         return;
       }
 
@@ -133,7 +133,7 @@ export function CsvImportModal({
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      notify.success(`Exported ${products.length} current branch products to CSV`);
+      notify.success(`Exported ${products.length} current counter products to CSV`);
     } catch {
       notify.error('An error occurred while exporting current data.');
     } finally {
@@ -165,7 +165,7 @@ export function CsvImportModal({
   // Stage 3 & 4: Validate & Preview
   const handleValidateAndPreview = async () => {
     if (!selectedBranchId) {
-      setApiError('Please select a target branch for the CSV import.');
+      setApiError('Please select a target counter for the CSV import.');
       return;
     }
 
@@ -263,7 +263,7 @@ export function CsvImportModal({
             {/* Target Branch Selector */}
             <Select
               id="csv-branch-select"
-              label="Target Branch Location"
+              label="Target Counter Location"
               value={selectedBranchId}
               onChange={(e) => setOverrideBranchId(e.target.value)}
               options={branches.map((b) => ({ value: b.id, label: b.name }))}
@@ -352,12 +352,12 @@ export function CsvImportModal({
             <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs">
               <div className="flex items-center gap-2 text-slate-700">
                 <Building2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                <span>Target Branch:</span>
+                <span>Target Counter:</span>
                 <strong className="text-slate-900">
                   {branches.find((b) => b.id === preview.branchId)?.name || preview.branchId}
                 </strong>
               </div>
-              <span className="font-mono text-[11px] text-slate-500">Branch ID: {preview.branchId}</span>
+              <span className="font-mono text-[11px] text-slate-500">Counter ID: {preview.branchId}</span>
             </div>
 
             {/* Validation Summary Metrics */}

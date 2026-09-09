@@ -108,7 +108,7 @@ export function AllBranchesOverviewModal({
       ]);
 
       if (!branchRes.success) {
-        setLoadError(branchRes.error.message || 'Failed to load branch list');
+        setLoadError(branchRes.error.message || 'Failed to load counter list');
         return;
       }
 
@@ -261,7 +261,7 @@ export function AllBranchesOverviewModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="All Branches End-to-End Overview"
+      title="All Counters End-to-End Overview"
       size="full"
     >
       <div className="space-y-6">
@@ -270,7 +270,7 @@ export function AllBranchesOverviewModal({
           {/* Total Branches */}
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Branches</span>
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Counters</span>
               <Building2 className="h-4 w-4 text-emerald-600" />
             </div>
             <p className="text-xl font-bold text-slate-900">{overallMetrics.totalBranches}</p>
@@ -337,7 +337,7 @@ export function AllBranchesOverviewModal({
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search branch, staff or item..."
+                placeholder="Search counter, staff or item..."
                 value={searchQuery}
                 maxLength={35}
                 onChange={(e) => setSearchQuery(e.target.value.slice(0, 35))}
@@ -360,8 +360,8 @@ export function AllBranchesOverviewModal({
               onChange={(e) => setStatusFilter(e.target.value as 'ALL' | 'ACTIVE' | 'INACTIVE')}
               options={[
                 { value: 'ALL', label: 'All Statuses' },
-                { value: 'ACTIVE', label: 'Active Branches' },
-                { value: 'INACTIVE', label: 'Inactive Branches' },
+                { value: 'ACTIVE', label: 'Active Counters' },
+                { value: 'INACTIVE', label: 'Inactive Counters' },
               ]}
             />
 
@@ -370,7 +370,7 @@ export function AllBranchesOverviewModal({
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
               options={[
-                { value: 'NAME', label: 'Sort: Branch Name (A-Z)' },
+                { value: 'NAME', label: 'Sort: Counter Name (A-Z)' },
                 { value: 'VALUATION', label: 'Sort: Highest Valuation (₹)' },
                 { value: 'PRODUCTS', label: 'Sort: Most Menu Items' },
                 { value: 'STAFF', label: 'Sort: Most Assigned Staff' },
@@ -412,7 +412,7 @@ export function AllBranchesOverviewModal({
         <div className="space-y-4 max-h-[58vh] overflow-y-auto pr-1">
           {isLoading ? (
             <div className="py-16">
-              <LoadingState message="Loading end-to-end branch metrics..." />
+              <LoadingState message="Loading end-to-end counter metrics..." />
             </div>
           ) : loadError ? (
             <div className="p-6">
@@ -422,11 +422,11 @@ export function AllBranchesOverviewModal({
             <div className="py-12">
               <EmptyState
                 icon={<Building2 className="h-8 w-8 text-slate-500" />}
-                title={searchQuery || statusFilter !== 'ALL' ? 'No matching branches' : 'No branches found'}
+                title={searchQuery || statusFilter !== 'ALL' ? 'No matching counters' : 'No counters found'}
                 description={
                   searchQuery || statusFilter !== 'ALL'
                     ? 'Try clearing your search query or status filter.'
-                    : 'Create your first branch to view comprehensive end-to-end details.'
+                    : 'Create your first counter to view comprehensive end-to-end details.'
                 }
               />
             </div>
@@ -641,7 +641,7 @@ export function AllBranchesOverviewModal({
                               onClick={() => onOpenBranchMenu(branch)}
                               className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 cursor-pointer"
                             >
-                              <span>Manage Branch Menu</span>
+                              <span>Manage Counter Menu</span>
                               <ExternalLink className="h-3 w-3" />
                             </button>
                           )}
@@ -649,7 +649,7 @@ export function AllBranchesOverviewModal({
 
                         {products.length === 0 ? (
                           <p className="text-xs text-slate-500 italic py-1">
-                            No menu items added to {branch.name} yet. Click "Menu & Stock" to create products for this branch.
+                            No menu items added to {branch.name} yet. Click "Menu & Stock" to create products for this counter.
                           </p>
                         ) : (
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-1">
@@ -728,7 +728,7 @@ export function AllBranchesOverviewModal({
         <ModalFooter>
           <div className="flex items-center justify-between w-full">
             <span className="text-xs text-slate-500">
-              Showing <strong className="text-slate-700">{filteredBranchDetails.length}</strong> of {branches.length} branches
+              Showing <strong className="text-slate-700">{filteredBranchDetails.length}</strong> of {branches.length} counters
             </span>
             <Button variant="outline" onClick={onClose}>
               Close Overview

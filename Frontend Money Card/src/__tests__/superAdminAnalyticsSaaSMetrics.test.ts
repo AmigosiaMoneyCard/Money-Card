@@ -132,7 +132,7 @@ describe('Super Admin Analytics View - SaaS Platform Metrics', () => {
 
   it('verifies that removed consumer metrics are no longer in the analytics KPI cards structure', () => {
     const activeAnalyticsKpiLabels = [
-      'Total Organizations',
+      'Total Cafeterias',
       'Active Subscriptions',
       'Gateway Subscription Revenue',
       'Plan Requests',

@@ -227,7 +227,7 @@ function OrgAdminSubscriptionsView() {
   const handleOpenContactSuperAdmin = (targetPlan?: Plan) => {
     if (pendingRequest) {
       notify.warning(
-        'An organization can only make one plan change request at a time. Please wait until your pending request is approved or rejected by Super Admin before submitting another request.'
+        'A cafeteria can only make one plan change request at a time. Please wait until your pending request is approved or rejected by Super Admin before submitting another request.'
       );
       return;
     }
@@ -271,7 +271,7 @@ function OrgAdminSubscriptionsView() {
 
     if (pendingRequest) {
       setModalApiError(
-        'An organization can only make one plan change request at a time. Please wait until your pending request is approved or rejected by Super Admin before submitting another request.'
+        'A cafeteria can only make one plan change request at a time. Please wait until your pending request is approved or rejected by Super Admin before submitting another request.'
       );
       return;
     }
@@ -492,7 +492,7 @@ function OrgAdminSubscriptionsView() {
             disabled={!!pendingRequest}
             title={
               pendingRequest
-                ? 'An organization can only make one plan change request at a time. Please wait until your pending request is approved or rejected.'
+                ? 'A cafeteria can only make one plan change request at a time. Please wait until your pending request is approved or rejected.'
                 : 'Contact Super Admin'
             }
             leftIcon={<MessageSquare className="h-4 w-4" />}
@@ -560,7 +560,7 @@ function OrgAdminSubscriptionsView() {
           <Card>
             <CardHeader
               title={`Current Plan: ${currentPlan?.name || 'Active Subscription'}`}
-              description={`${branchLimit} Branches • ${staffLimit} Staff • ${cardLimit} Cards`}
+              description={`${branchLimit} Counters • ${staffLimit} Staff • ${cardLimit} Cards`}
               action={
                 <Badge
                   variant={
@@ -707,7 +707,7 @@ function OrgAdminSubscriptionsView() {
                       {/* Technical Limits List */}
                       <div className="space-y-2 border-t border-b border-slate-200 py-3 text-xs">
                         <div className="flex items-center justify-between text-slate-700">
-                          <span>Branches:</span>
+                          <span>Counters:</span>
                           <strong className="font-mono text-slate-900 font-bold">{plan.branchLimit}</strong>
                         </div>
                         <div className="flex items-center justify-between text-slate-700">
@@ -909,7 +909,7 @@ function OrgAdminSubscriptionsView() {
 
           {/* Current Plan (Read-Only) */}
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-1 text-xs">
-            <span className="text-slate-500 font-semibold uppercase tracking-wider">Current Organization Plan</span>
+            <span className="text-slate-500 font-semibold uppercase tracking-wider">Current Cafeteria Plan</span>
             <div className="flex justify-between items-center pt-1">
               <span className="text-sm font-bold text-slate-900">{currentPlan?.name || 'Standard'}</span>
               <span className="font-mono text-emerald-700 font-bold">

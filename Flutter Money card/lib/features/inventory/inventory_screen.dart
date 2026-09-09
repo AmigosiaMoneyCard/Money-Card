@@ -183,7 +183,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
             const Icon(Icons.swap_horiz, size: 16, color: AppColors.primaryDark),
             const SizedBox(width: 4),
             const Text(
-              'Switch Branch',
+              'Switch Counter',
               style: TextStyle(
                 color: AppColors.primaryDark,
                 fontSize: 12,

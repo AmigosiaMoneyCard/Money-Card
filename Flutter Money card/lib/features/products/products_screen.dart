@@ -78,7 +78,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                     const SizedBox(width: AppSpacing.xs),
                     Expanded(
                       child: Text(
-                        'Branch: ${currentBranch?.name ?? "Main Cafeteria"}',
+                        'Counter: ${currentBranch?.name ?? "Main Cafeteria"}',
                         style: const TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 13,

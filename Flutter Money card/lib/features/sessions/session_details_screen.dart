@@ -474,36 +474,7 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
             const SizedBox(height: AppSpacing.sm),
           ],
 
-          // Footer details (Payment method & Balance after line)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.sm),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  isPurchase
-                      ? 'Paid via: Money Card Balance'
-                      : isRecharge
-                          ? 'Payment: ${txn.paymentMethod == PaymentMethod.upi ? "UPI" : "Cash"}'
-                          : 'Refund via: Cash Return',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondaryLight,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                if (txn.balanceAfter != null)
-                  Text(
-                    'Balance after: ₹${txn.balanceAfter!.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimaryLight,
-                    ),
-                  ),
-              ],
-            ),
-          ),
+
         ],
       ),
     );

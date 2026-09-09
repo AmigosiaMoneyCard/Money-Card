@@ -60,7 +60,7 @@ class BranchNotifier extends StateNotifier<BranchState> {
         assignedBranches: [],
         currentBranch: null,
         isLoading: false,
-        error: 'Your assigned branch is currently inactive. Please contact your Organization Administrator.',
+        error: 'Your assigned counter is currently inactive. Please contact your Cafeteria Administrator.',
       );
     }
   }
@@ -85,7 +85,7 @@ class BranchNotifier extends StateNotifier<BranchState> {
         assignedBranches: activeOnly,
         currentBranch: current,
         error: activeOnly.isEmpty
-            ? 'Your assigned branch is currently inactive. Please contact your Organization Administrator.'
+            ? 'Your assigned counter is currently inactive. Please contact your Cafeteria Administrator.'
             : null,
       );
     } catch (_) {
@@ -98,7 +98,7 @@ class BranchNotifier extends StateNotifier<BranchState> {
       state = state.copyWith(
         assignedBranches: [],
         currentBranch: null,
-        error: 'Your assigned branch is currently inactive. Please contact your Organization Administrator.',
+        error: 'Your assigned counter is currently inactive. Please contact your Cafeteria Administrator.',
       );
       return;
     }
@@ -120,7 +120,7 @@ class BranchNotifier extends StateNotifier<BranchState> {
         currentBranch: active,
         isLoading: false,
         error: assigned.isEmpty
-            ? 'Your assigned branch is currently inactive. Please contact your Organization Administrator.'
+            ? 'Your assigned counter is currently inactive. Please contact your Cafeteria Administrator.'
             : null,
       );
     } catch (e) {
