@@ -35,7 +35,7 @@ class AppConfig {
   /// Production API URL (used strictly in production builds)
   static const String productionBaseUrl = String.fromEnvironment(
     'PROD_BASE_URL',
-    defaultValue: 'https://api.moneycard.com/api/v1',
+    defaultValue: 'https://money-card-backend.onrender.com/api/v1',
   );
 
   /// Primary USB Reverse / Local Loopback endpoint

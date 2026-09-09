@@ -8,8 +8,7 @@ import type { ApiResponse } from '@/types';
 // mid-session 401 response interception with token refresh & retry.
 
 const API_BASE_URL =
-  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) ||
-  'http://localhost:3000/api';
+  import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
 interface RetryAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
