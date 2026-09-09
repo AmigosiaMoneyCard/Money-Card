@@ -387,7 +387,7 @@ export function AdminPlansSubscriptionsView() {
         return;
       }
 
-      notify.success(`Global Plan "${formName}" updated successfully. (Existing organization-specific overrides preserved)`);
+      notify.success(`Global Plan "${formName}" updated successfully. (Existing cafeteria-specific overrides preserved)`);
       setShowEditPlanModal(false);
       fetchUnifiedData();
     } catch {
@@ -408,7 +408,7 @@ export function AdminPlansSubscriptionsView() {
     if (subOverrideBranch.trim()) {
       const val = parseInt(subOverrideBranch, 10);
       if (isNaN(val) || val < 1) {
-        setModalApiError('Branch limit override must be a positive integer.');
+        setModalApiError('Counter limit override must be a positive integer.');
         setIsSubmitting(false);
         return;
       }
@@ -441,7 +441,7 @@ export function AdminPlansSubscriptionsView() {
       });
 
       if (!res.success) {
-        setModalApiError(res.error.message || 'Failed to update organization subscription.');
+        setModalApiError(res.error.message || 'Failed to update cafeteria subscription.');
         return;
       }
 
@@ -503,7 +503,7 @@ export function AdminPlansSubscriptionsView() {
 
     const orgSub = subscriptions.find((s) => s.organizationId === payOrgId);
     if (!orgSub) {
-      setModalApiError('Could not find active subscription for this organization.');
+      setModalApiError('Could not find active subscription for this cafeteria.');
       return;
     }
 
@@ -678,7 +678,7 @@ export function AdminPlansSubscriptionsView() {
           const s = subscriptions.find((sub) => sub.organizationId === o.id);
           return (s?.planId || o.planId) === plan.id;
         }).length;
-        return <Badge variant="outline">{count} Organizations</Badge>;
+        return <Badge variant="outline">{count} Cafeterias</Badge>;
       },
     },
 
@@ -704,7 +704,7 @@ export function AdminPlansSubscriptionsView() {
   const orgSubColumns = [
     {
       key: 'organization',
-      header: 'Organization',
+      header: 'Cafeteria',
       render: (org: OrganizationOverview) => (
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
@@ -819,12 +819,12 @@ export function AdminPlansSubscriptionsView() {
     const requestColumns = [
     {
       key: 'organizationName',
-      header: 'Organization',
+      header: 'Cafeteria',
       render: (req: PlanChangeRequest) => (
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-2">
             <Building2 className={`h-4 w-4 ${req.status === 'PENDING' ? 'text-amber-500' : 'text-emerald-600'}`} />
-            <span className="font-bold text-slate-900">{req.organizationName || 'Organization'}</span>
+            <span className="font-bold text-slate-900">{req.organizationName || 'Cafeteria'}</span>
             {req.status === 'PENDING' && (
               <span className="text-[10px] uppercase font-extrabold tracking-wider bg-amber-100 text-amber-800 border border-amber-300 px-1.5 py-0.5 rounded">
                 Pending
@@ -1115,14 +1115,14 @@ export function AdminPlansSubscriptionsView() {
             <div className="space-y-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">Organization Subscriptions & Custom Limits</h2>
+                  <h2 className="text-lg font-bold text-slate-900">Cafeteria Subscriptions & Custom Limits</h2>
                 </div>
               </div>
 
               {/* Search & Filters */}
               <div className="grid gap-3 sm:grid-cols-3">
                 <Input
-                  placeholder="Search organization by name or ID..."
+                  placeholder="Search cafeteria by name or ID..."
                   value={orgSearchQuery}
                   maxLength={30}
                   onChange={(e) => {
@@ -1156,7 +1156,7 @@ export function AdminPlansSubscriptionsView() {
               {filteredOrgs.length === 0 ? (
                 <EmptyState
                   icon={<Building2 className="h-8 w-8 text-slate-500" />}
-                  title="No organization subscriptions found"
+                  title="No cafeteria subscriptions found"
                   description="Try adjusting your search query or filter selection."
                 />
               ) : (
@@ -1312,7 +1312,7 @@ export function AdminPlansSubscriptionsView() {
 
           <div className="grid grid-cols-3 gap-3">
             <Input
-              label="Default Branch Limit"
+              label="Default Counter Limit"
               type="number"
               min="0"
               value={formBranchLimit}
@@ -1400,7 +1400,7 @@ export function AdminPlansSubscriptionsView() {
 
           <div className="grid grid-cols-3 gap-3">
             <Input
-              label="Default Branch Limit"
+              label="Default Counter Limit"
               type="number"
               min="0"
               value={formBranchLimit}
@@ -1632,7 +1632,7 @@ export function AdminPlansSubscriptionsView() {
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2 text-xs">
               <div className="flex justify-between items-center">
-                <span className="text-slate-500">Organization:</span>
+                <span className="text-slate-500">Cafeteria:</span>
                 <strong className="text-slate-900 text-sm">
                   {selectedRequest.organizationName || selectedRequest.organizationId}
                 </strong>
@@ -1742,7 +1742,7 @@ export function AdminPlansSubscriptionsView() {
                 placeholder={
                   selectedRequest.requestType === 'RENEWAL'
                     ? 'e.g. Bank payment verified, active subscription extended (Max 60 chars)...'
-                    : 'Optional remarks for the organization (Max 60 chars)...'
+                    : 'Optional remarks for the cafeteria (Max 60 chars)...'
                 }
                 rows={3}
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
@@ -1790,7 +1790,7 @@ export function AdminPlansSubscriptionsView() {
           )}
 
           <Select
-            label="Organization *"
+            label="Cafeteria *"
             value={payOrgId}
             onChange={(e) => setPayOrgId(e.target.value)}
             options={orgs.map((o) => ({ value: o.id, label: `${o.name} (${o.plan?.name || 'Standard'})` }))}

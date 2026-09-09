@@ -94,7 +94,7 @@ export function BranchDetailsModal({
       setProductsList(rawProds);
       setInventoryList(rawInv);
     } catch {
-      setLoadError('Unable to load branch details. Please check connection and try again.');
+      setLoadError('Unable to load counter details. Please check connection and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -159,8 +159,7 @@ export function BranchDetailsModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Branch Details: ${branch.name}`}
-      description="End-to-end operational details, staff assignments, menu catalog, and live inventory health."
+      title={`Counter Details: ${branch.name}`}
       size="2xl"
     >
       <div className="space-y-5">
@@ -355,7 +354,7 @@ export function BranchDetailsModal({
             }`}
           >
             <Layers className="h-3.5 w-3.5" />
-            <span>Branch Overview</span>
+            <span>Counter Overview</span>
           </button>
         </div>
 
@@ -409,7 +408,7 @@ export function BranchDetailsModal({
                         title={menuSearch ? 'No matching products' : 'No menu items configured'}
                         description={
                           menuSearch
-                            ? `No items match "${menuSearch}" at this branch.`
+                            ? `No items match "${menuSearch}" at this counter.`
                             : `Add products and inventory stock for ${branch.name} to begin serving customers.`
                         }
                       />
@@ -637,12 +636,12 @@ export function BranchDetailsModal({
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-slate-700">
                       <div className="space-y-1">
-                        <span className="text-slate-500 font-medium">Branch Location Name:</span>
+                        <span className="text-slate-500 font-medium">Counter Name:</span>
                         <p className="font-semibold text-slate-900">{branch.name}</p>
                       </div>
 
                       <div className="space-y-1">
-                        <span className="text-slate-500 font-medium">Branch Status:</span>
+                        <span className="text-slate-500 font-medium">Counter Status:</span>
                         <p>
                           <Badge variant={branch.status === 'ACTIVE' ? 'success' : 'outline'}>
                             {branch.status}
@@ -656,7 +655,7 @@ export function BranchDetailsModal({
                       </div>
 
                       <div className="space-y-1">
-                        <span className="text-slate-500 font-medium">System Branch ID:</span>
+                        <span className="text-slate-500 font-medium">System Counter ID:</span>
                         <p className="font-mono text-slate-800">{branch.id}</p>
                       </div>
 
@@ -683,14 +682,9 @@ export function BranchDetailsModal({
         </div>
 
         <ModalFooter>
-          <div className="flex items-center justify-between w-full">
-            <span className="text-xs text-slate-500">
-              End-to-end details for <strong className="text-slate-700">{branch.name}</strong>
-            </span>
-            <Button variant="outline" onClick={onClose}>
-              Close
-            </Button>
-          </div>
+          <Button variant="outline" onClick={onClose}>
+            Close
+          </Button>
         </ModalFooter>
       </div>
     </Modal>

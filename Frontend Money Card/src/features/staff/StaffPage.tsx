@@ -245,7 +245,7 @@ function StaffActionMenu({
               className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer text-left"
             >
               <Building2 className="h-4 w-4 text-sky-600" />
-              <span>Branch Access</span>
+              <span>Counter Access</span>
             </button>
 
             {/* Change Password */}
@@ -814,11 +814,11 @@ export function StaffPage() {
       const res = await apiService.staff.updateStaffBranches(selectedStaff.id, formBranchIds);
 
       if (!res.success) {
-        setModalApiError(res.error.message || 'Failed to update branch assignments');
+        setModalApiError(res.error.message || 'Failed to update counter assignments');
         return;
       }
 
-      notify.success('Branch assignments updated successfully.');
+      notify.success('Counter assignments updated successfully.');
       setSelectedStaff((prev) => (prev ? { ...prev, assignedBranchIds: formBranchIds } : null));
       fetchStaffData();
     } catch {
@@ -863,7 +863,7 @@ export function StaffPage() {
         return;
       }
 
-      notify.success('Staff profile, permissions, and branch assignments updated successfully');
+      notify.success('Staff profile, permissions, and counter assignments updated successfully');
       setShowStaffModal(false);
       fetchStaffData();
     } catch {
@@ -942,7 +942,7 @@ export function StaffPage() {
   const getStaffRoleLabel = (staff: Staff): string => {
     if (staff.permissions.includes('STAFF_MANAGE')) return 'Manager / Admin';
     if (staff.permissions.includes('INVENTORY_MANAGE') || staff.permissions.includes('PRODUCT_MANAGE')) {
-      return 'Branch Supervisor';
+      return 'Counter Supervisor';
     }
     return 'Cashier / POS';
   };
@@ -1154,7 +1154,7 @@ export function StaffPage() {
     },
     {
       key: 'branches',
-      header: 'Assigned Branches',
+      header: 'Assigned Counters',
       render: (staff: Staff) => {
         const assignedNames = branches
           .filter((b) => staff.assignedBranchIds.includes(b.id))
@@ -1180,7 +1180,7 @@ export function StaffPage() {
       render: (staff: Staff) => {
         const isManager = staff.permissions.includes('STAFF_MANAGE');
         const isSupervisor = staff.permissions.includes('INVENTORY_MANAGE') || staff.permissions.includes('PRODUCT_MANAGE');
-        const roleLabel = isManager ? 'Manager / Admin' : isSupervisor ? 'Branch Supervisor' : 'Cashier / POS';
+        const roleLabel = isManager ? 'Manager / Admin' : isSupervisor ? 'Counter Supervisor' : 'Cashier / POS';
         return (
           <span className="font-semibold text-xs text-slate-700">{roleLabel}</span>
         );
@@ -1299,7 +1299,7 @@ export function StaffPage() {
         <EmptyState
           icon={<Users className="h-8 w-8 text-slate-500" />}
           title="No staff accounts yet"
-          description="Add your team members to grant POS cashier and branch access."
+          description="Add your team members to grant POS cashier and counter access."
           action={
             canManage ? (
               <Button variant="primary" onClick={handleOpenAdd} leftIcon={<UserPlus className="h-4 w-4" />}>
@@ -1315,7 +1315,7 @@ export function StaffPage() {
           description={
             searchQuery
               ? `No staff match "${searchQuery}". Try a different name or clear search.`
-              : `No staff members assigned to ${currentBranch ? currentBranch.name : 'this branch'}.`
+              : `No staff members assigned to ${currentBranch ? currentBranch.name : 'this counter'}.`
           }
           action={
             searchQuery ? (
@@ -1387,7 +1387,7 @@ export function StaffPage() {
               }`}
             >
               <Building2 className="h-4 w-4" />
-              <span>Branches</span>
+              <span>Counters</span>
               <Badge variant="outline" className="text-[10px] ml-1">
                 {formBranchIds.length}
               </Badge>
@@ -1424,7 +1424,7 @@ export function StaffPage() {
                   </div>
 
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1">
-                    <span className="text-xs text-slate-500">Assigned Branches</span>
+                    <span className="text-xs text-slate-500">Assigned Counters</span>
                     <p className="font-mono text-sm font-bold text-slate-800 pt-1">
                       {formBranchIds.length} branch(es)
                     </p>
@@ -1784,7 +1784,7 @@ export function StaffPage() {
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         title="Add New Staff Member"
-        description="Register a staff member, authorize branches, and assign operational permissions."
+        description="Register a staff member, authorize counters, and assign operational permissions."
         size="xl"
       >
         <div className="space-y-6">
@@ -1823,7 +1823,7 @@ export function StaffPage() {
               }`}
             >
               <Building2 className="h-4 w-4" />
-              <span>2. Branches</span>
+              <span>2. Counters</span>
               <Badge variant="outline" className="text-[10px] ml-1">
                 {formBranchIds.length}
               </Badge>
@@ -2403,7 +2403,7 @@ export function StaffPage() {
                     {branches
                       .filter((b) => selectedStaffForAudit.assignedBranchIds.includes(b.id))
                       .map((b) => b.name)
-                      .join(', ') || 'All Branches'}
+                      .join(', ') || 'All Counters'}
                   </span>
                 </div>
               </div>
@@ -2424,13 +2424,13 @@ export function StaffPage() {
               <div className="flex flex-wrap items-center gap-3">
                 {/* Branch Scope */}
                 <div className="w-44">
-                  <label className="mb-1 block text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Branch Scope</label>
+                  <label className="mb-1 block text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Counter Scope</label>
                   <Select
                     id="audit-branch-filter"
                     value={auditBranchFilter}
                     onChange={(e) => setAuditBranchFilter(e.target.value)}
                     options={[
-                      { value: 'ALL', label: 'All Branches' },
+                      { value: 'ALL', label: 'All Counters' },
                       ...branches.map((b) => ({ value: b.id, label: b.name })),
                     ]}
                   />
@@ -2581,7 +2581,7 @@ export function StaffPage() {
                     <th className="px-2 py-2.5">Card #</th>
                     <th className="px-2 py-2.5">Customer</th>
                     <th className="px-2 py-2.5 text-right">Amount</th>
-                    <th className="px-2 py-2.5">Branch</th>
+                    <th className="px-2 py-2.5">Counter</th>
                     <th className="py-2.5 pl-2 pr-3">Details / Remarks</th>
                   </tr>
                 </thead>

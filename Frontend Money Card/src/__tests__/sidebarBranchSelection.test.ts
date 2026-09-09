@@ -73,9 +73,9 @@ describe('Sidebar Branch Selector & Cross-View Synchronization Logic', () => {
     const currentBranch = mockBranches.find((b) => b.id === selectedBranchId) || null;
 
     expect(currentBranch).toBeNull();
-    // In UI, !currentBranch displays 'All Branches'
-    const displayLabel = currentBranch?.name || 'All Branches';
-    expect(displayLabel).toBe('All Branches');
+    // In UI, !currentBranch displays 'All Counters'
+    const displayLabel = currentBranch?.name || 'All Counters';
+    expect(displayLabel).toBe('All Counters');
   });
 
   it('should synchronize branch filtering across views', () => {

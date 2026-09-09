@@ -62,7 +62,7 @@ class MoreScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: AppSpacing.xxs),
                     Text(
-                      'Active Branch: ${branch?.name ?? 'Not Assigned'}',
+                      'Active Counter: ${branch?.name ?? 'Not Assigned'}',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -97,7 +97,7 @@ class MoreScreen extends ConsumerWidget {
           child: _buildMenuTile(
             icon: Icons.bar_chart_outlined,
             title: 'Analytics & Reports',
-            subtitle: 'Branch sales and performance metrics',
+            subtitle: 'Counter sales and performance metrics',
             onTap: () => context.push('/app/analytics'),
           ),
         ),

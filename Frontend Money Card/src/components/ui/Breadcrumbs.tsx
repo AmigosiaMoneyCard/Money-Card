@@ -11,7 +11,7 @@ interface BreadcrumbItem {
 
 const ROUTE_LABELS: Record<string, string> = {
   dashboard: 'Dashboard',
-  branches: 'Branches',
+  branches: 'Counters',
   staff: 'Staff',
   cards: 'Cards',
   sessions: 'Sessions',
@@ -21,7 +21,7 @@ const ROUTE_LABELS: Record<string, string> = {
   reports: 'Reports',
   subscriptions: 'Subscriptions',
   settings: 'Settings',
-  organizations: 'Organizations',
+  organizations: 'Cafeterias',
   plans: 'Plans',
   portal: 'User Portal',
 };

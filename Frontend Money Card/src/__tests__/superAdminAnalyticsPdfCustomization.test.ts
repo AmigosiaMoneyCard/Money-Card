@@ -8,7 +8,7 @@ import {
 describe('Super Admin Analytics - Option-Wise PDF Customization', () => {
   const baseParams: GeneratePlatformAnalyticsPdfParams = {
     reportDateRange: 'All Recorded History',
-    selectedOrgFilter: 'All Platform Organizations',
+    selectedOrgFilter: 'All Platform Cafeterias',
     totalOrganizations: 5,
     activeSubscriptions: 4,
     totalGatewayRevenue: 48000,

@@ -38,17 +38,6 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
     super.dispose();
   }
 
-  String _formatDateTime(String isoString) {
-    if (isoString.isEmpty) return 'N/A';
-    try {
-      final dt = DateTime.parse(isoString).toLocal();
-      final date = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
-      final time = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-      return '$date $time';
-    } catch (_) {
-      return isoString;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +83,7 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
                     const SizedBox(width: AppSpacing.xs),
                     Expanded(
                       child: Text(
-                        'Branch: ${currentBranch?.name ?? "All Assigned Branches"}',
+                        'Counter: ${currentBranch?.name ?? "All Assigned Counters"}',
                         style: const TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
@@ -273,8 +262,8 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
                 : AppEmptyState(
                     title: state.statusFilter == 'ACTIVE' ? 'No Active Sessions' : 'No Sessions Found',
                     description: state.statusFilter == 'ACTIVE'
-                        ? 'There are currently no active cafeteria card sessions in ${branchName ?? "this branch"}.'
-                        : 'No card sessions found for the selected filter in ${branchName ?? "this branch"}.',
+                        ? 'There are currently no active cafeteria card sessions in ${branchName ?? "this counter"}.'
+                        : 'No card sessions found for the selected filter in ${branchName ?? "this counter"}.',
                     icon: Icons.account_balance_wallet_outlined,
                   ),
           ],
@@ -397,42 +386,8 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
               ],
 
-              // Metadata: Branch and Started Date/Time
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        const Icon(Icons.storefront, size: 14, color: AppColors.textSecondaryLight),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            'Branch: ${branchName ?? session.branchId}',
-                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.access_time, size: 14, color: AppColors.textSecondaryLight),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Started: ${_formatDateTime(session.startedAt)}',
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
 
               // Contextual Action Buttons (Allowed by Staff Permissions)
               if (isActive) ...[

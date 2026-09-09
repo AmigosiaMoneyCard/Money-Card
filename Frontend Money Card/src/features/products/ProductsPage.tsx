@@ -252,7 +252,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
     if (isNaN(qtyNum) || qtyNum < 0) errs.stockQty = 'Initial stock quantity must be 0 or more';
 
     if (!formBranchId) {
-      errs.branchId = 'Please select an initial branch';
+      errs.branchId = 'Please select an initial counter';
     }
 
     setFormErrors(errs);
@@ -579,7 +579,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
                 selectBranch(e.target.value);
               }}
               options={[
-                { value: 'ALL', label: 'All Branches' },
+                { value: 'ALL', label: 'All Counters' },
                 ...branches.map((b) => ({ value: b.id, label: b.name })),
               ]}
             />
@@ -866,7 +866,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
       <Modal
         isOpen={showAdjustModal}
         onClose={() => setShowAdjustModal(false)}
-        title="Adjust Branch Stock"
+        title="Adjust Counter Stock"
         size="md"
       >
         <form onSubmit={handleAdjustSubmit} className="space-y-4">

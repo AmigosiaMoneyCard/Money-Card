@@ -120,7 +120,7 @@ function OrgAdminSettingsView() {
     try {
       const result = await apiService.organizations.getOrganization();
       if (!result.success) {
-        setError(result.error.message || 'Failed to load organization details');
+        setError(result.error.message || 'Failed to load cafeteria details');
         return;
       }
       setOrgData(result.data);
@@ -141,7 +141,7 @@ function OrgAdminSettingsView() {
         if (isCancelled) return;
 
         if (!result.success) {
-          setError(result.error.message || 'Failed to load organization details');
+          setError(result.error.message || 'Failed to load cafeteria details');
           return;
         }
         setOrgData(result.data);
@@ -168,7 +168,7 @@ function OrgAdminSettingsView() {
     setApiError(null);
 
     if (!orgNameInput.trim()) {
-      setNameError('Organization name is required');
+      setNameError('Cafeteria name is required');
       return;
     }
     setNameError(null);
@@ -184,7 +184,7 @@ function OrgAdminSettingsView() {
         return;
       }
 
-      notify.success('Organization settings updated successfully');
+      notify.success('Cafeteria settings updated successfully');
       fetchOrganizationDetails();
     } catch {
       setApiError('An unexpected error occurred. Please try again.');
@@ -194,7 +194,7 @@ function OrgAdminSettingsView() {
   };
 
   if (isLoading) {
-    return <LoadingState message="Loading organization settings..." />;
+    return <LoadingState message="Loading cafeteria settings..." />;
   }
 
   if (error) {
@@ -207,22 +207,22 @@ function OrgAdminSettingsView() {
       <div>
         <div className="flex items-center gap-3">
           <SettingsIcon className="h-7 w-7 text-emerald-600" />
-          <h1 className="text-2xl font-bold text-slate-900">Organization Settings</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Cafeteria Settings</h1>
         </div>
       </div>
 
       {/* Organization Identity */}
       <Card>
         <CardHeader
-          title="Organization Identity"
+          title="Cafeteria Identity"
         />
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-            <span className="text-sm font-medium text-slate-600">Organization Name</span>
+            <span className="text-sm font-medium text-slate-600">Cafeteria Name</span>
             <span className="text-sm font-bold text-slate-900">{orgData?.name}</span>
           </div>
           <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-            <span className="text-sm font-medium text-slate-600">Organization ID</span>
+            <span className="text-sm font-medium text-slate-600">Cafeteria ID</span>
             <code className="rounded bg-slate-100 px-2 py-0.5 text-xs text-emerald-700 border border-slate-200">
               ORG-#{orgData?.id?.slice(0, 8).toUpperCase()}
             </code>
@@ -245,7 +245,7 @@ function OrgAdminSettingsView() {
       {/* Edit Organization Form */}
       <Card>
         <CardHeader
-          title="Edit Organization Settings"
+          title="Edit Cafeteria Settings"
         />
         <CardContent>
           <form onSubmit={handleSaveSettings} noValidate className="space-y-4 max-w-lg">
@@ -258,7 +258,7 @@ function OrgAdminSettingsView() {
 
             <Input
               id="org-name-edit"
-              label="Organization Name"
+              label="Cafeteria Name"
               placeholder="e.g. Acme Cafeterias"
               value={orgNameInput}
               maxLength={30}

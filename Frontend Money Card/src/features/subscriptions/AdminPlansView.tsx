@@ -319,7 +319,7 @@ export function AdminPlansView() {
       header: 'Technical Limits',
       render: (plan: Plan) => (
         <div className="text-xs text-slate-600 space-y-0.5 font-mono">
-          <p>Branches: {plan.branchLimit}</p>
+          <p>Counters: {plan.branchLimit}</p>
           <p>Staff: {plan.staffLimit} | Cards: {plan.cardLimit}</p>
         </div>
       ),
@@ -385,7 +385,7 @@ export function AdminPlansView() {
   const subColumns = [
     {
       key: 'organizationId',
-      header: 'Organization',
+      header: 'Cafeteria',
       render: (sub: Subscription) => (
         <div className="flex items-center gap-2 text-xs font-semibold text-slate-800">
           <Building2 className="h-4 w-4 text-emerald-600" />
@@ -624,7 +624,7 @@ export function AdminPlansView() {
               id="create-branch-limit"
               type="number"
               min="0"
-              label="Max Branches"
+              label="Max Counters"
               value={formBranchLimit}
               onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') e.preventDefault(); }}
               onChange={(e) => {
@@ -729,7 +729,7 @@ export function AdminPlansView() {
               id="edit-branch-limit"
               type="number"
               min="0"
-              label="Max Branches"
+              label="Max Counters"
               value={formBranchLimit}
               onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') e.preventDefault(); }}
               onChange={(e) => {

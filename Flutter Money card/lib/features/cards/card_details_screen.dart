@@ -82,7 +82,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
 
     if (branch == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select an active branch before activating a card.')),
+        const SnackBar(content: Text('Please select an active counter before activating a card.')),
       );
       return;
     }
@@ -136,7 +136,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Branch:', style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight)),
+                          const Text('Counter:', style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight)),
                           Text(branch?.name ?? 'Main Branch', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                         ],
                       ),

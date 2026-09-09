@@ -113,7 +113,7 @@ describe('Organization Analytics - Option-Wise PDF Customization', () => {
   const baseOptions: GenerateOrgPdfOptions = {
     analytics: mockAnalytics,
     branches: mockBranches,
-    selectedBranchName: 'All Branches',
+    selectedBranchName: 'All Counters',
     dateRangeLabel: 'This Month',
     organizationName: 'Acme Dining Group',
   };
@@ -137,7 +137,7 @@ describe('Organization Analytics - Option-Wise PDF Customization', () => {
     expect(doc.getNumberOfPages()).toBe(1);
   });
 
-  it('generates customized report with only Branch Comparison enabled', () => {
+  it('generates customized report with only Counter Comparison enabled', () => {
     const doc = buildOrgAnalyticsJsPdf({
       ...baseOptions,
       sections: {

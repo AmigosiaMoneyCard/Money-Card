@@ -137,7 +137,7 @@ export function ReportsPage() {
     try {
       const targetBranch = branchFilter !== 'ALL' ? branchFilter : undefined;
       const selectedBranchObj = branches.find((b) => b.id === branchFilter);
-      const selectedBranchName = branchFilter === 'ALL' ? 'All Branches' : selectedBranchObj?.name || branchFilter;
+      const selectedBranchName = branchFilter === 'ALL' ? 'All Counters' : selectedBranchObj?.name || branchFilter;
 
       // Fetch relevant scoped datasets for official PDF generation
       const [prodRes, sessRes] = await Promise.all([
@@ -166,7 +166,7 @@ export function ReportsPage() {
         transactions,
         inventory,
         sessions,
-        organizationName: user?.organizationId ? `Organization ${user.organizationId}` : 'Organization Portal',
+        organizationName: user?.organizationId ? `Cafeteria ${user.organizationId}` : 'Cafeteria Portal',
       });
 
       const url = URL.createObjectURL(pdfBlob);
@@ -337,7 +337,7 @@ export function ReportsPage() {
               selectBranch(e.target.value);
             }}
             options={[
-              { value: 'ALL', label: 'All Branches' },
+              { value: 'ALL', label: 'All Counters' },
               ...branches.map((b) => ({ value: b.id, label: b.name })),
             ]}
           />
@@ -380,9 +380,9 @@ export function ReportsPage() {
           <div className="space-y-4 max-h-[66vh] overflow-y-auto pr-1">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <div>
-                <span className="text-xs text-slate-500">Category & Target Branch</span>
+                <span className="text-xs text-slate-500">Category & Target Counter</span>
                 <p className="text-sm font-semibold text-slate-900">
-                  {previewReport.type} — {branchFilter === 'ALL' ? 'All Branches' : branches.find((b) => b.id === branchFilter)?.name || branchFilter}
+                  {previewReport.type} — {branchFilter === 'ALL' ? 'All Counters' : branches.find((b) => b.id === branchFilter)?.name || branchFilter}
                 </p>
               </div>
               <Badge variant="outline" className="text-rose-700 border-rose-200 bg-rose-50">

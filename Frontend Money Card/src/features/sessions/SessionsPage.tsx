@@ -350,7 +350,7 @@ export function SessionsPage() {
     },
     {
       key: 'branchName',
-      header: 'Branch',
+      header: 'Counter',
       render: (item: CustomerHistoryItem) => (
         <span className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
           <Building2 className="h-3.5 w-3.5 text-slate-500" />
@@ -430,7 +430,7 @@ export function SessionsPage() {
               selectBranch(e.target.value);
             }}
             options={[
-              { value: 'ALL', label: 'All Branches' },
+              { value: 'ALL', label: 'All Counters' },
               ...branches.map((b) => ({ value: b.id, label: b.name })),
             ]}
           />
@@ -553,7 +553,7 @@ export function SessionsPage() {
                   </p>
                 </div>
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-xs text-slate-500">Branch Location</p>
+                  <p className="text-xs text-slate-500">Counter Location</p>
                   <p className="font-semibold text-slate-900">
                     {selectedItem.branchName}
                   </p>

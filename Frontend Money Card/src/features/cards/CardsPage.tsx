@@ -277,7 +277,7 @@ export function CardsPage() {
       (c) => c.id !== selectedCard.id && c.physicalCardNumber?.toUpperCase() === clean,
     );
     if (exists) {
-      setAssignError(`Card number '${clean}' is already assigned to another card in your organization.`);
+      setAssignError(`Card number '${clean}' is already assigned to another card in your cafeteria.`);
       return;
     }
 
@@ -690,12 +690,12 @@ export function CardsPage() {
     },
     {
       key: 'currentBranchId',
-      header: 'Branch',
+      header: 'Counter',
       render: (card: CardEntity) => {
         const branch = branches.find((b) => b.id === card.currentBranchId);
         return (
           <span className="text-xs text-slate-600">
-            {branch ? branch.name : 'All Branches'}
+            {branch ? branch.name : 'All Counters'}
           </span>
         );
       },
@@ -792,13 +792,13 @@ export function CardsPage() {
     },
     {
       key: 'branch',
-      header: 'Branch',
+      header: 'Counter',
       render: (card: CardEntity) => {
         const branch = branches.find((b) => b.id === card.currentBranchId);
         return (
           <span className="text-xs font-medium text-slate-700 flex items-center gap-1">
             <Building2 className="h-3.5 w-3.5 text-slate-500" />
-            {branch ? branch.name : 'All Branches'}
+            {branch ? branch.name : 'All Counters'}
           </span>
         );
       },
@@ -997,7 +997,7 @@ export function CardsPage() {
                 selectBranch(e.target.value);
               }}
               options={[
-                { value: 'ALL', label: 'All Branches' },
+                { value: 'ALL', label: 'All Counters' },
                 ...branches.map((b) => ({ value: b.id, label: b.name })),
               ]}
             />
@@ -1094,7 +1094,7 @@ export function CardsPage() {
             title={isFiltered ? "No matching blocked cards" : "No Blocked Cards"}
             description={
               isFiltered
-                ? "No blocked cards match your current search or branch filter."
+                ? "No blocked cards match your current search or counter filter."
                 : "All registered smart cards are active or ready to issue. Any card locked due to loss or security reasons will appear here."
             }
             action={
@@ -1282,12 +1282,12 @@ export function CardsPage() {
             setShowAssignModal(false);
             setSelectedCard(null);
           }}
-          title="Assign Organization Card Number"
+          title="Assign Cafeteria Card Number"
           size="md"
         >
           <form onSubmit={handleAssignCardNumber} className="space-y-4">
             <p className="text-sm text-slate-600">
-              Link an organization-specific human-readable card number (e.g. <code>MC 105</code>, <code>STU-001</code>) to this physical QR card.
+              Link a cafeteria-specific human-readable card number (e.g. <code>MC 105</code>, <code>STU-001</code>) to this physical QR card.
             </p>
 
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
@@ -1297,7 +1297,7 @@ export function CardsPage() {
 
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                Organization Card Number <span className="text-rose-500">*</span>
+                Cafeteria Card Number <span className="text-rose-500">*</span>
               </label>
               <Input
                 type="text"
@@ -1307,7 +1307,7 @@ export function CardsPage() {
                 autoFocus
               />
               <p className="text-xs text-slate-500 mt-1">
-                Must be unique within your organization. Staff will see this card number when scanning.
+                Must be unique within your cafeteria. Staff will see this card number when scanning.
               </p>
             </div>
 

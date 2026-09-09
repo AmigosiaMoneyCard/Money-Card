@@ -262,7 +262,7 @@ export function OrgAdminAnalyticsView() {
     () => branches.find((b) => b.id === branchFilter),
     [branches, branchFilter],
   );
-  const selectedBranchName = branchFilter === 'ALL' ? 'All Branches' : selectedBranchObj?.name || branchFilter;
+  const selectedBranchName = branchFilter === 'ALL' ? 'All Counters' : selectedBranchObj?.name || branchFilter;
 
   const dateRangeLabel = useMemo(() => {
     return datePreset === 'today'
@@ -287,7 +287,7 @@ export function OrgAdminAnalyticsView() {
       branches,
       selectedBranchName,
       dateRangeLabel,
-      organizationName: user?.organizationId ? `Organization ${user.organizationId}` : 'Organization Portal',
+      organizationName: user?.organizationId ? `Cafeteria ${user.organizationId}` : 'Cafeteria Portal',
       sections: overrideSections ?? pdfSections,
     };
   };
@@ -462,7 +462,7 @@ export function OrgAdminAnalyticsView() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-900">Organization Analytics</h1>
+            <h1 className="text-2xl font-bold text-slate-900">Cafeteria Analytics</h1>
             <Badge variant="outline" className="border-emerald-200 text-emerald-700 bg-emerald-50/50">
               Organization Scope
             </Badge>
@@ -488,13 +488,13 @@ export function OrgAdminAnalyticsView() {
         <div className="flex flex-wrap items-center gap-3">
           {/* Branch Scope Filter */}
           <div className="w-full sm:w-52">
-            <label className="mb-1 block text-[11px] font-medium text-slate-600">Branch Scope</label>
+            <label className="mb-1 block text-[11px] font-medium text-slate-600">Counter Scope</label>
             <Select
               id="analytics-branch-filter"
               value={branchFilter}
               onChange={(e) => handleBranchChange(e.target.value)}
               options={[
-                { value: 'ALL', label: 'All Branches' },
+                { value: 'ALL', label: 'All Counters' },
                 ...branches.map((b) => ({ value: b.id, label: b.name })),
               ]}
             />
@@ -563,7 +563,7 @@ export function OrgAdminAnalyticsView() {
       </div>
 
       {isLoading ? (
-        <LoadingState message="Calculating organization metrics & ledger analytics..." />
+        <LoadingState message="Calculating cafeteria metrics & ledger analytics..." />
       ) : error ? (
         <ErrorState title="Failed to load analytics" message={error} onRetry={fetchAnalytics} />
       ) : analytics ? (
@@ -597,10 +597,8 @@ export function OrgAdminAnalyticsView() {
 
           {/* Card Lifecycle & Activity (Active Card Recharges, Closed Cards, Zero Balance Cards) */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-slate-900">Card Lifecycle & Activity</h2>
-              <span className="text-xs text-slate-500 font-medium">Real-time card circulation and session status</span>
-            </div>
+            <h2 className="text-base font-bold text-slate-900">Card Lifecycle & Activity</h2>
+
 
             <div className="grid gap-4 sm:grid-cols-3">
               {/* Box 1: Already active card how many times it got recharged */}
@@ -676,50 +674,67 @@ export function OrgAdminAnalyticsView() {
             </div>
           </div>
 
-          {/* Section 1: Financial Streams Breakdown */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <Card padding="md" className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Cash Recharges
-                </span>
-                <DollarSign className="h-4 w-4 text-emerald-600" />
-              </div>
-              <p className="font-mono text-2xl font-bold text-slate-900">
-                {formatCurrency(cashRechargeAmount)}
-              </p>
-            </Card>
+          {/* Payment & Refund Breakdown */}
+          <div className="space-y-3">
+            <h2 className="text-base font-bold text-slate-900">Payment & Refund Breakdown</h2>
 
-            <Card padding="md" className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  UPI Recharges
-                </span>
-                <CreditCard className="h-4 w-4 text-emerald-600" />
-              </div>
-              <p className="font-mono text-2xl font-bold text-slate-900">
-                {formatCurrency(upiRechargeAmount)}
-              </p>
-            </Card>
 
-            <Card padding="md" className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Total Returns / Refunds
-                </span>
-                <ArrowUpDown className="h-4 w-4 text-rose-600" />
-              </div>
-              <p className="font-mono text-2xl font-bold text-slate-900">
-                {formatCurrency(analytics.totalRefundVolume ?? 0)}
-              </p>
-            </Card>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    Cash Recharges
+                  </span>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                    <DollarSign className="h-4 w-4" />
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <p className="font-mono text-2xl font-bold text-slate-900">
+                    {formatCurrency(cashRechargeAmount)}
+                  </p>
+                </div>
+              </Card>
+
+              <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    UPI Recharges
+                  </span>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
+                    <CreditCard className="h-4 w-4" />
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <p className="font-mono text-2xl font-bold text-slate-900">
+                    {formatCurrency(upiRechargeAmount)}
+                  </p>
+                </div>
+              </Card>
+
+              <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    Total Returns / Refunds
+                  </span>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+                    <ArrowUpDown className="h-4 w-4" />
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <p className="font-mono text-2xl font-bold text-slate-900">
+                    {formatCurrency(analytics.totalRefundVolume ?? 0)}
+                  </p>
+                </div>
+              </Card>
+            </div>
           </div>
 
           {/* Section 2: Detailed Branch Performance Comparison */}
           <div className="space-y-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">Branch Performance Comparison</h2>
+                <h2 className="text-lg font-bold text-slate-900">Counter Performance Comparison</h2>
               </div>
 
               {/* Sorting Metric Selector */}
@@ -774,7 +789,7 @@ export function OrgAdminAnalyticsView() {
                 <table className="w-full text-left text-xs">
                   <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-600">
                     <tr>
-                      <th className="py-3.5 pl-4 pr-3">Branch</th>
+                      <th className="py-3.5 pl-4 pr-3">Counter</th>
                       <th className="px-3 py-3.5 text-right">Transactions</th>
                       <th className="px-3 py-3.5 text-right">Purchases</th>
                       <th className="px-3 py-3.5 text-right">Card Recharge</th>
@@ -866,9 +881,6 @@ export function OrgAdminAnalyticsView() {
               <h2 className="text-base font-bold text-slate-900">
                 3. Staff Operational Performance Summary
               </h2>
-              <p className="text-xs text-slate-500">
-                High-level operational overview across branch staff. Individual activity ledgers, audit trails, and performance drill-downs are managed in Staff Management.
-              </p>
             </div>
 
             <Link to="/staff">
@@ -941,7 +953,7 @@ export function OrgAdminAnalyticsView() {
             setPdfPreviewUrl(null);
           }
         }}
-        title="Organization Analytics Report — PDF Preview"
+        title="Cafeteria Analytics Report — PDF Preview"
         size="xl"
       >
         <div className="space-y-4">
@@ -1020,7 +1032,7 @@ export function OrgAdminAnalyticsView() {
                 >
                   {pdfSections.includeBranchComparison && <Check className="h-3 w-3 stroke-[3]" />}
                 </div>
-                <span className="text-xs font-semibold">2. Branch Comparison</span>
+                <span className="text-xs font-semibold">2. Counter Comparison</span>
               </button>
 
               {/* Option 3: Staff Performance */}
@@ -1053,7 +1065,7 @@ export function OrgAdminAnalyticsView() {
               <iframe
                 src={`${pdfPreviewUrl}#toolbar=0`}
                 className="w-full h-[70vh] rounded-lg"
-                title="Organization Analytics Report PDF Preview"
+                title="Cafeteria Analytics Report PDF Preview"
               />
             </div>
           )}

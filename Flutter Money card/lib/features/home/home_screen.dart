@@ -109,7 +109,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                         Text(
                           currentBranch != null
-                              ? 'Branch: ${currentBranch.name}'
+                              ? 'Counter: ${currentBranch.name}'
                               : 'Ready for cafeteria transactions',
                           style: const TextStyle(
                             fontSize: 13,
@@ -492,7 +492,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             const SizedBox(height: 4),
             const Text(
-              'There are no active customer sessions in this branch right now.',
+              'There are no active customer sessions in this counter right now.',
               style: TextStyle(
                 fontSize: 12,
                 color: AppColors.textSecondaryLight,

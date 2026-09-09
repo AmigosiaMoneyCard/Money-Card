@@ -801,7 +801,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 const Text(
-                  'This QR card is not registered in your organization.',
+                  'This QR card is not registered in your cafeteria.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
