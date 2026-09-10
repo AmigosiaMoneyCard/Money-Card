@@ -37,7 +37,7 @@ class ApiClient {
         'Content-Type': 'application/json',
       },
       withCredentials: true,
-      timeout: 15000,
+      timeout: 30000,
     });
 
     // Request interceptor — attach auth token

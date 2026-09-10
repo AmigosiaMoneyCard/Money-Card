@@ -15,14 +15,15 @@ const mailTransporter = (gmailUser && gmailPass)
       host: smtpHost || 'smtp.gmail.com',
       port: smtpPort,
       secure: smtpPort === 465,
+      family: 4,
       auth: {
         user: gmailUser,
         pass: gmailPass,
       },
-      connectionTimeout: 6000,
-      greetingTimeout: 6000,
-      socketTimeout: 6000,
-    })
+      connectionTimeout: 4000,
+      greetingTimeout: 4000,
+      socketTimeout: 4000,
+    } as nodemailer.TransportOptions)
   : null;
 
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
@@ -244,13 +245,7 @@ export async function sendPasswordResetEmail(
         id: info.messageId,
       };
     } catch (err: any) {
-      console.error(`[EMAIL_SERVICE_ERROR] Failed to send email via Gmail SMTP:`, err.message);
-      console.log(`[PASSWORD_RECOVERY_FALLBACK] Reset Link for ${toEmail}: ${resetLink}`);
-      return {
-        sent: false,
-        provider: 'gmail_smtp',
-        error: err.message,
-      };
+      console.warn(`[EMAIL_SERVICE_WARNING] Gmail SMTP failed, attempting fallback:`, err.message);
     }
   }
 
@@ -263,35 +258,35 @@ export async function sendPasswordResetEmail(
         html: htmlContent,
       });
 
-      console.log(`[EMAIL_SERVICE] Reset email dispatched via Resend to ${toEmail} (${accountType}). Message ID: ${response.data?.id}`);
-      return {
-        sent: true,
-        provider: 'resend',
-        id: response.data?.id || undefined,
-      };
+      if (response.error) {
+        console.warn(`[EMAIL_SERVICE_WARNING] Resend API error, falling back:`, response.error.message);
+      } else {
+        console.log(`[EMAIL_SERVICE] Reset email dispatched via Resend to ${toEmail} (${accountType}). Message ID: ${response.data?.id}`);
+        return {
+          sent: true,
+          provider: 'resend',
+          id: response.data?.id || undefined,
+        };
+      }
     } catch (err: any) {
-      console.error(`[EMAIL_SERVICE_ERROR] Failed to send email via Resend:`, err.message);
-      console.log(`[PASSWORD_RECOVERY_FALLBACK] Reset Link for ${toEmail}: ${resetLink}`);
-      return {
-        sent: false,
-        provider: 'resend',
-        error: err.message,
-      };
+      console.warn(`[EMAIL_SERVICE_WARNING] Resend exception, falling back:`, err.message);
     }
-  } else {
-    console.log('\n================================================================');
-    console.log(' [DEV EMAIL SIMULATOR] RESEND_API_KEY not configured in .env');
-    console.log('----------------------------------------------------------------');
-    console.log(`To: ${toEmail} (${userName}) [${accountType}]`);
-    console.log(`Subject: ${subject}`);
-    console.log(`Reset Link: ${resetLink}`);
-    console.log('================================================================\n');
-
-    return {
-      sent: true,
-      provider: 'console',
-    };
   }
+
+  // Fallback: log prominently to server console
+  console.log('\n================================================================');
+  console.log(' [EMAIL RECOVERY FALLBACK]');
+  console.log('----------------------------------------------------------------');
+  console.log(`To: ${toEmail} (${userName}) [${accountType}]`);
+  console.log(`Subject: ${subject}`);
+  console.log(`Reset Link: ${resetLink}`);
+  console.log('================================================================\n');
+
+  return {
+    sent: false,
+    provider: mailTransporter ? 'gmail_smtp' : (resend ? 'resend' : 'console'),
+    error: 'Direct delivery unavailable. Recovery link logged to server console.',
+  };
 }
 
 export const sendSuperAdminPasswordResetEmail = sendPasswordResetEmail;
@@ -395,9 +390,7 @@ export async function sendAccountActivationEmail(
       console.log(`[EMAIL_SERVICE_SUCCESS] Activation email sent via Gmail SMTP to ${toEmail} (ID: ${info.messageId})`);
       return { sent: true, provider: 'gmail_smtp', id: info.messageId };
     } catch (err: any) {
-      console.error('[EMAIL_SERVICE_ERROR] Gmail SMTP exception:', err.message);
-      console.log(`[ACTIVATION_FALLBACK_LINK] Activation Link for ${toEmail}: ${activationLink}`);
-      return { sent: false, provider: 'gmail_smtp', error: err.message };
+      console.warn('[EMAIL_SERVICE_WARNING] Gmail SMTP failed, attempting fallback:', err.message);
     }
   }
 
@@ -411,25 +404,27 @@ export async function sendAccountActivationEmail(
       });
 
       if (response.error) {
-        console.error('[EMAIL_SERVICE_ERROR] Resend error:', response.error);
-        return { sent: false, provider: 'resend', error: response.error.message };
+        console.warn('[EMAIL_SERVICE_WARNING] Resend API error, falling back:', response.error.message);
+      } else {
+        console.log(`[EMAIL_SERVICE_SUCCESS] Activation email sent to ${toEmail} (ID: ${response.data?.id})`);
+        return { sent: true, provider: 'resend', id: response.data?.id };
       }
-
-      console.log(`[EMAIL_SERVICE_SUCCESS] Activation email sent to ${toEmail} (ID: ${response.data?.id})`);
-      return { sent: true, provider: 'resend', id: response.data?.id };
     } catch (err: any) {
-      console.error('[EMAIL_SERVICE_ERROR] Resend exception:', err.message);
-      return { sent: false, provider: 'resend', error: err.message };
+      console.warn('[EMAIL_SERVICE_WARNING] Resend exception, falling back:', err.message);
     }
   }
 
-  // Development Fallback
+  // Fallback: log prominently to server console
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('📧 [DEV EMAIL SIMULATION] ACCOUNT ACTIVATION EMAIL');
+  console.log('📧 [ACTIVATION LINK RECOVERY]');
   console.log(`To: ${toEmail}`);
   console.log(`Subject: ${subject}`);
   console.log(`Activation Link: ${activationLink}`);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-  return { sent: true, provider: 'console' };
+  return {
+    sent: false,
+    provider: mailTransporter ? 'gmail_smtp' : (resend ? 'resend' : 'console'),
+    error: 'Direct delivery unavailable. Activation link logged to server console.',
+  };
 }
