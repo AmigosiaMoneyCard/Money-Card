@@ -14,23 +14,26 @@ export interface RenderedEmail {
 }
 
 /**
- * Color Theme for Account Activation Emails (Emerald / Mint Modern Fintech)
+ * Color Theme for Account Activation Emails (Clean White Canvas, Black Text, Emerald Green Accents & Buttons)
+ * Exactly matches the Password Reset email template color palette.
  */
 export const ACTIVATION_THEME = {
   primary: '#10b981', // Emerald Green Accent & Button
-  primaryShadow: 'rgba(16, 185, 129, 0.4)', // Neon Emerald Glow
-  headerGradientStart: 'rgba(16, 185, 129, 0.1)',
-  headerGradientEnd: 'rgba(11, 19, 43, 0)',
-  background: '#020617', // Slate 950 Canvas
-  cardBackground: '#0b132b', // Midnight Blue Card Container
-  insetBox: '#0f172a', // Slate 900 Inset Box
-  border: '#1e293b', // Slate 800 Border & Dividers
-  textHeading: '#f8fafc', // Slate 50 Crisp White
-  textGreeting: '#cbd5e1', // Slate 300
-  textBody: '#94a3b8', // Slate 400
-  textMuted: '#64748b', // Slate 500
-  textFooter: '#475569', // Slate 600
-  buttonText: '#020617', // Deep Obsidian contrast on emerald
+  primaryShadow: 'rgba(16, 185, 129, 0.35)', // Emerald Button Glow
+  brandHeader: '#059669', // Deep Emerald Green Brand Title
+  background: '#ffffff', // Pure White Background
+  cardBackground: '#ffffff', // Pure White Card Container
+  insetBox: '#f8fafc', // Light Slate Inset Box (for Organization)
+  border: '#e2e8f0', // Crisp Light Gray Border & Dividers
+  textHeading: '#0f172a', // Bold Black/Charcoal Heading
+  textGreeting: '#1e293b', // Deep Black/Charcoal Greeting
+  textBody: '#1e293b', // Crisp Readable Black/Dark Slate Body
+  textMuted: '#64748b', // Soft Slate Disclaimers
+  textFooter: '#94a3b8', // Light Slate Footer
+  buttonText: '#ffffff', // Pure White Text on Emerald Button
+  fallbackBg: '#f0fdf4', // Soft Emerald Tint for Fallback URL Box
+  fallbackBorder: '#bbf7d0', // Emerald Border for Fallback URL Box
+  fallbackText: '#047857', // Dark Emerald Text for Fallback URL
 };
 
 export function renderAccountActivationEmail(params: AccountActivationTemplateParams): RenderedEmail {
@@ -54,8 +57,8 @@ export function renderAccountActivationEmail(params: AccountActivationTemplatePa
   const orgSectionHtml = organizationName
     ? `
       <div style="margin: 20px 0; padding: 14px 16px; background-color: ${ACTIVATION_THEME.insetBox}; border: 1px solid ${ACTIVATION_THEME.border}; border-radius: 8px;">
-        <div style="font-size: 11px; font-weight: 600; color: ${ACTIVATION_THEME.textBody}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Organization</div>
-        <div style="font-size: 14px; font-weight: 600; color: ${ACTIVATION_THEME.textHeading};">${organizationName}</div>
+        <div style="font-size: 11px; font-weight: 700; color: ${ACTIVATION_THEME.brandHeader}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Organization</div>
+        <div style="font-size: 15px; font-weight: 700; color: ${ACTIVATION_THEME.textHeading};">${organizationName}</div>
       </div>
     `
     : '';
@@ -73,112 +76,146 @@ export function renderAccountActivationEmail(params: AccountActivationTemplatePa
       padding: 0;
       background-color: ${ACTIVATION_THEME.background};
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      color: ${ACTIVATION_THEME.textHeading};
+      color: ${ACTIVATION_THEME.textBody};
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrapper {
+      width: 100%;
+      background-color: ${ACTIVATION_THEME.background};
+      padding: 40px 16px;
+      box-sizing: border-box;
     }
     .container {
-      max-width: 560px;
-      margin: 40px auto;
+      max-width: 520px;
+      margin: 0 auto;
       background-color: ${ACTIVATION_THEME.cardBackground};
       border: 1px solid ${ACTIVATION_THEME.border};
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
       border-radius: 12px;
-      overflow: hidden;
+      padding: 36px 32px;
+      box-sizing: border-box;
     }
-    .header {
-      padding: 32px 32px 20px 32px;
-      text-align: center;
-      background: linear-gradient(180deg, ${ACTIVATION_THEME.headerGradientStart} 0%, ${ACTIVATION_THEME.headerGradientEnd} 100%);
-    }
-    .logo {
-      font-size: 20px;
+    .brand-header {
+      font-size: 12px;
       font-weight: 800;
-      letter-spacing: -0.5px;
-      color: #ffffff;
+      color: ${ACTIVATION_THEME.brandHeader};
       text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 20px;
     }
-    .logo span {
-      color: ${ACTIVATION_THEME.primary};
+    .divider {
+      height: 1px;
+      background-color: ${ACTIVATION_THEME.border};
+      margin: 18px 0 24px;
+      border: none;
     }
-    .content {
-      padding: 0 32px 32px 32px;
-    }
-    .title {
-      font-size: 20px;
+    h1 {
+      font-size: 22px;
       font-weight: 700;
       color: ${ACTIVATION_THEME.textHeading};
-      margin-top: 0;
-      margin-bottom: 12px;
-      text-align: center;
+      margin: 0 0 16px;
+      line-height: 1.35;
     }
     .greeting {
       font-size: 15px;
-      color: ${ACTIVATION_THEME.textGreeting};
-      margin-bottom: 16px;
       font-weight: 600;
+      color: ${ACTIVATION_THEME.textGreeting};
+      margin: 0 0 12px;
     }
-    .body-text {
+    p {
       font-size: 14px;
       line-height: 1.6;
       color: ${ACTIVATION_THEME.textBody};
-      margin-bottom: 24px;
+      margin: 0 0 16px;
     }
-    .btn-container {
-      text-align: center;
-      margin: 32px 0;
+    .cta-container {
+      margin: 28px 0;
+      text-align: left;
     }
     .btn {
       display: inline-block;
       background-color: ${ACTIVATION_THEME.primary};
       color: ${ACTIVATION_THEME.buttonText} !important;
-      font-weight: 700;
-      font-size: 14px;
       text-decoration: none;
-      padding: 14px 32px;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 14px 30px;
       border-radius: 8px;
       box-shadow: 0 4px 14px ${ACTIVATION_THEME.primaryShadow};
-      text-align: center;
     }
-    .footer {
-      padding: 24px 32px;
-      background-color: ${ACTIVATION_THEME.background};
-      border-top: 1px solid ${ACTIVATION_THEME.border};
+    .security-note {
+      font-size: 13px;
+      color: ${ACTIVATION_THEME.textBody};
+      margin: 20px 0 12px;
+    }
+    .disclaimer {
       font-size: 12px;
       color: ${ACTIVATION_THEME.textMuted};
+      margin: 0 0 20px;
       line-height: 1.5;
-      text-align: center;
+    }
+    .fallback-note {
+      font-size: 12px;
+      color: ${ACTIVATION_THEME.textMuted};
+      margin: 0 0 6px;
     }
     .fallback-url {
+      font-size: 11px;
+      font-family: monospace;
+      color: ${ACTIVATION_THEME.fallbackText};
       word-break: break-all;
-      color: ${ACTIVATION_THEME.primary};
+      background-color: ${ACTIVATION_THEME.fallbackBg};
+      border: 1px solid ${ACTIVATION_THEME.fallbackBorder};
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-bottom: 24px;
+    }
+    .footer {
       font-size: 12px;
+      color: ${ACTIVATION_THEME.textFooter};
+      margin-top: 24px;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <div class="logo">MONEY <span>CARD</span></div>
-    </div>
-    <div class="content">
-      <h1 class="title">${heading}</h1>
-      <div class="greeting">${greeting},</div>
-      <div class="body-text">
-        ${bodyDescription}
-      </div>
+  <div class="wrapper">
+    <div class="container">
+      <div class="brand-header">MONEY CARD PLATFORM</div>
       
+      <div class="divider"></div>
+
+      <h1>${heading}</h1>
+
+      <div class="greeting">${greeting}</div>
+
+      <p>${bodyDescription}</p>
+
       ${orgSectionHtml}
 
-      <div class="btn-container">
-        <a href="${activationLink}" class="btn" target="_blank" rel="noopener noreferrer">Activate Account & Set Password</a>
+      <div class="cta-container">
+        <a href="${activationLink}" target="_blank" class="btn">Activate Account & Set Password</a>
       </div>
 
-      <div class="body-text" style="font-size: 12px; color: ${ACTIVATION_THEME.textMuted};">
-        This invitation link is valid for <strong>24 hours</strong> and can only be used once. If you did not expect this invitation, you can safely ignore this email.
+      <div class="security-note">
+        This invitation link is valid for <strong>24 hours</strong> and can only be used once.
       </div>
-    </div>
-    <div class="footer">
-      <p style="margin: 0 0 8px 0;">If the button above does not work, copy and paste this link into your browser:</p>
-      <p class="fallback-url" style="margin: 0;">${activationLink}</p>
-      <p style="margin: 16px 0 0 0; color: ${ACTIVATION_THEME.textFooter};">&copy; 2026 Money Card Multi-Tenant Platform. All rights reserved.</p>
+
+      <div class="disclaimer">
+        If you did not expect this invitation, you can safely ignore this email.
+      </div>
+
+      <div class="fallback-note">
+        If the button does not work, copy and paste the link below into your browser:
+      </div>
+      <div class="fallback-url">
+        ${activationLink}
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="footer">
+        Money Card Platform
+      </div>
     </div>
   </div>
 </body>
