@@ -37,13 +37,19 @@ export interface SendEmailResult {
   error?: string;
 }
 
-async function sendViaWebhook(toEmail: string, subject: string, html: string): Promise<SendEmailResult | null> {
+async function sendViaWebhook(toEmail: string, subject: string, html: string, text?: string): Promise<SendEmailResult | null> {
   if (!googleMailWebhook) return null;
   try {
     const res = await fetch(googleMailWebhook, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to: toEmail, subject, html }),
+      body: JSON.stringify({
+        to: toEmail,
+        subject,
+        html,
+        text: text || `${subject}\n\nPlease view this message in an HTML-compatible client.\n\nMoney Card Platform`,
+        name: 'Money Card',
+      }),
       redirect: 'follow',
     });
     const data: any = await res.json().catch(() => ({ success: true }));
@@ -290,7 +296,19 @@ export async function sendPasswordResetEmail(
 </html>
   `;
 
-  const webhookResult = await sendViaWebhook(toEmail, subject, htmlContent);
+  const textContent = `${greeting},
+
+${bodyDescription}
+
+To reset your password, please open the following link in your browser:
+${resetLink}
+
+This link is valid for 1 hour. If you did not request this password reset, you can safely ignore this email.
+
+Best regards,
+Money Card Platform Team`;
+
+  const webhookResult = await sendViaWebhook(toEmail, subject, htmlContent, textContent);
   if (webhookResult) return webhookResult;
 
   const brevoResult = await sendViaBrevo(toEmail, userName, subject, htmlContent);
@@ -445,7 +463,19 @@ export async function sendAccountActivationEmail(
 </html>
   `;
 
-  const webhookResult = await sendViaWebhook(toEmail, subject, htmlContent);
+  const textContent = `Hello ${userName},
+
+${isOrgAdmin ? 'Your administrator account for ' + (organizationName || 'your organization') + ' has been created.' : 'You have been invited to join ' + (organizationName || 'Money Card') + ' as a Staff Member.'}
+
+To activate your account and set your password, please open the following link in your browser:
+${activationLink}
+
+This link is valid for 24 hours.
+
+Best regards,
+Money Card Platform Team`;
+
+  const webhookResult = await sendViaWebhook(toEmail, subject, htmlContent, textContent);
   if (webhookResult) return webhookResult;
 
   const brevoResult = await sendViaBrevo(toEmail, userName, subject, htmlContent);
