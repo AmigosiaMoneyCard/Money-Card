@@ -37,11 +37,19 @@ export async function login(req: Request, res: Response) {
   }
 
   if (user.status !== UserStatus.ACTIVE) {
+    if (user.status === UserStatus.PENDING_ACTIVATION) {
+      return sendError(
+        res,
+        403,
+        'ACCOUNT_PENDING_ACTIVATION',
+        'This account has not been activated yet. Please click the invitation link sent to your email to set your password.',
+      );
+    }
     return sendError(
       res,
       401,
-      'STAFF_INACTIVE',
-      'Your staff account is no longer active. Please contact your Organization Administrator.',
+      'ACCOUNT_INACTIVE',
+      'Your account is inactive or disabled. Please contact your administrator.',
     );
   }
 

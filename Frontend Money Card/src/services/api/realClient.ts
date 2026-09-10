@@ -196,7 +196,6 @@ export const realClient: typeof mockClient = {
         email: data.email || data.adminEmail,
         adminEmail: data.adminEmail,
         adminName: data.adminName || `${data.name} Admin`,
-        adminPassword: data.password,
         planId: data.planId,
       };
       return handleApiCall(() => apiClient.post<OrganizationOverview>('/v1/admin/organizations', payload));

@@ -40,7 +40,7 @@ import type {
 class MockStore {
   public organizations: Organization[] = [];
   public branches: Branch[] = [];
-  public staffUsers: (AuthUser & { passwordHash: string; status?: 'ACTIVE' | 'INACTIVE' })[] = [];
+  public staffUsers: (AuthUser & { passwordHash: string; status?: 'ACTIVE' | 'INACTIVE' | 'PENDING_ACTIVATION' })[] = [];
   public staffEntities: Staff[] = [];
   public cards: Card[] = [];
   public sessions: CardSession[] = [];

@@ -114,7 +114,7 @@ export async function getOrganizations(req: Request, res: Response) {
 }
 
 export async function createOrganization(req: Request, res: Response) {
-  const { name, status, planId, overrides, adminEmail, adminName, adminPassword } = req.body;
+  const { name, planId, overrides, adminEmail, adminName } = req.body;
 
   if (!name || !name.trim()) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'Organization name is required');
@@ -131,33 +131,28 @@ export async function createOrganization(req: Request, res: Response) {
   }
 
   const email = adminEmail.trim().toLowerCase();
+  const GMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@(?:gmail|googlemail)\.com$/;
+  if (!GMAIL_REGEX.test(email)) {
+    return sendError(res, 400, 'VALIDATION_ERROR', 'Only verified Gmail addresses (@gmail.com) are permitted for cafeteria administrators');
+  }
+
   const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) {
     return sendError(res, 400, 'VALIDATION_ERROR', `Admin email '${email}' is already in use`);
   }
 
-  const isInvitation = !adminPassword || adminPassword.trim().length === 0;
-  let rawActivationToken: string | null = null;
-  let tokenHash: string | null = null;
-  let activationExpires: Date | null = null;
-  let passwordHash: string;
-
-  if (isInvitation) {
-    rawActivationToken = crypto.randomBytes(32).toString('hex');
-    tokenHash = crypto.createHash('sha256').update(rawActivationToken).digest('hex');
-    activationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    passwordHash = await hashPassword(crypto.randomBytes(16).toString('hex'));
-  } else {
-    passwordHash = await hashPassword(adminPassword);
-  }
-
-  const initialOrgStatus = isInvitation ? OrgStatus.PENDING_ACTIVATION : ((status as OrgStatus) || OrgStatus.ACTIVE);
+  // Every newly created cafeteria MUST go through the email activation lifecycle
+  const rawActivationToken = crypto.randomBytes(32).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(rawActivationToken).digest('hex');
+  const activationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  // Unusable random cryptographic password until administrator sets password via email activation
+  const passwordHash = await hashPassword(crypto.randomBytes(32).toString('hex'));
 
   const result = await prisma.$transaction(async (tx) => {
     const org = await tx.organization.create({
       data: {
         name: name.trim(),
-        status: initialOrgStatus,
+        status: OrgStatus.PENDING_ACTIVATION,
         planId: selectedPlanId,
       },
     });
@@ -183,7 +178,7 @@ export async function createOrganization(req: Request, res: Response) {
         email,
         passwordHash,
         role: Role.ORG_ADMIN,
-        status: isInvitation ? UserStatus.PENDING_ACTIVATION : UserStatus.ACTIVE,
+        status: UserStatus.PENDING_ACTIVATION,
         activationToken: tokenHash,
         activationTokenExpires: activationExpires,
       },
@@ -192,26 +187,24 @@ export async function createOrganization(req: Request, res: Response) {
     return { org, sub, adminUser };
   });
 
-  if (isInvitation && rawActivationToken) {
-    const defaultFrontend = process.env.NODE_ENV === 'production'
-      ? 'https://money-card-frontend.vercel.app'
-      : 'https://money-card-frontend-staging.vercel.app';
-    const clientOrigin = req.headers.origin || process.env.FRONTEND_URL || defaultFrontend;
-    const activationLink = `${clientOrigin}/activate?token=${rawActivationToken}`;
-    sendAccountActivationEmail(
-      email,
-      adminName || `${name} Admin`,
-      activationLink,
-      Role.ORG_ADMIN,
-      name,
-    )
-      .then((result) => {
-        console.log(`[ORG_ACTIVATION_EMAIL_DISPATCHED] To: ${email}, Provider: ${result.provider}, Sent: ${result.sent}`);
-      })
-      .catch((err) => {
-        console.error('[ORG_ACTIVATION_EMAIL_ERROR]', err?.message || err);
-      });
-  }
+  const defaultFrontend = process.env.NODE_ENV === 'production'
+    ? 'https://money-card-frontend.vercel.app'
+    : 'https://money-card-frontend-staging.vercel.app';
+  const clientOrigin = req.headers.origin || process.env.FRONTEND_URL || defaultFrontend;
+  const activationLink = `${clientOrigin}/activate?token=${rawActivationToken}`;
+  sendAccountActivationEmail(
+    email,
+    adminName || `${name} Admin`,
+    activationLink,
+    Role.ORG_ADMIN,
+    name,
+  )
+    .then((result) => {
+      console.log(`[ORG_ACTIVATION_EMAIL_DISPATCHED] To: ${email}, Provider: ${result.provider}, Sent: ${result.sent}`);
+    })
+    .catch((err) => {
+      console.error('[ORG_ACTIVATION_EMAIL_ERROR]', err?.message || err);
+    });
 
   return sendSuccess(res, {
     id: result.org.id,

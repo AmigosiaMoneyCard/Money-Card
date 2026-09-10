@@ -161,13 +161,13 @@ export const mockOrganizationsHandlers = {
       return createMockError('VALIDATION_ERROR', 'Organization name must be at most 30 characters');
     }
 
-    // 2. Validate Org Admin Email
+    // 2. Validate Org Admin Email (Strict Gmail enforcement)
     const adminEmail = (data.adminEmail || '').trim().toLowerCase();
     if (!adminEmail) {
-      return createMockError('VALIDATION_ERROR', 'Org Admin email is required');
+      return createMockError('VALIDATION_ERROR', 'Org Admin Gmail address is required');
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adminEmail)) {
-      return createMockError('VALIDATION_ERROR', 'Please enter a valid email address for Org Admin');
+    if (!/^[a-zA-Z0-9._%+-]+@(?:gmail|googlemail)\.com$/.test(adminEmail)) {
+      return createMockError('VALIDATION_ERROR', 'Only verified Gmail addresses (@gmail.com) are permitted for cafeteria administrators');
     }
 
     // Email Uniqueness check
@@ -178,28 +178,19 @@ export const mockOrganizationsHandlers = {
       return createMockError('VALIDATION_ERROR', `Account with email '${data.adminEmail}' already exists`);
     }
 
-    // 3. Validate Password (min 6 chars, same as Staff Creation)
-    const rawPassword = data.password || '';
-    if (!rawPassword.trim()) {
-      return createMockError('VALIDATION_ERROR', 'Initial password is required');
-    }
-    if (rawPassword.length < 6) {
-      return createMockError('VALIDATION_ERROR', 'Password must be at least 6 characters');
-    }
-
-    // 4. Validate Plan
+    // 3. Validate Plan
     const planId = data.planId || 'plan_002';
     const plan = mockStore.plans.find((p) => p.id === planId) || mockStore.plans[0];
 
     const orgId = `org_${String(mockStore.organizations.length + 1).padStart(3, '0')}`;
     const timestamp = mockStore.getTimestamp();
 
-    // Create Organization
+    // Create Organization with PENDING_ACTIVATION status
     const newOrg: Organization = {
       id: orgId,
       name: data.name.trim(),
       planId: plan.id,
-      status: 'ACTIVE',
+      status: 'PENDING_ACTIVATION',
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -220,7 +211,7 @@ export const mockOrganizationsHandlers = {
       updatedAt: timestamp,
     });
 
-    // Create Initial Org Admin Account
+    // Create Initial Org Admin Account in PENDING_ACTIVATION status
     const orgAdminPermissions: Permission[] = [
       'CARD_VIEW',
       'CARD_ISSUE',
@@ -252,8 +243,8 @@ export const mockOrganizationsHandlers = {
       organizationId: orgId,
       permissions: orgAdminPermissions,
       assignedBranchIds: [],
-      passwordHash: rawPassword,
-      status: 'ACTIVE',
+      passwordHash: '',
+      status: 'PENDING_ACTIVATION',
     });
 
     const overview: OrganizationOverview = {
