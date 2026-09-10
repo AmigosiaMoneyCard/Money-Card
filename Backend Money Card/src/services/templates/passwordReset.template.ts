@@ -14,21 +14,25 @@ export interface RenderedEmail {
 }
 
 /**
- * Color Theme for Password Reset Emails (Violet / Purple Modern Slate)
+ * Color Theme for Password Reset Emails (Clean White Canvas, Black Text, Emerald Green Accents & Buttons)
  */
 export const PASSWORD_RESET_THEME = {
-  primary: '#7c3aed', // Vibrant Violet
-  brandHeader: '#8b5cf6', // Light Violet
-  background: '#020617', // Slate 950
-  cardBackground: '#0b0f19', // Dark Slate Card
-  insetBox: '#0f172a', // Slate 900
-  border: '#1e293b', // Slate 800
-  textHeading: '#f8fafc', // Slate 50
-  textGreeting: '#cbd5e1', // Slate 300
-  textBody: '#94a3b8', // Slate 400
-  textMuted: '#64748b', // Slate 500
-  textFooter: '#475569', // Slate 600
-  buttonText: '#ffffff', // Pure White
+  primary: '#10b981', // Emerald Green Accent & Button
+  primaryShadow: 'rgba(16, 185, 129, 0.35)', // Emerald Button Glow
+  brandHeader: '#059669', // Deep Emerald Green Brand Title
+  background: '#ffffff', // Pure White Background
+  cardBackground: '#ffffff', // Pure White Card Container
+  insetBox: '#f8fafc', // Light Slate Inset Box (for Organization)
+  border: '#e2e8f0', // Crisp Light Gray Border & Dividers
+  textHeading: '#0f172a', // Bold Black/Charcoal Heading
+  textGreeting: '#1e293b', // Deep Black/Charcoal Greeting
+  textBody: '#1e293b', // Crisp Readable Black/Dark Slate Body
+  textMuted: '#64748b', // Soft Slate Disclaimers
+  textFooter: '#94a3b8', // Light Slate Footer
+  buttonText: '#ffffff', // Pure White Text on Emerald Button
+  fallbackBg: '#f0fdf4', // Soft Emerald Tint for Fallback URL Box
+  fallbackBorder: '#bbf7d0', // Emerald Border for Fallback URL Box
+  fallbackText: '#047857', // Dark Emerald Text for Fallback URL
 };
 
 export function renderPasswordResetEmail(params: PasswordResetTemplateParams): RenderedEmail {
@@ -60,8 +64,8 @@ export function renderPasswordResetEmail(params: PasswordResetTemplateParams): R
     !isSuperAdmin && organizationName
       ? `
       <div style="margin: 20px 0; padding: 14px 16px; background-color: ${PASSWORD_RESET_THEME.insetBox}; border: 1px solid ${PASSWORD_RESET_THEME.border}; border-radius: 8px;">
-        <div style="font-size: 11px; font-weight: 600; color: ${PASSWORD_RESET_THEME.textBody}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Organization</div>
-        <div style="font-size: 14px; font-weight: 600; color: ${PASSWORD_RESET_THEME.textHeading};">${organizationName}</div>
+        <div style="font-size: 11px; font-weight: 700; color: ${PASSWORD_RESET_THEME.brandHeader}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Organization</div>
+        <div style="font-size: 15px; font-weight: 700; color: ${PASSWORD_RESET_THEME.textHeading};">${organizationName}</div>
       </div>
     `
       : '';
@@ -79,7 +83,7 @@ export function renderPasswordResetEmail(params: PasswordResetTemplateParams): R
       padding: 0;
       background-color: ${PASSWORD_RESET_THEME.background};
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      color: ${PASSWORD_RESET_THEME.textHeading};
+      color: ${PASSWORD_RESET_THEME.textBody};
       -webkit-font-smoothing: antialiased;
     }
     .wrapper {
@@ -93,33 +97,34 @@ export function renderPasswordResetEmail(params: PasswordResetTemplateParams): R
       margin: 0 auto;
       background-color: ${PASSWORD_RESET_THEME.cardBackground};
       border: 1px solid ${PASSWORD_RESET_THEME.border};
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
       border-radius: 12px;
       padding: 36px 32px;
       box-sizing: border-box;
     }
     .brand-header {
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 800;
       color: ${PASSWORD_RESET_THEME.brandHeader};
       text-transform: uppercase;
       letter-spacing: 1px;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
     }
     .divider {
       height: 1px;
       background-color: ${PASSWORD_RESET_THEME.border};
-      margin: 20px 0 24px;
+      margin: 18px 0 24px;
       border: none;
     }
     h1 {
-      font-size: 20px;
-      font-weight: 600;
+      font-size: 22px;
+      font-weight: 700;
       color: ${PASSWORD_RESET_THEME.textHeading};
       margin: 0 0 16px;
-      line-height: 1.4;
+      line-height: 1.35;
     }
     .greeting {
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 600;
       color: ${PASSWORD_RESET_THEME.textGreeting};
       margin: 0 0 12px;
@@ -140,12 +145,13 @@ export function renderPasswordResetEmail(params: PasswordResetTemplateParams): R
       color: ${PASSWORD_RESET_THEME.buttonText} !important;
       text-decoration: none;
       font-size: 14px;
-      font-weight: 600;
-      padding: 12px 28px;
-      border-radius: 6px;
+      font-weight: 700;
+      padding: 14px 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 14px ${PASSWORD_RESET_THEME.primaryShadow};
     }
     .security-note {
-      font-size: 12px;
+      font-size: 13px;
       color: ${PASSWORD_RESET_THEME.textBody};
       margin: 20px 0 12px;
     }
@@ -153,19 +159,20 @@ export function renderPasswordResetEmail(params: PasswordResetTemplateParams): R
       font-size: 12px;
       color: ${PASSWORD_RESET_THEME.textMuted};
       margin: 0 0 20px;
+      line-height: 1.5;
     }
     .fallback-note {
-      font-size: 11px;
+      font-size: 12px;
       color: ${PASSWORD_RESET_THEME.textMuted};
       margin: 0 0 6px;
     }
     .fallback-url {
       font-size: 11px;
       font-family: monospace;
-      color: ${PASSWORD_RESET_THEME.textBody};
+      color: ${PASSWORD_RESET_THEME.fallbackText};
       word-break: break-all;
-      background-color: ${PASSWORD_RESET_THEME.background};
-      border: 1px solid ${PASSWORD_RESET_THEME.border};
+      background-color: ${PASSWORD_RESET_THEME.fallbackBg};
+      border: 1px solid ${PASSWORD_RESET_THEME.fallbackBorder};
       border-radius: 6px;
       padding: 10px 12px;
       margin-bottom: 24px;
