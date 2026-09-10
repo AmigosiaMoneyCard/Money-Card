@@ -206,7 +206,10 @@ export async function createStaffMember(req: Request, res: Response) {
       where: { id: orgId },
       select: { name: true },
     });
-    const clientOrigin = req.headers.origin || process.env.FRONTEND_URL || 'https://money-card-frontend-staging.vercel.app';
+    const defaultFrontend = process.env.NODE_ENV === 'production'
+      ? 'https://money-card-frontend.vercel.app'
+      : 'https://money-card-frontend-staging.vercel.app';
+    const clientOrigin = req.headers.origin || process.env.FRONTEND_URL || defaultFrontend;
     const activationLink = `${clientOrigin}/activate?token=${rawActivationToken}`;
     sendAccountActivationEmail(
       cleanEmail,
@@ -475,7 +478,10 @@ export async function resendStaffInvite(req: Request, res: Response) {
     },
   });
 
-  const clientOrigin = req.headers.origin || 'http://localhost:5173';
+  const defaultFrontend = process.env.NODE_ENV === 'production'
+    ? 'https://money-card-frontend.vercel.app'
+    : 'https://money-card-frontend-staging.vercel.app';
+  const clientOrigin = req.headers.origin || process.env.FRONTEND_URL || defaultFrontend;
   const activationLink = `${clientOrigin}/activate?token=${rawToken}`;
 
   sendAccountActivationEmail(

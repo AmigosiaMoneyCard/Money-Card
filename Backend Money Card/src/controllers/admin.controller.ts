@@ -193,7 +193,10 @@ export async function createOrganization(req: Request, res: Response) {
   });
 
   if (isInvitation && rawActivationToken) {
-    const clientOrigin = req.headers.origin || process.env.FRONTEND_URL || 'https://money-card-frontend-staging.vercel.app';
+    const defaultFrontend = process.env.NODE_ENV === 'production'
+      ? 'https://money-card-frontend.vercel.app'
+      : 'https://money-card-frontend-staging.vercel.app';
+    const clientOrigin = req.headers.origin || process.env.FRONTEND_URL || defaultFrontend;
     const activationLink = `${clientOrigin}/activate?token=${rawActivationToken}`;
     sendAccountActivationEmail(
       email,
@@ -991,7 +994,10 @@ export async function resendOrgAdminInvite(req: Request, res: Response) {
     },
   });
 
-  const clientOrigin = req.headers.origin || process.env.FRONTEND_URL || 'https://money-card-frontend-staging.vercel.app';
+  const defaultFrontend = process.env.NODE_ENV === 'production'
+    ? 'https://money-card-frontend.vercel.app'
+    : 'https://money-card-frontend-staging.vercel.app';
+  const clientOrigin = req.headers.origin || process.env.FRONTEND_URL || defaultFrontend;
   const activationLink = `${clientOrigin}/activate?token=${rawToken}`;
 
   sendAccountActivationEmail(
