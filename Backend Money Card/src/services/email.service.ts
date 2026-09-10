@@ -23,7 +23,7 @@ const mailTransporter = (gmailUser && gmailPass)
       connectionTimeout: 4000,
       greetingTimeout: 4000,
       socketTimeout: 4000,
-    } as nodemailer.TransportOptions)
+    } as any)
   : null;
 
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
