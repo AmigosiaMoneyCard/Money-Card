@@ -957,16 +957,6 @@ export function OrganizationsPage() {
             </div>
           )}
 
-          <div className="rounded-lg border border-emerald-500/20 bg-emerald-50/70 p-3 text-xs text-emerald-800 space-y-1">
-            <p className="font-semibold flex items-center gap-1.5 text-emerald-900">
-              <Mail className="h-4 w-4 text-emerald-600" />
-              Email Activation Workflow
-            </p>
-            <p className="text-slate-600">
-              A real Gmail address is required. An activation invitation email with a secure link will automatically be sent to the administrator. The cafeteria will remain in <strong>Pending Activation via Email</strong> status until the administrator accepts the invitation and sets their password.
-            </p>
-          </div>
-
           <Input
             id="create-org-name"
             label="Cafeteria Name *"
