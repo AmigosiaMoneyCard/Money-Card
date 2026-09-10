@@ -39,7 +39,13 @@ import {
 export function AppRoutes() {
   return (
     <Routes>
-      {/* ── Auth Routes (unauthenticated) ── */}
+      {/* ── Public Token-based Auth & Setup Routes ── */}
+      <Route element={<AuthLayout />}>
+        <Route path="/activate" element={<ActivateAccountPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+      </Route>
+
+      {/* ── Guest Only Routes (redirect to dashboard if already authenticated) ── */}
       <Route
         element={
           <GuestGuard>
@@ -49,8 +55,6 @@ export function AppRoutes() {
       >
         <Route path="/login" element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/activate" element={<ActivateAccountPage />} />
       </Route>
 
       {/* ── Unauthorized (authenticated but no permission) ── */}

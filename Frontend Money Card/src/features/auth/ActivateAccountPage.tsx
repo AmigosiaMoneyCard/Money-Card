@@ -110,7 +110,7 @@ export function ActivateAccountPage() {
         });
 
         if (!res.success) {
-          setSubmitError(res.error.message || 'Failed to activate account.');
+          setSubmitError(res.error?.message || 'Failed to activate account.');
           return;
         }
 
