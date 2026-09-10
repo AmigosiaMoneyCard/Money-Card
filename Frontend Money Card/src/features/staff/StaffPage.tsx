@@ -2381,18 +2381,8 @@ export function StaffPage() {
             <p className="text-xs font-mono text-slate-600 mt-1">
               {createdPendingStaff?.email}
             </p>
-          </div>
-
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3.5 text-xs text-slate-700 space-y-2">
-            <p className="font-semibold text-slate-900 flex items-center gap-1.5">
-              <Clock className="h-4 w-4 text-amber-600" />
-              What happens next?
-            </p>
-            <p>
+            <p className="text-xs text-slate-600 mt-3">
               An invitation email has been dispatched to <strong>{createdPendingStaff?.email}</strong> with a secure link to activate their account and choose their POS password.
-            </p>
-            <p className="text-amber-800 bg-amber-100/60 p-2 rounded border border-amber-200/70 font-medium">
-              Until the staff member accepts the invitation via email, their account remains in <strong>Pending Activation</strong> status and cannot be used to log into the mobile POS app. Once activated, they automatically disappear from the Pending list and appear as Active.
             </p>
           </div>
 

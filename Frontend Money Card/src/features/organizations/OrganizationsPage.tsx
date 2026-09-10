@@ -36,7 +36,6 @@ import {
   ChevronDown,
   Send,
   Mail,
-  Clock,
 } from 'lucide-react';
 
 interface OrgActionMenuProps {
@@ -1017,7 +1016,7 @@ export function OrganizationsPage() {
         title="Cafeteria Created — Pending Activation"
       >
         <div className="py-2 space-y-4">
-          <div className="flex flex-col items-center text-center p-4 rounded-xl border border-amber-500/20 bg-amber-50/60">
+          <div className="flex flex-col items-center text-center p-5 rounded-xl border border-amber-500/20 bg-amber-50/60">
             <div className="h-14 w-14 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 mb-3 ring-8 ring-amber-50">
               <Mail className="h-7 w-7" />
             </div>
@@ -1030,18 +1029,8 @@ export function OrganizationsPage() {
             <p className="text-xs font-mono text-slate-600 mt-1">
               Admin: {createdPendingOrg?.adminEmail}
             </p>
-          </div>
-
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3.5 text-xs text-slate-700 space-y-2">
-            <p className="font-semibold text-slate-900 flex items-center gap-1.5">
-              <Clock className="h-4 w-4 text-amber-600" />
-              What happens next?
-            </p>
-            <p>
+            <p className="text-xs text-slate-600 mt-3">
               An invitation email has been dispatched to <strong>{createdPendingOrg?.adminEmail}</strong> with a secure link to activate the cafeteria and set their administrator password.
-            </p>
-            <p className="text-amber-800 bg-amber-100/60 p-2 rounded border border-amber-200/70 font-medium">
-              Until the administrator accepts the invitation via email, this cafeteria remains in <strong>Pending Activation</strong> status and cannot be operated or logged into. Once activated, it automatically leaves the Pending list and appears as Active.
             </p>
           </div>
 
