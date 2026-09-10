@@ -13,6 +13,7 @@ import {
   Loader2,
   Check,
   X,
+  Smartphone,
 } from 'lucide-react';
 
 export function ActivateAccountPage() {
@@ -116,8 +117,11 @@ export function ActivateAccountPage() {
 
         setIsSuccess(true);
 
-        // Seamless auto-login
-        if (res.data?.accessToken && res.data?.user) {
+        const activatedUser = res.data?.user || invitee;
+        const isStaff = activatedUser?.role === 'STAFF';
+
+        // Seamless auto-login only for Admin roles that access the web dashboard
+        if (!isStaff && res.data?.accessToken && res.data?.user) {
           login(res.data.user, res.data.accessToken);
           setTimeout(() => {
             navigate('/dashboard', { replace: true });
@@ -178,6 +182,60 @@ export function ActivateAccountPage() {
 
   // 3. Success state
   if (isSuccess) {
+    const isStaff = invitee?.role === 'STAFF';
+
+    if (isStaff) {
+      return (
+        <Card padding="lg">
+          <div className="flex flex-col items-center justify-center py-4 space-y-4 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 shadow-sm">
+              <CheckCircle2 className="h-7 w-7" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Staff Account Activated!</h2>
+              <p className="mt-1.5 text-sm text-slate-600">
+                Welcome to the team, <strong className="text-slate-900">{invitee?.name}</strong>. Your password has been successfully configured.
+              </p>
+            </div>
+
+            {/* Mobile POS App Guidance Card */}
+            <div className="w-full rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 text-left space-y-3">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-800">
+                <Smartphone className="h-4 w-4 text-emerald-600" />
+                <span>Next Step: Sign In via Mobile POS Terminal</span>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                As a staff member for <strong>{invitee?.organizationName || 'Money Card'}</strong>, you will operate card issuing, recharging, and billing using the <strong>Money Card POS App</strong> on your counter device or smartphone.
+              </p>
+              <div className="rounded-lg bg-white p-3 border border-emerald-200/60 text-xs text-slate-700 space-y-2 font-medium">
+                <div className="flex items-start gap-2">
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-[10px] text-white font-bold mt-0.5">1</span>
+                  <span>Launch the <strong>Money Card POS</strong> application on your mobile device or terminal</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-[10px] text-white font-bold mt-0.5">2</span>
+                  <span>Enter your email (<code>{invitee?.email}</code>) and your new password</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-[10px] text-white font-bold mt-0.5">3</span>
+                  <span>Select your assigned counter/branch to start issuing cards and taking payments</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 w-full">
+              <Link
+                to="/login"
+                className="inline-flex w-full items-center justify-center rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 transition-colors"
+              >
+                Close & Return to Sign In
+              </Link>
+            </div>
+          </div>
+        </Card>
+      );
+    }
+
     return (
       <Card padding="lg" className="text-center">
         <div className="flex flex-col items-center justify-center py-6 space-y-4">
@@ -187,7 +245,7 @@ export function ActivateAccountPage() {
           <div>
             <h2 className="text-lg font-bold text-slate-900">Account Activated Successfully!</h2>
             <p className="mt-1 text-sm text-slate-500">
-              Welcome aboard, <strong className="text-slate-800">{invitee.name}</strong>. Redirecting you to your dashboard...
+              Welcome aboard, <strong className="text-slate-800">{invitee?.name}</strong>. Redirecting you to your dashboard...
             </p>
           </div>
           <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />

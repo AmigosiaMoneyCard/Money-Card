@@ -286,6 +286,15 @@ export async function updateStaffMember(req: Request, res: Response) {
     return sendError(res, 404, 'NOT_FOUND', 'Staff member not found');
   }
 
+  if (status === UserStatus.ACTIVE && staff.status === UserStatus.PENDING_ACTIVATION) {
+    return sendError(
+      res,
+      400,
+      'ACTIVATION_REQUIRED',
+      'This staff account is pending email activation. The staff member must activate their account and set their password via the invitation link.',
+    );
+  }
+
   const targetBranches = assignedBranchIds || branchIds;
 
   await prisma.$transaction(async (tx) => {

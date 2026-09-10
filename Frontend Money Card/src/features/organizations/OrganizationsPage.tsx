@@ -1091,16 +1091,6 @@ export function OrganizationsPage() {
             </div>
           )}
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">Cafeteria ID</label>
-            <input
-              type="text"
-              disabled
-              value={selectedOrg?.id || ''}
-              className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-xs font-mono text-slate-500 cursor-not-allowed"
-            />
-          </div>
-
           <Input
             id="edit-org-name"
             label="Cafeteria Name *"
@@ -1148,7 +1138,6 @@ export function OrganizationsPage() {
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <div>
                 <h3 className="text-lg font-bold text-slate-900">{selectedOrg.name}</h3>
-                <p className="text-xs text-slate-500">ID: {selectedOrg.id}</p>
               </div>
               {selectedOrg.status === 'PENDING_ACTIVATION' ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-xs font-medium text-amber-700 shadow-sm">

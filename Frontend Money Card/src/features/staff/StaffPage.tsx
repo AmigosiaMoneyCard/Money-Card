@@ -54,6 +54,8 @@ import {
   MoreVertical,
   ChevronDown,
   FileSpreadsheet,
+  Clock,
+  Mail,
 } from 'lucide-react';
 
 interface StaffActionMenuProps {
@@ -357,6 +359,8 @@ export function StaffPage() {
   // ── Status Toggle Modal ───────────────────────────────────
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showDeleteStaffModal, setShowDeleteStaffModal] = useState(false);
+  const [showPendingStaffSuccessModal, setShowPendingStaffSuccessModal] = useState(false);
+  const [createdPendingStaff, setCreatedPendingStaff] = useState<Staff | null>(null);
 
   // ── Form & Selection State ────────────────────────────────
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
@@ -584,6 +588,8 @@ export function StaffPage() {
       }
 
       notify.success(`Staff member ${res.data.name} created! Activation invite sent to ${formEmail.trim().toLowerCase()}`);
+      setCreatedPendingStaff(res.data);
+      setShowPendingStaffSuccessModal(true);
       setShowAddModal(false);
       fetchStaffData();
     } catch {
@@ -860,6 +866,10 @@ export function StaffPage() {
 
   const handleStatusSubmit = async () => {
     if (!selectedStaff) return;
+    if (selectedStaff.status === 'PENDING_ACTIVATION') {
+      setModalApiError('This staff account is pending email activation. Please ask the staff member to activate via the email link, or click Resend Invite.');
+      return;
+    }
     const newStatus = selectedStaff.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     setIsSubmitting(true);
     setModalApiError(null);
@@ -1047,6 +1057,10 @@ export function StaffPage() {
     }
     return calculateScopedStaffMetrics(scopedAuditActivities);
   }, [targetStaffMetric, scopedAuditActivities]);
+
+  const pendingStaffMembers = useMemo(() => {
+    return staffList.filter((s) => s.status === 'PENDING_ACTIVATION');
+  }, [staffList]);
 
   const handleExportAuditCsv = () => {
     if (!selectedStaffForAudit) return;
@@ -1240,6 +1254,76 @@ export function StaffPage() {
         </Card>
       )}
 
+      {/* ── Pending Activation Staff Banner (Disappears when activated) ── */}
+      {pendingStaffMembers.length > 0 && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50/70 p-4 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
+                <Clock className="h-4 w-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Pending Activation ({pendingStaffMembers.length})
+                </h3>
+                <p className="text-xs text-slate-600">
+                  These staff accounts have been created and invitation emails were sent to their Gmail. Once activated by setting their password, they automatically disappear from here and become Active.
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchStaffData()}
+              leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
+              className="border-amber-300 text-amber-900 hover:bg-amber-100 shrink-0 self-start sm:self-auto"
+            >
+              Check Status
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+            {pendingStaffMembers.map((staff) => (
+              <div
+                key={staff.id}
+                className="flex flex-col justify-between rounded-lg border border-amber-200/80 bg-white/95 p-3.5 shadow-sm hover:shadow transition-shadow"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <h4 className="text-sm font-bold text-slate-900 truncate" title={staff.name}>
+                      {staff.name}
+                    </h4>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 shrink-0">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                      Pending Activation
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1 truncate" title={staff.email}>
+                    <span className="text-slate-400 font-medium">Email:</span> {staff.email}
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Counters: {staff.assignedBranchIds?.length || 0} assigned
+                  </p>
+                </div>
+
+                <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-[11px] text-amber-700 font-medium">Awaiting invite</span>
+                  <button
+                    type="button"
+                    onClick={() => handleResendInvite(staff.id)}
+                    disabled={resendingId === staff.id}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 hover:text-amber-900 hover:underline cursor-pointer disabled:opacity-50"
+                  >
+                    <Send className="h-3 w-3" />
+                    <span>{resendingId === staff.id ? 'Sending...' : 'Resend Invite'}</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Search & Refresh */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-md">
@@ -1395,9 +1479,15 @@ export function StaffPage() {
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1">
                     <span className="text-xs text-slate-500">Account Status</span>
                     <div className="flex items-center gap-2 pt-1">
-                      <Badge variant={selectedStaff?.status === 'ACTIVE' ? 'success' : 'danger'}>
-                        {selectedStaff?.status}
-                      </Badge>
+                      {selectedStaff?.status === 'PENDING_ACTIVATION' ? (
+                        <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 border border-amber-200">
+                          Pending Activation
+                        </span>
+                      ) : (
+                        <Badge variant={selectedStaff?.status === 'ACTIVE' ? 'success' : 'danger'}>
+                          {selectedStaff?.status === 'ACTIVE' ? 'Active' : 'Inactive'}
+                        </Badge>
+                      )}
                     </div>
                   </div>
 
@@ -2214,25 +2304,117 @@ export function StaffPage() {
             </div>
           )}
 
-          <p className="text-sm text-slate-700">
-            Are you sure you want to{' '}
-            <strong className="text-slate-900">
-              {selectedStaff?.status === 'ACTIVE' ? 'deactivate' : 'activate'}
-            </strong>{' '}
-            the staff member <span className="text-emerald-700 font-semibold">{selectedStaff?.name}</span>?
-          </p>
+          {selectedStaff?.status === 'PENDING_ACTIVATION' ? (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-800 space-y-2">
+                <p className="font-semibold text-amber-900 flex items-center gap-1.5">
+                  <Clock className="h-4 w-4 text-amber-600" />
+                  Account Pending Email Activation
+                </p>
+                <p>
+                  This account has not been activated yet. The staff member needs to set their own password via the activation link sent to <strong>{selectedStaff.email}</strong>.
+                </p>
+              </div>
+              <p className="text-xs text-slate-500">
+                You can resend the activation invitation email if the link has expired or the staff member cannot find the email.
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-700">
+              Are you sure you want to{' '}
+              <strong className="text-slate-900">
+                {selectedStaff?.status === 'ACTIVE' ? 'deactivate' : 'activate'}
+              </strong>{' '}
+              the staff member <span className="text-emerald-700 font-semibold">{selectedStaff?.name}</span>?
+            </p>
+          )}
 
           <ModalFooter>
             <Button variant="outline" onClick={() => setShowStatusModal(false)} disabled={isSubmitting}>
-              Cancel
+              Close
+            </Button>
+            {selectedStaff?.status === 'PENDING_ACTIVATION' ? (
+              <Button
+                variant="primary"
+                onClick={async () => {
+                  if (!selectedStaff?.id) return;
+                  await handleResendInvite(selectedStaff.id);
+                  setShowStatusModal(false);
+                }}
+                isLoading={resendingId === selectedStaff?.id}
+                disabled={resendingId === selectedStaff?.id}
+                leftIcon={<Send className="h-4 w-4" />}
+              >
+                Resend Activation Invite
+              </Button>
+            ) : (
+              <Button
+                variant={selectedStaff?.status === 'ACTIVE' ? 'danger' : 'primary'}
+                onClick={handleStatusSubmit}
+                isLoading={isSubmitting}
+                disabled={isSubmitting}
+              >
+                Confirm {selectedStaff?.status === 'ACTIVE' ? 'Deactivation' : 'Activation'}
+              </Button>
+            )}
+          </ModalFooter>
+        </div>
+      </Modal>
+
+      {/* ── Pending Activation Confirmation Modal (Opens right after creating staff member) ── */}
+      <Modal
+        isOpen={showPendingStaffSuccessModal}
+        onClose={() => setShowPendingStaffSuccessModal(false)}
+        title="Staff Member Created — Pending Activation"
+      >
+        <div className="py-2 space-y-4">
+          <div className="flex flex-col items-center text-center p-4 rounded-xl border border-amber-500/20 bg-amber-50/60">
+            <div className="h-14 w-14 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 mb-3 ring-8 ring-amber-50">
+              <Mail className="h-7 w-7" />
+            </div>
+            <Badge variant="warning" className="mb-2">
+              Pending Activation via Email
+            </Badge>
+            <h3 className="text-lg font-bold text-slate-900">
+              {createdPendingStaff?.name}
+            </h3>
+            <p className="text-xs font-mono text-slate-600 mt-1">
+              {createdPendingStaff?.email}
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3.5 text-xs text-slate-700 space-y-2">
+            <p className="font-semibold text-slate-900 flex items-center gap-1.5">
+              <Clock className="h-4 w-4 text-amber-600" />
+              What happens next?
+            </p>
+            <p>
+              An invitation email has been dispatched to <strong>{createdPendingStaff?.email}</strong> with a secure link to activate their account and choose their POS password.
+            </p>
+            <p className="text-amber-800 bg-amber-100/60 p-2 rounded border border-amber-200/70 font-medium">
+              Until the staff member accepts the invitation via email, their account remains in <strong>Pending Activation</strong> status and cannot be used to log into the mobile POS app. Once activated, they automatically disappear from the Pending list and appear as Active.
+            </p>
+          </div>
+
+          <ModalFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                if (!createdPendingStaff?.id) return;
+                handleResendInvite(createdPendingStaff.id);
+              }}
+              leftIcon={<Send className="h-4 w-4 text-amber-600" />}
+              disabled={resendingId === createdPendingStaff?.id}
+            >
+              {resendingId === createdPendingStaff?.id ? 'Resending...' : 'Resend Email Invite'}
             </Button>
             <Button
-              variant={selectedStaff?.status === 'ACTIVE' ? 'danger' : 'primary'}
-              onClick={handleStatusSubmit}
-              isLoading={isSubmitting}
-              disabled={isSubmitting}
+              variant="primary"
+              size="sm"
+              onClick={() => setShowPendingStaffSuccessModal(false)}
             >
-              Confirm {selectedStaff?.status === 'ACTIVE' ? 'Deactivation' : 'Activation'}
+              Got it, View Staff List
             </Button>
           </ModalFooter>
         </div>
