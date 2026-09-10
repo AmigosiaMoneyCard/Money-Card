@@ -99,15 +99,20 @@ export async function sendPasswordResetEmail(
   organizationName?: string | null,
 ): Promise<SendEmailResult> {
   const isSuperAdmin = accountType === 'SUPER_ADMIN';
+  const isStaff = accountType === 'STAFF';
 
   // Role-specific titles, greetings, and subjects per specification
   const subject = isSuperAdmin
     ? 'Reset your Super Admin password'
-    : 'Reset your Organization Admin password';
+    : isStaff
+      ? 'Reset your Staff account password'
+      : 'Reset your Organization Admin password';
 
   const heading = isSuperAdmin
     ? 'Reset your Super Admin password'
-    : 'Reset your Organization Admin password';
+    : isStaff
+      ? 'Reset your Staff Account password'
+      : 'Reset your Organization Admin password';
 
   const greeting = isSuperAdmin
     ? 'Hello, Platform Super Admin'
@@ -115,7 +120,9 @@ export async function sendPasswordResetEmail(
 
   const bodyDescription = isSuperAdmin
     ? 'We received a request to reset the password for your Super Admin account.'
-    : 'We received a request to reset the password for your Organization Admin account.';
+    : isStaff
+      ? `We received a request to reset the password for your Staff account at ${organizationName || 'your cafeteria'}.`
+      : 'We received a request to reset the password for your Organization Admin account.';
 
   const orgSectionHtml = (!isSuperAdmin && organizationName)
     ? `
