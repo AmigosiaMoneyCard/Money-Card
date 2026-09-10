@@ -1976,17 +1976,6 @@ export function StaffPage() {
                   />
                 </div>
 
-                {/* Email Activation notice card */}
-                <div className="rounded-lg border border-emerald-500/20 bg-emerald-50/70 p-3.5 text-xs text-emerald-800 space-y-1.5">
-                  <div className="flex items-center gap-2 font-semibold text-emerald-900">
-                    <Send className="h-4 w-4 text-emerald-600 shrink-0" />
-                    <span>Email Activation Workflow</span>
-                  </div>
-                  <p className="text-slate-600 leading-relaxed">
-                    A real Gmail address is required. An invitation email with a secure link will automatically be sent to this staff member so they can safely choose their own password upon first logging in.
-                  </p>
-                </div>
-
                 {orgOverview?.usage && (
                   <p className="text-xs text-slate-500 pt-2">
                     Active subscription allows up to {orgOverview.usage.staffLimit} staff accounts (
@@ -2077,9 +2066,6 @@ export function StaffPage() {
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
                     Choose a Staff Role Preset
                   </h4>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Select a pre-configured role to automatically assign the right permissions.
-                  </p>
                 </div>
 
                 {/* 3 Large Role Preset Cards */}
