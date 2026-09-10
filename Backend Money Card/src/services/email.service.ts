@@ -4,17 +4,31 @@ import nodemailer from 'nodemailer';
 const resendApiKey = process.env.RESEND_API_KEY;
 const emailFrom = process.env.EMAIL_FROM || 'Money Card <onboarding@resend.dev>';
 
+const smtpHost = process.env.SMTP_HOST;
+const smtpPort = Number(process.env.SMTP_PORT) || 587;
 const gmailUser = process.env.GMAIL_USER || process.env.SMTP_USER;
 const gmailPass = process.env.GMAIL_APP_PASSWORD || process.env.SMTP_PASS;
 
 const mailTransporter = (gmailUser && gmailPass)
-  ? nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: gmailUser,
-        pass: gmailPass,
-      },
-    })
+  ? nodemailer.createTransport(
+      smtpHost
+        ? {
+            host: smtpHost,
+            port: smtpPort,
+            secure: smtpPort === 465,
+            auth: {
+              user: gmailUser,
+              pass: gmailPass,
+            },
+          }
+        : {
+            service: 'gmail',
+            auth: {
+              user: gmailUser,
+              pass: gmailPass,
+            },
+          },
+    )
   : null;
 
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
