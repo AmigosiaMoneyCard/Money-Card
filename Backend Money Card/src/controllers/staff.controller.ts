@@ -201,6 +201,22 @@ export async function createStaffMember(req: Request, res: Response) {
     return user;
   });
 
+  if (isInvitation && rawActivationToken) {
+    const org = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { name: true },
+    });
+    const clientOrigin = req.headers.origin || process.env.FRONTEND_URL || 'https://money-card-frontend-staging.vercel.app';
+    const activationLink = `${clientOrigin}/activate?token=${rawActivationToken}`;
+    await sendAccountActivationEmail(
+      cleanEmail,
+      name.trim(),
+      activationLink,
+      Role.STAFF,
+      org?.name || 'Money Card Cafeteria',
+    );
+  }
+
   return sendSuccess(
     res,
     {
@@ -639,3 +655,4 @@ export async function changeStaffPassword(req: Request, res: Response) {
     staff: updatedStaff,
   });
 }
+

@@ -192,6 +192,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
     );
   }
 
+  /// Request password reset link for staff account
+  Future<bool> forgotPassword(String email) async {
+    try {
+      await _authRepository.forgotPassword(email);
+      return true;
+    } on ApiException catch (e) {
+      state = state.copyWith(errorMessage: e.message);
+      return false;
+    } catch (_) {
+      state = state.copyWith(errorMessage: 'Unable to send password reset email. Please try again.');
+      return false;
+    }
+  }
+
   /// Clear active error state
   void clearError() {
     if (state.status == AuthStatus.error) {

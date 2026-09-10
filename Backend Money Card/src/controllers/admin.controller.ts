@@ -126,7 +126,11 @@ export async function createOrganization(req: Request, res: Response) {
     return sendError(res, 400, 'VALIDATION_ERROR', `Plan '${selectedPlanId}' does not exist`);
   }
 
-  const email = adminEmail || `admin@${name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`;
+  if (!adminEmail || !adminEmail.trim()) {
+    return sendError(res, 400, 'VALIDATION_ERROR', 'Admin Gmail address is required');
+  }
+
+  const email = adminEmail.trim().toLowerCase();
   const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) {
     return sendError(res, 400, 'VALIDATION_ERROR', `Admin email '${email}' is already in use`);
@@ -187,7 +191,7 @@ export async function createOrganization(req: Request, res: Response) {
   });
 
   if (isInvitation && rawActivationToken) {
-    const clientOrigin = req.headers.origin || 'http://localhost:5173';
+    const clientOrigin = req.headers.origin || process.env.FRONTEND_URL || 'https://money-card-frontend-staging.vercel.app';
     const activationLink = `${clientOrigin}/activate?token=${rawActivationToken}`;
     await sendAccountActivationEmail(
       email,
@@ -979,7 +983,7 @@ export async function resendOrgAdminInvite(req: Request, res: Response) {
     },
   });
 
-  const clientOrigin = req.headers.origin || 'http://localhost:5173';
+  const clientOrigin = req.headers.origin || process.env.FRONTEND_URL || 'https://money-card-frontend-staging.vercel.app';
   const activationLink = `${clientOrigin}/activate?token=${rawToken}`;
 
   await sendAccountActivationEmail(

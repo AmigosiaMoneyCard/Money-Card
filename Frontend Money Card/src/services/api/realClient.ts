@@ -229,6 +229,12 @@ export const realClient: typeof mockClient = {
         ),
       );
     },
+
+    async resendOrgAdminInvite(id: string): Promise<ApiResult<{ message: string }>> {
+      return handleApiCall(() =>
+        apiClient.post<{ message: string }>(`/v1/admin/organizations/${id}/resend-admin-invite`),
+      );
+    },
   },
 
   branches: {
@@ -262,7 +268,7 @@ export const realClient: typeof mockClient = {
 
   staff: {
     async resendInvite(id: string): Promise<ApiResult<any>> {
-      return handleApiCall(() => apiClient.post(`/v1/admin/staff/${id}/resend-invite`));
+      return handleApiCall(() => apiClient.post(`/v1/staff/${id}/resend-invite`));
     },
     async getStaff(params?: PaginationParams): Promise<ApiResult<PaginatedData<Staff>>> {
       const res = await handleApiCall<any>(() => apiClient.get('/v1/staff', { params }));

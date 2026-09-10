@@ -42,7 +42,6 @@ import {
   Send,
   RefreshCw,
   AlertCircle,
-  CheckCircle2,
   Eye, EyeOff,
   Check,
   ArrowRight,
@@ -193,8 +192,8 @@ function StaffActionMenu({
               </button>
             )}
 
-            {/* Resend Activation Invite if Pending */}
-            {canManage && staff.status === 'PENDING_ACTIVATION' && (
+            {/* Resend Activation Invite if Pending or Inactive */}
+            {canManage && (staff.status === 'PENDING_ACTIVATION' || staff.status === 'INACTIVE') && (
               <button
                 type="button"
                 onClick={() => {
@@ -363,8 +362,6 @@ export function StaffPage() {
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
   const [formName, setFormName] = useState('');
   const [formEmail, setFormEmail] = useState('');
-  const [formPassword, setFormPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [formBranchIds, setFormBranchIds] = useState<string[]>([]);
   const [formPermissions, setFormPermissions] = useState<Permission[]>([]);
   const [showAdvancedPerms, setShowAdvancedPerms] = useState(false);
@@ -477,8 +474,6 @@ export function StaffPage() {
   const handleOpenAdd = () => {
     setFormName('');
     setFormEmail('');
-    setFormPassword('');
-    setShowPassword(false);
     setFormBranchIds(branches.map((b) => b.id)); // Default assign all active branches
     setFormPermissions([
       'CARD_VIEW',
@@ -505,27 +500,11 @@ export function StaffPage() {
       errors.name = 'Staff name must be at most 50 characters';
     }
     
-    const trimmedEmail = formEmail.trim();
+    const trimmedEmail = formEmail.trim().toLowerCase();
     if (!trimmedEmail) {
-      errors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      errors.email = 'Please enter a valid email address';
-    }
-
-    if (!formPassword.trim()) {
-      errors.password = 'Password is required';
-    } else if (formPassword.length < 8) {
-      errors.password = 'Password must be at least 8 characters';
-    } else if (formPassword.length > 128) {
-      errors.password = 'Password cannot exceed 128 characters';
-    } else if (!/[A-Z]/.test(formPassword)) {
-      errors.password = 'Password must contain at least one uppercase letter [A-Z]';
-    } else if (!/[a-z]/.test(formPassword)) {
-      errors.password = 'Password must contain at least one lowercase letter [a-z]';
-    } else if (!/[0-9]/.test(formPassword)) {
-      errors.password = 'Password must contain at least one number [0-9]';
-    } else if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(formPassword)) {
-      errors.password = 'Password must contain at least one special character (!@#$%^&*...)';
+      errors.email = 'Email address is required';
+    } else if (!/^[a-zA-Z0-9._%+-]+@(?:gmail|googlemail)\.com$/.test(trimmedEmail)) {
+      errors.email = 'Please provide a valid Gmail address (@gmail.com)';
     }
 
     setFormErrors(errors);
@@ -587,8 +566,7 @@ export function StaffPage() {
 
       const res = await apiService.staff.createStaff({
         name: formName.trim(),
-        email: formEmail.trim(),
-        password: formPassword,
+        email: formEmail.trim().toLowerCase(),
         assignedBranchIds: formBranchIds,
         permissions: Array.from(finalPermissions),
       });
@@ -605,7 +583,7 @@ export function StaffPage() {
         return;
       }
 
-      notify.success(`Staff member ${res.data.name} created successfully`);
+      notify.success(`Staff member ${res.data.name} created! Activation invite sent to ${formEmail.trim().toLowerCase()}`);
       setShowAddModal(false);
       fetchStaffData();
     } catch {
@@ -1870,8 +1848,8 @@ export function StaffPage() {
                   <Input
                     id="add-staff-email"
                     type="email"
-                    label="Email Address"
-                    placeholder="john@cafeteria.com"
+                    label="Staff Gmail Address *"
+                    placeholder="e.g. staff.member@gmail.com"
                     maxLength={100}
                     value={formEmail}
                     onChange={(e) => {
@@ -1883,81 +1861,15 @@ export function StaffPage() {
                   />
                 </div>
 
-                <Input
-                  id="add-staff-password"
-                  type={showPassword ? 'text' : 'password'}
-                  label="Initial Password"
-                  placeholder="At least 8 characters"
-                  value={formPassword}
-                  onChange={(e) => {
-                    setFormPassword(e.target.value);
-                    if (formErrors.password) setFormErrors((prev) => ({ ...prev, password: '' }));
-                  }}
-                  error={formErrors.password}
-                  disabled={isSubmitting}
-                  rightElement={
-                    <button
-                      type="button"
-                      className="text-slate-400 hover:text-slate-600 transition-colors p-1 flex items-center justify-center focus:outline-none"
-                      onClick={() => setShowPassword((prev) => !prev)}
-                      title={showPassword ? "Hide password" : "Show password"}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  }
-                />
-
-                {/* Initial Password requirements checklist */}
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-slate-700 flex items-center gap-1.5">
-                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                      Password Requirements:
-                    </span>
-                    <span className="text-[11px] text-slate-500">All rules required</span>
+                {/* Email Activation notice card */}
+                <div className="rounded-lg border border-emerald-500/20 bg-emerald-50/70 p-3.5 text-xs text-emerald-800 space-y-1.5">
+                  <div className="flex items-center gap-2 font-semibold text-emerald-900">
+                    <Send className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Email Activation Workflow</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-slate-600 pt-0.5">
-                    <div className={`flex items-center gap-1.5 transition-colors ${formPassword.length >= 8 ? 'text-emerald-600 font-medium' : ''}`}>
-                      {formPassword.length >= 8 ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                      ) : (
-                        <span className="text-slate-400 text-xs">•</span>
-                      )}
-                      <span>At least 8 characters</span>
-                    </div>
-                    <div className={`flex items-center gap-1.5 transition-colors ${/[A-Z]/.test(formPassword) ? 'text-emerald-600 font-medium' : ''}`}>
-                      {/[A-Z]/.test(formPassword) ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                      ) : (
-                        <span className="text-slate-400 text-xs">•</span>
-                      )}
-                      <span>One uppercase letter [A-Z]</span>
-                    </div>
-                    <div className={`flex items-center gap-1.5 transition-colors ${/[a-z]/.test(formPassword) ? 'text-emerald-600 font-medium' : ''}`}>
-                      {/[a-z]/.test(formPassword) ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                      ) : (
-                        <span className="text-slate-400 text-xs">•</span>
-                      )}
-                      <span>One lowercase letter [a-z]</span>
-                    </div>
-                    <div className={`flex items-center gap-1.5 transition-colors ${/[0-9]/.test(formPassword) ? 'text-emerald-600 font-medium' : ''}`}>
-                      {/[0-9]/.test(formPassword) ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                      ) : (
-                        <span className="text-slate-400 text-xs">•</span>
-                      )}
-                      <span>One number [0-9]</span>
-                    </div>
-                    <div className={`flex items-center gap-1.5 transition-colors sm:col-span-2 ${/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(formPassword) ? 'text-emerald-600 font-medium' : ''}`}>
-                      {/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(formPassword) ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                      ) : (
-                        <span className="text-slate-400 text-xs">•</span>
-                      )}
-                      <span>One special character (!@#$%^&*...)</span>
-                    </div>
-                  </div>
+                  <p className="text-slate-600 leading-relaxed">
+                    A real Gmail address is required. An invitation email with a secure link will automatically be sent to this staff member so they can safely choose their own password upon first logging in.
+                  </p>
                 </div>
 
                 {orgOverview?.usage && (

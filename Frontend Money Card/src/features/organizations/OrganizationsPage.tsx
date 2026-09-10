@@ -34,6 +34,8 @@ import {
   Trash2,
   MoreVertical,
   ChevronDown,
+  Send,
+  Mail,
 } from 'lucide-react';
 
 interface OrgActionMenuProps {
@@ -41,6 +43,7 @@ interface OrgActionMenuProps {
   onViewDetails: () => void;
   onEdit: () => void;
   onResetPassword: () => void;
+  onResendAdminInvite?: () => void;
   onToggleStatus: () => void;
   onDelete: () => void;
 }
@@ -50,6 +53,7 @@ function OrgActionMenu({
   onViewDetails,
   onEdit,
   onResetPassword,
+  onResendAdminInvite,
   onToggleStatus,
   onDelete,
 }: OrgActionMenuProps) {
@@ -187,6 +191,20 @@ function OrgActionMenu({
               <span>Reset Admin Password</span>
             </button>
 
+            {onResendAdminInvite && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  onResendAdminInvite();
+                }}
+                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-amber-700 transition-colors cursor-pointer text-left"
+              >
+                <Send className="h-4 w-4 text-amber-600" />
+                <span>Resend Activation Invite</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => {
@@ -273,11 +291,9 @@ export function OrganizationsPage() {
   const [tempPasswordError, setTempPasswordError] = useState<string | null>(null);
   const [confirmTempPasswordError, setConfirmTempPasswordError] = useState<string | null>(null);
 
-  // Form State for Create Organization (4 Required Fields)
+  // Form State for Create Organization (3 Required Fields: Name, Admin Gmail, Plan)
   const [formName, setFormName] = useState('');
   const [formAdminEmail, setFormAdminEmail] = useState('');
-  const [formPassword, setFormPassword] = useState('');
-  const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [formPlanId, setFormPlanId] = useState('plan_002');
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
@@ -420,8 +436,6 @@ export function OrganizationsPage() {
   const handleOpenCreateModal = () => {
     setFormName('');
     setFormAdminEmail('');
-    setFormPassword('');
-    setShowCreatePassword(false);
     setFormPlanId(plans[0]?.id || 'plan_002');
     setFormErrors({});
     setModalApiError(null);
@@ -437,18 +451,11 @@ export function OrganizationsPage() {
       errs.name = 'Cafeteria name must be at most 30 characters';
     }
 
-    const trimmedEmail = formAdminEmail.trim();
+    const trimmedEmail = formAdminEmail.trim().toLowerCase();
     if (!trimmedEmail) {
-      errs.adminEmail = 'Org Admin email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      errs.adminEmail = 'Please enter a valid email address';
-    }
-
-    const trimmedPassword = formPassword.trim();
-    if (!trimmedPassword) {
-      errs.password = 'Password is required';
-    } else if (trimmedPassword.length < 6) {
-      errs.password = 'Password must be at least 6 characters';
+      errs.adminEmail = 'Org Admin Gmail address is required';
+    } else if (!/^[a-zA-Z0-9._%+-]+@(?:gmail|googlemail)\.com$/.test(trimmedEmail)) {
+      errs.adminEmail = 'Please provide a valid Gmail address (@gmail.com)';
     }
 
     if (!formPlanId) {
@@ -467,8 +474,7 @@ export function OrganizationsPage() {
     try {
       const res = await apiService.organizations.createOrganization({
         name: formName.trim(),
-        adminEmail: formAdminEmail.trim(),
-        password: formPassword.trim(),
+        adminEmail: formAdminEmail.trim().toLowerCase(),
         planId: formPlanId,
       });
 
@@ -477,17 +483,28 @@ export function OrganizationsPage() {
         return;
       }
 
-      notify.success(`${res.data.name} has been created`);
+      notify.success(`${res.data.name} created! Activation invite sent to ${formAdminEmail.trim().toLowerCase()}`);
       setShowCreateModal(false);
       setFormName('');
       setFormAdminEmail('');
-      setFormPassword('');
-      setShowCreatePassword(false);
       fetchOrganizations();
     } catch {
       setModalApiError('An unexpected error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleResendAdminInvite = async (org: OrganizationOverview) => {
+    try {
+      const res = await apiService.organizations.resendOrgAdminInvite(org.id);
+      if (res.success) {
+        notify.success(res.data?.message || `Activation invite sent to ${org.adminUser?.email || 'Org Admin'}`);
+      } else {
+        notify.error(res.error?.message || 'Failed to resend activation invite');
+      }
+    } catch {
+      notify.error('Failed to resend activation invite. Please try again.');
     }
   };
 
@@ -684,6 +701,7 @@ export function OrganizationsPage() {
             onViewDetails={() => handleOpenDetails(org)}
             onEdit={() => handleOpenEditModal(org)}
             onResetPassword={() => handleOpenResetPasswordModal(org)}
+            onResendAdminInvite={() => handleResendAdminInvite(org)}
             onToggleStatus={() => handleOpenStatusModal(org)}
             onDelete={() => handleOpenDeleteModal(org)}
           />
@@ -834,10 +852,20 @@ export function OrganizationsPage() {
             </div>
           )}
 
+          <div className="rounded-lg border border-emerald-500/20 bg-emerald-50/70 p-3 text-xs text-emerald-800 space-y-1">
+            <p className="font-semibold flex items-center gap-1.5 text-emerald-900">
+              <Mail className="h-4 w-4 text-emerald-600" />
+              Email Activation Workflow
+            </p>
+            <p className="text-slate-600">
+              A real Gmail address is required. An activation email with a secure link will automatically be sent to the administrator to set their private password.
+            </p>
+          </div>
+
           <Input
             id="create-org-name"
             label="Cafeteria Name *"
-            placeholder="e.g. Acme Cafeterias"
+            placeholder="e.g. Acme Cafeteria"
             maxLength={30}
             value={formName}
             onChange={(e) => {
@@ -851,9 +879,9 @@ export function OrganizationsPage() {
 
           <Input
             id="create-org-admin-email"
-            label="Org Admin Email *"
+            label="Org Admin Gmail Address *"
             type="email"
-            placeholder="e.g. admin@acmecafeteria.com"
+            placeholder="e.g. cafeteria.admin@gmail.com"
             value={formAdminEmail}
             onChange={(e) => {
               setFormAdminEmail(e.target.value);
@@ -861,30 +889,6 @@ export function OrganizationsPage() {
             }}
             error={formErrors.adminEmail}
             disabled={isSubmitting}
-          />
-
-          <Input
-            id="create-org-password"
-            label="Password *"
-            type={showCreatePassword ? 'text' : 'password'}
-            placeholder="Min. 6 characters"
-            value={formPassword}
-            onChange={(e) => {
-              setFormPassword(e.target.value);
-              if (formErrors.password) setFormErrors((prev) => ({ ...prev, password: '' }));
-            }}
-            error={formErrors.password}
-            disabled={isSubmitting}
-            rightElement={
-              <button
-                type="button"
-                className="text-slate-400 hover:text-slate-700 transition-colors p-1 flex items-center justify-center focus:outline-none"
-                onClick={() => setShowCreatePassword((prev) => !prev)}
-                title={showCreatePassword ? "Hide password" : "Show password"}
-              >
-                {showCreatePassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            }
           />
 
           {plans.length > 0 && (

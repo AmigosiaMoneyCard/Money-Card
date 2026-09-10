@@ -376,4 +376,13 @@ export const mockOrganizationsHandlers = {
       data: { message: 'Password reset successfully for Org Admin.' },
     };
   },
+
+  async resendOrgAdminInvite(
+    _id: string,
+  ): Promise<ApiResult<{ message: string }>> {
+    return {
+      success: true,
+      data: { message: 'Activation invitation resent successfully to Org Admin.' },
+    };
+  },
 };

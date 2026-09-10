@@ -1,13 +1,27 @@
 import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
 const resendApiKey = process.env.RESEND_API_KEY;
 const emailFrom = process.env.EMAIL_FROM || 'Money Card <onboarding@resend.dev>';
+
+const gmailUser = process.env.GMAIL_USER || process.env.SMTP_USER;
+const gmailPass = process.env.GMAIL_APP_PASSWORD || process.env.SMTP_PASS;
+
+const mailTransporter = (gmailUser && gmailPass)
+  ? nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: gmailUser,
+        pass: gmailPass,
+      },
+    })
+  : null;
 
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
 export interface SendEmailResult {
   sent: boolean;
-  provider: 'resend' | 'console';
+  provider: 'gmail_smtp' | 'resend' | 'console';
   id?: string;
   error?: string;
 }
@@ -206,6 +220,32 @@ export async function sendPasswordResetEmail(
 </html>
   `;
 
+  if (mailTransporter) {
+    try {
+      const info = await mailTransporter.sendMail({
+        from: `"Money Card" <${gmailUser}>`,
+        to: toEmail,
+        subject,
+        html: htmlContent,
+      });
+
+      console.log(`[EMAIL_SERVICE] Reset email dispatched via Gmail SMTP to ${toEmail} (${accountType}). Message ID: ${info.messageId}`);
+      return {
+        sent: true,
+        provider: 'gmail_smtp',
+        id: info.messageId,
+      };
+    } catch (err: any) {
+      console.error(`[EMAIL_SERVICE_ERROR] Failed to send email via Gmail SMTP:`, err.message);
+      console.log(`[PASSWORD_RECOVERY_FALLBACK] Reset Link for ${toEmail}: ${resetLink}`);
+      return {
+        sent: false,
+        provider: 'gmail_smtp',
+        error: err.message,
+      };
+    }
+  }
+
   if (resend) {
     try {
       const response = await resend.emails.send({
@@ -334,6 +374,24 @@ export async function sendAccountActivationEmail(
 </body>
 </html>
   `;
+
+  if (mailTransporter) {
+    try {
+      const info = await mailTransporter.sendMail({
+        from: `"Money Card" <${gmailUser}>`,
+        to: toEmail,
+        subject,
+        html: htmlContent,
+      });
+
+      console.log(`[EMAIL_SERVICE_SUCCESS] Activation email sent via Gmail SMTP to ${toEmail} (ID: ${info.messageId})`);
+      return { sent: true, provider: 'gmail_smtp', id: info.messageId };
+    } catch (err: any) {
+      console.error('[EMAIL_SERVICE_ERROR] Gmail SMTP exception:', err.message);
+      console.log(`[ACTIVATION_FALLBACK_LINK] Activation Link for ${toEmail}: ${activationLink}`);
+      return { sent: false, provider: 'gmail_smtp', error: err.message };
+    }
+  }
 
   if (resend) {
     try {

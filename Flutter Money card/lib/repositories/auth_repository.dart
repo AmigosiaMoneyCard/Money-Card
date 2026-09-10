@@ -110,6 +110,11 @@ class AuthRepository {
     return response.user;
   }
 
+  /// Request password reset via email (POST /api/v1/auth/forgot-password)
+  Future<void> forgotPassword(String email) async {
+    await authService.forgotPassword(email);
+  }
+
   /// Check if an active session exists
   Future<bool> hasStoredSession() async {
     return tokenStorage.hasAccessToken();
