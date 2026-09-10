@@ -6,7 +6,7 @@ import { prisma } from '../config/database.js';
 import { sendError, sendSuccess } from '../utils/response.js';
 import { comparePassword, hashPassword } from '../utils/crypto.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/token.js';
-import { Role, UserStatus } from '@prisma/client';
+import { Role, UserStatus, OrgStatus } from '@prisma/client';
 
 export const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -47,6 +47,14 @@ export async function login(req: Request, res: Response) {
 
   if (user.organizationId && user.organization) {
     const orgStatus = (user.organization as any).status;
+    if (orgStatus === 'PENDING_ACTIVATION') {
+      return sendError(
+        res,
+        403,
+        'ORGANIZATION_PENDING_ACTIVATION',
+        'This cafeteria is pending email activation. Please click the invitation link sent to the administrator email to activate the cafeteria.',
+      );
+    }
     if (orgStatus === 'SUSPENDED' || orgStatus === 'INACTIVE') {
       return sendError(
         res,
@@ -531,6 +539,15 @@ export async function activateAccount(req: Request, res: Response) {
       assignedBranches: { include: { branch: true } },
     },
   });
+
+  // If this is an Org Admin activating, automatically transition the organization to ACTIVE
+  if (user.organizationId && user.role === Role.ORG_ADMIN) {
+    await prisma.organization.update({
+      where: { id: user.organizationId },
+      data: { status: OrgStatus.ACTIVE },
+    });
+    console.log(`[ORGANIZATION_ACTIVATED] OrgId=${user.organizationId} transitioned from PENDING_ACTIVATION to ACTIVE`);
+  }
 
   console.log(`[AUTH_AUDIT_LOG] ACCOUNT_ACTIVATED userId=${updatedUser.id} email=${updatedUser.email} role=${updatedUser.role} timestamp=${new Date().toISOString()} ip=${req.ip}`);
 

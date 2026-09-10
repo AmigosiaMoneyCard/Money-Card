@@ -29,6 +29,7 @@ enum OrgStatus {
   ACTIVE
   SUSPENDED
   INACTIVE
+  PENDING_ACTIVATION
 }
 
 enum BranchStatus {

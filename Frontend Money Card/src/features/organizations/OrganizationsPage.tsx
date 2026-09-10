@@ -205,21 +205,23 @@ function OrgActionMenu({
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={() => {
-                setIsOpen(false);
-                onToggleStatus();
-              }}
-              className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors cursor-pointer text-left ${
-                org.status === 'ACTIVE'
-                  ? 'text-rose-600 hover:bg-rose-50'
-                  : 'text-emerald-600 hover:bg-emerald-50'
-              }`}
-            >
-              <Power className="h-4 w-4" />
-              <span>{org.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}</span>
-            </button>
+            {org.status !== 'PENDING_ACTIVATION' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  onToggleStatus();
+                }}
+                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors cursor-pointer text-left ${
+                  org.status === 'ACTIVE'
+                    ? 'text-rose-600 hover:bg-rose-50'
+                    : 'text-emerald-600 hover:bg-emerald-50'
+                }`}
+              >
+                <Power className="h-4 w-4" />
+                <span>{org.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}</span>
+              </button>
+            )}
 
             <div className="my-1 border-t border-slate-200" />
 
@@ -676,11 +678,21 @@ export function OrganizationsPage() {
       key: 'status',
       header: 'Status',
       sortable: true,
-      render: (org: OrganizationOverview) => (
-        <Badge variant={org.status === 'ACTIVE' ? 'success' : 'danger'}>
-          {org.status}
-        </Badge>
-      ),
+      render: (org: OrganizationOverview) => {
+        if (org.status === 'PENDING_ACTIVATION') {
+          return (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-xs font-medium text-amber-700 shadow-sm">
+              <Mail className="h-3 w-3 text-amber-500" />
+              Pending Activation via Email
+            </span>
+          );
+        }
+        return (
+          <Badge variant={org.status === 'ACTIVE' ? 'success' : 'danger'}>
+            {org.status}
+          </Badge>
+        );
+      },
     },
     {
       key: 'createdAt',
@@ -769,7 +781,7 @@ export function OrganizationsPage() {
           </div>
 
           {/* Status Scope Filter */}
-          <div className="w-full sm:w-40">
+          <div className="w-full sm:w-48">
             <label className="mb-1 block text-[11px] font-medium text-slate-400">Status</label>
             <Select
               id="org-status-filter"
@@ -778,6 +790,7 @@ export function OrganizationsPage() {
               options={[
                 { value: 'ALL', label: 'All Statuses' },
                 { value: 'ACTIVE', label: 'Active' },
+                { value: 'PENDING_ACTIVATION', label: 'Pending Activation' },
                 { value: 'INACTIVE', label: 'Inactive' },
               ]}
             />
@@ -858,7 +871,7 @@ export function OrganizationsPage() {
               Email Activation Workflow
             </p>
             <p className="text-slate-600">
-              A real Gmail address is required. An activation email with a secure link will automatically be sent to the administrator to set their private password.
+              A real Gmail address is required. An activation invitation email with a secure link will automatically be sent to the administrator. The cafeteria will remain in <strong>Pending Activation via Email</strong> status until the administrator accepts the invitation and sets their password.
             </p>
           </div>
 
@@ -988,9 +1001,16 @@ export function OrganizationsPage() {
                 <h3 className="text-lg font-bold text-slate-900">{selectedOrg.name}</h3>
                 <p className="text-xs text-slate-500">ID: {selectedOrg.id}</p>
               </div>
-              <Badge variant={selectedOrg.status === 'ACTIVE' ? 'success' : 'danger'}>
-                {selectedOrg.status}
-              </Badge>
+              {selectedOrg.status === 'PENDING_ACTIVATION' ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-xs font-medium text-amber-700 shadow-sm">
+                  <Mail className="h-3 w-3 text-amber-500" />
+                  Pending Activation via Email
+                </span>
+              ) : (
+                <Badge variant={selectedOrg.status === 'ACTIVE' ? 'success' : 'danger'}>
+                  {selectedOrg.status}
+                </Badge>
+              )}
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">

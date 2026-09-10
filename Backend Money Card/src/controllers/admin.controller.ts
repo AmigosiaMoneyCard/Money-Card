@@ -72,7 +72,7 @@ export async function getOrganizations(req: Request, res: Response) {
       subscription: true,
       users: {
         where: { role: Role.ORG_ADMIN },
-        select: { id: true, name: true, email: true, mustChangePassword: true },
+        select: { id: true, name: true, email: true, mustChangePassword: true, status: true },
         take: 1,
       },
       _count: {
@@ -151,11 +151,13 @@ export async function createOrganization(req: Request, res: Response) {
     passwordHash = await hashPassword(adminPassword);
   }
 
+  const initialOrgStatus = isInvitation ? OrgStatus.PENDING_ACTIVATION : ((status as OrgStatus) || OrgStatus.ACTIVE);
+
   const result = await prisma.$transaction(async (tx) => {
     const org = await tx.organization.create({
       data: {
         name: name.trim(),
-        status: (status as OrgStatus) || OrgStatus.ACTIVE,
+        status: initialOrgStatus,
         planId: selectedPlanId,
       },
     });
