@@ -4,31 +4,25 @@ import nodemailer from 'nodemailer';
 const resendApiKey = process.env.RESEND_API_KEY;
 const emailFrom = process.env.EMAIL_FROM || 'Money Card <onboarding@resend.dev>';
 
-const smtpHost = process.env.SMTP_HOST;
-const smtpPort = Number(process.env.SMTP_PORT) || 587;
+const smtpHost = process.env.SMTP_HOST || (process.env.GMAIL_USER ? 'smtp.gmail.com' : undefined);
+const smtpPort = Number(process.env.SMTP_PORT) || (smtpHost === 'smtp.gmail.com' || process.env.GMAIL_USER ? 465 : 587);
 const gmailUser = process.env.GMAIL_USER || process.env.SMTP_USER;
-const gmailPass = process.env.GMAIL_APP_PASSWORD || process.env.SMTP_PASS;
+const rawPass = process.env.GMAIL_APP_PASSWORD || process.env.SMTP_PASS || '';
+const gmailPass = rawPass.replace(/\s+/g, '');
 
 const mailTransporter = (gmailUser && gmailPass)
-  ? nodemailer.createTransport(
-      smtpHost
-        ? {
-            host: smtpHost,
-            port: smtpPort,
-            secure: smtpPort === 465,
-            auth: {
-              user: gmailUser,
-              pass: gmailPass,
-            },
-          }
-        : {
-            service: 'gmail',
-            auth: {
-              user: gmailUser,
-              pass: gmailPass,
-            },
-          },
-    )
+  ? nodemailer.createTransport({
+      host: smtpHost || 'smtp.gmail.com',
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: {
+        user: gmailUser,
+        pass: gmailPass,
+      },
+      connectionTimeout: 6000,
+      greetingTimeout: 6000,
+      socketTimeout: 6000,
+    })
   : null;
 
 const resend = resendApiKey ? new Resend(resendApiKey) : null;

@@ -235,8 +235,14 @@ export async function forgotPassword(req: Request, res: Response) {
         : 'https://money-card-frontend-staging.vercel.app');
     const resetLink = `${frontendUrl}/reset-password?token=${rawToken}`;
 
-    // Dispatch email via Gmail SMTP / Resend
-    await sendPasswordResetEmail(user.email, user.name, resetLink, user.role, user.organization?.name);
+    // Dispatch email asynchronously so HTTP request doesn't block
+    sendPasswordResetEmail(user.email, user.name, resetLink, user.role, user.organization?.name)
+      .then((result) => {
+        console.log(`[PASSWORD_RESET_DISPATCHED] To: ${user.email}, Provider: ${result.provider}, Sent: ${result.sent}`);
+      })
+      .catch((err) => {
+        console.error('[PASSWORD_RESET_DISPATCH_ERROR]', err?.message || err);
+      });
   }
 
   // Anti-user enumeration message (always generic for all users)

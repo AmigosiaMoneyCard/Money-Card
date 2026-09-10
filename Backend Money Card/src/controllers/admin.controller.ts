@@ -193,13 +193,19 @@ export async function createOrganization(req: Request, res: Response) {
   if (isInvitation && rawActivationToken) {
     const clientOrigin = req.headers.origin || process.env.FRONTEND_URL || 'https://money-card-frontend-staging.vercel.app';
     const activationLink = `${clientOrigin}/activate?token=${rawActivationToken}`;
-    await sendAccountActivationEmail(
+    sendAccountActivationEmail(
       email,
       adminName || `${name} Admin`,
       activationLink,
       Role.ORG_ADMIN,
       name,
-    );
+    )
+      .then((result) => {
+        console.log(`[ORG_ACTIVATION_EMAIL_DISPATCHED] To: ${email}, Provider: ${result.provider}, Sent: ${result.sent}`);
+      })
+      .catch((err) => {
+        console.error('[ORG_ACTIVATION_EMAIL_ERROR]', err?.message || err);
+      });
   }
 
   return sendSuccess(res, {
@@ -986,13 +992,19 @@ export async function resendOrgAdminInvite(req: Request, res: Response) {
   const clientOrigin = req.headers.origin || process.env.FRONTEND_URL || 'https://money-card-frontend-staging.vercel.app';
   const activationLink = `${clientOrigin}/activate?token=${rawToken}`;
 
-  await sendAccountActivationEmail(
+  sendAccountActivationEmail(
     orgAdmin.email,
     orgAdmin.name,
     activationLink,
     Role.ORG_ADMIN,
     org.name,
-  );
+  )
+    .then((result) => {
+      console.log(`[RESEND_ORG_ACTIVATION_DISPATCHED] To: ${orgAdmin.email}, Provider: ${result.provider}, Sent: ${result.sent}`);
+    })
+    .catch((err) => {
+      console.error('[RESEND_ORG_ACTIVATION_ERROR]', err?.message || err);
+    });
 
   return sendSuccess(res, {
     message: `Activation invitation re-sent successfully to ${orgAdmin.email}.`,

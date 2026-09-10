@@ -208,13 +208,19 @@ export async function createStaffMember(req: Request, res: Response) {
     });
     const clientOrigin = req.headers.origin || process.env.FRONTEND_URL || 'https://money-card-frontend-staging.vercel.app';
     const activationLink = `${clientOrigin}/activate?token=${rawActivationToken}`;
-    await sendAccountActivationEmail(
+    sendAccountActivationEmail(
       cleanEmail,
       name.trim(),
       activationLink,
       Role.STAFF,
       org?.name || 'Money Card Cafeteria',
-    );
+    )
+      .then((result) => {
+        console.log(`[STAFF_ACTIVATION_DISPATCHED] To: ${cleanEmail}, Provider: ${result.provider}, Sent: ${result.sent}`);
+      })
+      .catch((err) => {
+        console.error('[STAFF_ACTIVATION_ERROR]', err?.message || err);
+      });
   }
 
   return sendSuccess(
@@ -472,13 +478,19 @@ export async function resendStaffInvite(req: Request, res: Response) {
   const clientOrigin = req.headers.origin || 'http://localhost:5173';
   const activationLink = `${clientOrigin}/activate?token=${rawToken}`;
 
-  await sendAccountActivationEmail(
+  sendAccountActivationEmail(
     user.email,
     user.name,
     activationLink,
     Role.STAFF,
     user.organization?.name || null,
-  );
+  )
+    .then((result) => {
+      console.log(`[RESEND_STAFF_ACTIVATION_DISPATCHED] To: ${user.email}, Provider: ${result.provider}, Sent: ${result.sent}`);
+    })
+    .catch((err) => {
+      console.error('[RESEND_STAFF_ACTIVATION_ERROR]', err?.message || err);
+    });
 
   return sendSuccess(res, {
     message: `Activation invitation re-sent successfully to ${user.email}.`,
