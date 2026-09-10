@@ -5,7 +5,7 @@ import { useState, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Card, Button, Input } from '@/components/ui';
 import { apiService } from '@/services/api';
-import { KeyRound, ArrowLeft, CheckCircle2, AlertCircle, ShieldAlert } from 'lucide-react';
+import { KeyRound, ArrowLeft, CheckCircle2, AlertCircle, ShieldAlert, Eye, EyeOff } from 'lucide-react';
 
 export function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
@@ -13,6 +13,8 @@ export function ResetPasswordPage() {
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [newPasswordError, setNewPasswordError] = useState<string | null>(null);
   const [confirmPasswordError, setConfirmPasswordError] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -145,7 +147,7 @@ export function ResetPasswordPage() {
         <Input
           id="reset-new-password"
           label="New password"
-          type="password"
+          type={showNewPassword ? 'text' : 'password'}
           placeholder="Enter new password"
           autoComplete="new-password"
           autoFocus
@@ -156,6 +158,17 @@ export function ResetPasswordPage() {
             if (newPasswordError) setNewPasswordError(null);
             if (apiError) setApiError(null);
           }}
+          rightElement={
+            <button
+              type="button"
+              onClick={() => setShowNewPassword(!showNewPassword)}
+              className="text-slate-400 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer p-1"
+              tabIndex={-1}
+              aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+            >
+              {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          }
           error={newPasswordError ?? undefined}
           disabled={isSubmitting}
           aria-required="true"
@@ -165,7 +178,7 @@ export function ResetPasswordPage() {
         <Input
           id="reset-confirm-password"
           label="Confirm password"
-          type="password"
+          type={showConfirmPassword ? 'text' : 'password'}
           placeholder="Confirm new password"
           autoComplete="new-password"
           value={confirmPassword}
@@ -174,6 +187,17 @@ export function ResetPasswordPage() {
             setConfirmPassword(e.target.value.slice(0, 30));
             if (confirmPasswordError) setConfirmPasswordError(null);
           }}
+          rightElement={
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="text-slate-400 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer p-1"
+              tabIndex={-1}
+              aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+            >
+              {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          }
           error={confirmPasswordError ?? undefined}
           disabled={isSubmitting}
           aria-required="true"

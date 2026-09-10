@@ -14,6 +14,8 @@ import {
   Check,
   X,
   Smartphone,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 export function ActivateAccountPage() {
@@ -33,6 +35,8 @@ export function ActivateAccountPage() {
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -295,7 +299,7 @@ export function ActivateAccountPage() {
           <Input
             id="activate-password"
             label="Create New Password"
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             autoComplete="new-password"
             value={password}
             onChange={(e) => {
@@ -303,6 +307,17 @@ export function ActivateAccountPage() {
               if (passwordError) setPasswordError(null);
               if (submitError) setSubmitError(null);
             }}
+            rightElement={
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-slate-400 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer p-1"
+                tabIndex={-1}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            }
             error={passwordError ?? undefined}
             disabled={isSubmitting}
             aria-required="true"
@@ -338,13 +353,24 @@ export function ActivateAccountPage() {
           <Input
             id="activate-confirm-password"
             label="Confirm New Password"
-            type="password"
+            type={showConfirmPassword ? 'text' : 'password'}
             autoComplete="new-password"
             value={confirmPassword}
             onChange={(e) => {
               setConfirmPassword(e.target.value);
               if (confirmError) setConfirmError(null);
             }}
+            rightElement={
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="text-slate-400 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer p-1"
+                tabIndex={-1}
+                aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+              >
+                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            }
             error={confirmError ?? undefined}
             disabled={isSubmitting}
             aria-required="true"
