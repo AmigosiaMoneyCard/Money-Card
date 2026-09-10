@@ -4,7 +4,7 @@ import { Card, Button, Input } from '@/components/ui';
 import { apiService } from '@/services/api';
 import { useAuth } from '@/hooks';
 import { notify } from '@/utils';
-import { KeyRound, AlertCircle, ShieldAlert, LogOut } from 'lucide-react';
+import { KeyRound, AlertCircle, ShieldAlert, LogOut, Eye, EyeOff } from 'lucide-react';
 
 export function MandatoryChangePasswordPage() {
   const navigate = useNavigate();
@@ -13,6 +13,9 @@ export function MandatoryChangePasswordPage() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [currentPwError, setCurrentPwError] = useState<string | null>(null);
   const [newPwError, setNewPwError] = useState<string | null>(null);
   const [confirmPwError, setConfirmPwError] = useState<string | null>(null);
@@ -114,7 +117,7 @@ export function MandatoryChangePasswordPage() {
             <Input
               id="current-temp-password"
               label="Current Temporary Password *"
-              type="password"
+              type={showCurrentPassword ? 'text' : 'password'}
               placeholder="Enter the temporary password"
               autoComplete="current-password"
               value={currentPassword}
@@ -124,6 +127,17 @@ export function MandatoryChangePasswordPage() {
                 if (currentPwError) setCurrentPwError(null);
                 if (apiError) setApiError(null);
               }}
+              rightElement={
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  className="text-slate-400 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer p-1"
+                  tabIndex={-1}
+                  aria-label={showCurrentPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              }
               error={currentPwError ?? undefined}
               disabled={isSubmitting}
               aria-required="true"
@@ -132,7 +146,7 @@ export function MandatoryChangePasswordPage() {
             <Input
               id="new-private-password"
               label="New Private Password *"
-              type="password"
+              type={showNewPassword ? 'text' : 'password'}
               placeholder="Enter new private password (min 6 characters)"
               autoComplete="new-password"
               value={newPassword}
@@ -142,6 +156,17 @@ export function MandatoryChangePasswordPage() {
                 if (newPwError) setNewPwError(null);
                 if (apiError) setApiError(null);
               }}
+              rightElement={
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="text-slate-400 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer p-1"
+                  tabIndex={-1}
+                  aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              }
               error={newPwError ?? undefined}
               disabled={isSubmitting}
               aria-required="true"
@@ -150,7 +175,7 @@ export function MandatoryChangePasswordPage() {
             <Input
               id="confirm-private-password"
               label="Confirm New Password *"
-              type="password"
+              type={showConfirmPassword ? 'text' : 'password'}
               placeholder="Confirm new private password"
               autoComplete="new-password"
               value={confirmPassword}
@@ -160,6 +185,17 @@ export function MandatoryChangePasswordPage() {
                 if (confirmPwError) setConfirmPwError(null);
                 if (apiError) setApiError(null);
               }}
+              rightElement={
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="text-slate-400 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer p-1"
+                  tabIndex={-1}
+                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              }
               error={confirmPwError ?? undefined}
               disabled={isSubmitting}
               aria-required="true"

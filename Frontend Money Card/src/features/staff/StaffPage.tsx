@@ -42,7 +42,6 @@ import {
   Send,
   RefreshCw,
   AlertCircle,
-  CheckCircle2,
   Eye, EyeOff,
   Check,
   ArrowRight,
@@ -55,6 +54,8 @@ import {
   MoreVertical,
   ChevronDown,
   FileSpreadsheet,
+  Clock,
+  Mail,
 } from 'lucide-react';
 
 interface StaffActionMenuProps {
@@ -193,8 +194,8 @@ function StaffActionMenu({
               </button>
             )}
 
-            {/* Resend Activation Invite if Pending */}
-            {canManage && staff.status === 'PENDING_ACTIVATION' && (
+            {/* Resend Activation Invite if Pending or Inactive */}
+            {canManage && (staff.status === 'PENDING_ACTIVATION' || staff.status === 'INACTIVE') && (
               <button
                 type="button"
                 onClick={() => {
@@ -320,6 +321,7 @@ export function StaffPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [resendingId, setResendingId] = useState<string | null>(null);
+  const [isPendingOpen, setIsPendingOpen] = useState(false);
 
   const handleResendInvite = async (staffId: string) => {
     setResendingId(staffId);
@@ -358,13 +360,13 @@ export function StaffPage() {
   // ── Status Toggle Modal ───────────────────────────────────
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showDeleteStaffModal, setShowDeleteStaffModal] = useState(false);
+  const [showPendingStaffSuccessModal, setShowPendingStaffSuccessModal] = useState(false);
+  const [createdPendingStaff, setCreatedPendingStaff] = useState<Staff | null>(null);
 
   // ── Form & Selection State ────────────────────────────────
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
   const [formName, setFormName] = useState('');
   const [formEmail, setFormEmail] = useState('');
-  const [formPassword, setFormPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [formBranchIds, setFormBranchIds] = useState<string[]>([]);
   const [formPermissions, setFormPermissions] = useState<Permission[]>([]);
   const [showAdvancedPerms, setShowAdvancedPerms] = useState(false);
@@ -477,8 +479,6 @@ export function StaffPage() {
   const handleOpenAdd = () => {
     setFormName('');
     setFormEmail('');
-    setFormPassword('');
-    setShowPassword(false);
     setFormBranchIds(branches.map((b) => b.id)); // Default assign all active branches
     setFormPermissions([
       'CARD_VIEW',
@@ -505,27 +505,11 @@ export function StaffPage() {
       errors.name = 'Staff name must be at most 50 characters';
     }
     
-    const trimmedEmail = formEmail.trim();
+    const trimmedEmail = formEmail.trim().toLowerCase();
     if (!trimmedEmail) {
-      errors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      errors.email = 'Please enter a valid email address';
-    }
-
-    if (!formPassword.trim()) {
-      errors.password = 'Password is required';
-    } else if (formPassword.length < 8) {
-      errors.password = 'Password must be at least 8 characters';
-    } else if (formPassword.length > 128) {
-      errors.password = 'Password cannot exceed 128 characters';
-    } else if (!/[A-Z]/.test(formPassword)) {
-      errors.password = 'Password must contain at least one uppercase letter [A-Z]';
-    } else if (!/[a-z]/.test(formPassword)) {
-      errors.password = 'Password must contain at least one lowercase letter [a-z]';
-    } else if (!/[0-9]/.test(formPassword)) {
-      errors.password = 'Password must contain at least one number [0-9]';
-    } else if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(formPassword)) {
-      errors.password = 'Password must contain at least one special character (!@#$%^&*...)';
+      errors.email = 'Email address is required';
+    } else if (!/^[a-zA-Z0-9._%+-]+@(?:gmail|googlemail)\.com$/.test(trimmedEmail)) {
+      errors.email = 'Please provide a valid Gmail address (@gmail.com)';
     }
 
     setFormErrors(errors);
@@ -587,8 +571,7 @@ export function StaffPage() {
 
       const res = await apiService.staff.createStaff({
         name: formName.trim(),
-        email: formEmail.trim(),
-        password: formPassword,
+        email: formEmail.trim().toLowerCase(),
         assignedBranchIds: formBranchIds,
         permissions: Array.from(finalPermissions),
       });
@@ -605,7 +588,9 @@ export function StaffPage() {
         return;
       }
 
-      notify.success(`Staff member ${res.data.name} created successfully`);
+      notify.success(`Staff member ${res.data.name} created! Activation invite sent to ${formEmail.trim().toLowerCase()}`);
+      setCreatedPendingStaff(res.data);
+      setShowPendingStaffSuccessModal(true);
       setShowAddModal(false);
       fetchStaffData();
     } catch {
@@ -882,6 +867,10 @@ export function StaffPage() {
 
   const handleStatusSubmit = async () => {
     if (!selectedStaff) return;
+    if (selectedStaff.status === 'PENDING_ACTIVATION') {
+      setModalApiError('This staff account is pending email activation. Please ask the staff member to activate via the email link, or click Resend Invite.');
+      return;
+    }
     const newStatus = selectedStaff.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     setIsSubmitting(true);
     setModalApiError(null);
@@ -1069,6 +1058,10 @@ export function StaffPage() {
     }
     return calculateScopedStaffMetrics(scopedAuditActivities);
   }, [targetStaffMetric, scopedAuditActivities]);
+
+  const pendingStaffMembers = useMemo(() => {
+    return staffList.filter((s) => s.status === 'PENDING_ACTIVATION');
+  }, [staffList]);
 
   const handleExportAuditCsv = () => {
     if (!selectedStaffForAudit) return;
@@ -1262,6 +1255,100 @@ export function StaffPage() {
         </Card>
       )}
 
+      {/* ── Pending Activation Staff Dropdown (Automatically disappears when all staff are activated) ── */}
+      {pendingStaffMembers.length > 0 && (
+        <div className="rounded-xl border border-amber-300/80 bg-gradient-to-r from-amber-50 via-amber-50/70 to-orange-50/60 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300 overflow-hidden">
+          <div
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 sm:p-4 cursor-pointer hover:bg-amber-100/50 transition-colors select-none"
+            onClick={() => setIsPendingOpen(!isPendingOpen)}
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
+                <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
+              </div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-amber-950">
+                  Pending Activation
+                </h3>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-200 text-amber-900">
+                  {pendingStaffMembers.length} {pendingStaffMembers.length === 1 ? 'Staff Member' : 'Staff Members'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fetchStaffData();
+                }}
+                leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
+                className="border-amber-300 text-amber-900 hover:bg-amber-100 shrink-0"
+              >
+                Check Status
+              </Button>
+              <button
+                type="button"
+                className="p-1 rounded-lg text-amber-800 hover:bg-amber-200/60 transition-colors cursor-pointer"
+                aria-label={isPendingOpen ? 'Collapse pending staff' : 'Expand pending staff'}
+              >
+                <ChevronDown
+                  className={`h-5 w-5 transition-transform duration-200 text-amber-900 ${
+                    isPendingOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
+          {isPendingOpen && (
+            <div className="px-3.5 pb-3.5 sm:px-4 sm:pb-4 border-t border-amber-200/70 pt-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {pendingStaffMembers.map((staff) => (
+                  <div
+                    key={staff.id}
+                    className="flex flex-col justify-between rounded-lg border border-amber-200/80 bg-white/95 p-3.5 shadow-sm hover:shadow transition-shadow"
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="text-sm font-bold text-slate-900 truncate" title={staff.name}>
+                          {staff.name}
+                        </h4>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 shrink-0">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                          Pending Activation
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1 truncate" title={staff.email}>
+                        <span className="text-slate-400 font-medium">Email:</span> {staff.email}
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Counters: {staff.assignedBranchIds?.length || 0} assigned
+                      </p>
+                    </div>
+
+                    <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
+                      <span className="text-[11px] text-amber-700 font-medium">Awaiting invite</span>
+                      <button
+                        type="button"
+                        onClick={() => handleResendInvite(staff.id)}
+                        disabled={resendingId === staff.id}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 hover:text-amber-900 hover:underline cursor-pointer disabled:opacity-50"
+                      >
+                        <Send className="h-3 w-3" />
+                        <span>{resendingId === staff.id ? 'Sending...' : 'Resend Invite'}</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Search & Refresh */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-md">
@@ -1417,9 +1504,15 @@ export function StaffPage() {
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1">
                     <span className="text-xs text-slate-500">Account Status</span>
                     <div className="flex items-center gap-2 pt-1">
-                      <Badge variant={selectedStaff?.status === 'ACTIVE' ? 'success' : 'danger'}>
-                        {selectedStaff?.status}
-                      </Badge>
+                      {selectedStaff?.status === 'PENDING_ACTIVATION' ? (
+                        <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 border border-amber-200">
+                          Pending Activation
+                        </span>
+                      ) : (
+                        <Badge variant={selectedStaff?.status === 'ACTIVE' ? 'success' : 'danger'}>
+                          {selectedStaff?.status === 'ACTIVE' ? 'Active' : 'Inactive'}
+                        </Badge>
+                      )}
                     </div>
                   </div>
 
@@ -1870,8 +1963,8 @@ export function StaffPage() {
                   <Input
                     id="add-staff-email"
                     type="email"
-                    label="Email Address"
-                    placeholder="john@cafeteria.com"
+                    label="Staff Gmail Address *"
+                    placeholder="e.g. staff.member@gmail.com"
                     maxLength={100}
                     value={formEmail}
                     onChange={(e) => {
@@ -1881,83 +1974,6 @@ export function StaffPage() {
                     error={formErrors.email}
                     disabled={isSubmitting}
                   />
-                </div>
-
-                <Input
-                  id="add-staff-password"
-                  type={showPassword ? 'text' : 'password'}
-                  label="Initial Password"
-                  placeholder="At least 8 characters"
-                  value={formPassword}
-                  onChange={(e) => {
-                    setFormPassword(e.target.value);
-                    if (formErrors.password) setFormErrors((prev) => ({ ...prev, password: '' }));
-                  }}
-                  error={formErrors.password}
-                  disabled={isSubmitting}
-                  rightElement={
-                    <button
-                      type="button"
-                      className="text-slate-400 hover:text-slate-600 transition-colors p-1 flex items-center justify-center focus:outline-none"
-                      onClick={() => setShowPassword((prev) => !prev)}
-                      title={showPassword ? "Hide password" : "Show password"}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  }
-                />
-
-                {/* Initial Password requirements checklist */}
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-slate-700 flex items-center gap-1.5">
-                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                      Password Requirements:
-                    </span>
-                    <span className="text-[11px] text-slate-500">All rules required</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-slate-600 pt-0.5">
-                    <div className={`flex items-center gap-1.5 transition-colors ${formPassword.length >= 8 ? 'text-emerald-600 font-medium' : ''}`}>
-                      {formPassword.length >= 8 ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                      ) : (
-                        <span className="text-slate-400 text-xs">•</span>
-                      )}
-                      <span>At least 8 characters</span>
-                    </div>
-                    <div className={`flex items-center gap-1.5 transition-colors ${/[A-Z]/.test(formPassword) ? 'text-emerald-600 font-medium' : ''}`}>
-                      {/[A-Z]/.test(formPassword) ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                      ) : (
-                        <span className="text-slate-400 text-xs">•</span>
-                      )}
-                      <span>One uppercase letter [A-Z]</span>
-                    </div>
-                    <div className={`flex items-center gap-1.5 transition-colors ${/[a-z]/.test(formPassword) ? 'text-emerald-600 font-medium' : ''}`}>
-                      {/[a-z]/.test(formPassword) ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                      ) : (
-                        <span className="text-slate-400 text-xs">•</span>
-                      )}
-                      <span>One lowercase letter [a-z]</span>
-                    </div>
-                    <div className={`flex items-center gap-1.5 transition-colors ${/[0-9]/.test(formPassword) ? 'text-emerald-600 font-medium' : ''}`}>
-                      {/[0-9]/.test(formPassword) ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                      ) : (
-                        <span className="text-slate-400 text-xs">•</span>
-                      )}
-                      <span>One number [0-9]</span>
-                    </div>
-                    <div className={`flex items-center gap-1.5 transition-colors sm:col-span-2 ${/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(formPassword) ? 'text-emerald-600 font-medium' : ''}`}>
-                      {/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(formPassword) ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                      ) : (
-                        <span className="text-slate-400 text-xs">•</span>
-                      )}
-                      <span>One special character (!@#$%^&*...)</span>
-                    </div>
-                  </div>
                 </div>
 
                 {orgOverview?.usage && (
@@ -2050,9 +2066,6 @@ export function StaffPage() {
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
                     Choose a Staff Role Preset
                   </h4>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Select a pre-configured role to automatically assign the right permissions.
-                  </p>
                 </div>
 
                 {/* 3 Large Role Preset Cards */}
@@ -2302,25 +2315,107 @@ export function StaffPage() {
             </div>
           )}
 
-          <p className="text-sm text-slate-700">
-            Are you sure you want to{' '}
-            <strong className="text-slate-900">
-              {selectedStaff?.status === 'ACTIVE' ? 'deactivate' : 'activate'}
-            </strong>{' '}
-            the staff member <span className="text-emerald-700 font-semibold">{selectedStaff?.name}</span>?
-          </p>
+          {selectedStaff?.status === 'PENDING_ACTIVATION' ? (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-800 space-y-2">
+                <p className="font-semibold text-amber-900 flex items-center gap-1.5">
+                  <Clock className="h-4 w-4 text-amber-600" />
+                  Account Pending Email Activation
+                </p>
+                <p>
+                  This account has not been activated yet. The staff member needs to set their own password via the activation link sent to <strong>{selectedStaff.email}</strong>.
+                </p>
+              </div>
+              <p className="text-xs text-slate-500">
+                You can resend the activation invitation email if the link has expired or the staff member cannot find the email.
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-700">
+              Are you sure you want to{' '}
+              <strong className="text-slate-900">
+                {selectedStaff?.status === 'ACTIVE' ? 'deactivate' : 'activate'}
+              </strong>{' '}
+              the staff member <span className="text-emerald-700 font-semibold">{selectedStaff?.name}</span>?
+            </p>
+          )}
 
           <ModalFooter>
             <Button variant="outline" onClick={() => setShowStatusModal(false)} disabled={isSubmitting}>
-              Cancel
+              Close
+            </Button>
+            {selectedStaff?.status === 'PENDING_ACTIVATION' ? (
+              <Button
+                variant="primary"
+                onClick={async () => {
+                  if (!selectedStaff?.id) return;
+                  await handleResendInvite(selectedStaff.id);
+                  setShowStatusModal(false);
+                }}
+                isLoading={resendingId === selectedStaff?.id}
+                disabled={resendingId === selectedStaff?.id}
+                leftIcon={<Send className="h-4 w-4" />}
+              >
+                Resend Activation Invite
+              </Button>
+            ) : (
+              <Button
+                variant={selectedStaff?.status === 'ACTIVE' ? 'danger' : 'primary'}
+                onClick={handleStatusSubmit}
+                isLoading={isSubmitting}
+                disabled={isSubmitting}
+              >
+                Confirm {selectedStaff?.status === 'ACTIVE' ? 'Deactivation' : 'Activation'}
+              </Button>
+            )}
+          </ModalFooter>
+        </div>
+      </Modal>
+
+      {/* ── Pending Activation Confirmation Modal (Opens right after creating staff member) ── */}
+      <Modal
+        isOpen={showPendingStaffSuccessModal}
+        onClose={() => setShowPendingStaffSuccessModal(false)}
+        title="Staff Member Created — Pending Activation"
+      >
+        <div className="py-2 space-y-4">
+          <div className="flex flex-col items-center text-center p-4 rounded-xl border border-amber-500/20 bg-amber-50/60">
+            <div className="h-14 w-14 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 mb-3 ring-8 ring-amber-50">
+              <Mail className="h-7 w-7" />
+            </div>
+            <Badge variant="warning" className="mb-2">
+              Pending Activation via Email
+            </Badge>
+            <h3 className="text-lg font-bold text-slate-900">
+              {createdPendingStaff?.name}
+            </h3>
+            <p className="text-xs font-mono text-slate-600 mt-1">
+              {createdPendingStaff?.email}
+            </p>
+            <p className="text-xs text-slate-600 mt-3">
+              An invitation email has been dispatched to <strong>{createdPendingStaff?.email}</strong> with a secure link to activate their account and choose their POS password.
+            </p>
+          </div>
+
+          <ModalFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                if (!createdPendingStaff?.id) return;
+                handleResendInvite(createdPendingStaff.id);
+              }}
+              leftIcon={<Send className="h-4 w-4 text-amber-600" />}
+              disabled={resendingId === createdPendingStaff?.id}
+            >
+              {resendingId === createdPendingStaff?.id ? 'Resending...' : 'Resend Email Invite'}
             </Button>
             <Button
-              variant={selectedStaff?.status === 'ACTIVE' ? 'danger' : 'primary'}
-              onClick={handleStatusSubmit}
-              isLoading={isSubmitting}
-              disabled={isSubmitting}
+              variant="primary"
+              size="sm"
+              onClick={() => setShowPendingStaffSuccessModal(false)}
             >
-              Confirm {selectedStaff?.status === 'ACTIVE' ? 'Deactivation' : 'Activation'}
+              Got it, View Staff List
             </Button>
           </ModalFooter>
         </div>

@@ -33,8 +33,19 @@ export const mockAuthHandlers = {
       return createMockError('UNAUTHORIZED', 'Invalid email or password');
     }
 
+    if ('status' in userMatch && (userMatch as { status?: string }).status === 'PENDING_ACTIVATION') {
+      return createMockError('FORBIDDEN', 'This account has not been activated yet. Please click the activation link sent to your Gmail to set your password.');
+    }
+
     if ('status' in userMatch && (userMatch as { status?: string }).status === 'INACTIVE') {
       return createMockError('UNAUTHORIZED', 'Account is disabled. Please contact your administrator.');
+    }
+
+    if (userMatch.organizationId) {
+      const org = mockStore.organizations.find((o) => o.id === userMatch.organizationId);
+      if (org && org.status === 'PENDING_ACTIVATION') {
+        return createMockError('FORBIDDEN', 'This cafeteria is pending email activation. Please click the invitation link sent to your email to activate.');
+      }
     }
 
     const authUser: AuthUser = {

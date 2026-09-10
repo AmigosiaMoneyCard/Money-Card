@@ -18,6 +18,22 @@ import { storage, STORAGE_KEYS } from '@/utils';
 // M0 specifies HttpOnly cookie for refresh in React Web.
 
 function createInitialState(): AuthState {
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname.startsWith('/activate') || pathname.startsWith('/reset-password')) {
+      storage.remove(STORAGE_KEYS.ACCESS_TOKEN);
+      storage.remove(STORAGE_KEYS.USER);
+      storage.remove(STORAGE_KEYS.SELECTED_BRANCH_ID);
+      apiClient.setAccessToken(null);
+      return {
+        user: null,
+        accessToken: null,
+        isAuthenticated: false,
+        isLoading: false,
+      };
+    }
+  }
+
   const savedToken = storage.get<string>(STORAGE_KEYS.ACCESS_TOKEN);
   const savedUser = storage.get<AuthUser>(STORAGE_KEYS.USER);
   if (savedToken) {
@@ -56,8 +72,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (isExpired && typeof window !== 'undefined') {
       const pathname = window.location.pathname;
       // Do not redirect User Portal users through Admin login
-      // Prevent redirect loop if already on /login
-      if (!pathname.startsWith('/portal') && pathname !== '/login') {
+      // Do not redirect if already on login or public onboarding/recovery pages
+      const publicAuthPaths = ['/login', '/activate', '/reset-password', '/forgot-password'];
+      const isPublicAuthPath = publicAuthPaths.some(
+        (p) => pathname === p || pathname.startsWith(`${p}/`),
+      );
+      if (!pathname.startsWith('/portal') && !isPublicAuthPath) {
         window.location.href = '/login?expired=true';
       }
     }
@@ -140,6 +160,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
+
+    const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+    if (pathname.startsWith('/activate') || pathname.startsWith('/reset-password')) {
+      return;
+    }
 
     const savedToken = storage.get<string>(STORAGE_KEYS.ACCESS_TOKEN);
     if (!savedToken) return;

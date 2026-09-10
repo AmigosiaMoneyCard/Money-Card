@@ -20,17 +20,24 @@ enum ApiMode {
 class AppConfig {
   AppConfig._();
 
-  static const String appName = 'Money Card Staff';
+  static const String appName = 'Money Card (Staging)';
   static const String appVersion = '1.0.0';
 
-  /// Environment: 'development' or 'production'
+  /// Environment: 'staging', 'production', or 'development'
   static const String environment = String.fromEnvironment(
     'ENVIRONMENT',
-    defaultValue: 'development',
+    defaultValue: 'staging',
   );
 
+  static bool get isStaging => environment.toLowerCase() == 'staging';
   static bool get isProduction => environment.toLowerCase() == 'production';
-  static bool get isDevelopment => !isProduction;
+  static bool get isDevelopment => !isProduction && !isStaging;
+
+  /// Staging API URL (connected to money-card-backend-staging)
+  static const String stagingBaseUrl = String.fromEnvironment(
+    'STAGING_BASE_URL',
+    defaultValue: 'https://money-card-backend-staging.onrender.com/api/v1',
+  );
 
   /// Production API URL (used strictly in production builds)
   static const String productionBaseUrl = String.fromEnvironment(
@@ -62,7 +69,8 @@ class AppConfig {
     if (isProduction) {
       return normalizeUrl(productionBaseUrl);
     }
-    return defaultLocalBaseUrl;
+    // Default for staging branch: stagingBaseUrl
+    return normalizeUrl(stagingBaseUrl);
   }
 
   /// Active API Mode: Strictly REAL LIVE SERVER

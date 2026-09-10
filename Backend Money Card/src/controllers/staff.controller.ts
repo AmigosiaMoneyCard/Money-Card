@@ -201,6 +201,31 @@ export async function createStaffMember(req: Request, res: Response) {
     return user;
   });
 
+  if (isInvitation && rawActivationToken) {
+    const org = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { name: true },
+    });
+    const defaultFrontend = process.env.NODE_ENV === 'production'
+      ? 'https://money-card-frontend.vercel.app'
+      : 'https://money-card-frontend-staging.vercel.app';
+    const clientOrigin = req.headers.origin || process.env.FRONTEND_URL || defaultFrontend;
+    const activationLink = `${clientOrigin}/activate?token=${rawActivationToken}`;
+    sendAccountActivationEmail(
+      cleanEmail,
+      name.trim(),
+      activationLink,
+      Role.STAFF,
+      org?.name || 'Money Card Cafeteria',
+    )
+      .then((result) => {
+        console.log(`[STAFF_ACTIVATION_DISPATCHED] To: ${cleanEmail}, Provider: ${result.provider}, Sent: ${result.sent}`);
+      })
+      .catch((err) => {
+        console.error('[STAFF_ACTIVATION_ERROR]', err?.message || err);
+      });
+  }
+
   return sendSuccess(
     res,
     {
@@ -259,6 +284,15 @@ export async function updateStaffMember(req: Request, res: Response) {
 
   if (!staff) {
     return sendError(res, 404, 'NOT_FOUND', 'Staff member not found');
+  }
+
+  if (status === UserStatus.ACTIVE && staff.status === UserStatus.PENDING_ACTIVATION) {
+    return sendError(
+      res,
+      400,
+      'ACTIVATION_REQUIRED',
+      'This staff account is pending email activation. The staff member must activate their account and set their password via the invitation link.',
+    );
   }
 
   const targetBranches = assignedBranchIds || branchIds;
@@ -453,16 +487,25 @@ export async function resendStaffInvite(req: Request, res: Response) {
     },
   });
 
-  const clientOrigin = req.headers.origin || 'http://localhost:5173';
+  const defaultFrontend = process.env.NODE_ENV === 'production'
+    ? 'https://money-card-frontend.vercel.app'
+    : 'https://money-card-frontend-staging.vercel.app';
+  const clientOrigin = req.headers.origin || process.env.FRONTEND_URL || defaultFrontend;
   const activationLink = `${clientOrigin}/activate?token=${rawToken}`;
 
-  await sendAccountActivationEmail(
+  sendAccountActivationEmail(
     user.email,
     user.name,
     activationLink,
     Role.STAFF,
     user.organization?.name || null,
-  );
+  )
+    .then((result) => {
+      console.log(`[RESEND_STAFF_ACTIVATION_DISPATCHED] To: ${user.email}, Provider: ${result.provider}, Sent: ${result.sent}`);
+    })
+    .catch((err) => {
+      console.error('[RESEND_STAFF_ACTIVATION_ERROR]', err?.message || err);
+    });
 
   return sendSuccess(res, {
     message: `Activation invitation re-sent successfully to ${user.email}.`,
@@ -639,3 +682,4 @@ export async function changeStaffPassword(req: Request, res: Response) {
     staff: updatedStaff,
   });
 }
+

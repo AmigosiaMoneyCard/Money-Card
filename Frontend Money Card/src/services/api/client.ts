@@ -37,7 +37,7 @@ class ApiClient {
         'Content-Type': 'application/json',
       },
       withCredentials: true,
-      timeout: 15000,
+      timeout: 30000,
     });
 
     // Request interceptor — attach auth token
@@ -61,12 +61,19 @@ class ApiClient {
 
         const originalRequest = error.config as RetryAxiosRequestConfig | undefined;
 
+        const isPublicAuthEndpoint =
+          originalRequest?.url?.includes('/auth/login') ||
+          originalRequest?.url?.includes('/auth/refresh') ||
+          originalRequest?.url?.includes('/auth/verify-activation-token') ||
+          originalRequest?.url?.includes('/auth/activate-account') ||
+          originalRequest?.url?.includes('/auth/reset-password') ||
+          originalRequest?.url?.includes('/auth/forgot-password');
+
         if (
           error.response?.status === 401 &&
           originalRequest &&
           !originalRequest._retry &&
-          !originalRequest.url?.includes('/auth/login') &&
-          !originalRequest.url?.includes('/auth/refresh')
+          !isPublicAuthEndpoint
         ) {
           originalRequest._retry = true;
 

@@ -34,6 +34,8 @@ import {
   Trash2,
   MoreVertical,
   ChevronDown,
+  Send,
+  Mail,
 } from 'lucide-react';
 
 interface OrgActionMenuProps {
@@ -41,6 +43,7 @@ interface OrgActionMenuProps {
   onViewDetails: () => void;
   onEdit: () => void;
   onResetPassword: () => void;
+  onResendAdminInvite?: () => void;
   onToggleStatus: () => void;
   onDelete: () => void;
 }
@@ -50,6 +53,7 @@ function OrgActionMenu({
   onViewDetails,
   onEdit,
   onResetPassword,
+  onResendAdminInvite,
   onToggleStatus,
   onDelete,
 }: OrgActionMenuProps) {
@@ -187,21 +191,37 @@ function OrgActionMenu({
               <span>Reset Admin Password</span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setIsOpen(false);
-                onToggleStatus();
-              }}
-              className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors cursor-pointer text-left ${
-                org.status === 'ACTIVE'
-                  ? 'text-rose-600 hover:bg-rose-50'
-                  : 'text-emerald-600 hover:bg-emerald-50'
-              }`}
-            >
-              <Power className="h-4 w-4" />
-              <span>{org.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}</span>
-            </button>
+            {onResendAdminInvite && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  onResendAdminInvite();
+                }}
+                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-amber-700 transition-colors cursor-pointer text-left"
+              >
+                <Send className="h-4 w-4 text-amber-600" />
+                <span>Resend Activation Invite</span>
+              </button>
+            )}
+
+            {org.status !== 'PENDING_ACTIVATION' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  onToggleStatus();
+                }}
+                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors cursor-pointer text-left ${
+                  org.status === 'ACTIVE'
+                    ? 'text-rose-600 hover:bg-rose-50'
+                    : 'text-emerald-600 hover:bg-emerald-50'
+                }`}
+              >
+                <Power className="h-4 w-4" />
+                <span>{org.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}</span>
+              </button>
+            )}
 
             <div className="my-1 border-t border-slate-200" />
 
@@ -257,9 +277,21 @@ export function OrganizationsPage() {
     });
   }, [organizations, searchQuery, selectedPlanFilter, selectedStatusFilter]);
 
+  // ── Pending Email Activation Scope (Auto-updates & disappears when activated) ──
+  const pendingOrganizations = useMemo(() => {
+    return organizations.filter((org) => org.status === 'PENDING_ACTIVATION');
+  }, [organizations]);
+  const [isPendingOpen, setIsPendingOpen] = useState(false);
+
   // Modals
   const [selectedOrg, setSelectedOrg] = useState<OrganizationOverview | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createdPendingOrg, setCreatedPendingOrg] = useState<{
+    id: string;
+    name: string;
+    adminEmail: string;
+  } | null>(null);
+  const [showPendingSuccessModal, setShowPendingSuccessModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
@@ -273,11 +305,9 @@ export function OrganizationsPage() {
   const [tempPasswordError, setTempPasswordError] = useState<string | null>(null);
   const [confirmTempPasswordError, setConfirmTempPasswordError] = useState<string | null>(null);
 
-  // Form State for Create Organization (4 Required Fields)
+  // Form State for Create Organization (3 Required Fields: Name, Admin Gmail, Plan)
   const [formName, setFormName] = useState('');
   const [formAdminEmail, setFormAdminEmail] = useState('');
-  const [formPassword, setFormPassword] = useState('');
-  const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [formPlanId, setFormPlanId] = useState('plan_002');
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
@@ -420,8 +450,6 @@ export function OrganizationsPage() {
   const handleOpenCreateModal = () => {
     setFormName('');
     setFormAdminEmail('');
-    setFormPassword('');
-    setShowCreatePassword(false);
     setFormPlanId(plans[0]?.id || 'plan_002');
     setFormErrors({});
     setModalApiError(null);
@@ -437,18 +465,11 @@ export function OrganizationsPage() {
       errs.name = 'Cafeteria name must be at most 30 characters';
     }
 
-    const trimmedEmail = formAdminEmail.trim();
+    const trimmedEmail = formAdminEmail.trim().toLowerCase();
     if (!trimmedEmail) {
-      errs.adminEmail = 'Org Admin email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      errs.adminEmail = 'Please enter a valid email address';
-    }
-
-    const trimmedPassword = formPassword.trim();
-    if (!trimmedPassword) {
-      errs.password = 'Password is required';
-    } else if (trimmedPassword.length < 6) {
-      errs.password = 'Password must be at least 6 characters';
+      errs.adminEmail = 'Org Admin Gmail address is required';
+    } else if (!/^[a-zA-Z0-9._%+-]+@(?:gmail|googlemail)\.com$/.test(trimmedEmail)) {
+      errs.adminEmail = 'Please provide a valid Gmail address (@gmail.com)';
     }
 
     if (!formPlanId) {
@@ -465,10 +486,10 @@ export function OrganizationsPage() {
     setModalApiError(null);
 
     try {
+      const trimmedEmail = formAdminEmail.trim().toLowerCase();
       const res = await apiService.organizations.createOrganization({
         name: formName.trim(),
-        adminEmail: formAdminEmail.trim(),
-        password: formPassword.trim(),
+        adminEmail: trimmedEmail,
         planId: formPlanId,
       });
 
@@ -477,17 +498,33 @@ export function OrganizationsPage() {
         return;
       }
 
-      notify.success(`${res.data.name} has been created`);
       setShowCreateModal(false);
+      setCreatedPendingOrg({
+        id: res.data.id,
+        name: res.data.name,
+        adminEmail: trimmedEmail,
+      });
+      setShowPendingSuccessModal(true);
       setFormName('');
       setFormAdminEmail('');
-      setFormPassword('');
-      setShowCreatePassword(false);
       fetchOrganizations();
     } catch {
       setModalApiError('An unexpected error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleResendAdminInvite = async (org: OrganizationOverview) => {
+    try {
+      const res = await apiService.organizations.resendOrgAdminInvite(org.id);
+      if (res.success) {
+        notify.success(res.data?.message || `Activation invite sent to ${org.adminUser?.email || 'Org Admin'}`);
+      } else {
+        notify.error(res.error?.message || 'Failed to resend activation invite');
+      }
+    } catch {
+      notify.error('Failed to resend activation invite. Please try again.');
     }
   };
 
@@ -659,11 +696,21 @@ export function OrganizationsPage() {
       key: 'status',
       header: 'Status',
       sortable: true,
-      render: (org: OrganizationOverview) => (
-        <Badge variant={org.status === 'ACTIVE' ? 'success' : 'danger'}>
-          {org.status}
-        </Badge>
-      ),
+      render: (org: OrganizationOverview) => {
+        if (org.status === 'PENDING_ACTIVATION') {
+          return (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-xs font-medium text-amber-700 shadow-sm">
+              <Mail className="h-3 w-3 text-amber-500" />
+              Pending Activation via Email
+            </span>
+          );
+        }
+        return (
+          <Badge variant={org.status === 'ACTIVE' ? 'success' : 'danger'}>
+            {org.status}
+          </Badge>
+        );
+      },
     },
     {
       key: 'createdAt',
@@ -684,6 +731,7 @@ export function OrganizationsPage() {
             onViewDetails={() => handleOpenDetails(org)}
             onEdit={() => handleOpenEditModal(org)}
             onResetPassword={() => handleOpenResetPasswordModal(org)}
+            onResendAdminInvite={() => handleResendAdminInvite(org)}
             onToggleStatus={() => handleOpenStatusModal(org)}
             onDelete={() => handleOpenDeleteModal(org)}
           />
@@ -711,6 +759,101 @@ export function OrganizationsPage() {
           </Button>
         </div>
       </div>
+
+      {/* ── Pending Activation Dropdown (Automatically disappears when all cafeterias are activated) ── */}
+      {pendingOrganizations.length > 0 && (
+        <div className="rounded-xl border border-amber-300/80 bg-gradient-to-r from-amber-50 via-amber-50/70 to-orange-50/60 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300 overflow-hidden">
+          <div
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 sm:p-4 cursor-pointer hover:bg-amber-100/50 transition-colors select-none"
+            onClick={() => setIsPendingOpen(!isPendingOpen)}
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
+                <Mail className="h-4 w-4 sm:h-5 sm:w-5" />
+              </div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-amber-950">
+                  Pending Email Activation
+                </h3>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-200 text-amber-900">
+                  {pendingOrganizations.length} {pendingOrganizations.length === 1 ? 'Cafeteria' : 'Cafeterias'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fetchOrganizations();
+                }}
+                leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
+                className="border-amber-300 text-amber-900 hover:bg-amber-100 shrink-0"
+              >
+                Check Status
+              </Button>
+              <button
+                type="button"
+                className="p-1 rounded-lg text-amber-800 hover:bg-amber-200/60 transition-colors cursor-pointer"
+                aria-label={isPendingOpen ? 'Collapse pending cafeterias' : 'Expand pending cafeterias'}
+              >
+                <ChevronDown
+                  className={`h-5 w-5 transition-transform duration-200 text-amber-900 ${
+                    isPendingOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
+          {isPendingOpen && (
+            <div className="px-3.5 pb-3.5 sm:px-4 sm:pb-4 border-t border-amber-200/70 pt-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {pendingOrganizations.map((org) => (
+                  <div
+                    key={org.id}
+                    className="flex flex-col justify-between rounded-lg border border-amber-200/80 bg-white/95 p-3.5 shadow-sm hover:shadow transition-shadow"
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="text-sm font-bold text-slate-900 truncate" title={org.name}>
+                          {org.name}
+                        </h4>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 shrink-0">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                          Pending Activation
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1 truncate" title={org.adminUser?.email || ''}>
+                        <span className="text-slate-400 font-medium">Admin:</span> {org.adminUser?.email || 'Invitation sent'}
+                      </p>
+                      {org.plan && (
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          Plan: {org.plan.name}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
+                      <span className="text-[11px] text-amber-700 font-medium">Awaiting invite</span>
+                      <button
+                        type="button"
+                        onClick={() => handleResendAdminInvite(org)}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 hover:text-amber-900 hover:underline cursor-pointer"
+                      >
+                        <Send className="h-3 w-3" />
+                        <span>Resend Invite</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Filter Toolbar (Search, Plan Scope, Status Scope, Refresh Data) ── */}
       <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 lg:flex-row lg:items-center lg:justify-between">
@@ -751,7 +894,7 @@ export function OrganizationsPage() {
           </div>
 
           {/* Status Scope Filter */}
-          <div className="w-full sm:w-40">
+          <div className="w-full sm:w-48">
             <label className="mb-1 block text-[11px] font-medium text-slate-400">Status</label>
             <Select
               id="org-status-filter"
@@ -760,6 +903,7 @@ export function OrganizationsPage() {
               options={[
                 { value: 'ALL', label: 'All Statuses' },
                 { value: 'ACTIVE', label: 'Active' },
+                { value: 'PENDING_ACTIVATION', label: 'Pending Activation' },
                 { value: 'INACTIVE', label: 'Inactive' },
               ]}
             />
@@ -837,7 +981,7 @@ export function OrganizationsPage() {
           <Input
             id="create-org-name"
             label="Cafeteria Name *"
-            placeholder="e.g. Acme Cafeterias"
+            placeholder="e.g. Acme Cafeteria"
             maxLength={30}
             value={formName}
             onChange={(e) => {
@@ -851,9 +995,9 @@ export function OrganizationsPage() {
 
           <Input
             id="create-org-admin-email"
-            label="Org Admin Email *"
+            label="Org Admin Gmail Address *"
             type="email"
-            placeholder="e.g. admin@acmecafeteria.com"
+            placeholder="e.g. cafeteria.admin@gmail.com"
             value={formAdminEmail}
             onChange={(e) => {
               setFormAdminEmail(e.target.value);
@@ -861,30 +1005,6 @@ export function OrganizationsPage() {
             }}
             error={formErrors.adminEmail}
             disabled={isSubmitting}
-          />
-
-          <Input
-            id="create-org-password"
-            label="Password *"
-            type={showCreatePassword ? 'text' : 'password'}
-            placeholder="Min. 6 characters"
-            value={formPassword}
-            onChange={(e) => {
-              setFormPassword(e.target.value);
-              if (formErrors.password) setFormErrors((prev) => ({ ...prev, password: '' }));
-            }}
-            error={formErrors.password}
-            disabled={isSubmitting}
-            rightElement={
-              <button
-                type="button"
-                className="text-slate-400 hover:text-slate-700 transition-colors p-1 flex items-center justify-center focus:outline-none"
-                onClick={() => setShowCreatePassword((prev) => !prev)}
-                title={showCreatePassword ? "Hide password" : "Show password"}
-              >
-                {showCreatePassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            }
           />
 
           {plans.length > 0 && (
@@ -911,6 +1031,63 @@ export function OrganizationsPage() {
         </div>
       </Modal>
 
+      {/* ── Pending Activation Confirmation Modal (Opens right after creating cafeteria) ── */}
+      <Modal
+        isOpen={showPendingSuccessModal}
+        onClose={() => setShowPendingSuccessModal(false)}
+        title="Cafeteria Created — Pending Activation"
+      >
+        <div className="py-2 space-y-4">
+          <div className="flex flex-col items-center text-center p-5 rounded-xl border border-amber-500/20 bg-amber-50/60">
+            <div className="h-14 w-14 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 mb-3 ring-8 ring-amber-50">
+              <Mail className="h-7 w-7" />
+            </div>
+            <Badge variant="warning" className="mb-2">
+              Pending Activation via Email
+            </Badge>
+            <h3 className="text-lg font-bold text-slate-900">
+              {createdPendingOrg?.name}
+            </h3>
+            <p className="text-xs font-mono text-slate-600 mt-1">
+              Admin: {createdPendingOrg?.adminEmail}
+            </p>
+            <p className="text-xs text-slate-600 mt-3">
+              An invitation email has been dispatched to <strong>{createdPendingOrg?.adminEmail}</strong> with a secure link to activate the cafeteria and set their administrator password.
+            </p>
+          </div>
+
+          <ModalFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                if (!createdPendingOrg?.id) return;
+                try {
+                  const res = await apiService.organizations.resendOrgAdminInvite(createdPendingOrg.id);
+                  if (res.success) {
+                    notify.success(`Activation email resent to ${createdPendingOrg.adminEmail}`);
+                  } else {
+                    notify.error(res.error?.message || 'Failed to resend invite');
+                  }
+                } catch {
+                  notify.error('Failed to resend email. Please try again.');
+                }
+              }}
+              leftIcon={<Send className="h-4 w-4 text-amber-600" />}
+            >
+              Resend Email Invite
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setShowPendingSuccessModal(false)}
+            >
+              Got it, View in Cafeterias
+            </Button>
+          </ModalFooter>
+        </div>
+      </Modal>
+
       {/* ── Edit Organization Modal ── */}
       <Modal
         isOpen={showEditModal}
@@ -924,16 +1101,6 @@ export function OrganizationsPage() {
               <span>{modalApiError}</span>
             </div>
           )}
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">Cafeteria ID</label>
-            <input
-              type="text"
-              disabled
-              value={selectedOrg?.id || ''}
-              className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-xs font-mono text-slate-500 cursor-not-allowed"
-            />
-          </div>
 
           <Input
             id="edit-org-name"
@@ -982,11 +1149,17 @@ export function OrganizationsPage() {
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <div>
                 <h3 className="text-lg font-bold text-slate-900">{selectedOrg.name}</h3>
-                <p className="text-xs text-slate-500">ID: {selectedOrg.id}</p>
               </div>
-              <Badge variant={selectedOrg.status === 'ACTIVE' ? 'success' : 'danger'}>
-                {selectedOrg.status}
-              </Badge>
+              {selectedOrg.status === 'PENDING_ACTIVATION' ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-xs font-medium text-amber-700 shadow-sm">
+                  <Mail className="h-3 w-3 text-amber-500" />
+                  Pending Activation via Email
+                </span>
+              ) : (
+                <Badge variant={selectedOrg.status === 'ACTIVE' ? 'success' : 'danger'}>
+                  {selectedOrg.status}
+                </Badge>
+              )}
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">

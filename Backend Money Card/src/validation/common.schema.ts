@@ -56,6 +56,19 @@ export const safeEmail = z
   );
 
 /**
+ * Strict Gmail address validation:
+ * - Must be a valid email format
+ * - Must end with @gmail.com or @googlemail.com
+ */
+export const safeGmail = safeEmail.refine(
+  (val) => {
+    const lower = val.toLowerCase();
+    return lower.endsWith('@gmail.com') || lower.endsWith('@googlemail.com');
+  },
+  { message: 'Only valid Google/Gmail accounts (@gmail.com) are allowed' },
+);
+
+/**
  * Strong password schema for signup, password change, and password reset:
  * - Enforces minimum 8 characters, maximum 128 characters
  * - Requires at least one uppercase letter [A-Z]

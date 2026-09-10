@@ -3,11 +3,16 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
+import dns from 'node:dns';
 import { env } from './config/env.js';
 import apiRouter from './routes/index.js';
 import { notFoundHandler, globalErrorHandler } from './middlewares/error.middleware.js';
 
+// Force IPv4 first in cloud container environments (Render/Docker)
+dns.setDefaultResultOrder('ipv4first');
+
 const app = express();
+app.set('trust proxy', 1);
 
 app.use(helmet());
 app.use(

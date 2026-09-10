@@ -1,4 +1,4 @@
-﻿# Dependencies
+# Dependencies
 node_modules/
 .pnp
 .pnp.js
@@ -11,6 +11,8 @@ build/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
+apks/
+*.apk
 
 # Environment files
 .env

@@ -196,7 +196,6 @@ export const realClient: typeof mockClient = {
         email: data.email || data.adminEmail,
         adminEmail: data.adminEmail,
         adminName: data.adminName || `${data.name} Admin`,
-        adminPassword: data.password,
         planId: data.planId,
       };
       return handleApiCall(() => apiClient.post<OrganizationOverview>('/v1/admin/organizations', payload));
@@ -227,6 +226,12 @@ export const realClient: typeof mockClient = {
           `/v1/admin/organizations/${id}/reset-admin-password`,
           data,
         ),
+      );
+    },
+
+    async resendOrgAdminInvite(id: string): Promise<ApiResult<{ message: string }>> {
+      return handleApiCall(() =>
+        apiClient.post<{ message: string }>(`/v1/admin/organizations/${id}/resend-admin-invite`),
       );
     },
   },
@@ -262,7 +267,7 @@ export const realClient: typeof mockClient = {
 
   staff: {
     async resendInvite(id: string): Promise<ApiResult<any>> {
-      return handleApiCall(() => apiClient.post(`/v1/admin/staff/${id}/resend-invite`));
+      return handleApiCall(() => apiClient.post(`/v1/staff/${id}/resend-invite`));
     },
     async getStaff(params?: PaginationParams): Promise<ApiResult<PaginatedData<Staff>>> {
       const res = await handleApiCall<any>(() => apiClient.get('/v1/staff', { params }));

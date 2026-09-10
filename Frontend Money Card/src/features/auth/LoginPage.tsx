@@ -1,4 +1,4 @@
-import { AlertCircle, LogIn } from 'lucide-react';
+import { AlertCircle, LogIn, Eye, EyeOff } from 'lucide-react';
 // ─── Login Page ────────────────────────────────────────────
 // M3 Web Authentication — SUPER_ADMIN & ORG_ADMIN only.
 // Staff login is NOT implemented here (Flutter-only).
@@ -32,6 +32,7 @@ export function LoginPage() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -146,7 +147,7 @@ export function LoginPage() {
         <Input
           id="login-password"
           label="Password"
-          type="password"
+          type={showPassword ? 'text' : 'password'}
           placeholder="Enter your password"
           autoComplete="current-password"
           value={password}
@@ -155,6 +156,17 @@ export function LoginPage() {
             if (passwordError) setPasswordError(null);
             if (apiError) setApiError(null);
           }}
+          rightElement={
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="text-slate-400 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer p-1"
+              tabIndex={-1}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          }
           error={passwordError ?? undefined}
           disabled={isSubmitting}
           aria-required="true"

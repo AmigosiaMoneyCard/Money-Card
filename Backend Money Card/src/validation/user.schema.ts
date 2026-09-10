@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   safeEmail,
+  safeGmail,
   strongPasswordSchema,
   simplePasswordSchema,
   safeDisplayName,
@@ -12,7 +13,7 @@ import {
 export const createStaffMemberSchema = z
   .object({
     name: safeDisplayName,
-    email: safeEmail,
+    email: safeGmail,
     password: strongPasswordSchema.optional(),
     assignedBranchIds: z.array(safeId).optional(),
     branchIds: z.array(safeId).optional(),
@@ -79,7 +80,7 @@ export const createOrganizationSchema = z
     phone: z.string().max(20).optional(),
     address: safeFreeText.optional(),
     adminName: safeDisplayName.optional(),
-    adminEmail: safeEmail,
+    adminEmail: safeGmail,
     adminPassword: simplePasswordSchema.optional(),
   })
   .strict();
