@@ -227,10 +227,15 @@ export async function forgotPassword(req: Request, res: Response) {
       },
     });
 
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl =
+      req.headers.origin ||
+      process.env.FRONTEND_URL ||
+      (process.env.NODE_ENV === 'production'
+        ? 'https://money-card-frontend.vercel.app'
+        : 'https://money-card-frontend-staging.vercel.app');
     const resetLink = `${frontendUrl}/reset-password?token=${rawToken}`;
 
-    // Dispatch email via Resend
+    // Dispatch email via Gmail SMTP / Resend
     await sendPasswordResetEmail(user.email, user.name, resetLink, user.role, user.organization?.name);
   }
 
