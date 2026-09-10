@@ -281,6 +281,7 @@ export function OrganizationsPage() {
   const pendingOrganizations = useMemo(() => {
     return organizations.filter((org) => org.status === 'PENDING_ACTIVATION');
   }, [organizations]);
+  const [isPendingOpen, setIsPendingOpen] = useState(false);
 
   // Modals
   const [selectedOrg, setSelectedOrg] = useState<OrganizationOverview | null>(null);
@@ -759,77 +760,98 @@ export function OrganizationsPage() {
         </div>
       </div>
 
-      {/* ── Pending Activation UI Banner (Automatically disappears when all cafeterias are activated) ── */}
+      {/* ── Pending Activation Dropdown (Automatically disappears when all cafeterias are activated) ── */}
       {pendingOrganizations.length > 0 && (
-        <div className="rounded-xl border border-amber-300/80 bg-gradient-to-r from-amber-50 via-amber-50/70 to-orange-50/60 p-4.5 shadow-sm space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/70 pb-3">
+        <div className="rounded-xl border border-amber-300/80 bg-gradient-to-r from-amber-50 via-amber-50/70 to-orange-50/60 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300 overflow-hidden">
+          <div
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 sm:p-4 cursor-pointer hover:bg-amber-100/50 transition-colors select-none"
+            onClick={() => setIsPendingOpen(!isPendingOpen)}
+          >
             <div className="flex items-center gap-2.5">
-              <div className="h-9 w-9 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
-                <Mail className="h-5 w-5" />
+              <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
+                <Mail className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-amber-950 flex items-center gap-2">
-                  <span>Pending Email Activation</span>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-200 text-amber-900">
-                    {pendingOrganizations.length} {pendingOrganizations.length === 1 ? 'Cafeteria' : 'Cafeterias'}
-                  </span>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-amber-950">
+                  Pending Email Activation
                 </h3>
-                <p className="text-xs text-amber-800/90 mt-0.5">
-                  These cafeterias have been created and are awaiting administrator password setup via invitation email. Once activated, they automatically disappear from this pending list.
-                </p>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-200 text-amber-900">
+                  {pendingOrganizations.length} {pendingOrganizations.length === 1 ? 'Cafeteria' : 'Cafeterias'}
+                </span>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fetchOrganizations()}
-              leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
-              className="border-amber-300 text-amber-900 hover:bg-amber-100 shrink-0 self-start sm:self-auto"
-            >
-              Check Status
-            </Button>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
-            {pendingOrganizations.map((org) => (
-              <div
-                key={org.id}
-                className="flex flex-col justify-between rounded-lg border border-amber-200/80 bg-white/95 p-3.5 shadow-sm hover:shadow transition-shadow"
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fetchOrganizations();
+                }}
+                leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
+                className="border-amber-300 text-amber-900 hover:bg-amber-100 shrink-0"
               >
-                <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <h4 className="text-sm font-bold text-slate-900 truncate" title={org.name}>
-                      {org.name}
-                    </h4>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 shrink-0">
-                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-                      Pending Activation
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1 truncate" title={org.adminUser?.email || ''}>
-                    <span className="text-slate-400 font-medium">Admin:</span> {org.adminUser?.email || 'Invitation sent'}
-                  </p>
-                  {org.plan && (
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      Plan: {org.plan.name}
-                    </p>
-                  )}
-                </div>
-
-                <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-[11px] text-amber-700 font-medium">Awaiting invite</span>
-                  <button
-                    type="button"
-                    onClick={() => handleResendAdminInvite(org)}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 hover:text-amber-900 hover:underline cursor-pointer"
-                  >
-                    <Send className="h-3 w-3" />
-                    <span>Resend Invite</span>
-                  </button>
-                </div>
-              </div>
-            ))}
+                Check Status
+              </Button>
+              <button
+                type="button"
+                className="p-1 rounded-lg text-amber-800 hover:bg-amber-200/60 transition-colors cursor-pointer"
+                aria-label={isPendingOpen ? 'Collapse pending cafeterias' : 'Expand pending cafeterias'}
+              >
+                <ChevronDown
+                  className={`h-5 w-5 transition-transform duration-200 text-amber-900 ${
+                    isPendingOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+            </div>
           </div>
+
+          {isPendingOpen && (
+            <div className="px-3.5 pb-3.5 sm:px-4 sm:pb-4 border-t border-amber-200/70 pt-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {pendingOrganizations.map((org) => (
+                  <div
+                    key={org.id}
+                    className="flex flex-col justify-between rounded-lg border border-amber-200/80 bg-white/95 p-3.5 shadow-sm hover:shadow transition-shadow"
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="text-sm font-bold text-slate-900 truncate" title={org.name}>
+                          {org.name}
+                        </h4>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 shrink-0">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                          Pending Activation
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1 truncate" title={org.adminUser?.email || ''}>
+                        <span className="text-slate-400 font-medium">Admin:</span> {org.adminUser?.email || 'Invitation sent'}
+                      </p>
+                      {org.plan && (
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          Plan: {org.plan.name}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
+                      <span className="text-[11px] text-amber-700 font-medium">Awaiting invite</span>
+                      <button
+                        type="button"
+                        onClick={() => handleResendAdminInvite(org)}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 hover:text-amber-900 hover:underline cursor-pointer"
+                      >
+                        <Send className="h-3 w-3" />
+                        <span>Resend Invite</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
