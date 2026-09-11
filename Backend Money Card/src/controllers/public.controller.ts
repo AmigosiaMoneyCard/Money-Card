@@ -8,13 +8,17 @@ export async function resolvePublicQrToken(req: Request, res: Response) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'qrToken is required');
   }
 
-  qrToken = qrToken.trim();
-  if (qrToken.includes('/c/')) {
-    qrToken = qrToken.split('/c/')[1].split('?')[0].split('#')[0];
-  }
+  const cleaned = qrToken.trim();
+  const token = cleaned.includes('/c/') ? cleaned.split('/c/')[1].split('?')[0].split('#')[0] : cleaned;
 
-  const card = await prisma.card.findUnique({
-    where: { qrToken: qrToken.trim() },
+  const card = await prisma.card.findFirst({
+    where: {
+      OR: [
+        { qrToken: token },
+        { qrToken: { equals: token, mode: 'insensitive' } },
+        { physicalCardNumber: { equals: token, mode: 'insensitive' } },
+      ],
+    },
     include: {
       organization: { select: { name: true, logoUrl: true } },
       sessions: {
