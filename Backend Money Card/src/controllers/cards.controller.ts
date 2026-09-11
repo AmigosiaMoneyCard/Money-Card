@@ -582,10 +582,14 @@ export async function unblockCard(req: Request, res: Response) {
 export async function resolveCard(req: Request, res: Response) {
   const orgId = req.user?.organizationId;
   const { qrToken, qrCode, physicalCardNumber, cardNumber } = req.body;
-  const rawInput = String(qrToken || qrCode || physicalCardNumber || cardNumber || '').trim();
+  let rawInput = String(qrToken || qrCode || physicalCardNumber || cardNumber || '').trim();
 
   if (!rawInput) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'qrToken, qrCode, or cardNumber is required');
+  }
+
+  if (rawInput.includes('/c/')) {
+    rawInput = rawInput.split('/c/')[1].split('?')[0].split('#')[0];
   }
 
   const tokenStr = rawInput.toLowerCase().startsWith('qtk_')

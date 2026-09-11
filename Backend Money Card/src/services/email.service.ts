@@ -3,21 +3,23 @@ import nodemailer from 'nodemailer';
 import {
   renderPasswordResetEmail,
   PASSWORD_RESET_THEME,
-  PasswordResetTemplateParams,
+  type PasswordResetTemplateParams,
 } from './templates/passwordReset.template.js';
 import {
   renderAccountActivationEmail,
   ACTIVATION_THEME,
-  AccountActivationTemplateParams,
+  type AccountActivationTemplateParams,
 } from './templates/accountActivation.template.js';
 
 export {
   PASSWORD_RESET_THEME,
   ACTIVATION_THEME,
-  PasswordResetTemplateParams,
-  AccountActivationTemplateParams,
   renderPasswordResetEmail,
   renderAccountActivationEmail,
+};
+export type {
+  PasswordResetTemplateParams,
+  AccountActivationTemplateParams,
 };
 
 const resendApiKey = process.env.RESEND_API_KEY;

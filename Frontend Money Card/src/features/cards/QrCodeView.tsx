@@ -15,7 +15,7 @@ export function QrCodeView({ physicalCardNumber, qrToken }: QrCodeViewProps) {
   const [copied, setCopied] = useState(false);
 
   // M0 Rule 15: Opaque HTTPS URL
-  const qrUrl = `https://app.moneycard.com/c/${qrToken}`;
+  const qrUrl = typeof window !== 'undefined' ? `${window.location.origin}/c/${qrToken}` : `https://app.moneycard.com/c/${qrToken}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(qrUrl);
