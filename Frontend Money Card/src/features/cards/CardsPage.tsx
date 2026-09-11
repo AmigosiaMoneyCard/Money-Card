@@ -1353,7 +1353,7 @@ export function CardsPage() {
           <div className="flex flex-col items-center p-4 text-center space-y-4">
             <div className="p-4 bg-white rounded-2xl shadow-xl">
               <QRCodeCanvas
-                value={selectedQrCard.qrToken}
+                value={`${typeof window !== 'undefined' ? window.location.origin : ''}/c/${selectedQrCard.qrToken}`}
                 size={200}
                 level="H"
                 includeMargin={false}
@@ -1367,21 +1367,27 @@ export function CardsPage() {
               <p className="font-mono text-xs text-slate-500 break-all max-w-xs mt-1">
                 {selectedQrCard.qrToken}
               </p>
+              <p className="text-[11px] text-emerald-600 font-medium mt-1">
+                Scan with any smartphone camera to view live balance
+              </p>
             </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => {
-                navigator.clipboard.writeText(selectedQrCard.qrToken);
-                setIsCopiedToken(true);
-                setTimeout(() => setIsCopiedToken(false), 2000);
-              }}
-            >
-              {isCopiedToken ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
-              <span>{isCopiedToken ? 'Copied QR Value' : 'Copy QR String'}</span>
-            </Button>
+            <div className="flex flex-wrap gap-2 justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => {
+                  const url = `${window.location.origin}/c/${selectedQrCard.qrToken}`;
+                  navigator.clipboard.writeText(url);
+                  setIsCopiedToken(true);
+                  setTimeout(() => setIsCopiedToken(false), 2000);
+                }}
+              >
+                {isCopiedToken ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                <span>{isCopiedToken ? 'Copied Scan Link' : 'Copy Customer Scan Link'}</span>
+              </Button>
+            </div>
           </div>
         </Modal>
       )}

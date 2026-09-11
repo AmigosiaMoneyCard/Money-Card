@@ -3,6 +3,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
+import path from 'node:path';
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import dns from 'node:dns';
 import { env } from './config/env.js';
 import apiRouter from './routes/index.js';
@@ -14,7 +17,7 @@ dns.setDefaultResultOrder('ipv4first');
 const app = express();
 app.set('trust proxy', 1);
 
-app.use(helmet());
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(
   cors({
     origin: true, // Allow dev origins including localhost:5173
@@ -57,26 +60,35 @@ app.use('/v1', apiRouter);
 // Fallback for nested /v1/v1
 app.use('/api/v1/v1', apiRouter);
 
+// Serve Frontend static assets if available (enables ngrok full web UI sharing)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const frontendDistPath = path.resolve(__dirname, '../../Frontend Money Card/dist');
+
+if (fs.existsSync(frontendDistPath)) {
+  app.use(express.static(frontendDistPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/v1') || req.path.startsWith('/health')) {
+      return next();
+    }
+    return res.sendFile(path.join(frontendDistPath, 'index.html'));
+  });
+}
+
 app.use(notFoundHandler);
 app.use(globalErrorHandler);
 
 const HOST = process.env.HOST || '0.0.0.0';
 const PORT = Number(env.PORT) || 3000;
 
-import { startMdnsAdvertisement, stopMdnsAdvertisement } from './services/mdns.service.js';
-
 const server = app.listen(PORT, HOST, () => {
   console.log(`🚀 Money Card Backend Server running on http://${HOST}:${PORT}`);
   console.log(`💻 Local Loopback: http://localhost:${PORT}/api/v1`);
   console.log(`📱 Network LAN: http://0.0.0.0:${PORT}/api/v1 (Accessible from physical Android phone on Wi-Fi)`);
   console.log(`🏥 Healthcheck: http://localhost:${PORT}/api/v1/health`);
-
-  // Start mDNS advertisement for local mobile discovery
-  startMdnsAdvertisement(PORT);
 });
 
 const handleShutdown = async () => {
-  await stopMdnsAdvertisement();
   server.close(() => {
     process.exit(0);
   });
