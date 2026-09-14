@@ -7,6 +7,8 @@ export interface PublicSessionDetail {
   sessionStatus: SessionStatus;
   currentBalance: number;
   branchDisplayName: string;
+  customerName?: string | null;
+  customerPhone?: string | null;
   startedAt: string;
   settledAt?: string | null;
   settlementStatus: string;

@@ -55,6 +55,7 @@ import {
   Phone,
   User,
   Building2,
+  ExternalLink,
 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { CameraQrScanner } from '@/components/scanner/CameraQrScanner';
@@ -1419,7 +1420,55 @@ export function CardsPage() {
               </div>
               <div>
                 <p className="text-slate-500">QR Identifier</p>
-                <p className="font-mono text-slate-700 truncate">{selectedCard.qrToken}</p>
+                <p className="font-mono text-slate-700 truncate font-semibold">{selectedCard.qrToken}</p>
+              </div>
+
+              {/* Live Customer Portal QR Card */}
+              <div className="col-span-2 mt-1 pt-3 border-t border-slate-200">
+                <div className="flex flex-col sm:flex-row items-center gap-4 bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
+                  <div className="p-2 bg-white rounded-lg shadow-sm border border-slate-200 shrink-0">
+                    <QRCodeCanvas
+                      value={`${typeof window !== 'undefined' ? window.location.origin : ''}/c/${selectedCard.qrToken}`}
+                      size={84}
+                      level="H"
+                      includeMargin={false}
+                    />
+                  </div>
+                  <div className="flex-1 space-y-1 text-center sm:text-left min-w-0">
+                    <div className="flex items-center gap-2 justify-center sm:justify-start">
+                      <span className="text-xs font-semibold text-slate-800">Customer Self-Service QR:</span>
+                      <span className="font-mono text-xs text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                        {selectedCard.qrToken}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Scan with any smartphone camera to view live balance & receipts.
+                    </p>
+                    <div className="flex items-center gap-2 pt-1 justify-center sm:justify-start flex-wrap">
+                      <a
+                        href={`/c/${selectedCard.qrToken}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-md transition-colors"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        <span>Open Customer View</span>
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const url = `${window.location.origin}/c/${selectedCard.qrToken}`;
+                          navigator.clipboard.writeText(url);
+                          toast.success('Customer Portal URL copied to clipboard');
+                        }}
+                        className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-2 py-1 rounded-md transition-colors cursor-pointer"
+                      >
+                        <Copy className="h-3 w-3" />
+                        <span>Copy Scan URL</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {selectedCard.status === 'BLOCKED' && (

@@ -2,9 +2,10 @@
 // Displays QR code URL & visual card framing without exposing secrets or raw database UUIDs.
 
 import { useState } from 'react';
-import { QrCode, Copy, Check, ShieldCheck } from 'lucide-react';
+import { QrCode, Copy, Check, ShieldCheck, ExternalLink } from 'lucide-react';
 import { Button, Badge } from '@/components/ui';
 import { notify } from '@/utils';
+import { QRCodeCanvas } from 'qrcode.react';
 
 interface QrCodeViewProps {
   physicalCardNumber: string;
@@ -41,28 +42,14 @@ export function QrCodeView({ physicalCardNumber, qrToken }: QrCodeViewProps) {
 
       {/* Visual QR Card Representation */}
       <div className="flex flex-col sm:flex-row items-center gap-4 rounded-xl bg-white p-4 border border-slate-200 shadow-xs">
-        {/* Simulated QR Code Canvas Icon */}
-        <div className="flex h-28 w-28 shrink-0 flex-col items-center justify-center rounded-xl bg-slate-100 p-2 shadow-inner border border-slate-200">
-          {/* Decorative QR Pattern */}
-          <div className="relative flex h-full w-full flex-col justify-between p-1 bg-slate-800 rounded">
-            <div className="flex justify-between">
-              <div className="h-5 w-5 bg-emerald-500 rounded-sm p-1">
-                <div className="h-full w-full bg-white rounded-xs" />
-              </div>
-              <div className="h-5 w-5 bg-emerald-500 rounded-sm p-1">
-                <div className="h-full w-full bg-white rounded-xs" />
-              </div>
-            </div>
-            <div className="flex items-center justify-center py-1">
-              <QrCode className="h-8 w-8 text-emerald-400 opacity-90" />
-            </div>
-            <div className="flex justify-between">
-              <div className="h-5 w-5 bg-emerald-500 rounded-sm p-1">
-                <div className="h-full w-full bg-white rounded-xs" />
-              </div>
-              <div className="h-3 w-3 bg-emerald-400 rounded-xs" />
-            </div>
-          </div>
+        {/* Real Scannable QR Code Canvas */}
+        <div className="flex shrink-0 flex-col items-center justify-center rounded-xl bg-white p-2 shadow-xs border border-slate-200">
+          <QRCodeCanvas
+            value={qrUrl}
+            size={108}
+            level="H"
+            includeMargin={false}
+          />
         </div>
 
         {/* Info */}
@@ -97,7 +84,16 @@ export function QrCodeView({ physicalCardNumber, qrToken }: QrCodeViewProps) {
       </div>
 
       {/* Action Footer */}
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-end gap-2">
+        <a
+          href={qrUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+        >
+          <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+          <span>Open Portal View</span>
+        </a>
         <Button
           variant="outline"
           size="sm"
