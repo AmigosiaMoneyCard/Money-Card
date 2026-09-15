@@ -6,7 +6,6 @@ import {
   Card,
   Badge,
   Button,
-  Input,
   LoadingState,
   ErrorState,
 } from '@/components/ui';
@@ -22,7 +21,6 @@ import {
   CheckCircle2,
   QrCode,
   Camera,
-  Search,
   ShieldAlert,
   User,
 } from 'lucide-react';
@@ -63,9 +61,7 @@ export function PortalSessionPage() {
     };
   }, []);
 
-  // Manual lookup & in-browser scanner states
-  const [lookupInput, setLookupInput] = useState('');
-  const [isResolving, setIsResolving] = useState(false);
+  // In-browser scanner states
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
 
@@ -108,7 +104,6 @@ export function PortalSessionPage() {
     const clean = targetInput.trim();
     if (!clean) return;
 
-    setIsResolving(true);
     setLookupError(null);
 
     try {
@@ -120,7 +115,7 @@ export function PortalSessionPage() {
         } else if (res.error?.code === 'SESSION_NOT_FOUND') {
           setLookupError('No active session found for this card. Please request staff to issue or recharge a session.');
         } else if (res.error?.code === 'CARD_NOT_FOUND') {
-          setLookupError(`Card or QR "${clean}" not recognized. Please check the code and try again.`);
+          setLookupError('Card QR not recognized. Please scan a valid Money Card.');
         } else {
           setLookupError(res.error?.message || 'The card could not be resolved.');
         }
@@ -133,12 +128,9 @@ export function PortalSessionPage() {
       localStorage.setItem('moneycard_portal_card_number', res.data.cardDisplayNumber);
       setSessionToken(res.data.sessionToken);
       setIsScanning(false);
-      setLookupInput('');
       await fetchSessionDetail(res.data.sessionToken);
     } catch {
       setLookupError('Unable to connect to server. Please check your network and try again.');
-    } finally {
-      setIsResolving(false);
     }
   };
 
@@ -190,7 +182,7 @@ export function PortalSessionPage() {
               </Badge>
               <h2 className="text-xl font-bold text-slate-900">Check Card Balance & Receipts</h2>
               <p className="text-xs text-slate-500 max-w-sm">
-                Scan the QR code on your card with your camera or enter your card number below.
+                Scan the QR code on your physical card with your camera to view your live balance and receipts.
               </p>
             </div>
           </div>
@@ -236,65 +228,17 @@ export function PortalSessionPage() {
               </div>
             )}
 
-            {/* Divider */}
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200" />
-              </div>
-              <div className="relative flex justify-center text-[10px] uppercase font-bold text-slate-400">
-                <span className="bg-white px-2">OR ENTER MANUALLY</span>
-              </div>
-            </div>
-
-            {/* Manual Lookup Form */}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleResolveCard(lookupInput);
-              }}
-              className="space-y-3 text-left"
-            >
-              <div>
-                <label className="text-xs font-medium text-slate-700 block mb-1">
-                  Card Number or QR Identifier
-                </label>
-                <div className="flex gap-2">
-                  <Input
-                    type="text"
-                    value={lookupInput}
-                    onChange={(e) => {
-                      setLookupInput(e.target.value);
-                      if (lookupError) setLookupError(null);
-                    }}
-                    placeholder="e.g. MC-001 or KD1NIICJY"
-                    className="font-mono text-sm uppercase"
-                    autoCapitalize="characters"
-                  />
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    isLoading={isResolving}
-                    disabled={!lookupInput.trim()}
-                    className="shrink-0 font-medium"
-                    leftIcon={<Search className="h-3.5 w-3.5" />}
-                  >
-                    Search
-                  </Button>
+            {lookupError && (
+              <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 flex items-start gap-2 animate-in fade-in text-left">
+                <ShieldAlert className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-semibold">{lookupError}</p>
+                  <p className="text-[11px] text-rose-600 mt-0.5">
+                    Please make sure you are scanning an active physical Money Card.
+                  </p>
                 </div>
               </div>
-
-              {lookupError && (
-                <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 flex items-start gap-2 animate-in fade-in">
-                  <ShieldAlert className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="font-semibold">{lookupError}</p>
-                    <p className="text-[11px] text-rose-600 mt-0.5">
-                      Check that the card is currently active and assigned in the system.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </form>
+            )}
           </div>
         </Card>
       </div>
