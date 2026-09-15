@@ -1,9 +1,10 @@
-const CACHE_NAME = 'money-card-cache-v1';
+const CACHE_NAME = 'money-card-cache-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/favicon.svg'
+  '/favicon.svg',
+  '/app_icon.png'
 ];
 
 // 1. Install Service Worker & cache critical assets
@@ -32,13 +33,13 @@ self.addEventListener('activate', (event) => {
 
 // 3. Fetch strategy: Network first with Cache fallback
 self.addEventListener('fetch', (event) => {
-  // Only intercept GET requests
-  if (event.request.method !== 'GET') return;
+  // Only intercept GET requests with http/https schemes
+  if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) return;
 
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
-        // Cache valid responses for offline use
+        // Cache valid 200 responses for offline use
         if (networkResponse && networkResponse.status === 200) {
           const responseClone = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -47,9 +48,19 @@ self.addEventListener('fetch', (event) => {
         }
         return networkResponse;
       })
-      .catch(() => {
-        // If offline or network fails, return cached copy
-        return caches.match(event.request);
+      .catch(async () => {
+        // If offline or network fails, check cache
+        const cachedResponse = await caches.match(event.request);
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+
+        // SPA Navigation fallback: return cached index.html for page routes
+        if (event.request.mode === 'navigate') {
+          return caches.match('/index.html');
+        }
+
+        return null;
       })
   );
 });

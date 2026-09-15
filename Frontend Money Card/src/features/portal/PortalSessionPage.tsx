@@ -11,6 +11,7 @@ import {
   ErrorState,
 } from '@/components/ui';
 import { CameraQrScanner } from '@/components/scanner/CameraQrScanner';
+import { PwaInstallBanner } from '@/components/pwa/PwaInstallBanner';
 import { formatDate, formatCurrency } from '@/utils';
 import {
   Building2,
@@ -130,6 +131,9 @@ export function PortalSessionPage() {
   if (!sessionToken && !sessionDetail) {
     return (
       <div className="py-6 space-y-6 max-w-lg mx-auto">
+        {/* PWA Install Quick Action */}
+        <PwaInstallBanner />
+
         {/* Welcome Hero */}
         <Card padding="lg" className="border-emerald-200 bg-gradient-to-b from-white via-white to-emerald-50/30 shadow-sm text-center">
           <div className="flex flex-col items-center space-y-3">
@@ -286,6 +290,9 @@ export function PortalSessionPage() {
 
   return (
     <div className="space-y-6">
+      {/* PWA Install Quick Action */}
+      <PwaInstallBanner />
+
       {/* Session Hero Card */}
       <Card padding="lg" className="relative overflow-hidden border-emerald-200 bg-gradient-to-br from-white via-white to-emerald-50/40 shadow-md">
         <div className="flex items-start justify-between border-b border-slate-100 pb-4">
