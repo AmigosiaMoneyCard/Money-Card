@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/database.js';
 import { sendError, sendSuccess } from '../utils/response.js';
+import { balanceStreamService } from '../services/balanceStream.service.js';
 
 export async function resolvePublicQrToken(req: Request, res: Response) {
   let { qrToken } = req.body;
@@ -184,3 +185,48 @@ export async function getPublicSessionReceipts(req: Request, res: Response) {
 
   return sendSuccess(res, receipts);
 }
+
+/**
+ * Server-Sent Events (SSE) stream endpoint for real-time customer session balance updates
+ * Route: GET /api/v1/public/sessions/:sessionToken/balance-stream
+ */
+export async function streamPublicSessionBalance(req: Request, res: Response) {
+  const { sessionToken } = req.params;
+
+  if (!sessionToken || !sessionToken.trim()) {
+    return sendError(res, 400, 'VALIDATION_ERROR', 'sessionToken is required');
+  }
+
+  try {
+    const session = await prisma.cardSession.findUnique({
+      where: { sessionToken: sessionToken.trim() },
+      include: {
+        card: { select: { physicalCardNumber: true, status: true } },
+      },
+    });
+
+    if (!session) {
+      return sendError(res, 404, 'NOT_FOUND', 'Session not found');
+    }
+
+    if (session.card?.status === 'BLOCKED') {
+      return sendError(
+        res,
+        403,
+        'CARD_BLOCKED',
+        'This card has been blocked by store staff. Please visit cafeteria desk.',
+      );
+    }
+
+    // Register this response as an SSE client
+    balanceStreamService.addClient(session.sessionToken, res, {
+      balance: session.balance,
+      status: session.status,
+      cardDisplayNumber: session.card?.physicalCardNumber || 'UNASSIGNED',
+      sessionId: session.id,
+    });
+  } catch (err: any) {
+    return sendError(res, 500, 'INTERNAL_ERROR', err?.message || 'Failed to establish balance stream');
+  }
+}
+
