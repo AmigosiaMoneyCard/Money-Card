@@ -78,14 +78,14 @@ export function PortalSessionPage() {
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
 
-  const fetchSessionDetail = useCallback(async (tokenOverride?: string) => {
+  const fetchSessionDetail = useCallback(async (tokenOverride?: string, isSilent = false) => {
     const activeToken = tokenOverride || sessionToken;
     if (!activeToken) {
-      setIsLoading(false);
+      if (!isSilent) setIsLoading(false);
       return;
     }
 
-    setIsLoading(true);
+    if (!isSilent) setIsLoading(true);
     setError(null);
     try {
       const res = await apiService.userPortal.getPublicSessionDetail(activeToken);
@@ -100,16 +100,16 @@ export function PortalSessionPage() {
           setSessionDetail(null);
           setError('Portal session expired or invalid. Please scan your card QR code again.');
         } else {
-          setError(res.error.message || 'Failed to load card session detail');
+          if (!isSilent) setError(res.error.message || 'Failed to load card session detail');
         }
         return;
       }
 
       setSessionDetail(res.data);
     } catch {
-      setError('Unable to connect to server. Please try again.');
+      if (!isSilent) setError('Unable to connect to server. Please try again.');
     } finally {
-      setIsLoading(false);
+      if (!isSilent) setIsLoading(false);
     }
   }, [sessionToken]);
 
@@ -161,9 +161,32 @@ export function PortalSessionPage() {
   };
 
   useEffect(() => {
-    if (sessionToken) {
-      fetchSessionDetail(sessionToken);
-    }
+    if (!sessionToken) return;
+
+    // Initial load
+    fetchSessionDetail(sessionToken);
+
+    // 2-second real-time polling while app/tab is active and visible
+    const pollInterval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchSessionDetail(sessionToken, true);
+      }
+    }, 2000);
+
+    const handleVisibilityOrFocus = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchSessionDetail(sessionToken, true);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    window.addEventListener('focus', handleVisibilityOrFocus);
+
+    return () => {
+      clearInterval(pollInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+    };
   }, [sessionToken, fetchSessionDetail]);
 
   const handleExitSession = () => {

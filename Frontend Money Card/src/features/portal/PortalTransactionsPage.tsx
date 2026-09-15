@@ -35,60 +35,58 @@ export function PortalTransactionsPage() {
   const [error, setError] = useState<string | null>(null);
   const [expandedTxnId, setExpandedTxnId] = useState<string | null>(null);
 
-  const fetchTransactions = useCallback(async () => {
+  const fetchTransactions = useCallback(async (isSilent = false) => {
     if (!sessionToken) {
-      setIsLoading(false);
+      if (!isSilent) setIsLoading(false);
       return;
     }
 
+    if (!isSilent) setIsLoading(true);
     setError(null);
     try {
       const res = await apiService.userPortal.getPublicSessionTransactions(sessionToken);
 
       if (!res.success) {
-        setError(res.error.message || 'Failed to load transaction history');
+        if (!isSilent) setError(res.error.message || 'Failed to load transaction history');
         return;
       }
 
       setTransactions(res.data);
     } catch {
-      setError('Unable to connect to server. Please try again.');
+      if (!isSilent) setError('Unable to connect to server. Please try again.');
     } finally {
-      setIsLoading(false);
+      if (!isSilent) setIsLoading(false);
     }
   }, [sessionToken]);
 
   useEffect(() => {
-    let isCancelled = false;
-    const load = async () => {
-      if (!sessionToken) {
-        setIsLoading(false);
-        return;
+    if (!sessionToken) return;
+
+    // Initial load
+    fetchTransactions(false);
+
+    // 2-second real-time polling while app/tab is active and visible
+    const pollInterval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchTransactions(true);
       }
+    }, 2000);
 
-      setError(null);
-      try {
-        const res = await apiService.userPortal.getPublicSessionTransactions(sessionToken);
-        if (isCancelled) return;
-
-        if (!res.success) {
-          setError(res.error.message || 'Failed to load transaction history');
-          return;
-        }
-
-        setTransactions(res.data);
-      } catch {
-        if (!isCancelled) setError('Unable to connect to server. Please try again.');
-      } finally {
-        if (!isCancelled) setIsLoading(false);
+    const handleVisibilityOrFocus = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchTransactions(true);
       }
     };
 
-    load();
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    window.addEventListener('focus', handleVisibilityOrFocus);
+
     return () => {
-      isCancelled = true;
+      clearInterval(pollInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
     };
-  }, [sessionToken]);
+  }, [sessionToken, fetchTransactions]);
 
   if (!sessionToken) {
     navigate('/portal', { replace: true });
