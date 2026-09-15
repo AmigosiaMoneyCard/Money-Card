@@ -181,3 +181,29 @@ export function extractTransactionItems(items: any): FormattedTransactionItem[] 
     .filter(Boolean) as FormattedTransactionItem[];
 }
 
+/**
+ * Resolves the clean, public Customer Portal QR scan URL for a given token.
+ * Prevents Vercel preview deployment SSO authentication redirects by ensuring
+ * that any Vercel environment targets the publicly accessible staging domain.
+ */
+export function getPublicCustomerPortalUrl(token: string): string {
+  if (typeof window === 'undefined') {
+    return `https://money-card-frontend-staging.vercel.app/c/${token}`;
+  }
+
+  const { hostname, origin } = window.location;
+
+  // Local development testing
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return `${origin}/c/${token}`;
+  }
+
+  // If on any Vercel domain (*.vercel.app), always route to the public custom domain
+  // to avoid Vercel preview deployment SSO protection
+  if (hostname.includes('vercel.app')) {
+    return `https://money-card-frontend-staging.vercel.app/c/${token}`;
+  }
+
+  return `${origin}/c/${token}`;
+}
+

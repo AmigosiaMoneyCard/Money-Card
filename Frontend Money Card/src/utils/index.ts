@@ -8,6 +8,7 @@ export {
   formatCardNumber,
   truncate,
   extractTransactionItems,
+  getPublicCustomerPortalUrl,
   type FormattedTransactionItem,
 } from './formatters';
 export { storage, STORAGE_KEYS } from './storage';
