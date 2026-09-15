@@ -83,6 +83,12 @@ export function CameraQrScanner({
 
         const config = {
           fps: 25,
+          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+            const edge = Math.floor(minEdge * 0.82);
+            return { width: edge, height: edge };
+          },
+          aspectRatio: 1.0,
         };
 
         await scanner.start(
@@ -147,8 +153,8 @@ export function CameraQrScanner({
 
   return (
     <div className={`space-y-3 ${className}`}>
-      {/* Scanner Viewport Container - Full Frame 16:9 / Responsive Aspect */}
-      <div className="relative w-full aspect-video max-h-[380px] rounded-2xl overflow-hidden border-2 border-emerald-500/60 bg-black flex items-center justify-center shadow-2xl">
+      {/* Scanner Viewport Container - Full Frame Square */}
+      <div className="relative w-full aspect-square max-w-[340px] sm:max-w-[380px] mx-auto rounded-2xl overflow-hidden border-2 border-emerald-500/60 bg-black flex items-center justify-center shadow-2xl">
         {/* DOM node for Html5Qrcode */}
         <div
           id={containerIdRef.current}
@@ -182,20 +188,21 @@ export function CameraQrScanner({
           </div>
         )}
 
-        {/* Full-Frame Scanner Reticle Overlay */}
+        {/* Full-Frame Square Scanner Reticle Overlay */}
         {!isInitializing && !errorMessage && isActive && (
-          <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-6">
-            <div className="relative w-full h-full max-w-sm max-h-56 border border-emerald-400/40 rounded-2xl">
-              {/* Corner accents */}
-              <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-emerald-400 rounded-tl-xl shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-              <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-emerald-400 rounded-tr-xl shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-              <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-emerald-400 rounded-bl-xl shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-emerald-400 rounded-br-xl shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-              {/* Laser line animation */}
-              <div className="absolute top-0 left-2 right-2 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_8px_rgba(52,211,153,1)] animate-pulse" />
+          <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-4">
+            <div className="relative w-[78%] aspect-square max-w-[260px] border border-emerald-400/50 rounded-2xl overflow-hidden">
+              {/* Corner accents - prominent full-frame corners */}
+              <div className="absolute -top-1 -left-1 w-7 h-7 border-t-4 border-l-4 border-emerald-400 rounded-tl-xl shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
+              <div className="absolute -top-1 -right-1 w-7 h-7 border-t-4 border-r-4 border-emerald-400 rounded-tr-xl shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
+              <div className="absolute -bottom-1 -left-1 w-7 h-7 border-b-4 border-l-4 border-emerald-400 rounded-bl-xl shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
+              <div className="absolute -bottom-1 -right-1 w-7 h-7 border-b-4 border-r-4 border-emerald-400 rounded-br-xl shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
+              
+              {/* Vertical sweeping laser line across the whole square QR frame */}
+              <div className="absolute left-1 right-1 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_10px_rgba(52,211,153,1)] animate-qr-sweep" />
             </div>
             <p className="mt-3 text-[11px] font-semibold text-emerald-300 bg-slate-950/85 px-3.5 py-1 rounded-full border border-emerald-500/30 backdrop-blur-md shadow-md">
-              Full-frame active scanner — hold card QR anywhere in view
+              Align QR code inside the frame
             </p>
           </div>
         )}

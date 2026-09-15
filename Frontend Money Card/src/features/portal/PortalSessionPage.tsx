@@ -23,7 +23,6 @@ import {
   QrCode,
   Camera,
   Search,
-  ShieldCheck,
   ShieldAlert,
   User,
 } from 'lucide-react';
@@ -225,14 +224,14 @@ export function PortalSessionPage() {
                     Close
                   </button>
                 </div>
-                <div className="overflow-hidden rounded-xl bg-black min-h-[220px]">
+                <div className="overflow-hidden rounded-2xl bg-black flex justify-center">
                   <CameraQrScanner
                     isActive={isScanning}
                     onScan={(scannedText) => handleResolveCard(scannedText)}
                   />
                 </div>
                 <p className="text-[11px] text-slate-400">
-                  Point camera at the Money Card QR code. It will detect automatically.
+                  Align your physical card QR code within the frame to scan.
                 </p>
               </div>
             )}
@@ -298,17 +297,6 @@ export function PortalSessionPage() {
             </form>
           </div>
         </Card>
-
-        {/* Helpful Info Guide */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600 space-y-2">
-          <div className="flex items-center gap-1.5 font-semibold text-slate-800">
-            <ShieldCheck className="h-4 w-4 text-emerald-600" />
-            <span>Customer Privacy & Security</span>
-          </div>
-          <p className="text-[11px] text-slate-500 leading-relaxed">
-            Scanning or searching establishes a secure self-service session. You can view your current cafeteria balance and itemized receipts without entering personal passwords.
-          </p>
-        </div>
       </div>
     );
   }
