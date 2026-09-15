@@ -12,7 +12,12 @@ export interface PwaInstallBannerProps {
 }
 
 export function PwaInstallBanner({ isStandaloneGate = false, onDismiss }: PwaInstallBannerProps = {}) {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(() => {
+    if (typeof window !== 'undefined' && (window as any).__deferredPrompt) {
+      return (window as any).__deferredPrompt;
+    }
+    return null;
+  });
   const [isStandalone, setIsStandalone] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const [isIos, setIsIos] = useState(false);
@@ -42,36 +47,71 @@ export function PwaInstallBanner({ isStandaloneGate = false, onDismiss }: PwaIns
     const isAppleIos = /iphone|ipad|ipod/.test(userAgent);
     setIsIos(isAppleIos);
 
+    // Check early-captured deferred prompt
+    if (typeof window !== 'undefined' && (window as any).__deferredPrompt) {
+      setDeferredPrompt((window as any).__deferredPrompt);
+    }
+
     // Capture Chrome/Edge/Android beforeinstallprompt event
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
+      (window as any).__deferredPrompt = e;
       setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
 
+    const handlePromptReady = () => {
+      if (typeof window !== 'undefined' && (window as any).__deferredPrompt) {
+        setDeferredPrompt((window as any).__deferredPrompt);
+      }
+    };
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('pwa-prompt-ready', handlePromptReady);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('pwa-prompt-ready', handlePromptReady);
     };
-  }, []);
+  }, [isStandaloneGate]);
 
   const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      // Trigger native install prompt on Android/Chrome
+    const promptEvent = deferredPrompt || (typeof window !== 'undefined' ? (window as any).__deferredPrompt : null);
+
+    // 1. Android / Chrome native automated prompt
+    if (promptEvent) {
       try {
-        await deferredPrompt.prompt();
-        const choice = await deferredPrompt.userChoice;
-        if (choice.outcome === 'accepted') {
+        await promptEvent.prompt();
+        const choice = await promptEvent.userChoice;
+        if (choice && choice.outcome === 'accepted') {
           setIsDismissed(true);
         }
         setDeferredPrompt(null);
-      } catch {
-        setShowGuide((prev) => !prev);
+        if (typeof window !== 'undefined') (window as any).__deferredPrompt = null;
+        return;
+      } catch (err) {
+        console.warn('Install prompt error:', err);
       }
-    } else {
-      // Toggle device instruction guide
-      setShowGuide((prev) => !prev);
     }
+
+    // 2. iPhone / iOS: trigger native Share Sheet automatically with navigator.share
+    if (isIos) {
+      setShowGuide(true);
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        try {
+          await navigator.share({
+            title: 'Money Card Portal',
+            text: 'Add Money Card Portal to Home Screen',
+            url: window.location.href,
+          });
+        } catch {
+          // User closed share sheet or cancelled
+        }
+      }
+      return;
+    }
+
+    // 3. Fallback: show instructions
+    setShowGuide(true);
   };
 
   const handleDismiss = () => {
@@ -134,24 +174,10 @@ export function PwaInstallBanner({ isStandaloneGate = false, onDismiss }: PwaIns
         <button
           type="button"
           onClick={handleInstallClick}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/30 transition-all active:scale-95 cursor-pointer"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-emerald-600/30 transition-all active:scale-95 cursor-pointer"
         >
-          {isIos ? (
-            <>
-              <Share className="h-3.5 w-3.5" />
-              <span>Install on iPhone</span>
-            </>
-          ) : deferredPrompt ? (
-            <>
-              <Download className="h-3.5 w-3.5" />
-              <span>Install to Home Screen</span>
-            </>
-          ) : (
-            <>
-              <Download className="h-3.5 w-3.5" />
-              <span>How to Install App</span>
-            </>
-          )}
+          <Download className="h-4 w-4" />
+          <span>Install App</span>
         </button>
 
         <button

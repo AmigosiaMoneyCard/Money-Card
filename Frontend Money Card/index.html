@@ -49,6 +49,13 @@
         const observer = new MutationObserver(removeToolbar);
         observer.observe(document.documentElement, { childList: true, subtree: true });
       })();
+
+      // Capture beforeinstallprompt as early as possible for automated 1-tap installation
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        window.__deferredPrompt = e;
+        window.dispatchEvent(new CustomEvent('pwa-prompt-ready'));
+      });
     </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
