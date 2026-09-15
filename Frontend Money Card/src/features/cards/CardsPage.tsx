@@ -59,6 +59,7 @@ import {
 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { CameraQrScanner } from '@/components/scanner/CameraQrScanner';
+import { getPublicCustomerPortalUrl } from '@/utils';
 import { filterCards } from './cardsFilter';
 
 export function CardsPage() {
@@ -1354,7 +1355,7 @@ export function CardsPage() {
           <div className="flex flex-col items-center p-4 text-center space-y-4">
             <div className="p-4 bg-white rounded-2xl shadow-xl">
               <QRCodeCanvas
-                value={`${typeof window !== 'undefined' ? window.location.origin : ''}/c/${selectedQrCard.qrToken}`}
+                value={getPublicCustomerPortalUrl(selectedQrCard.qrToken)}
                 size={200}
                 level="H"
                 includeMargin={false}
@@ -1379,7 +1380,7 @@ export function CardsPage() {
                 size="sm"
                 className="gap-1.5"
                 onClick={() => {
-                  const url = `${window.location.origin}/c/${selectedQrCard.qrToken}`;
+                  const url = getPublicCustomerPortalUrl(selectedQrCard.qrToken);
                   navigator.clipboard.writeText(url);
                   setIsCopiedToken(true);
                   setTimeout(() => setIsCopiedToken(false), 2000);
@@ -1428,7 +1429,7 @@ export function CardsPage() {
                 <div className="flex flex-col sm:flex-row items-center gap-4 bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
                   <div className="p-2 bg-white rounded-lg shadow-sm border border-slate-200 shrink-0">
                     <QRCodeCanvas
-                      value={`${typeof window !== 'undefined' ? window.location.origin : ''}/c/${selectedCard.qrToken}`}
+                      value={getPublicCustomerPortalUrl(selectedCard.qrToken)}
                       size={84}
                       level="H"
                       includeMargin={false}
@@ -1446,7 +1447,7 @@ export function CardsPage() {
                     </p>
                     <div className="flex items-center gap-2 pt-1 justify-center sm:justify-start flex-wrap">
                       <a
-                        href={`/c/${selectedCard.qrToken}`}
+                        href={getPublicCustomerPortalUrl(selectedCard.qrToken)}
                         target="_blank"
                         rel="noreferrer"
                         className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-md transition-colors"
@@ -1457,7 +1458,7 @@ export function CardsPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          const url = `${window.location.origin}/c/${selectedCard.qrToken}`;
+                          const url = getPublicCustomerPortalUrl(selectedCard.qrToken);
                           navigator.clipboard.writeText(url);
                           toast.success('Customer Portal URL copied to clipboard');
                         }}

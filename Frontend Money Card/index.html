@@ -6,6 +6,58 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Money Card — Reusable QR card-based payment platform for organizations" />
     <title>Money Card</title>
+
+    <!-- PWA Manifest & Mobile Meta Tags -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#059669" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Money Card" />
+    <link rel="apple-touch-icon" href="/app_icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/app_icon_192.png" />
+
+    <!-- Suppress Vercel preview toolbar & feedback widgets -->
+    <style>
+      vercel-live-feedback,
+      #vercel-live-feedback,
+      #vercel-toolbar,
+      [data-vercel-toolbar],
+      vercel-toolbar,
+      iframe[src*="vercel.live"],
+      div[class*="vercel-toolbar"] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        height: 0 !important;
+        width: 0 !important;
+        position: absolute !important;
+        clip: rect(0, 0, 0, 0) !important;
+      }
+    </style>
+    <script>
+      (function() {
+        const removeToolbar = () => {
+          document.querySelectorAll('vercel-live-feedback, #vercel-toolbar, [data-vercel-toolbar], vercel-toolbar, iframe[src*="vercel.live"]').forEach(el => el.remove());
+        };
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', removeToolbar);
+        } else {
+          removeToolbar();
+        }
+        const observer = new MutationObserver(removeToolbar);
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+      })();
+
+      // Capture beforeinstallprompt as early as possible for automated 1-tap installation
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        window.__deferredPrompt = e;
+        window.dispatchEvent(new CustomEvent('pwa-prompt-ready'));
+      });
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />

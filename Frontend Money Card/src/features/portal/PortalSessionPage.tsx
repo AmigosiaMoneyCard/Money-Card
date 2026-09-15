@@ -6,11 +6,11 @@ import {
   Card,
   Badge,
   Button,
-  Input,
   LoadingState,
   ErrorState,
 } from '@/components/ui';
 import { CameraQrScanner } from '@/components/scanner/CameraQrScanner';
+import { PwaInstallBanner } from '@/components/pwa/PwaInstallBanner';
 import { formatDate, formatCurrency } from '@/utils';
 import {
   Building2,
@@ -21,25 +21,57 @@ import {
   CheckCircle2,
   QrCode,
   Camera,
-  Search,
-  ShieldCheck,
   ShieldAlert,
   User,
 } from 'lucide-react';
 
+function checkIsStandalone(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as unknown as { standalone?: boolean }).standalone === true ||
+    document.referrer.includes('android-app://') ||
+    window.location.search.includes('source=pwa')
+  );
+}
+
 export function PortalSessionPage() {
   const navigate = useNavigate();
-  const [sessionToken, setSessionToken] = useState<string | null>(() =>
-    typeof window !== 'undefined' ? sessionStorage.getItem('moneycard_portal_session_token') : null,
-  );
+  const [sessionToken, setSessionToken] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return sessionStorage.getItem('moneycard_portal_session_token');
+  });
 
   const [sessionDetail, setSessionDetail] = useState<PublicSessionDetail | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isStandalone, setIsStandalone] = useState(checkIsStandalone);
+  const [bypassInstall, setBypassInstall] = useState(false);
 
-  // Manual lookup & in-browser scanner states
-  const [lookupInput, setLookupInput] = useState('');
-  const [isResolving, setIsResolving] = useState(false);
+  useEffect(() => {
+    // Clear any persistent localStorage tokens so every PWA launch prompts to scan QR code
+    try {
+      localStorage.removeItem('moneycard_portal_session_token');
+      localStorage.removeItem('moneycard_portal_card_number');
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(display-mode: standalone)');
+    const handleChange = (e: MediaQueryListEvent) => {
+      if (e.matches) {
+        setIsStandalone(true);
+      }
+    };
+    mediaQuery.addEventListener?.('change', handleChange);
+    return () => {
+      mediaQuery.removeEventListener?.('change', handleChange);
+    };
+  }, []);
+
+  // In-browser scanner states
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
 
@@ -59,6 +91,8 @@ export function PortalSessionPage() {
         if (res.error.code === 'UNAUTHORIZED' || res.error.code === 'SESSION_NOT_FOUND') {
           sessionStorage.removeItem('moneycard_portal_session_token');
           sessionStorage.removeItem('moneycard_portal_card_number');
+          localStorage.removeItem('moneycard_portal_session_token');
+          localStorage.removeItem('moneycard_portal_card_number');
           setSessionToken(null);
           setSessionDetail(null);
           setError('Portal session expired or invalid. Please scan your card QR code again.');
@@ -80,7 +114,6 @@ export function PortalSessionPage() {
     const clean = targetInput.trim();
     if (!clean) return;
 
-    setIsResolving(true);
     setLookupError(null);
 
     try {
@@ -92,7 +125,7 @@ export function PortalSessionPage() {
         } else if (res.error?.code === 'SESSION_NOT_FOUND') {
           setLookupError('No active session found for this card. Please request staff to issue or recharge a session.');
         } else if (res.error?.code === 'CARD_NOT_FOUND') {
-          setLookupError(`Card or QR "${clean}" not recognized. Please check the code and try again.`);
+          setLookupError('Card QR not recognized. Please scan a valid Money Card.');
         } else {
           setLookupError(res.error?.message || 'The card could not be resolved.');
         }
@@ -103,12 +136,9 @@ export function PortalSessionPage() {
       sessionStorage.setItem('moneycard_portal_card_number', res.data.cardDisplayNumber);
       setSessionToken(res.data.sessionToken);
       setIsScanning(false);
-      setLookupInput('');
       await fetchSessionDetail(res.data.sessionToken);
     } catch {
       setLookupError('Unable to connect to server. Please check your network and try again.');
-    } finally {
-      setIsResolving(false);
     }
   };
 
@@ -121,15 +151,38 @@ export function PortalSessionPage() {
   const handleExitSession = () => {
     sessionStorage.removeItem('moneycard_portal_session_token');
     sessionStorage.removeItem('moneycard_portal_card_number');
+    try {
+      localStorage.removeItem('moneycard_portal_session_token');
+      localStorage.removeItem('moneycard_portal_card_number');
+    } catch {
+      // ignore
+    }
     setSessionToken(null);
     setSessionDetail(null);
     setLookupError(null);
+    setIsScanning(false);
     navigate('/portal', { replace: true });
   };
+
+  // When viewed in mobile browser (not standalone PWA) and customer has not clicked bypass "Not now":
+  // Render ONLY the PWA Install prompt screen as requested.
+  if (!isStandalone && !bypassInstall) {
+    return (
+      <div className="py-6 space-y-6 max-w-lg mx-auto">
+        <PwaInstallBanner
+          isStandaloneGate={true}
+          onDismiss={() => setBypassInstall(true)}
+        />
+      </div>
+    );
+  }
 
   if (!sessionToken && !sessionDetail) {
     return (
       <div className="py-6 space-y-6 max-w-lg mx-auto">
+        {/* PWA Install Quick Action */}
+        <PwaInstallBanner />
+
         {/* Welcome Hero */}
         <Card padding="lg" className="border-emerald-200 bg-gradient-to-b from-white via-white to-emerald-50/30 shadow-sm text-center">
           <div className="flex flex-col items-center space-y-3">
@@ -142,7 +195,7 @@ export function PortalSessionPage() {
               </Badge>
               <h2 className="text-xl font-bold text-slate-900">Check Card Balance & Receipts</h2>
               <p className="text-xs text-slate-500 max-w-sm">
-                Scan the QR code on your card with your camera or enter your card number below.
+                Scan the QR code on your physical card with your camera to view your live balance and receipts.
               </p>
             </div>
           </div>
@@ -176,90 +229,31 @@ export function PortalSessionPage() {
                     Close
                   </button>
                 </div>
-                <div className="overflow-hidden rounded-xl bg-black min-h-[220px]">
+                <div className="overflow-hidden rounded-2xl bg-black flex justify-center">
                   <CameraQrScanner
                     isActive={isScanning}
                     onScan={(scannedText) => handleResolveCard(scannedText)}
                   />
                 </div>
                 <p className="text-[11px] text-slate-400">
-                  Point camera at the Money Card QR code. It will detect automatically.
+                  Align your physical card QR code within the frame to scan.
                 </p>
               </div>
             )}
 
-            {/* Divider */}
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200" />
-              </div>
-              <div className="relative flex justify-center text-[10px] uppercase font-bold text-slate-400">
-                <span className="bg-white px-2">OR ENTER MANUALLY</span>
-              </div>
-            </div>
-
-            {/* Manual Lookup Form */}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleResolveCard(lookupInput);
-              }}
-              className="space-y-3 text-left"
-            >
-              <div>
-                <label className="text-xs font-medium text-slate-700 block mb-1">
-                  Card Number or QR Identifier
-                </label>
-                <div className="flex gap-2">
-                  <Input
-                    type="text"
-                    value={lookupInput}
-                    onChange={(e) => {
-                      setLookupInput(e.target.value);
-                      if (lookupError) setLookupError(null);
-                    }}
-                    placeholder="e.g. MC-001 or KD1NIICJY"
-                    className="font-mono text-sm uppercase"
-                    autoCapitalize="characters"
-                  />
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    isLoading={isResolving}
-                    disabled={!lookupInput.trim()}
-                    className="shrink-0 font-medium"
-                    leftIcon={<Search className="h-3.5 w-3.5" />}
-                  >
-                    Search
-                  </Button>
+            {lookupError && (
+              <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 flex items-start gap-2 animate-in fade-in text-left">
+                <ShieldAlert className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-semibold">{lookupError}</p>
+                  <p className="text-[11px] text-rose-600 mt-0.5">
+                    Please make sure you are scanning an active physical Money Card.
+                  </p>
                 </div>
               </div>
-
-              {lookupError && (
-                <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 flex items-start gap-2 animate-in fade-in">
-                  <ShieldAlert className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="font-semibold">{lookupError}</p>
-                    <p className="text-[11px] text-rose-600 mt-0.5">
-                      Check that the card is currently active and assigned in the system.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </form>
+            )}
           </div>
         </Card>
-
-        {/* Helpful Info Guide */}
-        <div className="rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600 space-y-2">
-          <div className="flex items-center gap-1.5 font-semibold text-slate-800">
-            <ShieldCheck className="h-4 w-4 text-emerald-600" />
-            <span>Customer Privacy & Security</span>
-          </div>
-          <p className="text-[11px] text-slate-500 leading-relaxed">
-            Scanning or searching establishes a secure self-service session. You can view your current cafeteria balance and itemized receipts without entering personal passwords.
-          </p>
-        </div>
       </div>
     );
   }
@@ -286,6 +280,9 @@ export function PortalSessionPage() {
 
   return (
     <div className="space-y-6">
+      {/* PWA Install Quick Action */}
+      <PwaInstallBanner />
+
       {/* Session Hero Card */}
       <Card padding="lg" className="relative overflow-hidden border-emerald-200 bg-gradient-to-br from-white via-white to-emerald-50/40 shadow-md">
         <div className="flex items-start justify-between border-b border-slate-100 pb-4">

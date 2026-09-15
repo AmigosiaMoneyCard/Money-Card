@@ -17,7 +17,7 @@ export function PortalLayout() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-600 to-teal-600 text-xs font-bold text-white shadow-xs shadow-emerald-500/20">
             MC
           </div>
-          <span className="font-semibold text-slate-800">My Card</span>
+          <span className="font-semibold text-slate-800">Money Card</span>
         </div>
       </header>
 

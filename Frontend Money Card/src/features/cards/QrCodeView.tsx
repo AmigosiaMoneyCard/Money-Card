@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { QrCode, Copy, Check, ShieldCheck, ExternalLink } from 'lucide-react';
 import { Button, Badge } from '@/components/ui';
-import { notify } from '@/utils';
+import { notify, getPublicCustomerPortalUrl } from '@/utils';
 import { QRCodeCanvas } from 'qrcode.react';
 
 interface QrCodeViewProps {
@@ -15,8 +15,8 @@ interface QrCodeViewProps {
 export function QrCodeView({ physicalCardNumber, qrToken }: QrCodeViewProps) {
   const [copied, setCopied] = useState(false);
 
-  // M0 Rule 15: Opaque HTTPS URL
-  const qrUrl = typeof window !== 'undefined' ? `${window.location.origin}/c/${qrToken}` : `https://app.moneycard.com/c/${qrToken}`;
+  // M0 Rule 15: Opaque HTTPS URL on public portal domain (avoids Vercel preview SSO)
+  const qrUrl = getPublicCustomerPortalUrl(qrToken);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(qrUrl);
