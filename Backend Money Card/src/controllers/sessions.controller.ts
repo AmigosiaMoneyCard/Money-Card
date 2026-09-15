@@ -4,6 +4,7 @@ import { prisma } from '../config/database.js';
 import { sendError, sendSuccess } from '../utils/response.js';
 import { generateSessionToken } from '../utils/crypto.js';
 import { CardStatus, SessionStatus, TransactionType } from '@prisma/client';
+import { balanceStreamService } from '../services/balanceStream.service.js';
 
 export async function listSessions(req: Request, res: Response) {
   const orgId = req.user?.organizationId;
@@ -196,6 +197,16 @@ export async function createSession(req: Request, res: Response) {
     return createdSession;
   });
 
+  balanceStreamService.mapSessionIdToToken(session.id, session.sessionToken);
+  balanceStreamService.broadcastBalanceUpdate(session.sessionToken, {
+    balance: session.balance,
+    status: session.status,
+    type: 'INIT',
+    amount: initAmount,
+    cardDisplayNumber: card.physicalCardNumber || undefined,
+    sessionId: session.id,
+  });
+
   return sendSuccess(
     res,
     {
@@ -381,6 +392,14 @@ export async function rechargeSession(req: Request, res: Response) {
     };
   });
 
+  balanceStreamService.broadcastBalanceUpdate(session.id, {
+    balance: updatedSession.balance,
+    status: updatedSession.status,
+    type: 'RECHARGE',
+    amount: rechargeAmount,
+    sessionId: session.id,
+  });
+
   return sendSuccess(res, updatedSession);
 }
 
@@ -521,6 +540,14 @@ export async function purchaseSession(req: Request, res: Response) {
       };
     });
 
+    balanceStreamService.broadcastBalanceUpdate(session.id, {
+      balance: result.balance,
+      status: result.session.status,
+      type: 'PURCHASE',
+      amount: result.amount,
+      sessionId: session.id,
+    });
+
     return sendSuccess(res, result);
   } catch (err: any) {
     const isNotFound = err.message?.includes('not found');
@@ -583,6 +610,14 @@ export async function returnSession(req: Request, res: Response) {
     }
 
     return { session: settledSession, refundAmount };
+  });
+
+  balanceStreamService.broadcastBalanceUpdate(session.id, {
+    balance: 0.0,
+    status: SessionStatus.SETTLED,
+    type: 'REFUND',
+    amount: refundAmount,
+    sessionId: session.id,
   });
 
   return sendSuccess(res, result);
