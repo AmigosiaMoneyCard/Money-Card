@@ -51,6 +51,8 @@ export function QrResolutionPage() {
 
       sessionStorage.setItem('moneycard_portal_session_token', res.data.sessionToken);
       sessionStorage.setItem('moneycard_portal_card_number', res.data.cardDisplayNumber);
+      localStorage.setItem('moneycard_portal_session_token', res.data.sessionToken);
+      localStorage.setItem('moneycard_portal_card_number', res.data.cardDisplayNumber);
 
       navigate('/portal/session', { replace: true });
     } catch {

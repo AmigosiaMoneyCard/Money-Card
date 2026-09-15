@@ -1,10 +1,11 @@
-const CACHE_NAME = 'money-card-cache-v2';
+const CACHE_NAME = 'money-card-cache-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/favicon.svg',
-  '/app_icon.png'
+  '/app_icon.png',
+  '/app_icon_192.png'
 ];
 
 // 1. Install Service Worker & cache critical assets

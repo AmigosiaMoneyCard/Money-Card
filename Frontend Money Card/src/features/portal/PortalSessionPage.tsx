@@ -30,9 +30,10 @@ import {
 
 export function PortalSessionPage() {
   const navigate = useNavigate();
-  const [sessionToken, setSessionToken] = useState<string | null>(() =>
-    typeof window !== 'undefined' ? sessionStorage.getItem('moneycard_portal_session_token') : null,
-  );
+  const [sessionToken, setSessionToken] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return sessionStorage.getItem('moneycard_portal_session_token') || localStorage.getItem('moneycard_portal_session_token');
+  });
 
   const [sessionDetail, setSessionDetail] = useState<PublicSessionDetail | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -60,6 +61,8 @@ export function PortalSessionPage() {
         if (res.error.code === 'UNAUTHORIZED' || res.error.code === 'SESSION_NOT_FOUND') {
           sessionStorage.removeItem('moneycard_portal_session_token');
           sessionStorage.removeItem('moneycard_portal_card_number');
+          localStorage.removeItem('moneycard_portal_session_token');
+          localStorage.removeItem('moneycard_portal_card_number');
           setSessionToken(null);
           setSessionDetail(null);
           setError('Portal session expired or invalid. Please scan your card QR code again.');
@@ -102,6 +105,8 @@ export function PortalSessionPage() {
 
       sessionStorage.setItem('moneycard_portal_session_token', res.data.sessionToken);
       sessionStorage.setItem('moneycard_portal_card_number', res.data.cardDisplayNumber);
+      localStorage.setItem('moneycard_portal_session_token', res.data.sessionToken);
+      localStorage.setItem('moneycard_portal_card_number', res.data.cardDisplayNumber);
       setSessionToken(res.data.sessionToken);
       setIsScanning(false);
       setLookupInput('');
@@ -122,6 +127,8 @@ export function PortalSessionPage() {
   const handleExitSession = () => {
     sessionStorage.removeItem('moneycard_portal_session_token');
     sessionStorage.removeItem('moneycard_portal_card_number');
+    localStorage.removeItem('moneycard_portal_session_token');
+    localStorage.removeItem('moneycard_portal_card_number');
     setSessionToken(null);
     setSessionDetail(null);
     setLookupError(null);

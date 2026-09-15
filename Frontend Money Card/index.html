@@ -15,6 +15,41 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Money Card" />
     <link rel="apple-touch-icon" href="/app_icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/app_icon_192.png" />
+
+    <!-- Suppress Vercel preview toolbar & feedback widgets -->
+    <style>
+      vercel-live-feedback,
+      #vercel-live-feedback,
+      #vercel-toolbar,
+      [data-vercel-toolbar],
+      vercel-toolbar,
+      iframe[src*="vercel.live"],
+      div[class*="vercel-toolbar"] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        height: 0 !important;
+        width: 0 !important;
+        position: absolute !important;
+        clip: rect(0, 0, 0, 0) !important;
+      }
+    </style>
+    <script>
+      (function() {
+        const removeToolbar = () => {
+          document.querySelectorAll('vercel-live-feedback, #vercel-toolbar, [data-vercel-toolbar], vercel-toolbar, iframe[src*="vercel.live"]').forEach(el => el.remove());
+        };
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', removeToolbar);
+        } else {
+          removeToolbar();
+        }
+        const observer = new MutationObserver(removeToolbar);
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+      })();
+    </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

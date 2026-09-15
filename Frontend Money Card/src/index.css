@@ -122,3 +122,20 @@
     transform: translateX(0);
   }
 }
+
+/* ─── Suppress Vercel Toolbar & Feedback Overlays ────────────── */
+vercel-live-feedback,
+#vercel-live-feedback,
+#vercel-toolbar,
+[data-vercel-toolbar],
+vercel-toolbar,
+iframe[src*="vercel.live"],
+div[class*="vercel-toolbar"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  width: 0 !important;
+  overflow: hidden !important;
+}

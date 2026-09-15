@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Download, Share, X, Smartphone, PlusSquare } from 'lucide-react';
+import { Download, Share, X, Smartphone, PlusSquare, MoreVertical } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -11,7 +11,7 @@ export function PwaInstallBanner() {
   const [isStandalone, setIsStandalone] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const [isIos, setIsIos] = useState(false);
-  const [showIosGuide, setShowIosGuide] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
     // Check if already running in standalone mode (installed PWA)
@@ -52,15 +52,19 @@ export function PwaInstallBanner() {
   const handleInstallClick = async () => {
     if (deferredPrompt) {
       // Trigger native install prompt on Android/Chrome
-      await deferredPrompt.prompt();
-      const choice = await deferredPrompt.userChoice;
-      if (choice.outcome === 'accepted') {
-        setIsDismissed(true);
+      try {
+        await deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        if (choice.outcome === 'accepted') {
+          setIsDismissed(true);
+        }
+        setDeferredPrompt(null);
+      } catch {
+        setShowGuide((prev) => !prev);
       }
-      setDeferredPrompt(null);
-    } else if (isIos) {
-      // Toggle iOS instruction sheet
-      setShowIosGuide((prev) => !prev);
+    } else {
+      // Toggle device instruction guide
+      setShowGuide((prev) => !prev);
     }
   };
 
@@ -69,23 +73,18 @@ export function PwaInstallBanner() {
     sessionStorage.setItem('moneycard_pwa_dismissed', 'true');
   };
 
-  // If already installed, dismissed, or unsupported desktop browser with no prompt, don't show
+  // If already installed or dismissed, hide
   if (isStandalone || isDismissed) {
     return null;
   }
 
-  // Show if either Android deferredPrompt is captured OR it's an iOS device
-  if (!deferredPrompt && !isIos) {
-    return null;
-  }
-
   return (
-    <div className="rounded-2xl border border-emerald-300/80 bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 p-4 text-white shadow-lg animate-in fade-in slide-in-from-top-2 duration-300">
+    <div className="rounded-2xl border border-emerald-300/80 bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 p-4 text-white shadow-xl animate-in fade-in slide-in-from-top-2 duration-300">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/20 border border-emerald-400/30 overflow-hidden shadow-sm">
             <img
-              src="/app_icon.png"
+              src="/app_icon_192.png"
               alt="Money Card"
               className="h-9 w-9 object-contain"
               onError={(e) => {
@@ -101,14 +100,14 @@ export function PwaInstallBanner() {
                 Install App
               </span>
               <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded border border-emerald-400/20">
-                Offline Ready
+                PWA
               </span>
             </div>
             <p className="text-sm font-semibold text-slate-100 leading-tight mt-0.5">
               Install Money Card Portal
             </p>
             <p className="text-xs text-slate-300 mt-0.5">
-              Add to Home Screen for instant balance checks & receipts without a browser bar.
+              Add to Home Screen for instant balance checks without browser bars.
             </p>
           </div>
         </div>
@@ -133,12 +132,17 @@ export function PwaInstallBanner() {
           {isIos ? (
             <>
               <Share className="h-3.5 w-3.5" />
-              <span>How to Install on iPhone</span>
+              <span>Install on iPhone</span>
+            </>
+          ) : deferredPrompt ? (
+            <>
+              <Download className="h-3.5 w-3.5" />
+              <span>Install to Home Screen</span>
             </>
           ) : (
             <>
               <Download className="h-3.5 w-3.5" />
-              <span>Install to Home Screen</span>
+              <span>How to Install App</span>
             </>
           )}
         </button>
@@ -152,20 +156,37 @@ export function PwaInstallBanner() {
         </button>
       </div>
 
-      {/* iOS Safari step-by-step instruction helper */}
-      {isIos && showIosGuide && (
-        <div className="mt-3 rounded-xl bg-slate-800/90 border border-slate-700/80 p-3 text-xs text-slate-200 space-y-2 animate-in fade-in duration-200">
-          <p className="font-semibold text-emerald-400">Install via Safari in 2 quick steps:</p>
-          <ol className="space-y-1.5 list-decimal list-inside text-[11px] text-slate-300">
-            <li>
-              Tap the <strong className="text-white">Share</strong> button{' '}
-              <Share className="inline h-3.5 w-3.5 text-sky-400 mx-0.5" /> at the bottom of Safari.
-            </li>
-            <li>
-              Scroll down and tap <strong className="text-white">Add to Home Screen</strong>{' '}
-              <PlusSquare className="inline h-3.5 w-3.5 text-emerald-400 mx-0.5" />.
-            </li>
-          </ol>
+      {/* Step-by-step instruction helper */}
+      {showGuide && (
+        <div className="mt-3 rounded-xl bg-slate-800/95 border border-slate-700/80 p-3 text-xs text-slate-200 space-y-2 animate-in fade-in duration-200">
+          {isIos ? (
+            <>
+              <p className="font-semibold text-emerald-400">Install via Safari in 2 quick steps:</p>
+              <ol className="space-y-1.5 list-decimal list-inside text-[11px] text-slate-300">
+                <li>
+                  Tap the <strong className="text-white">Share</strong> icon{' '}
+                  <Share className="inline h-3.5 w-3.5 text-sky-400 mx-0.5" /> at the bottom of Safari.
+                </li>
+                <li>
+                  Scroll down and tap <strong className="text-white">Add to Home Screen</strong>{' '}
+                  <PlusSquare className="inline h-3.5 w-3.5 text-emerald-400 mx-0.5" />.
+                </li>
+              </ol>
+            </>
+          ) : (
+            <>
+              <p className="font-semibold text-emerald-400">Install on your phone in 2 quick steps:</p>
+              <ol className="space-y-1.5 list-decimal list-inside text-[11px] text-slate-300">
+                <li>
+                  Tap the browser menu{' '}
+                  <MoreVertical className="inline h-3.5 w-3.5 text-emerald-400 mx-0.5" /> (3 dots at top or bottom right).
+                </li>
+                <li>
+                  Tap <strong className="text-white">Install app</strong> or <strong className="text-white">Add to Home screen</strong>.
+                </li>
+              </ol>
+            </>
+          )}
         </div>
       )}
     </div>
