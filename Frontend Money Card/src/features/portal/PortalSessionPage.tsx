@@ -11,6 +11,7 @@ import {
 } from '@/components/ui';
 import { CameraQrScanner } from '@/components/scanner/CameraQrScanner';
 import { PwaInstallBanner } from '@/components/pwa/PwaInstallBanner';
+import { useCardBalanceStream } from './useCardBalanceStream';
 import { formatDate, formatCurrency } from '@/utils';
 import {
   Building2,
@@ -23,7 +24,9 @@ import {
   Camera,
   ShieldAlert,
   User,
+  Sparkles,
 } from 'lucide-react';
+
 
 function checkIsStandalone(): boolean {
   if (typeof window === 'undefined') return false;
@@ -109,6 +112,21 @@ export function PortalSessionPage() {
       setIsLoading(false);
     }
   }, [sessionToken]);
+
+  // Real-time Server-Sent Events (SSE) stream for live balance updates
+  const { isConnected, lastUpdateAnimation, latestEvent } = useCardBalanceStream(sessionToken, {
+    enabled: !!sessionToken && !isScanning,
+    onBalanceUpdate: (event) => {
+      setSessionDetail((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          currentBalance: event.balance,
+          sessionStatus: (event.status as any) || prev.sessionStatus,
+        };
+      });
+    },
+  });
 
   const handleResolveCard = async (targetInput: string) => {
     const clean = targetInput.trim();
@@ -316,11 +334,47 @@ export function PortalSessionPage() {
         </div>
 
         {/* Live Balance Section */}
-        <div className="py-6 text-center">
+        <div className="py-6 text-center relative">
+          <div className="flex items-center justify-center gap-1.5 mb-1.5">
+            <span className="relative flex h-2 w-2">
+              {isConnected ? (
+                <>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </>
+              ) : (
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-slate-300"></span>
+              )}
+            </span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              {isConnected ? 'Real-Time Sync' : 'Connecting...'}
+            </span>
+            {lastUpdateAnimation && (
+              <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-bounce transition-all ${
+                lastUpdateAnimation === 'recharge'
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : lastUpdateAnimation === 'purchase'
+                    ? 'bg-amber-100 text-amber-800'
+                    : 'bg-slate-100 text-slate-800'
+              }`}>
+                <Sparkles className="h-2.5 w-2.5" />
+                {lastUpdateAnimation === 'recharge' ? `+₹${latestEvent?.amount ?? ''} Top-Up` : lastUpdateAnimation === 'purchase' ? `-₹${latestEvent?.amount ?? ''} Paid` : 'Refunded'}
+              </span>
+            )}
+          </div>
+
           <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
             {isClosed ? 'Final Settled Balance' : 'Current Wallet Balance'}
           </span>
-          <h2 className="mt-1 font-mono text-4xl font-extrabold text-emerald-600">
+          <h2
+            className={`mt-1 font-mono text-4xl font-extrabold transition-all duration-300 transform ${
+              lastUpdateAnimation === 'recharge'
+                ? 'text-emerald-500 scale-110'
+                : lastUpdateAnimation === 'purchase'
+                  ? 'text-amber-600 scale-105'
+                  : 'text-emerald-600'
+            }`}
+          >
             {formatCurrency(sessionDetail.currentBalance)}
           </h2>
           <p className="mt-2 flex items-center justify-center gap-1.5 text-xs text-slate-600">
