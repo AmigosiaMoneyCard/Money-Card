@@ -67,7 +67,8 @@ class ApiClient {
           originalRequest?.url?.includes('/auth/verify-activation-token') ||
           originalRequest?.url?.includes('/auth/activate-account') ||
           originalRequest?.url?.includes('/auth/reset-password') ||
-          originalRequest?.url?.includes('/auth/forgot-password');
+          originalRequest?.url?.includes('/auth/forgot-password') ||
+          originalRequest?.url?.includes('/public/');
 
         if (
           error.response?.status === 401 &&

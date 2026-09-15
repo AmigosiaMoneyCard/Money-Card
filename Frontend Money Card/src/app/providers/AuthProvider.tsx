@@ -20,11 +20,12 @@ import { storage, STORAGE_KEYS } from '@/utils';
 function createInitialState(): AuthState {
   if (typeof window !== 'undefined') {
     const pathname = window.location.pathname;
-    if (pathname.startsWith('/activate') || pathname.startsWith('/reset-password')) {
-      storage.remove(STORAGE_KEYS.ACCESS_TOKEN);
-      storage.remove(STORAGE_KEYS.USER);
-      storage.remove(STORAGE_KEYS.SELECTED_BRANCH_ID);
-      apiClient.setAccessToken(null);
+    if (
+      pathname.startsWith('/c/') ||
+      pathname.startsWith('/portal') ||
+      pathname.startsWith('/activate') ||
+      pathname.startsWith('/reset-password')
+    ) {
       return {
         user: null,
         accessToken: null,
@@ -77,7 +78,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const isPublicAuthPath = publicAuthPaths.some(
         (p) => pathname === p || pathname.startsWith(`${p}/`),
       );
-      if (!pathname.startsWith('/portal') && !isPublicAuthPath) {
+      if (!pathname.startsWith('/c/') && !pathname.startsWith('/portal') && !isPublicAuthPath) {
         window.location.href = '/login?expired=true';
       }
     }
@@ -162,7 +163,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     hasInitialized.current = true;
 
     const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
-    if (pathname.startsWith('/activate') || pathname.startsWith('/reset-password')) {
+    if (
+      pathname.startsWith('/c/') ||
+      pathname.startsWith('/portal') ||
+      pathname.startsWith('/activate') ||
+      pathname.startsWith('/reset-password')
+    ) {
       return;
     }
 

@@ -188,7 +188,7 @@ export function extractTransactionItems(items: any): FormattedTransactionItem[] 
  */
 export function getPublicCustomerPortalUrl(token: string): string {
   if (typeof window === 'undefined') {
-    return `https://money-card-frontend-staging.vercel.app/c/${token}`;
+    return `https://money-card-frontend.vercel.app/c/${token}`;
   }
 
   const { hostname, origin } = window.location;
@@ -198,12 +198,12 @@ export function getPublicCustomerPortalUrl(token: string): string {
     return `${origin}/c/${token}`;
   }
 
-  // If on any Vercel domain (*.vercel.app), always route to the public custom domain
-  // to avoid Vercel preview deployment SSO protection
-  if (hostname.includes('vercel.app')) {
+  // If on staging environment, route to staging domain
+  if (hostname.includes('staging')) {
     return `https://money-card-frontend-staging.vercel.app/c/${token}`;
   }
 
+  // In production (money-card-frontend.vercel.app or custom domain), route to current production origin
   return `${origin}/c/${token}`;
 }
 
