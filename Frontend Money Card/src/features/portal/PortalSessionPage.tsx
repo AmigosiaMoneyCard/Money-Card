@@ -39,7 +39,7 @@ export function PortalSessionPage() {
   const navigate = useNavigate();
   const [sessionToken, setSessionToken] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
-    return sessionStorage.getItem('moneycard_portal_session_token') || localStorage.getItem('moneycard_portal_session_token');
+    return sessionStorage.getItem('moneycard_portal_session_token');
   });
 
   const [sessionDetail, setSessionDetail] = useState<PublicSessionDetail | null>(null);
@@ -47,6 +47,16 @@ export function PortalSessionPage() {
   const [error, setError] = useState<string | null>(null);
   const [isStandalone, setIsStandalone] = useState(checkIsStandalone);
   const [bypassInstall, setBypassInstall] = useState(false);
+
+  useEffect(() => {
+    // Clear any persistent localStorage tokens so every PWA launch prompts to scan QR code
+    try {
+      localStorage.removeItem('moneycard_portal_session_token');
+      localStorage.removeItem('moneycard_portal_card_number');
+    } catch {
+      // ignore
+    }
+  }, []);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(display-mode: standalone)');
@@ -124,8 +134,6 @@ export function PortalSessionPage() {
 
       sessionStorage.setItem('moneycard_portal_session_token', res.data.sessionToken);
       sessionStorage.setItem('moneycard_portal_card_number', res.data.cardDisplayNumber);
-      localStorage.setItem('moneycard_portal_session_token', res.data.sessionToken);
-      localStorage.setItem('moneycard_portal_card_number', res.data.cardDisplayNumber);
       setSessionToken(res.data.sessionToken);
       setIsScanning(false);
       await fetchSessionDetail(res.data.sessionToken);
@@ -143,11 +151,16 @@ export function PortalSessionPage() {
   const handleExitSession = () => {
     sessionStorage.removeItem('moneycard_portal_session_token');
     sessionStorage.removeItem('moneycard_portal_card_number');
-    localStorage.removeItem('moneycard_portal_session_token');
-    localStorage.removeItem('moneycard_portal_card_number');
+    try {
+      localStorage.removeItem('moneycard_portal_session_token');
+      localStorage.removeItem('moneycard_portal_card_number');
+    } catch {
+      // ignore
+    }
     setSessionToken(null);
     setSessionDetail(null);
     setLookupError(null);
+    setIsScanning(false);
     navigate('/portal', { replace: true });
   };
 

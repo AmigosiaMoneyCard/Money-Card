@@ -18,7 +18,7 @@ import { ArrowLeft, Receipt } from 'lucide-react';
 export function PortalReceiptsPage() {
   const navigate = useNavigate();
   const sessionToken = typeof window !== 'undefined'
-    ? (sessionStorage.getItem('moneycard_portal_session_token') || localStorage.getItem('moneycard_portal_session_token'))
+    ? sessionStorage.getItem('moneycard_portal_session_token')
     : null;
 
   const [receipts, setReceipts] = useState<PublicReceipt[]>([]);
