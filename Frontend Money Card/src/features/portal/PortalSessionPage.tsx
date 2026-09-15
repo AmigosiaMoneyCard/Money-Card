@@ -28,6 +28,16 @@ import {
   User,
 } from 'lucide-react';
 
+function checkIsStandalone(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as unknown as { standalone?: boolean }).standalone === true ||
+    document.referrer.includes('android-app://') ||
+    window.location.search.includes('source=pwa')
+  );
+}
+
 export function PortalSessionPage() {
   const navigate = useNavigate();
   const [sessionToken, setSessionToken] = useState<string | null>(() => {
@@ -38,6 +48,21 @@ export function PortalSessionPage() {
   const [sessionDetail, setSessionDetail] = useState<PublicSessionDetail | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isStandalone, setIsStandalone] = useState(checkIsStandalone);
+  const [bypassInstall, setBypassInstall] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(display-mode: standalone)');
+    const handleChange = (e: MediaQueryListEvent) => {
+      if (e.matches) {
+        setIsStandalone(true);
+      }
+    };
+    mediaQuery.addEventListener?.('change', handleChange);
+    return () => {
+      mediaQuery.removeEventListener?.('change', handleChange);
+    };
+  }, []);
 
   // Manual lookup & in-browser scanner states
   const [lookupInput, setLookupInput] = useState('');
@@ -134,6 +159,19 @@ export function PortalSessionPage() {
     setLookupError(null);
     navigate('/portal', { replace: true });
   };
+
+  // When viewed in mobile browser (not standalone PWA) and customer has not clicked bypass "Not now":
+  // Render ONLY the PWA Install prompt screen as requested.
+  if (!isStandalone && !bypassInstall) {
+    return (
+      <div className="py-6 space-y-6 max-w-lg mx-auto">
+        <PwaInstallBanner
+          isStandaloneGate={true}
+          onDismiss={() => setBypassInstall(true)}
+        />
+      </div>
+    );
+  }
 
   if (!sessionToken && !sessionDetail) {
     return (

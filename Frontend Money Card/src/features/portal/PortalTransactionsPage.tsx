@@ -26,7 +26,9 @@ import {
 
 export function PortalTransactionsPage() {
   const navigate = useNavigate();
-  const sessionToken = sessionStorage.getItem('moneycard_portal_session_token');
+  const sessionToken = typeof window !== 'undefined'
+    ? (sessionStorage.getItem('moneycard_portal_session_token') || localStorage.getItem('moneycard_portal_session_token'))
+    : null;
 
   const [transactions, setTransactions] = useState<PublicTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);

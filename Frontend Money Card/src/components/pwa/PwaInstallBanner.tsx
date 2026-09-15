@@ -6,7 +6,12 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 }
 
-export function PwaInstallBanner() {
+export interface PwaInstallBannerProps {
+  isStandaloneGate?: boolean;
+  onDismiss?: () => void;
+}
+
+export function PwaInstallBanner({ isStandaloneGate = false, onDismiss }: PwaInstallBannerProps = {}) {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isStandalone, setIsStandalone] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
@@ -18,15 +23,16 @@ export function PwaInstallBanner() {
     const isStandaloneMode =
       window.matchMedia('(display-mode: standalone)').matches ||
       (window.navigator as unknown as { standalone?: boolean }).standalone === true ||
-      document.referrer.includes('android-app://');
+      document.referrer.includes('android-app://') ||
+      window.location.search.includes('source=pwa');
 
     if (isStandaloneMode) {
       setIsStandalone(true);
       return;
     }
 
-    // Check if user dismissed it in this session
-    if (sessionStorage.getItem('moneycard_pwa_dismissed') === 'true') {
+    // Check if user dismissed it in this session (only apply when not gate mode)
+    if (!isStandaloneGate && sessionStorage.getItem('moneycard_pwa_dismissed') === 'true') {
       setIsDismissed(true);
       return;
     }
@@ -71,6 +77,7 @@ export function PwaInstallBanner() {
   const handleDismiss = () => {
     setIsDismissed(true);
     sessionStorage.setItem('moneycard_pwa_dismissed', 'true');
+    onDismiss?.();
   };
 
   // If already installed or dismissed, hide
