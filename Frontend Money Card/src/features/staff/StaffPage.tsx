@@ -367,6 +367,8 @@ export function StaffPage() {
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
   const [formName, setFormName] = useState('');
   const [formEmail, setFormEmail] = useState('');
+  const [formPassword, setFormPassword] = useState('');
+  const [showAddPassword, setShowAddPassword] = useState(false);
   const [formBranchIds, setFormBranchIds] = useState<string[]>([]);
   const [formPermissions, setFormPermissions] = useState<Permission[]>([]);
   const [showAdvancedPerms, setShowAdvancedPerms] = useState(false);
@@ -479,6 +481,8 @@ export function StaffPage() {
   const handleOpenAdd = () => {
     setFormName('');
     setFormEmail('');
+    setFormPassword('');
+    setShowAddPassword(false);
     setFormBranchIds(branches.map((b) => b.id)); // Default assign all active branches
     setFormPermissions([
       'CARD_VIEW',
@@ -510,6 +514,10 @@ export function StaffPage() {
       errors.email = 'Email address is required';
     } else if (!/^[a-zA-Z0-9._%+-]+@(?:gmail|googlemail)\.com$/.test(trimmedEmail)) {
       errors.email = 'Please provide a valid Gmail address (@gmail.com)';
+    }
+
+    if (formPassword.trim() && formPassword.trim().length < 8) {
+      errors.password = 'Initial password must be at least 8 characters';
     }
 
     setFormErrors(errors);
@@ -572,6 +580,7 @@ export function StaffPage() {
       const res = await apiService.staff.createStaff({
         name: formName.trim(),
         email: formEmail.trim().toLowerCase(),
+        password: formPassword.trim() || undefined,
         assignedBranchIds: formBranchIds,
         permissions: Array.from(finalPermissions),
       });
@@ -588,9 +597,13 @@ export function StaffPage() {
         return;
       }
 
-      notify.success(`Staff member ${res.data.name} created! Activation invite sent to ${formEmail.trim().toLowerCase()}`);
-      setCreatedPendingStaff(res.data);
-      setShowPendingStaffSuccessModal(true);
+      if (formPassword.trim()) {
+        notify.success(`Staff member ${res.data.name} created and activated! They can immediately log in to the mobile app.`);
+      } else {
+        notify.success(`Staff member ${res.data.name} created! Activation invite sent to ${formEmail.trim().toLowerCase()}`);
+        setCreatedPendingStaff(res.data);
+        setShowPendingStaffSuccessModal(true);
+      }
       setShowAddModal(false);
       fetchStaffData();
     } catch {
@@ -1974,6 +1987,37 @@ export function StaffPage() {
                     error={formErrors.email}
                     disabled={isSubmitting}
                   />
+                </div>
+
+                <div>
+                  <Input
+                    id="add-staff-password"
+                    type={showAddPassword ? 'text' : 'password'}
+                    label="Initial Password (Optional)"
+                    placeholder="Min 8 characters (leave blank to send invite email)"
+                    maxLength={50}
+                    value={formPassword}
+                    onChange={(e) => {
+                      setFormPassword(e.target.value);
+                      if (formErrors.password) setFormErrors((prev) => ({ ...prev, password: '' }));
+                    }}
+                    error={formErrors.password}
+                    disabled={isSubmitting}
+                    rightElement={
+                      <button
+                        type="button"
+                        onClick={() => setShowAddPassword(!showAddPassword)}
+                        className="text-slate-400 hover:text-slate-600 focus:outline-none p-1 flex items-center justify-center cursor-pointer"
+                        title={showAddPassword ? 'Hide password' : 'Show password'}
+                        tabIndex={-1}
+                      >
+                        {showAddPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    }
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    If provided, the account is activated immediately so the staff member can log in to the mobile app right away without email confirmation.
+                  </p>
                 </div>
 
                 {orgOverview?.usage && (

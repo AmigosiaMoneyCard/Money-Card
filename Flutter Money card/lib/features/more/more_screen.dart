@@ -20,39 +20,44 @@ class MoreScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     final branch = ref.watch(currentBranchProvider);
 
-    return ListView(
-      padding: AppSpacing.paddingMd,
-      children: [
-        // Staff Profile Summary Card
-        AppCard(
-          padding: AppSpacing.paddingMd,
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: AppColors.primaryLight,
-                child: Text(
-                  (user?.name.isNotEmpty ?? false) ? user!.name[0] : 'S',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primaryDark,
+    return RefreshIndicator(
+      onRefresh: () async {
+        await ref.read(authNotifierProvider.notifier).refreshCurrentUser();
+      },
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: AppSpacing.paddingMd,
+        children: [
+          // Staff Profile Summary Card
+          AppCard(
+            padding: AppSpacing.paddingMd,
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 24,
+                  backgroundColor: AppColors.primaryLight,
+                  child: Text(
+                    (user?.name != null && user!.name.trim().isNotEmpty) ? user.name.trim()[0].toUpperCase() : 'S',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primaryDark,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      user?.name ?? 'Staff User',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimaryLight,
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        (user?.name != null && user!.name.trim().isNotEmpty) ? user.name.trim() : 'Staff User',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimaryLight,
+                        ),
                       ),
-                    ),
                     Text(
                       '${user?.email ?? ''} • ${user?.role ?? 'STAFF'}',
                       style: const TextStyle(
@@ -166,8 +171,9 @@ class MoreScreen extends ConsumerWidget {
           ),
         ],
       ],
-    );
-  }
+    ),
+  );
+}
 
   void _showErrorSimulationSheet(BuildContext context) {
     showModalBottomSheet(

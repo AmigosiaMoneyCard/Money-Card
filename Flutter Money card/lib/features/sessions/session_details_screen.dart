@@ -1,17 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
-import '../../core/constants/permission_constants.dart';
 import '../../models/card_session.dart';
 import '../../models/transaction.dart';
 import '../../providers/session_operations_provider.dart';
 import '../../widgets/common/app_badge.dart';
-import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_card.dart';
 import '../../widgets/common/section_header.dart';
-import '../../widgets/guards/permission_guard.dart';
 import '../../widgets/states/app_error_state.dart';
 import '../../widgets/states/app_loading_view.dart';
 
@@ -192,44 +188,8 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
           ),
           const SizedBox(height: AppSpacing.lg),
 
-          // ─── Operational Actions ─────────────────────────────────────
-          if (isActive) ...[
-            const SectionHeader(title: 'Session Operations'),
-            const SizedBox(height: AppSpacing.sm),
-
-            PermissionGuard.single(
-              permission: AppPermission.recharge,
-              child: AppButton(
-                label: 'Recharge Card (Cash / UPI)',
-                icon: Icons.add_card,
-                onPressed: () => context.push('/app/recharge/${session.id}'),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-
-            PermissionGuard.single(
-              permission: AppPermission.purchase,
-              child: AppOutlinedButton(
-                label: 'New POS Purchase',
-                icon: Icons.point_of_sale,
-                onPressed: () => context.push('/app/pos/${session.id}'),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-
-            PermissionGuard.single(
-              permission: AppPermission.cardReturn,
-              child: AppOutlinedButton(
-                label: 'Return & Settle Card',
-                icon: Icons.assignment_return_outlined,
-                onPressed: () => context.push('/app/return/${session.id}'),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-          ],
-
           // ─── Activity & Transactions Timeline ────────────────────────
-          const SectionHeader(title: 'Transactions & Purchased Products'),
+          const SectionHeader(title: 'Transactions'),
           const SizedBox(height: AppSpacing.xs),
 
           // Render Transactions (Purchases, Recharges, Settlement)
@@ -273,8 +233,6 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
   Widget _buildTransactionCard(Transaction txn) {
     final isPurchase = txn.type == TransactionType.purchase;
     final isRecharge = txn.type == TransactionType.recharge;
-
-    final items = txn.items ?? [];
 
     Color badgeBg;
     Color badgeFg;
@@ -385,96 +343,36 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
             ),
           ),
 
-          // ─── Purchased Products Breakdown ─────────────────────────────
-          if (isPurchase && items.isNotEmpty) ...[
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-              padding: const EdgeInsets.all(AppSpacing.sm),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.restaurant_menu, size: 14, color: Colors.grey.shade600),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Purchased Products (${items.length})',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey.shade700,
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                    ],
+          // Footer details (Payment method & Balance after line)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.sm),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  isPurchase
+                      ? 'Paid via: Money Card Balance'
+                      : isRecharge
+                          ? 'Payment: ${txn.paymentMethod == PaymentMethod.upi ? "UPI" : "Cash"}'
+                          : 'Refund via: Cash Return',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondaryLight,
+                    fontWeight: FontWeight.w500,
                   ),
-                  const Divider(height: 12),
-                  ...items.map((it) {
-                    final itemName = (it.itemName != null && it.itemName!.isNotEmpty) ? it.itemName! : 'Cafeteria Item';
-                    final qty = it.quantity;
-                    final unitPrice = it.unitPrice ?? 0.0;
-                    final total = it.totalAmount ?? (unitPrice * qty);
-
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 3),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Row(
-                              children: [
-                                Text(
-                                  itemName,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimaryLight,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primaryLight,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    '× $qty',
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.primary,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Text(
-                            unitPrice > 0
-                                ? '₹${unitPrice.toStringAsFixed(2)} ea  •  ₹${total.toStringAsFixed(2)}'
-                                : '₹${total.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondaryLight,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-                ],
-              ),
+                ),
+                if (txn.balanceAfter != null)
+                  Text(
+                    'Balance after: ₹${txn.balanceAfter!.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimaryLight,
+                    ),
+                  ),
+              ],
             ),
-            const SizedBox(height: AppSpacing.sm),
-          ],
-
-
+          ),
         ],
       ),
     );

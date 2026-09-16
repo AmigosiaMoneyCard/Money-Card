@@ -215,6 +215,22 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
     }
   }
+
+  /// Silently re-fetch and update current authenticated staff profile from /api/v1/auth/me
+  Future<AuthUser?> refreshCurrentUser() async {
+    try {
+      final user = await _authRepository.getCurrentUser();
+      if (user != null) {
+        state = state.copyWith(
+          status: AuthStatus.authenticated,
+          user: user,
+        );
+      }
+      return user;
+    } catch (_) {
+      return null;
+    }
+  }
 }
 
 /// Main Auth State Provider

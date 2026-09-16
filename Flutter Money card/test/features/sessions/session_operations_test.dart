@@ -217,7 +217,7 @@ void main() {
       // Verify Screen Title & Active Segment
       expect(find.text('Card Sessions'), findsOneWidget);
       expect(find.text('Active'), findsOneWidget);
-      expect(find.text('Branch: Main Cafeteria'), findsNWidgets(3)); // Header + 2 session cards
+      expect(find.text('Counter: Main Cafeteria'), findsOneWidget);
 
       // Verify Active Sessions Rendered with Card Identifier & Balance
       expect(find.text('Card MC-101'), findsOneWidget);
@@ -293,7 +293,7 @@ void main() {
       expect(find.text('Retry'), findsOneWidget);
     });
 
-    testWidgets('SessionDetailsScreen renders balance and operation actions', (tester) async {
+    testWidgets('SessionDetailsScreen renders only session details and timeline without session operations', (tester) async {
       const mockUser = AuthUser(
         id: 'staff-1',
         email: 'staff@moneycard.io',
@@ -330,10 +330,12 @@ void main() {
 
       expect(find.text('₹350.00'), findsOneWidget);
       expect(find.text('ACTIVE'), findsOneWidget);
-      expect(find.text('New POS Purchase'), findsOneWidget);
-      expect(find.text('Return & Settle Card'), findsOneWidget);
+      expect(find.text('Session Operations'), findsNothing);
+      expect(find.text('New POS Purchase'), findsNothing);
+      expect(find.text('Return & Settle Card'), findsNothing);
+      expect(find.text('Recharge Card (Cash / UPI)'), findsNothing);
     });
-    testWidgets('SessionDetailsScreen renders transactions with itemized purchased products', (tester) async {
+    testWidgets('SessionDetailsScreen renders transactions timeline with transaction amount without itemized purchased products', (tester) async {
       const mockUser = AuthUser(
         id: 'staff-1',
         email: 'staff@moneycard.io',
@@ -411,12 +413,11 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('Transactions & Purchased Products'), findsOneWidget);
+      expect(find.text('Transactions'), findsOneWidget);
       expect(find.text('POS Purchase'), findsOneWidget);
       expect(find.text('-₹180.00'), findsOneWidget);
-      expect(find.text('Chicken Sandwich'), findsOneWidget);
-      expect(find.text('× 2'), findsOneWidget);
-      expect(find.text('Purchased Products (1)'), findsOneWidget);
+      expect(find.text('Chicken Sandwich'), findsNothing);
+      expect(find.text('Purchased Products (1)'), findsNothing);
 
       await tester.scrollUntilVisible(find.text('Wallet Recharge (UPI)'), 200);
       expect(find.text('Wallet Recharge (UPI)'), findsOneWidget);

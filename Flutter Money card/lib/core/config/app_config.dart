@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show appFlavor;
 
 enum ApiMode {
   mock('mock'),
@@ -20,18 +21,40 @@ enum ApiMode {
 class AppConfig {
   AppConfig._();
 
-  static const String appName = 'Money Card (Staging)';
-  static const String appVersion = '1.0.0';
+  static String? _overrideEnvironment;
 
-  /// Environment: 'staging', 'production', or 'development'
-  static const String environment = String.fromEnvironment(
-    'ENVIRONMENT',
-    defaultValue: 'staging',
-  );
+  static const String appVersion = '1.0.1';
 
-  static bool get isStaging => environment.toLowerCase() == 'staging';
-  static bool get isProduction => environment.toLowerCase() == 'production';
+  /// Environment: 'production', 'staging', or 'development'
+  static String get environment {
+    if (_overrideEnvironment != null && _overrideEnvironment!.isNotEmpty) {
+      return _overrideEnvironment!.toLowerCase();
+    }
+    // 1. Check Flutter Gradle / Shorebird CLI flavor passed via --flavor
+    if (appFlavor != null && appFlavor!.isNotEmpty) {
+      final flavor = appFlavor!.toLowerCase();
+      if (flavor == 'production' || flavor == 'prod') {
+        return 'production';
+      }
+      if (flavor == 'staging') {
+        return 'staging';
+      }
+      return flavor;
+    }
+    // 2. Check compile-time dart-define
+    const env = String.fromEnvironment('ENVIRONMENT', defaultValue: '');
+    if (env.isNotEmpty) {
+      return env.toLowerCase();
+    }
+    // 3. Fallback: default to staging
+    return 'staging';
+  }
+
+  static bool get isStaging => environment == 'staging';
+  static bool get isProduction => environment == 'production' || environment == 'prod';
   static bool get isDevelopment => !isProduction && !isStaging;
+
+  static String get appName => isProduction ? 'Money Card' : 'Money Card (Staging)';
 
   /// Staging API URL (connected to money-card-backend-staging)
   static const String stagingBaseUrl = String.fromEnvironment(
@@ -58,6 +81,14 @@ class AppConfig {
   /// Configurable active base URL
   static String _activeBaseUrl = _computeInitialBaseUrl();
 
+  /// Explicit initialization called in main() after WidgetsFlutterBinding.ensureInitialized()
+  static void initialize({String? env}) {
+    if (env != null && env.isNotEmpty) {
+      _overrideEnvironment = env;
+    }
+    _activeBaseUrl = _computeInitialBaseUrl();
+  }
+
   static String _computeInitialBaseUrl() {
     const envBaseUrl = String.fromEnvironment('BASE_URL', defaultValue: '');
     if (envBaseUrl.isNotEmpty) {
@@ -69,7 +100,7 @@ class AppConfig {
     if (isProduction) {
       return normalizeUrl(productionBaseUrl);
     }
-    // Default for staging branch: stagingBaseUrl
+    // Default for staging: stagingBaseUrl
     return normalizeUrl(stagingBaseUrl);
   }
 
