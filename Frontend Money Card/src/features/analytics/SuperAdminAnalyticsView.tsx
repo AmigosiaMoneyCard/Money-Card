@@ -41,10 +41,6 @@ import {
   Bell,
   Check,
   SlidersHorizontal,
-  ShoppingBag,
-  TrendingUp,
-  BarChart3,
-  CreditCard,
   Users,
 } from 'lucide-react';
 
@@ -341,11 +337,11 @@ export function SuperAdminAnalyticsView() {
   const handleSetAllSections = (enable: boolean) => {
     const updated: PlatformPdfSectionOptions = {
       includePlatformKpis: enable,
-      includeFinancialSummary: enable,
+      includeFinancialSummary: false,
       includeTenantOrgs: enable,
-      includeBranchPerformance: enable,
-      includeProductDemand: enable,
-      includePeakTraffic: enable,
+      includeBranchPerformance: false,
+      includeProductDemand: false,
+      includePeakTraffic: false,
       includeSubscriptionPlans: enable,
     };
     setPdfSections(updated);
@@ -560,37 +556,6 @@ export function SuperAdminAnalyticsView() {
             </Button>
           </div>
 
-          {/* ── Period Operational Metrics (Reacts dynamically to Time Window: Yesterday, Today, etc.) ── */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Period Operational Metrics ({datePreset === 'all' ? 'All Time' : datePreset === 'yesterday' ? 'Yesterday' : datePreset === 'today' ? 'Today' : datePreset === 'last7' ? 'Last 7 Days' : datePreset === 'last30' ? 'Last 30 Days' : datePreset === 'thisMonth' ? 'This Month' : `${startDate} to ${endDate}`})
-              </h2>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard
-                label="Purchase Sales Volume"
-                value={formatCurrency(analytics?.totalPurchaseVolume || 0)}
-                icon={<ShoppingBag className="h-5 w-5 text-emerald-600" />}
-              />
-              <StatCard
-                label="Card Wallet Recharges"
-                value={formatCurrency(analytics?.totalRechargeVolume || 0)}
-                icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
-              />
-              <StatCard
-                label="Total Transactions"
-                value={(analytics?.totalTransactions || 0).toLocaleString()}
-                icon={<BarChart3 className="h-5 w-5 text-sky-600" />}
-              />
-              <StatCard
-                label="Active Card Sessions"
-                value={(analytics?.activeSessionsCount || 0).toLocaleString()}
-                icon={<CreditCard className="h-5 w-5 text-amber-600" />}
-              />
-            </div>
-          </div>
-
           {/* Top Platform KPI Cards (Super Admin B2B SaaS Metrics) */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
@@ -698,54 +663,15 @@ export function SuperAdminAnalyticsView() {
             </div>
 
             {/* Clickable Report Sections Toolbar */}
-            <div className="space-y-2.5 pt-2.5">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-                  Optional Report Sections (Click to Include / Exclude)
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
-                  {[
-                    { key: 'includeFinancialSummary' as const, label: '2. Revenue & Sales Summary', id: 'platform-toggle-financial' },
-                    { key: 'includeBranchPerformance' as const, label: '4. Counter Performance', id: 'platform-toggle-branches' },
-                    { key: 'includeProductDemand' as const, label: '5. Top Selling Products', id: 'platform-toggle-products' },
-                    { key: 'includePeakTraffic' as const, label: '6. Peak Hours & Traffic Summary', id: 'platform-toggle-peak' },
-                  ].map((sec) => {
-                    const isSelected = !!pdfSections[sec.key];
-                    return (
-                      <button
-                        key={sec.key}
-                        type="button"
-                        id={sec.id}
-                        onClick={() => handleToggleSection(sec.key)}
-                        className={`flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-all cursor-pointer ${
-                          isSelected
-                            ? 'border-emerald-500 bg-emerald-50 text-emerald-950 shadow-2xs ring-1 ring-emerald-500/30'
-                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
-                        }`}
-                      >
-                        <div
-                          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
-                            isSelected
-                              ? 'border-emerald-600 bg-emerald-600 text-white'
-                              : 'border-slate-300 bg-white'
-                          }`}
-                        >
-                          {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
-                        </div>
-                        <span className="text-xs font-semibold">{sec.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Base Platform Sections Toggle */}
-              <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
-                <span className="text-[11px] font-semibold text-slate-500">Core Platform Sections:</span>
+            <div className="pt-2.5">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
+                Optional Report Sections (Click to Include / Exclude)
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 {[
                   { key: 'includePlatformKpis' as const, label: '1. Platform Overview', id: 'platform-toggle-kpis' },
-                  { key: 'includeTenantOrgs' as const, label: '3. Cafeterias & Usage', id: 'platform-toggle-orgs' },
-                  { key: 'includeSubscriptionPlans' as const, label: '7. Subscription Plans', id: 'platform-toggle-plans' },
+                  { key: 'includeTenantOrgs' as const, label: '2. Cafeterias & Usage', id: 'platform-toggle-orgs' },
+                  { key: 'includeSubscriptionPlans' as const, label: '3. Subscription Plans', id: 'platform-toggle-plans' },
                 ].map((sec) => {
                   const isSelected = !!pdfSections[sec.key];
                   return (
@@ -754,14 +680,22 @@ export function SuperAdminAnalyticsView() {
                       type="button"
                       id={sec.id}
                       onClick={() => handleToggleSection(sec.key)}
-                      className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium border transition-colors cursor-pointer ${
+                      className={`flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-all cursor-pointer ${
                         isSelected
-                          ? 'border-emerald-200 bg-emerald-50/70 text-emerald-800'
-                          : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100'
+                          ? 'border-emerald-500 bg-emerald-50 text-emerald-950 shadow-2xs ring-1 ring-emerald-500/30'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                       }`}
                     >
-                      <span className={`h-1.5 w-1.5 rounded-full ${isSelected ? 'bg-emerald-600' : 'bg-slate-300'}`} />
-                      <span>{sec.label}</span>
+                      <div
+                        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                          isSelected
+                            ? 'border-emerald-600 bg-emerald-600 text-white'
+                            : 'border-slate-300 bg-white'
+                        }`}
+                      >
+                        {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
+                      </div>
+                      <span className="text-xs font-semibold">{sec.label}</span>
                     </button>
                   );
                 })}
