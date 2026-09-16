@@ -277,5 +277,58 @@ describe('Super Admin Analytics - Option-Wise PDF Customization', () => {
       });
       expect(withoutCafeterias.getNumberOfPages()).toBe(2);
     });
+
+    it('renders updated executive PDF structure with Cafeteria Admins, Subscription Revenue, and Quota Utilization', () => {
+      const doc = buildPlatformAnalyticsJsPdf({
+        ...baseParams,
+        totalOrganizations: 2,
+        totalAdmins: 2,
+        activeSubscriptions: 2,
+        totalGatewayRevenue: 2998,
+        organizations: [
+          {
+            id: 'org_1',
+            name: 'khss thottara',
+            status: 'ACTIVE',
+            planName: 'Enterprise',
+            branchCount: 1,
+            branchLimit: 5,
+            staffCount: 0,
+            staffLimit: 30,
+            cardCount: 0,
+            cardLimit: 1000,
+          },
+          {
+            id: 'org_2',
+            name: 'Sreerag',
+            status: 'ACTIVE',
+            planName: 'Enterprise',
+            branchCount: 1,
+            branchLimit: 5,
+            staffCount: 1,
+            staffLimit: 30,
+            cardCount: 1,
+            cardLimit: 1000,
+          },
+        ],
+        plans: [
+          { id: 'p1', name: 'Starter', price: 999, billingInterval: 'MONTHLY', branchLimit: 1, staffLimit: 5, cardLimit: 100, tenantCount: 0 },
+          { id: 'p2', name: 'Standard', price: 1999, billingInterval: 'MONTHLY', branchLimit: 3, staffLimit: 15, cardLimit: 500, tenantCount: 0 },
+          { id: 'p3', name: 'Enterprise', price: 4999, billingInterval: 'MONTHLY', branchLimit: 10, staffLimit: 50, cardLimit: 2000, tenantCount: 2 },
+        ],
+        sections: {
+          includePlatformKpis: true,
+          includeFinancialSummary: false,
+          includeTenantOrgs: true,
+          includeBranchPerformance: false,
+          includeProductDemand: false,
+          includePeakTraffic: false,
+          includeSubscriptionPlans: true,
+        },
+      });
+
+      expect(doc.getNumberOfPages()).toBe(3);
+    });
   });
 });
+
