@@ -283,8 +283,8 @@ function BranchCreateProductModal({
             value={formStatus}
             onChange={(e) => setFormStatus(e.target.value as 'ACTIVE' | 'INACTIVE')}
             options={[
-              { value: 'ACTIVE', label: 'Active (Available for Counter Sales)' },
-              { value: 'INACTIVE', label: 'Inactive (Hidden / Draft)' },
+              { value: 'ACTIVE', label: 'Active' },
+              { value: 'INACTIVE', label: 'Inactive' },
             ]}
           />
         </div>
