@@ -125,9 +125,12 @@ describe('Super Admin Analytics View - SaaS Platform Metrics', () => {
     expect(verifiedRevenue).toBe(1499);
   });
 
-  it('calculates pending plan requests as the 4th core business metric', () => {
-    const pendingCount = mockPlanRequests.filter((r) => r.status === 'PENDING').length;
-    expect(pendingCount).toBe(2);
+  it('calculates subscription revenue as the 4th core business metric', () => {
+    const verifiedRevenue = mockPayments
+      .filter((p) => p.status === 'SUCCESS')
+      .reduce((sum, p) => sum + p.amount, 0);
+    expect(verifiedRevenue).toBe(1499);
+    expect(mockPlanRequests.length).toBe(2);
   });
 
   it('verifies that removed consumer metrics are no longer in the analytics KPI cards structure', () => {
@@ -135,7 +138,7 @@ describe('Super Admin Analytics View - SaaS Platform Metrics', () => {
       'Total Cafeterias',
       'Active Subscriptions',
       'Gateway Subscription Revenue',
-      'Plan Requests',
+      'Subscription Revenue',
     ];
 
     const removedConsumerMetrics = [
@@ -149,6 +152,6 @@ describe('Super Admin Analytics View - SaaS Platform Metrics', () => {
       expect(activeAnalyticsKpiLabels).not.toContain(removed);
     });
 
-    expect(activeAnalyticsKpiLabels).toContain('Plan Requests');
+    expect(activeAnalyticsKpiLabels).toContain('Subscription Revenue');
   });
 });

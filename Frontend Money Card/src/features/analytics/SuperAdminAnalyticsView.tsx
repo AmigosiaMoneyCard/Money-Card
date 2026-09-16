@@ -38,10 +38,10 @@ import {
   RefreshCw,
   Eye,
   Download,
-  Bell,
   Check,
   SlidersHorizontal,
   Users,
+  CreditCard,
 } from 'lucide-react';
 
 export type DatePreset = 'all' | 'today' | 'yesterday' | 'last7' | 'last30' | 'thisMonth' | 'custom';
@@ -577,9 +577,9 @@ export function SuperAdminAnalyticsView() {
             />
 
             <StatCard
-              label="Plan Requests"
-              value={`${pendingRequestsCount} Pending`}
-              icon={<Bell className="h-5 w-5 text-emerald-600" />}
+              label="Subscription Revenue"
+              value={formatCurrency(subscriptionRevenue)}
+              icon={<CreditCard className="h-5 w-5 text-emerald-600" />}
             />
           </div>
 
