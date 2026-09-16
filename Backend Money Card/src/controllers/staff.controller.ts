@@ -659,6 +659,13 @@ export async function changeStaffPassword(req: Request, res: Response) {
       passwordHash: newHash,
       tokenVersion: { increment: 1 },
       mustChangePassword: false,
+      ...(staff.status === UserStatus.PENDING_ACTIVATION || staff.status === UserStatus.INACTIVE
+        ? {
+            status: UserStatus.ACTIVE,
+            activationToken: null,
+            activationTokenExpires: null,
+          }
+        : {}),
     },
     select: {
       id: true,

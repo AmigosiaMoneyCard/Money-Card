@@ -84,7 +84,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
-            await sessionNotifier.loadSessions();
+            await Future.wait([
+              sessionNotifier.loadSessions(),
+              ref.read(authNotifierProvider.notifier).refreshCurrentUser(),
+            ]);
           },
           child: ListView(
             padding: AppSpacing.paddingMd,
@@ -99,7 +102,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Hello, ${user?.name.split(' ').first ?? 'Staff'}',
+                          'Hello, ${(user?.name != null && user!.name.trim().isNotEmpty) ? user.name.trim().split(' ').first : 'Staff'}',
                           style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,

@@ -6,7 +6,7 @@ class ServerConfigStorage {
   final FlutterSecureStorage _storage;
   String? _inMemoryFallback;
 
-  static const String _keyServerUrl = 'mc_custom_server_url';
+  static String get _keyServerUrl => 'mc_custom_server_url_${AppConfig.environment}';
 
   ServerConfigStorage({FlutterSecureStorage? storage})
       : _storage = storage ??
@@ -35,6 +35,10 @@ class ServerConfigStorage {
       if (saved != null && saved.isNotEmpty) {
         return saved;
       }
+      final legacy = await _storage.read(key: 'mc_custom_server_url');
+      if (legacy != null && legacy.isNotEmpty) {
+        return legacy;
+      }
     } catch (_) {
       if (_inMemoryFallback != null && _inMemoryFallback!.isNotEmpty) {
         return _inMemoryFallback;
@@ -46,17 +50,38 @@ class ServerConfigStorage {
   Future<void> resetToDefault() async {
     try {
       await _storage.delete(key: _keyServerUrl);
+      await _storage.delete(key: 'mc_custom_server_url');
     } catch (_) {
       _inMemoryFallback = null;
     }
-    AppConfig.setBaseUrl(AppConfig.defaultLocalBaseUrl);
+    AppConfig.setBaseUrl(
+      AppConfig.isProduction ? AppConfig.productionBaseUrl : AppConfig.stagingBaseUrl,
+    );
   }
 
-  /// Initializes AppConfig from persistent storage on startup
+  /// Initializes AppConfig from persistent storage on startup with cross-environment isolation
   Future<void> initialize() async {
+    AppConfig.initialize();
+
     final savedUrl = await getServerUrl();
     if (savedUrl != null && savedUrl.isNotEmpty) {
+      // Guard: Purge staging backend contamination in production
+      if (AppConfig.isProduction && savedUrl.contains('money-card-backend-staging')) {
+        await resetToDefault();
+        return;
+      }
+      // Guard: Purge production backend contamination in staging
+      if (AppConfig.isStaging &&
+          savedUrl.contains('money-card-backend.onrender.com') &&
+          !savedUrl.contains('money-card-backend-staging')) {
+        await resetToDefault();
+        return;
+      }
       AppConfig.setBaseUrl(savedUrl);
+    } else {
+      AppConfig.setBaseUrl(
+        AppConfig.isProduction ? AppConfig.productionBaseUrl : AppConfig.stagingBaseUrl,
+      );
     }
   }
 }

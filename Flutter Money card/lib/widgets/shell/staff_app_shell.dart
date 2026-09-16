@@ -28,6 +28,9 @@ class _StaffAppShellState extends ConsumerState<StaffAppShell> with WidgetsBindi
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(authNotifierProvider.notifier).refreshCurrentUser();
+    });
   }
 
   @override
@@ -40,6 +43,7 @@ class _StaffAppShellState extends ConsumerState<StaffAppShell> with WidgetsBindi
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       // Programmatic refresh on app resume
+      ref.read(authNotifierProvider.notifier).refreshCurrentUser();
       ref.read(branchNotifierProvider.notifier).refreshBranchesSilently();
       ref.read(sessionListNotifierProvider.notifier).loadSessions();
       ref.read(cardListNotifierProvider.notifier).loadCards();

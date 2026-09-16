@@ -218,20 +218,6 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
                       ),
                     ],
                   ),
-                  const Divider(height: AppSpacing.md),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Icon(Icons.info_outline, size: 16, color: AppColors.primary),
-                      SizedBox(width: AppSpacing.xs),
-                      Expanded(
-                        child: Text(
-                          'Settle session, refund cash to customer, and return card to AVAILABLE state for future issuance.',
-                          style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               ),
             ),
