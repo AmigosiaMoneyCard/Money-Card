@@ -113,11 +113,11 @@ export function SuperAdminAnalyticsView() {
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [pdfSections, setPdfSections] = useState<PlatformPdfSectionOptions>({
     includePlatformKpis: true,
-    includeFinancialSummary: true,
+    includeFinancialSummary: false,
     includeTenantOrgs: true,
-    includeBranchPerformance: true,
-    includeProductDemand: true,
-    includePeakTraffic: true,
+    includeBranchPerformance: false,
+    includeProductDemand: false,
+    includePeakTraffic: false,
     includeSubscriptionPlans: true,
   });
 
@@ -697,43 +697,75 @@ export function SuperAdminAnalyticsView() {
               </div>
             </div>
 
-            {/* Option Pills / Interactive Toggle Cards - Section by section */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 pt-2.5">
-              {[
-                { key: 'includePlatformKpis' as const, label: '1. Platform Overview', id: 'platform-toggle-kpis' },
-                { key: 'includeFinancialSummary' as const, label: '2. Financial & Revenue', id: 'platform-toggle-financial' },
-                { key: 'includeTenantOrgs' as const, label: '3. Cafeterias & Usage', id: 'platform-toggle-orgs' },
-                { key: 'includeBranchPerformance' as const, label: '4. Counter Performance', id: 'platform-toggle-branches' },
-                { key: 'includeProductDemand' as const, label: '5. Top Selling Products', id: 'platform-toggle-products' },
-                { key: 'includePeakTraffic' as const, label: '6. Peak Hours & Traffic', id: 'platform-toggle-peak' },
-                { key: 'includeSubscriptionPlans' as const, label: '7. Subscription Plans', id: 'platform-toggle-plans' },
-              ].map((sec) => {
-                const isSelected = !!pdfSections[sec.key];
-                return (
-                  <button
-                    key={sec.key}
-                    type="button"
-                    id={sec.id}
-                    onClick={() => handleToggleSection(sec.key)}
-                    className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all cursor-pointer ${
-                      isSelected
-                        ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
-                        : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
-                    }`}
-                  >
-                    <div
-                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+            {/* Clickable Report Sections Toolbar */}
+            <div className="space-y-2.5 pt-2.5">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
+                  Optional Report Sections (Click to Include / Exclude)
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+                  {[
+                    { key: 'includeFinancialSummary' as const, label: '2. Revenue & Sales Summary', id: 'platform-toggle-financial' },
+                    { key: 'includeBranchPerformance' as const, label: '4. Counter Performance', id: 'platform-toggle-branches' },
+                    { key: 'includeProductDemand' as const, label: '5. Top Selling Products', id: 'platform-toggle-products' },
+                    { key: 'includePeakTraffic' as const, label: '6. Peak Hours & Traffic Summary', id: 'platform-toggle-peak' },
+                  ].map((sec) => {
+                    const isSelected = !!pdfSections[sec.key];
+                    return (
+                      <button
+                        key={sec.key}
+                        type="button"
+                        id={sec.id}
+                        onClick={() => handleToggleSection(sec.key)}
+                        className={`flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-emerald-500 bg-emerald-50 text-emerald-950 shadow-2xs ring-1 ring-emerald-500/30'
+                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div
+                          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                            isSelected
+                              ? 'border-emerald-600 bg-emerald-600 text-white'
+                              : 'border-slate-300 bg-white'
+                          }`}
+                        >
+                          {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
+                        </div>
+                        <span className="text-xs font-semibold">{sec.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Base Platform Sections Toggle */}
+              <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
+                <span className="text-[11px] font-semibold text-slate-500">Core Platform Sections:</span>
+                {[
+                  { key: 'includePlatformKpis' as const, label: '1. Platform Overview', id: 'platform-toggle-kpis' },
+                  { key: 'includeTenantOrgs' as const, label: '3. Cafeterias & Usage', id: 'platform-toggle-orgs' },
+                  { key: 'includeSubscriptionPlans' as const, label: '7. Subscription Plans', id: 'platform-toggle-plans' },
+                ].map((sec) => {
+                  const isSelected = !!pdfSections[sec.key];
+                  return (
+                    <button
+                      key={sec.key}
+                      type="button"
+                      id={sec.id}
+                      onClick={() => handleToggleSection(sec.key)}
+                      className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium border transition-colors cursor-pointer ${
                         isSelected
-                          ? 'border-emerald-600 bg-emerald-600 text-white'
-                          : 'border-slate-300 bg-white'
+                          ? 'border-emerald-200 bg-emerald-50/70 text-emerald-800'
+                          : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100'
                       }`}
                     >
-                      {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
-                    </div>
-                    <span className="text-xs font-semibold">{sec.label}</span>
-                  </button>
-                );
-              })}
+                      <span className={`h-1.5 w-1.5 rounded-full ${isSelected ? 'bg-emerald-600' : 'bg-slate-300'}`} />
+                      <span>{sec.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
