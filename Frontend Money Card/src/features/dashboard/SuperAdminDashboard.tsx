@@ -88,11 +88,6 @@ export function SuperAdminDashboard() {
   // Organization Filter State
   const [selectedOrgId, setSelectedOrgId] = useState<string>('');
 
-  // Date Filtering State
-  const [datePreset, setDatePreset] = useState<DatePreset>('all');
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
-
   // Search & Cafeterias Accordion / Dropdown Toggle
   const [searchOrgTerm, setSearchOrgTerm] = useState('');
   const [isCafeteriasOpen, setIsCafeteriasOpen] = useState(true);
@@ -100,15 +95,6 @@ export function SuperAdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const handlePresetChange = (preset: DatePreset) => {
-    setDatePreset(preset);
-    if (preset !== 'custom') {
-      const { startDate: s, endDate: e } = getPresetDates(preset);
-      setStartDate(s);
-      setEndDate(e);
-    }
-  };
 
   const fetchPlatformData = useCallback(async (isSilent = false) => {
     if (!isSilent) setIsLoading(true);
@@ -178,8 +164,6 @@ export function SuperAdminDashboard() {
   const subscriptionRevenue = useMemo(() => {
     const filteredPayments = payments.filter((p) => {
       if (selectedOrgId && p.organizationId !== selectedOrgId) return false;
-      if (startDate && p.createdAt < startDate) return false;
-      if (endDate && p.createdAt > `${endDate}T23:59:59.999Z`) return false;
       return true;
     });
 
@@ -197,7 +181,7 @@ export function SuperAdminDashboard() {
     return targetOrgs
       .filter((o) => o.status === 'ACTIVE')
       .reduce((sum, o) => sum + (o.plan?.price || 0), 0);
-  }, [payments, orgs, selectedOrgId, startDate, endDate]);
+  }, [payments, orgs, selectedOrgId]);
 
   const filteredOrgs = useMemo(() => {
     if (!searchOrgTerm.trim()) return orgs;
@@ -403,67 +387,20 @@ export function SuperAdminDashboard() {
         <ErrorState title="Could not load dashboard data" message={error} onRetry={() => fetchPlatformData(false)} />
       ) : (
         <div className="space-y-6">
-          {/* ── Filter Toolbar (Cafeteria Scope, Time Window, Refresh Data) ── */}
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Cafeteria Scope Filter */}
-              <div className="w-full sm:w-56">
-                <label htmlFor="dashboard-cafeteria-filter" className="mb-1 block text-[11px] font-medium text-slate-600">Cafeteria Scope</label>
-                <Select
-                  id="dashboard-cafeteria-filter"
-                  value={selectedOrgId}
-                  onChange={(e) => setSelectedOrgId(e.target.value)}
-                  options={[
-                    { value: '', label: 'All Cafeterias' },
-                    ...orgs.map((o) => ({ value: o.id, label: o.name })),
-                  ]}
-                />
-              </div>
-
-              {/* Time Window Filter */}
-              <div className="w-full sm:w-48">
-                <label htmlFor="dashboard-preset-filter" className="mb-1 block text-[11px] font-medium text-slate-600">Time Window</label>
-                <Select
-                  id="dashboard-preset-filter"
-                  value={datePreset}
-                  onChange={(e) => handlePresetChange(e.target.value as DatePreset)}
-                  options={[
-                    { value: 'all', label: 'All Time' },
-                    { value: 'today', label: 'Today' },
-                    { value: 'yesterday', label: 'Yesterday' },
-                    { value: 'last7', label: 'Last 7 Days' },
-                    { value: 'last30', label: 'Last 30 Days' },
-                    { value: 'thisMonth', label: 'This Month' },
-                    { value: 'custom', label: 'Custom Range' },
-                  ]}
-                />
-              </div>
-
-              {/* Custom Date Inputs (if selected) */}
-              {datePreset === 'custom' && (
-                <div className="flex flex-wrap items-end gap-2">
-                  <div>
-                    <label htmlFor="dashboard-start-date" className="mb-1 block text-[11px] font-medium text-slate-600">Start Date</label>
-                    <input
-                      id="dashboard-start-date"
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="dashboard-end-date" className="mb-1 block text-[11px] font-medium text-slate-600">End Date</label>
-                    <input
-                      id="dashboard-end-date"
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
-                    />
-                  </div>
-                </div>
-              )}
+          {/* ── Filter Toolbar (Cafeteria Scope, Refresh Data) ── */}
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4 sm:flex-row sm:items-center sm:justify-between">
+            {/* Cafeteria Scope Filter */}
+            <div className="w-full sm:w-64">
+              <label htmlFor="dashboard-cafeteria-filter" className="mb-1 block text-[11px] font-medium text-slate-600">Cafeteria Scope</label>
+              <Select
+                id="dashboard-cafeteria-filter"
+                value={selectedOrgId}
+                onChange={(e) => setSelectedOrgId(e.target.value)}
+                options={[
+                  { value: '', label: 'All Cafeterias' },
+                  ...orgs.map((o) => ({ value: o.id, label: o.name })),
+                ]}
+              />
             </div>
 
             <Button
@@ -472,7 +409,7 @@ export function SuperAdminDashboard() {
               onClick={() => fetchPlatformData(false)}
               isLoading={isRefreshing}
               leftIcon={<RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />}
-              className="shrink-0 self-start lg:self-center"
+              className="shrink-0 self-start sm:self-end"
             >
               Refresh Data
             </Button>
