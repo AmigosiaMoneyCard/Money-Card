@@ -247,5 +247,34 @@ describe('Super Admin Analytics - Option-Wise PDF Customization', () => {
       });
       expect(doc.getNumberOfPages()).toBe(3);
     });
+
+    it('renders initial default view with sections 2, 4, 5, 6 excluded and toggles dynamically', () => {
+      const defaultSections = {
+        includePlatformKpis: true,
+        includeFinancialSummary: false,
+        includeTenantOrgs: true,
+        includeBranchPerformance: false,
+        includeProductDemand: false,
+        includePeakTraffic: false,
+        includeSubscriptionPlans: true,
+      };
+      const doc = buildPlatformAnalyticsJsPdf({
+        ...baseParams,
+        sections: defaultSections,
+      });
+      // Page 1 has Sec 1 (KPIs), Page 2 has Sec 3 (Cafeterias), Page 3 has Sec 7 (Subscription Plans)
+      expect(doc.getNumberOfPages()).toBe(3);
+
+      // Now toggle on Section 2 and Section 4
+      const toggledDoc = buildPlatformAnalyticsJsPdf({
+        ...baseParams,
+        sections: {
+          ...defaultSections,
+          includeFinancialSummary: true,
+          includeBranchPerformance: true,
+        },
+      });
+      expect(toggledDoc.getNumberOfPages()).toBe(3);
+    });
   });
 });
