@@ -12,11 +12,10 @@ import {
   EmptyState,
   ErrorState,
 } from '@/components/ui';
-import { formatDate, formatCurrency } from '@/utils';
+import { formatDateTime, formatCurrency } from '@/utils';
 import {
   ArrowLeft,
   History,
-  ArrowUpRight,
   ArrowDownLeft,
   RotateCcw,
   ChevronDown,
@@ -123,8 +122,8 @@ export function PortalTransactionsPage() {
         <div className="space-y-3">
           {transactions.map((txn) => {
             const isExpanded = expandedTxnId === txn.id;
-            const isRecharge = txn.type === 'RECHARGE';
-            const isRefund = txn.type === 'REFUND';
+            const isRecharge = txn.type === 'RECHARGE' || txn.type === 'RECHARGE_CASH' || txn.type === 'RECHARGE_UPI' || String(txn.type).includes('RECHARGE');
+            const isRefund = txn.type === 'REFUND' || txn.type === 'REFUND_RETURN' || String(txn.type).includes('REFUND');
 
             return (
               <Card key={txn.id} padding="sm" className="space-y-3">
@@ -144,7 +143,7 @@ export function PortalTransactionsPage() {
                           ? 'bg-emerald-50 text-emerald-600'
                           : isRefund
                             ? 'bg-rose-50 text-rose-600'
-                            : 'bg-emerald-50 text-emerald-600'
+                            : 'bg-amber-50 text-amber-600'
                       }`}
                     >
                       {isRecharge ? (
@@ -152,7 +151,7 @@ export function PortalTransactionsPage() {
                       ) : isRefund ? (
                         <RotateCcw className="h-5 w-5" />
                       ) : (
-                        <ArrowUpRight className="h-5 w-5" />
+                        <ShoppingBag className="h-5 w-5" />
                       )}
                     </div>
 
@@ -160,10 +159,10 @@ export function PortalTransactionsPage() {
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold text-slate-900">
                           {isRecharge
-                            ? `Card Recharge (${txn.paymentMethod || 'CASH'})`
+                            ? 'Recharge successful'
                             : isRefund
                               ? 'Session Refund Settlement'
-                              : 'Purchase Item'}
+                              : 'Purchase item'}
                         </span>
                         <Badge
                           variant={txn.status === 'SUCCESS' ? 'success' : 'outline'}
@@ -172,7 +171,7 @@ export function PortalTransactionsPage() {
                           {txn.status}
                         </Badge>
                       </div>
-                      <p className="text-xs text-slate-500">{formatDate(txn.timestamp)}</p>
+                      <p className="text-xs text-slate-500">{formatDateTime(txn.timestamp)}</p>
                     </div>
                   </div>
 

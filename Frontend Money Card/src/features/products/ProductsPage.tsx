@@ -341,8 +341,8 @@ function ProductsCreateModal({
               value={formStatus}
               onChange={(e) => setFormStatus(e.target.value as 'ACTIVE' | 'INACTIVE')}
               options={[
-                { value: 'ACTIVE', label: 'ACTIVE (Available for sale)' },
-                { value: 'INACTIVE', label: 'INACTIVE (Hidden from POS)' },
+                { value: 'ACTIVE', label: 'Active' },
+                { value: 'INACTIVE', label: 'Inactive' },
               ]}
             />
           </div>
