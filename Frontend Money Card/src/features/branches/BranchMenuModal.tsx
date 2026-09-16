@@ -8,7 +8,8 @@ import type { Branch, ProductWithInventory, InventoryItem } from '@/types';
 import {
   Button,
   Input,
-  Select,
+  CustomSelect,
+  type CustomSelectOption,
   Badge,
   Modal,
   ModalFooter,
@@ -27,6 +28,13 @@ import {
   Trash2,
   Search,
   RefreshCw,
+  Layers,
+  Coffee,
+  Utensils,
+  UtensilsCrossed,
+  Clock,
+  Sparkles,
+  X,
 } from 'lucide-react';
 
 export interface BranchMenuModalProps {
@@ -90,6 +98,107 @@ function matchesProductFilter(
     matchesProductStockStatus(product, statusStock)
   );
 }
+
+const STATUS_STOCK_FILTER_OPTIONS: CustomSelectOption[] = [
+  {
+    value: 'ALL',
+    label: 'All Statuses & Stock',
+    icon: <Sliders className="h-3.5 w-3.5 text-slate-500" />,
+  },
+  {
+    value: 'ACTIVE',
+    label: 'Active for Sale',
+    icon: <span className="h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-emerald-200" />,
+    badge: 'Live',
+  },
+  {
+    value: 'INACTIVE',
+    label: 'Inactive / Hidden',
+    icon: <span className="h-2 w-2 rounded-full bg-slate-400" />,
+    badge: 'Hidden',
+  },
+  {
+    value: 'IN_STOCK',
+    label: 'In Stock (≥ 10)',
+    icon: <span className="h-2 w-2 rounded-full bg-emerald-600" />,
+    badge: 'In Stock',
+  },
+  {
+    value: 'LOW_STOCK',
+    label: 'Low Stock (< 10)',
+    icon: <span className="h-2 w-2 rounded-full bg-amber-500 ring-2 ring-amber-200" />,
+    badge: 'Low Stock',
+  },
+  {
+    value: 'OUT_OF_STOCK',
+    label: 'Out of Stock (0)',
+    icon: <span className="h-2 w-2 rounded-full bg-rose-500 ring-2 ring-rose-200" />,
+    badge: 'Out of Stock',
+  },
+];
+
+const CATEGORY_FILTER_OPTIONS: CustomSelectOption[] = [
+  {
+    value: 'ALL',
+    label: 'All Categories',
+    icon: <Layers className="h-3.5 w-3.5 text-slate-500" />,
+  },
+  {
+    value: 'Veg',
+    label: 'Veg',
+    icon: <span className="h-2 w-2 rounded-full bg-emerald-600" />,
+  },
+  {
+    value: 'Non-Veg',
+    label: 'Non-Veg',
+    icon: <span className="h-2 w-2 rounded-full bg-rose-600" />,
+  },
+  {
+    value: 'Beverage',
+    label: 'Beverage',
+    icon: <Coffee className="h-3.5 w-3.5 text-teal-600" />,
+  },
+  {
+    value: 'Snack',
+    label: 'Snack',
+    icon: <Utensils className="h-3.5 w-3.5 text-amber-600" />,
+  },
+  {
+    value: 'Breakfast',
+    label: 'Breakfast',
+    icon: <Clock className="h-3.5 w-3.5 text-orange-500" />,
+  },
+  {
+    value: 'Lunch',
+    label: 'Lunch',
+    icon: <UtensilsCrossed className="h-3.5 w-3.5 text-blue-600" />,
+  },
+  {
+    value: 'Fast Food',
+    label: 'Fast Food',
+    icon: <Sparkles className="h-3.5 w-3.5 text-amber-500" />,
+  },
+  {
+    value: 'Main Course',
+    label: 'Main Course',
+    icon: <Layers className="h-3.5 w-3.5 text-indigo-500" />,
+  },
+];
+
+const FORM_STATUS_OPTIONS: CustomSelectOption[] = [
+  {
+    value: 'ACTIVE',
+    label: 'Active (Available for Counter Sales)',
+    icon: <span className="h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-emerald-200" />,
+    description: 'Item will appear in POS register and can be sold',
+  },
+  {
+    value: 'INACTIVE',
+    label: 'Inactive (Hidden / Draft)',
+    icon: <span className="h-2 w-2 rounded-full bg-slate-400" />,
+    description: 'Item will be hidden from POS register',
+  },
+];
 
 function BranchMenuMetricsCards({ metrics }: { metrics: MenuMetrics }) {
   return (
@@ -276,16 +385,11 @@ function BranchCreateProductModal({
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Initial Sale Status
-          </label>
-          <Select
+          <CustomSelect
+            label="Initial Sale Status"
             value={formStatus}
-            onChange={(e) => setFormStatus(e.target.value as 'ACTIVE' | 'INACTIVE')}
-            options={[
-              { value: 'ACTIVE', label: 'Active' },
-              { value: 'INACTIVE', label: 'Inactive' },
-            ]}
+            onChange={(val) => setFormStatus(val as 'ACTIVE' | 'INACTIVE')}
+            options={FORM_STATUS_OPTIONS}
           />
         </div>
 
@@ -1103,42 +1207,39 @@ export function BranchMenuModal({ branch, isOpen, onClose }: BranchMenuModalProp
           {/* Search, Filter Bar & Add Product */}
           <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <div className="relative flex items-center">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
                 <input
                   type="text"
                   placeholder="Search item or category..."
                   value={menu.searchQuery}
                   onChange={(e) => menu.setSearchQuery(e.target.value.slice(0, 30))}
-                  className="w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full rounded-xl border border-slate-200 bg-white pl-8 pr-8 py-2 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 hover:border-emerald-400 transition-all shadow-2xs"
                 />
+                {menu.searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => menu.setSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-0.5"
+                    title="Clear search"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
 
-              <Select
+              <CustomSelect
+                size="sm"
                 value={menu.statusStockFilter}
-                onChange={(e) => menu.setStatusStockFilter(e.target.value)}
-                options={[
-                  { value: 'ALL', label: 'All Statuses & Stock' },
-                  { value: 'ACTIVE', label: 'Active for Sale' },
-                  { value: 'INACTIVE', label: 'Inactive / Hidden' },
-                  { value: 'IN_STOCK', label: 'In Stock (>= 10)' },
-                  { value: 'LOW_STOCK', label: 'Low Stock (< 10)' },
-                  { value: 'OUT_OF_STOCK', label: 'Out of Stock (0)' },
-                ]}
+                onChange={(val) => menu.setStatusStockFilter(val)}
+                options={STATUS_STOCK_FILTER_OPTIONS}
               />
 
-              <Select
+              <CustomSelect
+                size="sm"
                 value={menu.categoryFilter}
-                onChange={(e) => menu.setCategoryFilter(e.target.value)}
-                options={[
-                  { value: 'ALL', label: 'All Categories' },
-                  { value: 'Veg', label: 'Veg' },
-                  { value: 'Non-Veg', label: 'Non-Veg' },
-                  { value: 'Beverage', label: 'Beverage' },
-                  { value: 'Snack', label: 'Snack' },
-                  { value: 'Breakfast', label: 'Breakfast' },
-                  { value: 'Lunch', label: 'Lunch' },
-                ]}
+                onChange={(val) => menu.setCategoryFilter(val)}
+                options={CATEGORY_FILTER_OPTIONS}
               />
             </div>
 
