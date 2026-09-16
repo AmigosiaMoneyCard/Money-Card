@@ -6,7 +6,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '@/services/api';
 import type {
-  AnalyticsOverview,
   OrganizationOverview,
   Plan,
   PlanChangeRequest,
@@ -41,9 +40,6 @@ import {
   PlusCircle,
   Bell,
   CheckCircle2,
-  ShoppingBag,
-  TrendingUp,
-  CreditCard,
 } from 'lucide-react';
 
 export type DatePreset = 'all' | 'today' | 'yesterday' | 'last7' | 'last30' | 'thisMonth' | 'custom';
@@ -94,7 +90,6 @@ export function SuperAdminDashboard() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [planRequests, setPlanRequests] = useState<PlanChangeRequest[]>([]);
 
-  const [analytics, setAnalytics] = useState<AnalyticsOverview | null>(null);
   const [selectedOrgId, setSelectedOrgId] = useState<string>('');
   const [datePreset, setDatePreset] = useState<DatePreset>('all');
   const [startDate, setStartDate] = useState<string>('');
@@ -122,16 +117,11 @@ export function SuperAdminDashboard() {
     setIsRefreshing(true);
     setError(null);
     try {
-      const [orgsRes, plansRes, reqsRes, subsRes, analyticsRes] = await Promise.all([
+      const [orgsRes, plansRes, reqsRes, subsRes] = await Promise.all([
         apiService.organizations.getOrganizations(),
         apiService.plans.getPlans(),
         apiService.subscriptions.getPlanRequests(),
         apiService.subscriptions.getAllSubscriptions(),
-        apiService.analytics.getOverview({
-          organizationId: selectedOrgId || undefined,
-          startDate: startDate || undefined,
-          endDate: endDate || undefined,
-        }),
       ]);
 
       if (!orgsRes.success) {
@@ -143,7 +133,6 @@ export function SuperAdminDashboard() {
       if (plansRes.success) setPlans(plansRes.data);
       if (reqsRes.success) setPlanRequests(reqsRes.data || []);
       if (subsRes.success) setSubscriptions(subsRes.data || []);
-      if (analyticsRes.success) setAnalytics(analyticsRes.data);
     } catch {
       setError('Unable to load platform data. Please try again.');
     } finally {
@@ -470,37 +459,6 @@ export function SuperAdminDashboard() {
             >
               Refresh Data
             </Button>
-          </div>
-
-          {/* ── Period Operational Metrics (Reacts to Time Window: Yesterday, Today, etc.) ── */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Operational Volume ({datePreset === 'all' ? 'All Time' : datePreset === 'yesterday' ? 'Yesterday' : datePreset === 'today' ? 'Today' : datePreset === 'last7' ? 'Last 7 Days' : datePreset === 'last30' ? 'Last 30 Days' : datePreset === 'thisMonth' ? 'This Month' : `${startDate} to ${endDate}`})
-              </h2>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard
-                label="Purchase Sales Volume"
-                value={formatCurrency(analytics?.totalPurchaseVolume || 0)}
-                icon={<ShoppingBag className="h-5 w-5 text-emerald-600" />}
-              />
-              <StatCard
-                label="Card Wallet Recharges"
-                value={formatCurrency(analytics?.totalRechargeVolume || 0)}
-                icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
-              />
-              <StatCard
-                label="Transactions Handled"
-                value={(analytics?.totalTransactions || 0).toLocaleString()}
-                icon={<BarChart3 className="h-5 w-5 text-sky-600" />}
-              />
-              <StatCard
-                label="Active Card Sessions"
-                value={(analytics?.activeSessionsCount || 0).toLocaleString()}
-                icon={<CreditCard className="h-5 w-5 text-amber-600" />}
-              />
-            </div>
           </div>
 
           {/* ── 4. Super Admin SaaS Platform Metrics (Cafeterias, Cafeteria Admins, Active Subscriptions, Plan Requests) ── */}

@@ -603,7 +603,7 @@ function drawPlatformPdfPage2(
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(15, 23, 42);
-    doc.text('3. Cafeterias & Usage', margin, curOrgY);
+    doc.text('2. Cafeterias & Usage', margin, curOrgY);
 
     const orgTableY = curOrgY + 4;
     doc.setFillColor(241, 245, 249);
@@ -794,7 +794,7 @@ function drawPlatformPdfPage3(
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(15, 23, 42);
-    doc.text('7. Subscription Plans & Pricing', margin, plansSecY);
+    doc.text('3. Subscription Plans & Pricing', margin, plansSecY);
 
     const planBoxY = plansSecY + 4;
     const planW = (contentWidth - 9) / 4;

@@ -248,8 +248,8 @@ describe('Super Admin Analytics - Option-Wise PDF Customization', () => {
       expect(doc.getNumberOfPages()).toBe(3);
     });
 
-    it('renders initial default view with sections 2, 4, 5, 6 excluded and toggles dynamically', () => {
-      const defaultSections = {
+    it('renders the 3 properly numbered clickable sections: Platform Overview, Cafeterias & Usage, and Subscription Plans', () => {
+      const activeThreeSections = {
         includePlatformKpis: true,
         includeFinancialSummary: false,
         includeTenantOrgs: true,
@@ -260,21 +260,22 @@ describe('Super Admin Analytics - Option-Wise PDF Customization', () => {
       };
       const doc = buildPlatformAnalyticsJsPdf({
         ...baseParams,
-        sections: defaultSections,
+        sections: activeThreeSections,
       });
-      // Page 1 has Sec 1 (KPIs), Page 2 has Sec 3 (Cafeterias), Page 3 has Sec 7 (Subscription Plans)
+      // Page 1: 1. Platform Overview
+      // Page 2: 2. Cafeterias & Usage
+      // Page 3: 3. Subscription Plans & Pricing
       expect(doc.getNumberOfPages()).toBe(3);
 
-      // Now toggle on Section 2 and Section 4
-      const toggledDoc = buildPlatformAnalyticsJsPdf({
+      // Verify toggling off Cafeterias leaves 2 pages
+      const withoutCafeterias = buildPlatformAnalyticsJsPdf({
         ...baseParams,
         sections: {
-          ...defaultSections,
-          includeFinancialSummary: true,
-          includeBranchPerformance: true,
+          ...activeThreeSections,
+          includeTenantOrgs: false,
         },
       });
-      expect(toggledDoc.getNumberOfPages()).toBe(3);
+      expect(withoutCafeterias.getNumberOfPages()).toBe(2);
     });
   });
 });
