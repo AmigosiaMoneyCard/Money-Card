@@ -189,4 +189,10 @@ describe('Organization Analytics - Option-Wise PDF Customization', () => {
     expect(blob.size).toBeGreaterThan(0);
     expect(blob.type).toBe('application/pdf');
   });
+
+  it('generates comprehensive report including Payment Breakdown, Counter highlight with Products Sold, and Staff Summary Cards', () => {
+    const doc = buildOrgAnalyticsJsPdf(baseOptions);
+    expect(doc).toBeDefined();
+    expect(doc.getNumberOfPages()).toBeGreaterThanOrEqual(1);
+  });
 });

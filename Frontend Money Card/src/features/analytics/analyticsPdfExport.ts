@@ -103,9 +103,10 @@ export function buildOrgAnalyticsJsPdf({
     doc.text(`${sectionCounter}. Executive Financial & Operational Metrics`, margin, curY);
     sectionCounter++;
 
+    // 1. Primary KPIs (4 cards)
     const kpis = [
       { label: 'POS Revenue', val: formatCurrency(analytics.totalPurchaseVolume) },
-      { label: 'Recharges', val: formatCurrency(analytics.totalRechargeVolume) },
+      { label: 'Wallet Recharges', val: formatCurrency(analytics.totalRechargeVolume) },
       { label: 'Total Txns', val: (analytics.totalTransactions ?? (analytics as any).transactionCount ?? 0).toLocaleString() },
       { label: 'Active Sessions', val: `${analytics.activeSessionsCount ?? 0} active` },
     ];
@@ -128,23 +129,97 @@ export function buildOrgAnalyticsJsPdf({
       doc.text(kpi.val, x + 3, curY + 17);
     });
 
-    // Card Lifecycle Highlights
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(71, 85, 105);
-    doc.text(
-      `Card Lifecycle: Active Recharges: ${analytics.activeCardsRechargeCount ?? 0}  |  Closed Cards: ${analytics.closedCardsCount ?? 0}  |  Zero Balance Active: ${analytics.zeroBalanceActiveCardsCount ?? 0}`,
-      margin + 1,
-      curY + 27,
-    );
+    curY += 26;
 
-    curY += 34;
+    // 2. Card Lifecycle & Activity Breakdown (3 cards)
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(51, 65, 85);
+    doc.text('Card Lifecycle & Activity', margin, curY);
+
+    const lifecycleKpis = [
+      {
+        label: 'Active Card Recharges',
+        val: `${analytics.activeCardsRechargeCount ?? 0} Recharges`,
+        sub: `${analytics.reRechargedCardsCount ?? 0} repeat top-up on active cards`,
+      },
+      {
+        label: 'Closed Cards',
+        val: `${analytics.closedCardsCount ?? 0} Cards`,
+        sub: 'Completed & settled card sessions',
+      },
+      {
+        label: 'Active Cards (Zero Balance)',
+        val: `${analytics.zeroBalanceActiveCardsCount ?? 0} Cards`,
+        sub: 'Currently in use with ₹0 unspent balance',
+      },
+    ];
+
+    const cardW3 = (contentWidth - 6) / 3;
+    lifecycleKpis.forEach((card, idx) => {
+      const x = margin + idx * (cardW3 + 3);
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(x, curY + 3, cardW3, 16, 2, 2, 'FD');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(71, 85, 105);
+      doc.text(card.label, x + 3, curY + 8);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(card.val, x + 3, curY + 13.5);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(card.sub, x + 3, curY + 17);
+    });
+
+    curY += 23;
+
+    // 3. Payment & Refund Breakdown (3 cards)
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(51, 65, 85);
+    doc.text('Payment & Refund Breakdown', margin, curY);
+
+    const cashRecharge = analytics.cashRechargeVolume ?? 0;
+    const upiRecharge = analytics.upiRechargeVolume ?? 0;
+    const totalRefund = analytics.totalRefundVolume ?? 0;
+
+    const paymentCards = [
+      { label: 'Cash Recharges', val: formatCurrency(cashRecharge) },
+      { label: 'UPI Recharges', val: formatCurrency(upiRecharge) },
+      { label: 'Total Returns / Refunds', val: formatCurrency(totalRefund) },
+    ];
+
+    paymentCards.forEach((card, idx) => {
+      const x = margin + idx * (cardW3 + 3);
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(x, curY + 3, cardW3, 15, 2, 2, 'FD');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(71, 85, 105);
+      doc.text(card.label, x + 3, curY + 8);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(15, 23, 42);
+      doc.text(card.val, x + 3, curY + 14);
+    });
+
+    curY += 22;
   }
 
   // ── Section 2: Branch Comparison Table ──
   if (effectiveSections.includeBranchComparison) {
     hasAnySection = true;
-    if (curY > 230) {
+    if (curY > 195) {
       curY = addNewPage();
     }
 
@@ -154,29 +229,12 @@ export function buildOrgAnalyticsJsPdf({
     doc.text(`${sectionCounter}. Counter Performance Comparison`, margin, curY);
     sectionCounter++;
 
-    const tableY = curY + 4;
-    doc.setFillColor(241, 245, 249);
-    doc.setDrawColor(203, 213, 225);
-    doc.rect(margin, tableY, contentWidth, 7, 'FD');
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
-    doc.setTextColor(51, 65, 85);
-    doc.text('Counter Name', margin + 2, tableY + 5);
-    doc.text('Txns', margin + 42, tableY + 5);
-    doc.text('Purchases', margin + 58, tableY + 5);
-    doc.text('Card Rchg', margin + 82, tableY + 5);
-    doc.text('UPI Rchg', margin + 106, tableY + 5);
-    doc.text('Total Rchg', margin + 128, tableY + 5);
-    doc.text('Revenue', margin + 152, tableY + 5);
-    doc.text('Sessions', margin + 172, tableY + 5);
-
-    curY = tableY + 7;
     const branchData = analytics.branchPerformance || [];
     const rows = branchData.length > 0 ? branchData : branches.map((b) => ({
       branchName: b.name,
       transactionCount: 0,
       purchaseCount: 0,
+      purchaseVolume: 0,
       rechargeCount: 0,
       rechargeVolume: 0,
       cardRechargeVolume: 0,
@@ -185,6 +243,50 @@ export function buildOrgAnalyticsJsPdf({
       sessionCount: 0,
       productsSoldCount: 0,
     }));
+
+    // Top Performing Counter Highlight Banner
+    if (rows.length > 0) {
+      const sortedByRev = [...rows].sort((a, b) => (b.totalRevenue ?? 0) - (a.totalRevenue ?? 0));
+      const topCounter = sortedByRev[0];
+      if (topCounter) {
+        doc.setFillColor(236, 253, 245);
+        doc.setDrawColor(167, 243, 208);
+        doc.roundedRect(margin, curY + 3, contentWidth, 9, 2, 2, 'FD');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(6, 95, 70);
+        doc.text(`★  ${topCounter.branchName} — Top Performing Counter`, margin + 3, curY + 8.5);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(4, 120, 87);
+        const topSub = `POS Revenue: ${formatCurrency((topCounter as any).purchaseVolume ?? topCounter.totalRevenue)}  |  Total Txns: ${topCounter.transactionCount}  |  Products Sold: ${topCounter.productsSoldCount ?? 0}`;
+        doc.text(topSub, margin + 95, curY + 8.5);
+
+        curY += 13;
+      }
+    }
+
+    const tableY = curY + 2;
+    doc.setFillColor(241, 245, 249);
+    doc.setDrawColor(203, 213, 225);
+    doc.rect(margin, tableY, contentWidth, 7, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(51, 65, 85);
+    doc.text('Counter Name', margin + 2, tableY + 5);
+    doc.text('Txns', margin + 38, tableY + 5);
+    doc.text('Purchases', margin + 50, tableY + 5);
+    doc.text('Card Rchg', margin + 72, tableY + 5);
+    doc.text('UPI Rchg', margin + 94, tableY + 5);
+    doc.text('Total Rchg', margin + 116, tableY + 5);
+    doc.text('Revenue', margin + 138, tableY + 5);
+    doc.text('Sessions', margin + 160, tableY + 5);
+    doc.text('Sold', margin + 174, tableY + 5);
+
+    curY = tableY + 7;
 
     rows.forEach((row, idx) => {
       if (curY > 265) {
@@ -195,14 +297,15 @@ export function buildOrgAnalyticsJsPdf({
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(7);
         doc.setTextColor(51, 65, 85);
-        doc.text('Branch Name (Cont.)', margin + 2, curY + 5);
-        doc.text('Txns', margin + 42, curY + 5);
-        doc.text('Purchases', margin + 58, curY + 5);
-        doc.text('Card Rchg', margin + 82, curY + 5);
-        doc.text('UPI Rchg', margin + 106, curY + 5);
-        doc.text('Total Rchg', margin + 128, curY + 5);
-        doc.text('Revenue', margin + 152, curY + 5);
-        doc.text('Sessions', margin + 172, curY + 5);
+        doc.text('Counter Name (Cont.)', margin + 2, curY + 5);
+        doc.text('Txns', margin + 38, curY + 5);
+        doc.text('Purchases', margin + 50, curY + 5);
+        doc.text('Card Rchg', margin + 72, curY + 5);
+        doc.text('UPI Rchg', margin + 94, curY + 5);
+        doc.text('Total Rchg', margin + 116, curY + 5);
+        doc.text('Revenue', margin + 138, curY + 5);
+        doc.text('Sessions', margin + 160, curY + 5);
+        doc.text('Sold', margin + 174, curY + 5);
         curY += 7;
       }
 
@@ -219,14 +322,15 @@ export function buildOrgAnalyticsJsPdf({
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7);
       doc.setTextColor(51, 65, 85);
-      doc.text(row.branchName.substring(0, 20), margin + 2, curY + 4.5);
-      doc.text(String(row.transactionCount), margin + 42, curY + 4.5);
-      doc.text(formatCurrency((row as any).purchaseVolume ?? 0), margin + 58, curY + 4.5);
-      doc.text(formatCurrency(cardR), margin + 82, curY + 4.5);
-      doc.text(formatCurrency(upiR), margin + 106, curY + 4.5);
-      doc.text(formatCurrency((row as any).rechargeVolume ?? 0), margin + 128, curY + 4.5);
-      doc.text(formatCurrency(row.totalRevenue), margin + 152, curY + 4.5);
-      doc.text(String(row.sessionCount), margin + 172, curY + 4.5);
+      doc.text(row.branchName.substring(0, 18), margin + 2, curY + 4.5);
+      doc.text(String(row.transactionCount), margin + 38, curY + 4.5);
+      doc.text(formatCurrency((row as any).purchaseVolume ?? 0), margin + 50, curY + 4.5);
+      doc.text(formatCurrency(cardR), margin + 72, curY + 4.5);
+      doc.text(formatCurrency(upiR), margin + 94, curY + 4.5);
+      doc.text(formatCurrency((row as any).rechargeVolume ?? 0), margin + 116, curY + 4.5);
+      doc.text(formatCurrency(row.totalRevenue), margin + 138, curY + 4.5);
+      doc.text(String(row.sessionCount), margin + 160, curY + 4.5);
+      doc.text(String(row.productsSoldCount ?? 0), margin + 174, curY + 4.5);
 
       curY += 6;
     });
@@ -237,7 +341,7 @@ export function buildOrgAnalyticsJsPdf({
   // ── Section 3: Staff Performance & Operational Audit ──
   if (effectiveSections.includeStaffPerformance) {
     hasAnySection = true;
-    if (curY > 220) {
+    if (curY > 190) {
       curY = addNewPage();
     }
 
@@ -247,7 +351,41 @@ export function buildOrgAnalyticsJsPdf({
     doc.text(`${sectionCounter}. Staff Performance & Operational Audit`, margin, curY);
     sectionCounter++;
 
-    const staffTableY = curY + 4;
+    const staffList = analytics.staffPerformance || [];
+    const activeStaffCount = staffList.filter((s) => s.status === 'ACTIVE').length;
+    const totalActivated = staffList.reduce((acc, s) => acc + (s.cardsActivatedCount || 0), 0);
+    const totalSettled = staffList.reduce((acc, s) => acc + (s.cardsSettledCount || 0), 0);
+    const totalVolume = staffList.reduce((acc, s) => acc + (s.totalVolumeHandled || ((s.cardRechargeVolume || 0) + (s.purchaseVolume || 0))), 0);
+
+    // 4 Staff Summary KPI Cards
+    const staffKpis = [
+      { label: 'Active Staff', val: `${activeStaffCount}` },
+      { label: 'Cards Activated', val: `${totalActivated}` },
+      { label: 'Cards Settled', val: `${totalSettled}` },
+      { label: 'Staff Volume Handled', val: formatCurrency(totalVolume) },
+    ];
+
+    const cardW4 = (contentWidth - 9) / 4;
+    staffKpis.forEach((kpi, idx) => {
+      const x = margin + idx * (cardW4 + 3);
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(x, curY + 3, cardW4, 15, 2, 2, 'FD');
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(100, 116, 139);
+      doc.text(kpi.label, x + 3, curY + 8);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(kpi.val, x + 3, curY + 14);
+    });
+
+    curY += 21;
+
+    const staffTableY = curY + 2;
     doc.setFillColor(241, 245, 249);
     doc.setDrawColor(203, 213, 225);
     doc.rect(margin, staffTableY, contentWidth, 7, 'FD');
@@ -264,7 +402,6 @@ export function buildOrgAnalyticsJsPdf({
     doc.text('Txns', margin + 174, staffTableY + 5);
 
     curY = staffTableY + 7;
-    const staffList = analytics.staffPerformance || [];
 
     if (staffList.length === 0) {
       doc.setFont('helvetica', 'italic');
