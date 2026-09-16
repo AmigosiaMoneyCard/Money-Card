@@ -560,7 +560,7 @@ export function SuperAdminAnalyticsView() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               label="Total Cafeterias"
-              value={orgs.length}
+              value={`${orgs.length} Cafeterias`}
               icon={<Building2 className="h-5 w-5 text-emerald-600" />}
             />
 
@@ -572,13 +572,13 @@ export function SuperAdminAnalyticsView() {
 
             <StatCard
               label="Active Subscriptions"
-              value={activeOrgsCount}
+              value={`${activeOrgsCount} Active`}
               icon={<Layers className="h-5 w-5 text-emerald-600" />}
             />
 
             <StatCard
               label="Subscription Revenue"
-              value={formatCurrency(subscriptionRevenue)}
+              value={`${formatCurrency(subscriptionRevenue)} / mo`}
               icon={<CreditCard className="h-5 w-5 text-emerald-600" />}
             />
           </div>
