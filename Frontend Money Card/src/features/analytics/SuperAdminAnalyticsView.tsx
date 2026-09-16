@@ -2,7 +2,7 @@
 // Global platform metrics across all organizations, subscription plans, and POS transactions.
 // Strictly provides [ View PDF ] and [ Download PDF ] via jsPDF native download.
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiService } from '@/services/api';
 import type {
   AnalyticsOverview,
@@ -183,15 +183,49 @@ export function SuperAdminAnalyticsView() {
     fetchPlatformData(false);
   }, [fetchPlatformData]);
 
-  const totalGatewayRevenue = payments
-    .filter((p) => p.status === 'SUCCESS')
-    .reduce((sum, p) => sum + p.amount, 0);
+  // Monthly Gateway Revenue (calculated on a monthly basis)
+  const monthlyGatewayRevenue = useMemo(() => {
+    const successPayments = payments.filter((p) => {
+      if (p.status !== 'SUCCESS') return false;
+      if (selectedOrgId && p.organizationId !== selectedOrgId) return false;
+      return true;
+    });
 
-  const recurringMrr = orgs
-    .filter((o) => o.status === 'ACTIVE')
-    .reduce((sum, o) => sum + (o.plan?.price || 0), 0);
+    if (startDate && endDate) {
+      return successPayments
+        .filter((p) => {
+          if (!p.createdAt) return true;
+          const payDate = p.createdAt.split('T')[0];
+          return payDate >= startDate && payDate <= endDate;
+        })
+        .reduce((sum, p) => sum + p.amount, 0);
+    }
 
-  const subscriptionRevenue = totalGatewayRevenue > 0 ? totalGatewayRevenue : recurringMrr;
+    // Default to current month's collections
+    const now = new Date();
+    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const currentMonthPayments = successPayments.filter((p) => {
+      if (!p.createdAt) return true;
+      return p.createdAt.startsWith(currentMonthKey);
+    });
+
+    if (currentMonthPayments.length > 0) {
+      return currentMonthPayments.reduce((sum, p) => sum + p.amount, 0);
+    }
+
+    return successPayments.reduce((sum, p) => sum + p.amount, 0);
+  }, [payments, selectedOrgId, startDate, endDate]);
+
+  const recurringMrr = useMemo(() => {
+    return orgs
+      .filter((o) => (selectedOrgId ? o.id === selectedOrgId : true) && o.status === 'ACTIVE')
+      .reduce((sum, o) => {
+        const price = o.plan?.price || 0;
+        return sum + (o.plan?.billingInterval === 'YEARLY' ? Math.round(price / 12) : price);
+      }, 0);
+  }, [orgs, selectedOrgId]);
+
+  const subscriptionRevenue = monthlyGatewayRevenue > 0 ? monthlyGatewayRevenue : recurringMrr;
 
   const activeOrgsCount = orgs.filter((o) => o.status === 'ACTIVE').length;
 
@@ -206,6 +240,7 @@ export function SuperAdminAnalyticsView() {
 
     const orgMap = new Map<string, string>();
     orgs.forEach((o) => orgMap.set(o.id, o.name));
+    const totalAdmins = orgs.filter((o) => Boolean(o.adminUser)).length;
 
     let dateLabel = 'Custom Range';
     switch (datePreset) {
@@ -238,6 +273,7 @@ export function SuperAdminAnalyticsView() {
       reportDateRange: dateLabel,
       selectedOrgFilter: 'All Platform Cafeterias',
       totalOrganizations: orgs.length,
+      totalAdmins,
       activeSubscriptions: activeOrgsCount,
       totalGatewayRevenue: subscriptionRevenue,
       pendingRequestsCount,
@@ -258,6 +294,7 @@ export function SuperAdminAnalyticsView() {
         staffLimit: o.usage?.staffLimit ?? 25,
         cardCount: o.usage?.cardCount ?? 0,
         cardLimit: o.usage?.cardLimit ?? 1000,
+        adminUser: o.adminUser || null,
       })),
       branches: branches.map((b) => ({
         id: b.id,
@@ -670,8 +707,8 @@ export function SuperAdminAnalyticsView() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 {[
                   { key: 'includePlatformKpis' as const, label: '1. Platform Overview', id: 'platform-toggle-kpis' },
-                  { key: 'includeTenantOrgs' as const, label: '2. Cafeterias & Usage', id: 'platform-toggle-orgs' },
-                  { key: 'includeSubscriptionPlans' as const, label: '3. Subscription Plans', id: 'platform-toggle-plans' },
+                  { key: 'includeTenantOrgs' as const, label: '2. Platform Cafeterias Performance', id: 'platform-toggle-orgs' },
+                  { key: 'includeSubscriptionPlans' as const, label: '3. Subscription Plans Distribution', id: 'platform-toggle-plans' },
                 ].map((sec) => {
                   const isSelected = !!pdfSections[sec.key];
                   return (
