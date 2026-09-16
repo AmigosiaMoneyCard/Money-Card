@@ -10,7 +10,6 @@ import type {
   Plan,
   PlanChangeRequest,
   Subscription,
-  SubscriptionPayment,
 } from '@/types';
 import {
   Button,
@@ -28,7 +27,7 @@ import { formatDate, formatCurrency } from '@/utils';
 import {
   Building2,
   BarChart3,
-  TrendingUp,
+  Users,
   ArrowRight,
   RefreshCw,
   Layers,
@@ -82,7 +81,6 @@ export function SuperAdminDashboard() {
   const [orgs, setOrgs] = useState<OrganizationOverview[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-  const [payments, setPayments] = useState<SubscriptionPayment[]>([]);
   const [planRequests, setPlanRequests] = useState<PlanChangeRequest[]>([]);
 
   // Organization Filter State
@@ -101,12 +99,11 @@ export function SuperAdminDashboard() {
     setIsRefreshing(true);
     setError(null);
     try {
-      const [orgsRes, plansRes, reqsRes, subsRes, payRes] = await Promise.all([
+      const [orgsRes, plansRes, reqsRes, subsRes] = await Promise.all([
         apiService.organizations.getOrganizations(),
         apiService.plans.getPlans(),
         apiService.subscriptions.getPlanRequests(),
         apiService.subscriptions.getAllSubscriptions(),
-        apiService.subscriptions.getAllPayments(),
       ]);
 
       if (!orgsRes.success) {
@@ -118,7 +115,6 @@ export function SuperAdminDashboard() {
       if (plansRes.success) setPlans(plansRes.data);
       if (reqsRes.success) setPlanRequests(reqsRes.data || []);
       if (subsRes.success) setSubscriptions(subsRes.data || []);
-      if (payRes.success) setPayments(payRes.data || []);
     } catch {
       setError('Unable to load platform data. Please try again.');
     } finally {
@@ -161,27 +157,12 @@ export function SuperAdminDashboard() {
     return list.filter((r) => r.status === 'PENDING').length;
   }, [planRequests, selectedOrgId]);
 
-  const subscriptionRevenue = useMemo(() => {
-    const filteredPayments = payments.filter((p) => {
-      if (selectedOrgId && p.organizationId !== selectedOrgId) return false;
-      return true;
-    });
-
-    const verifiedRevenue = filteredPayments
-      .filter((p) => p.status === 'SUCCESS')
-      .reduce((sum, p) => sum + p.amount, 0);
-
-    if (verifiedRevenue > 0) {
-      return verifiedRevenue;
-    }
-
+  const cafeteriaAdminsCount = useMemo(() => {
     const targetOrgs = selectedOrgId
       ? orgs.filter((o) => o.id === selectedOrgId)
       : orgs;
-    return targetOrgs
-      .filter((o) => o.status === 'ACTIVE')
-      .reduce((sum, o) => sum + (o.plan?.price || 0), 0);
-  }, [payments, orgs, selectedOrgId]);
+    return targetOrgs.filter((o) => Boolean(o.adminUser)).length;
+  }, [orgs, selectedOrgId]);
 
   const filteredOrgs = useMemo(() => {
     if (!searchOrgTerm.trim()) return orgs;
@@ -415,7 +396,7 @@ export function SuperAdminDashboard() {
             </Button>
           </div>
 
-          {/* ── 4. Super Admin SaaS Platform Metrics (Cafeterias, Subscription Revenue, Active Subscriptions, Plan Requests) ── */}
+          {/* ── 4. Super Admin SaaS Platform Metrics (Cafeterias, Cafeteria Admins, Active Subscriptions, Plan Requests) ── */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               label="Cafeterias"
@@ -424,9 +405,9 @@ export function SuperAdminDashboard() {
             />
 
             <StatCard
-              label="Subscription Revenue"
-              value={formatCurrency(subscriptionRevenue)}
-              icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
+              label="Cafeteria Admins"
+              value={`${cafeteriaAdminsCount} Admin${cafeteriaAdminsCount !== 1 ? 's' : ''}`}
+              icon={<Users className="h-5 w-5 text-teal-600" />}
             />
 
             <StatCard
