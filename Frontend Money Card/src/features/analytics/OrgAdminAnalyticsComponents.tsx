@@ -483,12 +483,12 @@ export function OrgAdminPdfModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2.5 pt-2.5">
             <button
               type="button"
               id="pdf-toggle-executive-kpis"
               onClick={() => onToggleSection('includeExecutiveKpis')}
-              className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all cursor-pointer ${
+              className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-all cursor-pointer ${
                 pdfSections.includeExecutiveKpis
                   ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
                   : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
@@ -503,14 +503,58 @@ export function OrgAdminPdfModal({
               >
                 {pdfSections.includeExecutiveKpis && <Check className="h-3 w-3 stroke-[3]" />}
               </div>
-              <span className="text-xs font-semibold">1. Executive KPIs</span>
+              <span className="text-xs font-semibold leading-tight">1. Executive KPIs</span>
+            </button>
+
+            <button
+              type="button"
+              id="pdf-toggle-card-lifecycle"
+              onClick={() => onToggleSection('includeCardLifecycle')}
+              className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-all cursor-pointer ${
+                pdfSections.includeCardLifecycle
+                  ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
+                  : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
+              }`}
+            >
+              <div
+                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                  pdfSections.includeCardLifecycle
+                    ? 'border-emerald-600 bg-emerald-600 text-white'
+                    : 'border-slate-300 bg-white'
+                }`}
+              >
+                {pdfSections.includeCardLifecycle && <Check className="h-3 w-3 stroke-[3]" />}
+              </div>
+              <span className="text-xs font-semibold leading-tight">2. Card Lifecycle</span>
+            </button>
+
+            <button
+              type="button"
+              id="pdf-toggle-payment-breakdown"
+              onClick={() => onToggleSection('includePaymentBreakdown')}
+              className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-all cursor-pointer ${
+                pdfSections.includePaymentBreakdown
+                  ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
+                  : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
+              }`}
+            >
+              <div
+                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                  pdfSections.includePaymentBreakdown
+                    ? 'border-emerald-600 bg-emerald-600 text-white'
+                    : 'border-slate-300 bg-white'
+                }`}
+              >
+                {pdfSections.includePaymentBreakdown && <Check className="h-3 w-3 stroke-[3]" />}
+              </div>
+              <span className="text-xs font-semibold leading-tight">3. Payment Breakdown</span>
             </button>
 
             <button
               type="button"
               id="pdf-toggle-branch-comparison"
               onClick={() => onToggleSection('includeBranchComparison')}
-              className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all cursor-pointer ${
+              className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-all cursor-pointer ${
                 pdfSections.includeBranchComparison
                   ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
                   : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
@@ -525,14 +569,14 @@ export function OrgAdminPdfModal({
               >
                 {pdfSections.includeBranchComparison && <Check className="h-3 w-3 stroke-[3]" />}
               </div>
-              <span className="text-xs font-semibold">2. Counter Comparison</span>
+              <span className="text-xs font-semibold leading-tight">4. Counter Comparison</span>
             </button>
 
             <button
               type="button"
               id="pdf-toggle-staff-performance"
               onClick={() => onToggleSection('includeStaffPerformance')}
-              className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-all cursor-pointer ${
+              className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-all cursor-pointer ${
                 pdfSections.includeStaffPerformance
                   ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
                   : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
@@ -547,7 +591,7 @@ export function OrgAdminPdfModal({
               >
                 {pdfSections.includeStaffPerformance && <Check className="h-3 w-3 stroke-[3]" />}
               </div>
-              <span className="text-xs font-semibold">3. Staff Performance</span>
+              <span className="text-xs font-semibold leading-tight">5. Staff Performance</span>
             </button>
           </div>
         </div>

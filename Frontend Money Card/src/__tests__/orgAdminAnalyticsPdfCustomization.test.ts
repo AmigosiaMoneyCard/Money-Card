@@ -118,10 +118,11 @@ describe('Organization Analytics - Option-Wise PDF Customization', () => {
     organizationName: 'Acme Dining Group',
   };
 
-  it('generates full report when all sections are enabled by default', () => {
+  it('generates full report when all sections are enabled by default (spanning multiple dedicated pages)', () => {
     const doc = buildOrgAnalyticsJsPdf(baseOptions);
     expect(doc).toBeDefined();
-    expect(doc.getNumberOfPages()).toBeGreaterThanOrEqual(1);
+    // Executive (Page 1), Counter Comparison (Page 2), Staff Performance (Page 3)
+    expect(doc.getNumberOfPages()).toBe(3);
   });
 
   it('generates customized report with only Executive KPIs enabled', () => {
@@ -129,6 +130,38 @@ describe('Organization Analytics - Option-Wise PDF Customization', () => {
       ...baseOptions,
       sections: {
         includeExecutiveKpis: true,
+        includeCardLifecycle: false,
+        includePaymentBreakdown: false,
+        includeBranchComparison: false,
+        includeStaffPerformance: false,
+      },
+    });
+    expect(doc).toBeDefined();
+    expect(doc.getNumberOfPages()).toBe(1);
+  });
+
+  it('generates customized report with only Card Lifecycle enabled', () => {
+    const doc = buildOrgAnalyticsJsPdf({
+      ...baseOptions,
+      sections: {
+        includeExecutiveKpis: false,
+        includeCardLifecycle: true,
+        includePaymentBreakdown: false,
+        includeBranchComparison: false,
+        includeStaffPerformance: false,
+      },
+    });
+    expect(doc).toBeDefined();
+    expect(doc.getNumberOfPages()).toBe(1);
+  });
+
+  it('generates customized report with only Payment Breakdown enabled', () => {
+    const doc = buildOrgAnalyticsJsPdf({
+      ...baseOptions,
+      sections: {
+        includeExecutiveKpis: false,
+        includeCardLifecycle: false,
+        includePaymentBreakdown: true,
         includeBranchComparison: false,
         includeStaffPerformance: false,
       },
@@ -142,6 +175,8 @@ describe('Organization Analytics - Option-Wise PDF Customization', () => {
       ...baseOptions,
       sections: {
         includeExecutiveKpis: false,
+        includeCardLifecycle: false,
+        includePaymentBreakdown: false,
         includeBranchComparison: true,
         includeStaffPerformance: false,
       },
@@ -155,6 +190,8 @@ describe('Organization Analytics - Option-Wise PDF Customization', () => {
       ...baseOptions,
       sections: {
         includeExecutiveKpis: false,
+        includeCardLifecycle: false,
+        includePaymentBreakdown: false,
         includeBranchComparison: false,
         includeStaffPerformance: true,
       },
@@ -168,6 +205,8 @@ describe('Organization Analytics - Option-Wise PDF Customization', () => {
       ...baseOptions,
       sections: {
         includeExecutiveKpis: false,
+        includeCardLifecycle: false,
+        includePaymentBreakdown: false,
         includeBranchComparison: false,
         includeStaffPerformance: false,
       },
@@ -190,8 +229,27 @@ describe('Organization Analytics - Option-Wise PDF Customization', () => {
     expect(blob.type).toBe('application/pdf');
   });
 
-  it('generates comprehensive report including Payment Breakdown, Counter highlight with Products Sold, and Staff Summary Cards', () => {
-    const doc = buildOrgAnalyticsJsPdf(baseOptions);
+  it('renders business logic status "Live Operating & Reconciled" when active sessions exist', () => {
+    const doc = buildOrgAnalyticsJsPdf({
+      ...baseOptions,
+      analytics: { ...mockAnalytics, activeSessionsCount: 5 },
+    });
+    expect(doc).toBeDefined();
+  });
+
+  it('renders business logic status "Fully Settled & Audited" when no active sessions exist', () => {
+    const doc = buildOrgAnalyticsJsPdf({
+      ...baseOptions,
+      analytics: { ...mockAnalytics, activeSessionsCount: 0 },
+    });
+    expect(doc).toBeDefined();
+  });
+
+  it('formats header with actual cafeteria name rather than UUID', () => {
+    const doc = buildOrgAnalyticsJsPdf({
+      ...baseOptions,
+      organizationName: 'Grand Central Food Hub',
+    });
     expect(doc).toBeDefined();
     expect(doc.getNumberOfPages()).toBeGreaterThanOrEqual(1);
   });

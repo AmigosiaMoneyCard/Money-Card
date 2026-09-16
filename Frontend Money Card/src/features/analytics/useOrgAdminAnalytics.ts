@@ -84,6 +84,8 @@ function isStaffUser(role?: string): boolean {
 function countActiveSections(sections: OrgPdfSectionOptions): number {
   let count = 0;
   if (sections.includeExecutiveKpis) count++;
+  if (sections.includeCardLifecycle) count++;
+  if (sections.includePaymentBreakdown) count++;
   if (sections.includeBranchComparison) count++;
   if (sections.includeStaffPerformance) count++;
   return count;
@@ -121,6 +123,8 @@ export function useOrgAdminAnalytics() {
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [pdfSections, setPdfSections] = useState<OrgPdfSectionOptions>({
     includeExecutiveKpis: true,
+    includeCardLifecycle: true,
+    includePaymentBreakdown: true,
     includeBranchComparison: true,
     includeStaffPerformance: true,
   });
@@ -280,6 +284,32 @@ export function useOrgAdminAnalytics() {
     [datePreset, startDate, endDate],
   );
 
+  const [resolvedOrgName, setResolvedOrgName] = useState<string>(() => user?.organizationName || '');
+
+  useEffect(() => {
+    if (user?.organizationName) {
+      setResolvedOrgName(user.organizationName);
+    } else if (user?.organizationId) {
+      apiService.auth
+        .getMe()
+        .then((res) => {
+          if (res.success && res.data.organizationName) {
+            setResolvedOrgName(res.data.organizationName);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user?.organizationName, user?.organizationId]);
+
+  const cafeteriaDisplayName = useMemo(() => {
+    const raw = (resolvedOrgName || user?.organizationName || '').trim();
+    if (!raw) return 'Cafeteria';
+    if (/^cafeteria\b/i.test(raw)) {
+      return raw;
+    }
+    return `Cafeteria ${raw}`;
+  }, [resolvedOrgName, user?.organizationName]);
+
   const getOrgReportOptions = (overrideSections?: Partial<OrgPdfSectionOptions>) => {
     if (!analytics) return null;
 
@@ -288,7 +318,7 @@ export function useOrgAdminAnalytics() {
       branches,
       selectedBranchName,
       dateRangeLabel,
-      organizationName: user?.organizationId ? `Cafeteria ${user.organizationId}` : 'Cafeteria Portal',
+      organizationName: cafeteriaDisplayName,
       sections: overrideSections ?? pdfSections,
     };
   };
@@ -322,6 +352,8 @@ export function useOrgAdminAnalytics() {
   const handleSetAllSections = (enable: boolean) => {
     const updated: OrgPdfSectionOptions = {
       includeExecutiveKpis: enable,
+      includeCardLifecycle: enable,
+      includePaymentBreakdown: enable,
       includeBranchComparison: enable,
       includeStaffPerformance: enable,
     };

@@ -166,7 +166,7 @@ export function ReportsPage() {
         transactions,
         inventory,
         sessions,
-        organizationName: user?.organizationId ? `Cafeteria ${user.organizationId}` : 'Cafeteria Portal',
+        organizationName: user?.organizationName ? (user.organizationName.toLowerCase().startsWith('cafeteria') ? user.organizationName : `Cafeteria ${user.organizationName}`) : 'Cafeteria',
       });
 
       const url = URL.createObjectURL(pdfBlob);
