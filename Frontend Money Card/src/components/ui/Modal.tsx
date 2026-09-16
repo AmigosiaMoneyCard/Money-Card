@@ -7,6 +7,8 @@ import { X } from 'lucide-react';
 // Modal Component (Mobile-Responsive & Scroll-Safe)
 // ==========================================
 
+let activeModalCount = 0;
+
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -15,6 +17,7 @@ interface ModalProps {
   children: ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
   closeOnOverlay?: boolean;
+  className?: string;
 }
 
 const sizeStyles = {
@@ -34,6 +37,7 @@ export function Modal({
   children,
   size = 'md',
   closeOnOverlay = true,
+  className,
 }: ModalProps) {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -44,19 +48,25 @@ export function Modal({
 
   useEffect(() => {
     if (isOpen) {
+      activeModalCount++;
       document.addEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'hidden';
     }
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = '';
+      if (isOpen) {
+        activeModalCount = Math.max(0, activeModalCount - 1);
+        document.removeEventListener('keydown', handleKeyDown);
+        if (activeModalCount === 0) {
+          document.body.style.overflow = '';
+        }
+      }
     };
   }, [isOpen, handleKeyDown]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-300"
@@ -64,40 +74,45 @@ export function Modal({
         aria-hidden="true"
       />
 
-      {/* Dialog */}
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={title ? 'modal-title' : undefined}
-        className={cn(
-          'relative z-10 w-full max-h-[92vh] flex flex-col rounded-xl border border-slate-200 bg-white shadow-2xl transition-all duration-300',
-          'animate-in fade-in zoom-in-95',
-          sizeStyles[size],
-        )}
-      >
-        {/* Header */}
-        {(title || description) && (
-          <div className="shrink-0 flex items-start justify-between border-b border-slate-200 px-4 py-3 sm:px-6 sm:py-4">
-            <div className="min-w-0 pr-3">
-              {title && (
-                <h2 id="modal-title" className="text-base sm:text-lg font-semibold text-slate-900 truncate">
-                  {title}
-                </h2>
-              )}
-              {description && <p className="mt-0.5 text-xs sm:text-sm text-slate-500">{description}</p>}
+      {/* Positioning wrapper: centers dialog safely without flex overflow clipping */}
+      <div className="flex min-h-full items-center justify-center p-3 sm:p-4 pointer-events-none">
+        {/* Dialog */}
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={title ? 'modal-title' : undefined}
+          className={cn(
+            'pointer-events-auto relative z-10 w-full max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3rem)] flex flex-col rounded-xl border border-slate-200 bg-white shadow-2xl transition-all duration-300 my-auto',
+            'animate-in fade-in zoom-in-95',
+            sizeStyles[size],
+            className,
+          )}
+        >
+          {/* Header */}
+          {(title || description) && (
+            <div className="shrink-0 flex items-start justify-between border-b border-slate-200 px-4 py-3 sm:px-6 sm:py-4">
+              <div className="min-w-0 pr-3">
+                {title && (
+                  <h2 id="modal-title" className="text-base sm:text-lg font-semibold text-slate-900 truncate">
+                    {title}
+                  </h2>
+                )}
+                {description && <p className="mt-0.5 text-xs sm:text-sm text-slate-500">{description}</p>}
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
-            <button
-              onClick={onClose}
-              className="shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
-              aria-label="Close"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        )}
+          )}
 
-        {/* Scrollable Content Body */}
-        <div className="flex-1 overflow-y-auto px-4 py-3 sm:px-6 sm:py-4">{children}</div>
+          {/* Scrollable Content Body */}
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 sm:px-6 sm:py-4">{children}</div>
+        </div>
       </div>
     </div>
   );
