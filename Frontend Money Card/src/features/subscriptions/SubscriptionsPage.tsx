@@ -769,7 +769,7 @@ function OrgAdminSubscriptionsView() {
                         >
                           {detectPlanRequestType(plan, currentPlan) === 'UPGRADE'
                             ? `Upgrade to ${plan.name}`
-                            : `Downgrade to ${plan.name}`}
+                            : `Enquiry for ${plan.name}`}
                         </Button>
                       )}
                     </div>
@@ -928,7 +928,7 @@ function OrgAdminSubscriptionsView() {
             </div>
           </div>
 
-          {/* Request Type * (only Upgrade & Downgrade) */}
+          {/* Request Type * (only Upgrade & Enquiry) */}
           <Select
             label="Request Type *"
             id="contact-plan-request-type"
@@ -936,7 +936,7 @@ function OrgAdminSubscriptionsView() {
             onChange={(e) => setFormRequestType(e.target.value as 'UPGRADE' | 'DOWNGRADE')}
             options={[
               { value: 'UPGRADE', label: 'Upgrade' },
-              { value: 'DOWNGRADE', label: 'Downgrade' },
+              { value: 'DOWNGRADE', label: 'Enquiry' },
             ]}
             disabled={isSubmitting}
           />

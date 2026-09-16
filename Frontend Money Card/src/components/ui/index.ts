@@ -2,6 +2,7 @@
 export { Button } from './Button';
 export { Input } from './Input';
 export { Select } from './Select';
+export { CustomSelect, type CustomSelectOption, type CustomSelectProps } from './CustomSelect';
 export { Modal, ModalFooter } from './Modal';
 export { Card, CardHeader, CardContent, StatCard } from './Card';
 export { Badge } from './Badge';
