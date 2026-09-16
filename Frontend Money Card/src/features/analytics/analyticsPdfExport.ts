@@ -4,12 +4,23 @@
 
 import { jsPDF } from 'jspdf';
 import type { AnalyticsOverview, Branch } from '@/types';
-import { formatCurrency } from '@/utils';
 
-// ─── 1. Organization Admin Analytics PDF ──────────────────────────────────
+// ─── PDF Safe Currency Formatter ──────────────────────────────────────────
+// Renders currency safely using 'Rs.' to prevent WinAnsi / ISO-8859-1 glyph
+// corruption in default jsPDF Helvetica font (which renders ₹ as ¹).
+export function formatPdfCurrency(amount: number | null | undefined): string {
+  const safe = Number(amount) || 0;
+  return `Rs. ${safe.toLocaleString('en-IN', {
+    maximumFractionDigits: safe % 1 === 0 ? 0 : 2,
+    minimumFractionDigits: safe % 1 === 0 ? 0 : 2,
+  })}`;
+}
+
 // ─── 1. Organization Admin Analytics PDF ──────────────────────────────────
 export interface OrgPdfSectionOptions {
   includeExecutiveKpis: boolean;
+  includeCardLifecycle: boolean;
+  includePaymentBreakdown: boolean;
   includeBranchComparison: boolean;
   includeStaffPerformance: boolean;
 }
@@ -28,7 +39,7 @@ export function buildOrgAnalyticsJsPdf({
   branches,
   selectedBranchName,
   dateRangeLabel,
-  organizationName = 'Cafeteria Portal',
+  organizationName = 'Cafeteria',
   sections,
 }: GenerateOrgPdfOptions): jsPDF {
   const doc = new jsPDF({
@@ -39,6 +50,8 @@ export function buildOrgAnalyticsJsPdf({
 
   const effectiveSections: OrgPdfSectionOptions = {
     includeExecutiveKpis: sections?.includeExecutiveKpis ?? true,
+    includeCardLifecycle: sections?.includeCardLifecycle ?? true,
+    includePaymentBreakdown: sections?.includePaymentBreakdown ?? true,
     includeBranchComparison: sections?.includeBranchComparison ?? true,
     includeStaffPerformance: sections?.includeStaffPerformance ?? true,
   };
@@ -46,6 +59,9 @@ export function buildOrgAnalyticsJsPdf({
   const pageWidth = 210;
   const margin = 14;
   const contentWidth = pageWidth - margin * 2;
+
+  const rawOrgName = (organizationName || 'Cafeteria').trim();
+  const resolvedOrgHeader = /^cafeteria\b/i.test(rawOrgName) ? rawOrgName : `Cafeteria ${rawOrgName}`;
 
   function drawPageHeader(isContinuation = false) {
     doc.setFillColor(15, 23, 42); // Slate-900
@@ -56,17 +72,20 @@ export function buildOrgAnalyticsJsPdf({
     doc.setFontSize(isContinuation ? 10 : 13);
     doc.setTextColor(255, 255, 255);
     const title = isContinuation
-      ? `${organizationName.toUpperCase()} - ANALYTICS REPORT (CONT.)`
-      : `${organizationName.toUpperCase()} - ANALYTICS REPORT`;
+      ? `${resolvedOrgHeader.toUpperCase()} - ANALYTICS REPORT (CONT.)`
+      : `${resolvedOrgHeader.toUpperCase()} - ANALYTICS REPORT`;
     doc.text(title, margin + 6, isContinuation ? 21 : 22);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(isContinuation ? 7.5 : 8);
     doc.setTextColor(148, 163, 184);
-    const sub = isContinuation
-      ? `Counter Scope: ${selectedBranchName}  |  Period: ${dateRangeLabel}`
-      : `Scope: Cafeteria Admin  |  Generated: ${new Date().toLocaleString()}`;
-    doc.text(sub, margin + (isContinuation ? 90 : 6), isContinuation ? 21 : 30);
+    if (isContinuation) {
+      const sub = `Counter Scope: ${selectedBranchName}  |  Period: ${dateRangeLabel}`;
+      doc.text(sub, margin + contentWidth - 6, 21, { align: 'right' });
+    } else {
+      const sub = `Scope: Cafeteria Admin  |  Generated: ${new Date().toLocaleString()}`;
+      doc.text(sub, margin + 6, 30);
+    }
   }
 
   function addNewPage(): number {
@@ -86,15 +105,19 @@ export function buildOrgAnalyticsJsPdf({
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.setTextColor(51, 65, 85);
-  doc.text(`Counter Scope: ${selectedBranchName}`, margin + 4, 44);
-  doc.text(`Date Range: ${dateRangeLabel}`, margin + 70, 44);
-  doc.text('Status: Verified M0 Ledger', margin + 130, 44);
+  doc.text(`Counter Scope: ${selectedBranchName}`, margin + 4, 44.5);
+  doc.text(`Date Range: ${dateRangeLabel}`, margin + 68, 44.5);
+
+  const ledgerStatus = (analytics.activeSessionsCount ?? 0) > 0
+    ? 'Status: Live Operating & Reconciled'
+    : 'Status: Fully Settled & Audited';
+  doc.text(ledgerStatus, margin + 126, 44.5);
 
   let curY = 54;
   let hasAnySection = false;
   let sectionCounter = 1;
 
-  // ── Section 1: Executive KPIs ──
+  // ── Section 1: Executive Financial KPIs ──
   if (effectiveSections.includeExecutiveKpis) {
     hasAnySection = true;
     doc.setFont('helvetica', 'bold');
@@ -103,10 +126,10 @@ export function buildOrgAnalyticsJsPdf({
     doc.text(`${sectionCounter}. Executive Financial & Operational Metrics`, margin, curY);
     sectionCounter++;
 
-    // 1. Primary KPIs (4 cards)
+    // Primary KPIs (4 cards)
     const kpis = [
-      { label: 'POS Revenue', val: formatCurrency(analytics.totalPurchaseVolume) },
-      { label: 'Wallet Recharges', val: formatCurrency(analytics.totalRechargeVolume) },
+      { label: 'POS Revenue', val: formatPdfCurrency(analytics.totalPurchaseVolume) },
+      { label: 'Wallet Recharges', val: formatPdfCurrency(analytics.totalRechargeVolume) },
       { label: 'Total Txns', val: (analytics.totalTransactions ?? (analytics as any).transactionCount ?? 0).toLocaleString() },
       { label: 'Active Sessions', val: `${analytics.activeSessionsCount ?? 0} active` },
     ];
@@ -129,13 +152,20 @@ export function buildOrgAnalyticsJsPdf({
       doc.text(kpi.val, x + 3, curY + 17);
     });
 
-    curY += 26;
+    curY += 27;
+  }
 
-    // 2. Card Lifecycle & Activity Breakdown (3 cards)
+  // ── Section 2: Card Lifecycle & Activity ──
+  if (effectiveSections.includeCardLifecycle) {
+    hasAnySection = true;
+    if (curY > 230) {
+      curY = addNewPage();
+    }
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.setTextColor(51, 65, 85);
-    doc.text('Card Lifecycle & Activity', margin, curY);
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${sectionCounter}. Card Lifecycle & Activity`, margin, curY);
+    sectionCounter++;
 
     const lifecycleKpis = [
       {
@@ -151,7 +181,7 @@ export function buildOrgAnalyticsJsPdf({
       {
         label: 'Active Cards (Zero Balance)',
         val: `${analytics.zeroBalanceActiveCardsCount ?? 0} Cards`,
-        sub: 'Currently in use with ₹0 unspent balance',
+        sub: 'Currently in use with Rs. 0 unspent balance',
       },
     ];
 
@@ -178,24 +208,32 @@ export function buildOrgAnalyticsJsPdf({
       doc.text(card.sub, x + 3, curY + 17);
     });
 
-    curY += 23;
+    curY += 24;
+  }
 
-    // 3. Payment & Refund Breakdown (3 cards)
+  // ── Section 3: Payment & Refund Breakdown ──
+  if (effectiveSections.includePaymentBreakdown) {
+    hasAnySection = true;
+    if (curY > 230) {
+      curY = addNewPage();
+    }
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.setTextColor(51, 65, 85);
-    doc.text('Payment & Refund Breakdown', margin, curY);
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${sectionCounter}. Payment & Refund Breakdown`, margin, curY);
+    sectionCounter++;
 
     const cashRecharge = analytics.cashRechargeVolume ?? 0;
     const upiRecharge = analytics.upiRechargeVolume ?? 0;
     const totalRefund = analytics.totalRefundVolume ?? 0;
 
     const paymentCards = [
-      { label: 'Cash Recharges', val: formatCurrency(cashRecharge) },
-      { label: 'UPI Recharges', val: formatCurrency(upiRecharge) },
-      { label: 'Total Returns / Refunds', val: formatCurrency(totalRefund) },
+      { label: 'Cash Recharges', val: formatPdfCurrency(cashRecharge) },
+      { label: 'UPI Recharges', val: formatPdfCurrency(upiRecharge) },
+      { label: 'Total Returns / Refunds', val: formatPdfCurrency(totalRefund) },
     ];
 
+    const cardW3 = (contentWidth - 6) / 3;
     paymentCards.forEach((card, idx) => {
       const x = margin + idx * (cardW3 + 3);
       doc.setFillColor(248, 250, 252);
@@ -213,15 +251,15 @@ export function buildOrgAnalyticsJsPdf({
       doc.text(card.val, x + 3, curY + 14);
     });
 
-    curY += 22;
+    curY += 23;
   }
 
-  // ── Section 2: Branch Comparison Table ──
+  // ── Section 4: Counter Performance Comparison ──
   if (effectiveSections.includeBranchComparison) {
-    hasAnySection = true;
-    if (curY > 195) {
+    if (hasAnySection) {
       curY = addNewPage();
     }
+    hasAnySection = true;
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
@@ -251,20 +289,21 @@ export function buildOrgAnalyticsJsPdf({
       if (topCounter) {
         doc.setFillColor(236, 253, 245);
         doc.setDrawColor(167, 243, 208);
-        doc.roundedRect(margin, curY + 3, contentWidth, 9, 2, 2, 'FD');
+        doc.roundedRect(margin, curY + 3, contentWidth, 14, 2, 2, 'FD');
 
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(7.5);
+        doc.setFontSize(8);
         doc.setTextColor(6, 95, 70);
-        doc.text(`★  ${topCounter.branchName} — Top Performing Counter`, margin + 3, curY + 8.5);
+        doc.text(`★  ${topCounter.branchName} — Top Performing Counter`, margin + 4, curY + 8);
 
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7);
+        doc.setFontSize(7.5);
         doc.setTextColor(4, 120, 87);
-        const topSub = `POS Revenue: ${formatCurrency((topCounter as any).purchaseVolume ?? topCounter.totalRevenue)}  |  Total Txns: ${topCounter.transactionCount}  |  Products Sold: ${topCounter.productsSoldCount ?? 0}`;
-        doc.text(topSub, margin + 95, curY + 8.5);
+        const revVal = formatPdfCurrency((topCounter as any).purchaseVolume ?? topCounter.totalRevenue);
+        const topSub = `POS Revenue: ${revVal}   |   Total Txns: ${topCounter.transactionCount}   |   Products Sold: ${topCounter.productsSoldCount ?? 0}`;
+        doc.text(topSub, margin + 4, curY + 13);
 
-        curY += 13;
+        curY += 20;
       }
     }
 
@@ -277,14 +316,14 @@ export function buildOrgAnalyticsJsPdf({
     doc.setFontSize(7);
     doc.setTextColor(51, 65, 85);
     doc.text('Counter Name', margin + 2, tableY + 5);
-    doc.text('Txns', margin + 38, tableY + 5);
-    doc.text('Purchases', margin + 50, tableY + 5);
-    doc.text('Card Rchg', margin + 72, tableY + 5);
-    doc.text('UPI Rchg', margin + 94, tableY + 5);
-    doc.text('Total Rchg', margin + 116, tableY + 5);
-    doc.text('Revenue', margin + 138, tableY + 5);
-    doc.text('Sessions', margin + 160, tableY + 5);
-    doc.text('Sold', margin + 174, tableY + 5);
+    doc.text('Txns', margin + 44, tableY + 5, { align: 'right' });
+    doc.text('Purchases', margin + 66, tableY + 5, { align: 'right' });
+    doc.text('Card Rchg', margin + 88, tableY + 5, { align: 'right' });
+    doc.text('UPI Rchg', margin + 110, tableY + 5, { align: 'right' });
+    doc.text('Total Rchg', margin + 132, tableY + 5, { align: 'right' });
+    doc.text('Revenue', margin + 154, tableY + 5, { align: 'right' });
+    doc.text('Sessions', margin + 168, tableY + 5, { align: 'right' });
+    doc.text('Sold', margin + 180, tableY + 5, { align: 'right' });
 
     curY = tableY + 7;
 
@@ -298,14 +337,14 @@ export function buildOrgAnalyticsJsPdf({
         doc.setFontSize(7);
         doc.setTextColor(51, 65, 85);
         doc.text('Counter Name (Cont.)', margin + 2, curY + 5);
-        doc.text('Txns', margin + 38, curY + 5);
-        doc.text('Purchases', margin + 50, curY + 5);
-        doc.text('Card Rchg', margin + 72, curY + 5);
-        doc.text('UPI Rchg', margin + 94, curY + 5);
-        doc.text('Total Rchg', margin + 116, curY + 5);
-        doc.text('Revenue', margin + 138, curY + 5);
-        doc.text('Sessions', margin + 160, curY + 5);
-        doc.text('Sold', margin + 174, curY + 5);
+        doc.text('Txns', margin + 44, curY + 5, { align: 'right' });
+        doc.text('Purchases', margin + 66, curY + 5, { align: 'right' });
+        doc.text('Card Rchg', margin + 88, curY + 5, { align: 'right' });
+        doc.text('UPI Rchg', margin + 110, curY + 5, { align: 'right' });
+        doc.text('Total Rchg', margin + 132, curY + 5, { align: 'right' });
+        doc.text('Revenue', margin + 154, curY + 5, { align: 'right' });
+        doc.text('Sessions', margin + 168, curY + 5, { align: 'right' });
+        doc.text('Sold', margin + 180, curY + 5, { align: 'right' });
         curY += 7;
       }
 
@@ -323,14 +362,14 @@ export function buildOrgAnalyticsJsPdf({
       doc.setFontSize(7);
       doc.setTextColor(51, 65, 85);
       doc.text(row.branchName.substring(0, 18), margin + 2, curY + 4.5);
-      doc.text(String(row.transactionCount), margin + 38, curY + 4.5);
-      doc.text(formatCurrency((row as any).purchaseVolume ?? 0), margin + 50, curY + 4.5);
-      doc.text(formatCurrency(cardR), margin + 72, curY + 4.5);
-      doc.text(formatCurrency(upiR), margin + 94, curY + 4.5);
-      doc.text(formatCurrency((row as any).rechargeVolume ?? 0), margin + 116, curY + 4.5);
-      doc.text(formatCurrency(row.totalRevenue), margin + 138, curY + 4.5);
-      doc.text(String(row.sessionCount), margin + 160, curY + 4.5);
-      doc.text(String(row.productsSoldCount ?? 0), margin + 174, curY + 4.5);
+      doc.text(String(row.transactionCount), margin + 44, curY + 4.5, { align: 'right' });
+      doc.text(formatPdfCurrency((row as any).purchaseVolume ?? 0), margin + 66, curY + 4.5, { align: 'right' });
+      doc.text(formatPdfCurrency(cardR), margin + 88, curY + 4.5, { align: 'right' });
+      doc.text(formatPdfCurrency(upiR), margin + 110, curY + 4.5, { align: 'right' });
+      doc.text(formatPdfCurrency((row as any).rechargeVolume ?? 0), margin + 132, curY + 4.5, { align: 'right' });
+      doc.text(formatPdfCurrency(row.totalRevenue), margin + 154, curY + 4.5, { align: 'right' });
+      doc.text(String(row.sessionCount), margin + 168, curY + 4.5, { align: 'right' });
+      doc.text(String(row.productsSoldCount ?? 0), margin + 180, curY + 4.5, { align: 'right' });
 
       curY += 6;
     });
@@ -338,12 +377,12 @@ export function buildOrgAnalyticsJsPdf({
     curY += 8;
   }
 
-  // ── Section 3: Staff Performance & Operational Audit ──
+  // ── Section 5: Staff Performance & Operational Audit ──
   if (effectiveSections.includeStaffPerformance) {
-    hasAnySection = true;
-    if (curY > 190) {
+    if (hasAnySection) {
       curY = addNewPage();
     }
+    hasAnySection = true;
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
@@ -362,7 +401,7 @@ export function buildOrgAnalyticsJsPdf({
       { label: 'Active Staff', val: `${activeStaffCount}` },
       { label: 'Cards Activated', val: `${totalActivated}` },
       { label: 'Cards Settled', val: `${totalSettled}` },
-      { label: 'Staff Volume Handled', val: formatCurrency(totalVolume) },
+      { label: 'Staff Volume Handled', val: formatPdfCurrency(totalVolume) },
     ];
 
     const cardW4 = (contentWidth - 9) / 4;
@@ -394,12 +433,12 @@ export function buildOrgAnalyticsJsPdf({
     doc.setFontSize(7);
     doc.setTextColor(51, 65, 85);
     doc.text('Staff Member', margin + 2, staffTableY + 5);
-    doc.text('Activated', margin + 50, staffTableY + 5);
-    doc.text('Settled', margin + 72, staffTableY + 5);
-    doc.text('Card Recharge', margin + 94, staffTableY + 5);
-    doc.text('POS Sales', margin + 122, staffTableY + 5);
-    doc.text('Refunds', margin + 150, staffTableY + 5);
-    doc.text('Txns', margin + 174, staffTableY + 5);
+    doc.text('Activated', margin + 58, staffTableY + 5, { align: 'right' });
+    doc.text('Settled', margin + 78, staffTableY + 5, { align: 'right' });
+    doc.text('Card Recharge', margin + 104, staffTableY + 5, { align: 'right' });
+    doc.text('POS Sales', margin + 130, staffTableY + 5, { align: 'right' });
+    doc.text('Refunds', margin + 156, staffTableY + 5, { align: 'right' });
+    doc.text('Txns', margin + 180, staffTableY + 5, { align: 'right' });
 
     curY = staffTableY + 7;
 
@@ -420,12 +459,12 @@ export function buildOrgAnalyticsJsPdf({
           doc.setFontSize(7);
           doc.setTextColor(51, 65, 85);
           doc.text('Staff Member (Cont.)', margin + 2, curY + 5);
-          doc.text('Activated', margin + 50, curY + 5);
-          doc.text('Settled', margin + 72, curY + 5);
-          doc.text('Card Recharge', margin + 94, curY + 5);
-          doc.text('POS Sales', margin + 122, curY + 5);
-          doc.text('Refunds', margin + 150, curY + 5);
-          doc.text('Txns', margin + 174, curY + 5);
+          doc.text('Activated', margin + 58, curY + 5, { align: 'right' });
+          doc.text('Settled', margin + 78, curY + 5, { align: 'right' });
+          doc.text('Card Recharge', margin + 104, curY + 5, { align: 'right' });
+          doc.text('POS Sales', margin + 130, curY + 5, { align: 'right' });
+          doc.text('Refunds', margin + 156, curY + 5, { align: 'right' });
+          doc.text('Txns', margin + 180, curY + 5, { align: 'right' });
           curY += 7;
         }
 
@@ -440,12 +479,12 @@ export function buildOrgAnalyticsJsPdf({
         doc.setFontSize(7);
         doc.setTextColor(51, 65, 85);
         doc.text(st.staffName.substring(0, 22), margin + 2, curY + 4.5);
-        doc.text(String(st.cardsActivatedCount), margin + 50, curY + 4.5);
-        doc.text(String(st.cardsSettledCount), margin + 72, curY + 4.5);
-        doc.text(formatCurrency(st.cardRechargeVolume), margin + 94, curY + 4.5);
-        doc.text(formatCurrency(st.purchaseVolume), margin + 122, curY + 4.5);
-        doc.text(st.refundVolume > 0 ? formatCurrency(st.refundVolume) : '₹0.00', margin + 150, curY + 4.5);
-        doc.text(String(st.totalTransactionsCount), margin + 174, curY + 4.5);
+        doc.text(String(st.cardsActivatedCount), margin + 58, curY + 4.5, { align: 'right' });
+        doc.text(String(st.cardsSettledCount), margin + 78, curY + 4.5, { align: 'right' });
+        doc.text(formatPdfCurrency(st.cardRechargeVolume), margin + 104, curY + 4.5, { align: 'right' });
+        doc.text(formatPdfCurrency(st.purchaseVolume), margin + 130, curY + 4.5, { align: 'right' });
+        doc.text(st.refundVolume > 0 ? formatPdfCurrency(st.refundVolume) : 'Rs. 0.00', margin + 156, curY + 4.5, { align: 'right' });
+        doc.text(String(st.totalTransactionsCount), margin + 180, curY + 4.5, { align: 'right' });
 
         curY += 6;
       });
@@ -468,12 +507,12 @@ export function buildOrgAnalyticsJsPdf({
     doc.setFontSize(8);
     doc.setTextColor(100, 116, 139);
     doc.text(
-      'Please select at least one report section (Executive KPIs, Branch Comparison, or Staff Performance)',
+      'Please select at least one report section using the option toggles in the preview window',
       margin + 10,
       92,
     );
     doc.text(
-      'using the option toggles in the preview window to generate and download content.',
+      'to generate and download customized report content.',
       margin + 10,
       98,
     );
@@ -633,7 +672,7 @@ function drawPlatformPdfPage1(
     const topKpis = [
       { label: 'Total Cafeterias', val: `${params.totalOrganizations} Cafeterias` },
       { label: 'Active Subscriptions', val: `${params.activeSubscriptions} Active` },
-      { label: 'Gateway Sub Revenue', val: formatCurrency(params.totalGatewayRevenue) },
+      { label: 'Gateway Sub Revenue', val: formatPdfCurrency(params.totalGatewayRevenue) },
       { label: 'Plan Requests', val: `${params.pendingRequestsCount ?? 0} Pending` },
     ];
 
@@ -700,10 +739,10 @@ function drawPlatformPdfPage1(
     doc.text('Status', margin + 140, finTableY + 5);
 
     const finStreams = [
-      { name: 'POS Product Sales & Purchases', amount: formatCurrency(params.totalPurchaseVolume), status: 'Settled' },
-      { name: 'Card Wallet Recharges (Cash & UPI)', amount: formatCurrency(params.totalRechargeVolume), status: 'Deposited' },
-      { name: 'Card Returns & Refund Volume', amount: formatCurrency(params.totalRefundVolume), status: 'Processed' },
-      { name: 'Platform Subscription Invoicing', amount: formatCurrency(params.totalGatewayRevenue), status: 'Collected' },
+      { name: 'POS Product Sales & Purchases', amount: formatPdfCurrency(params.totalPurchaseVolume), status: 'Settled' },
+      { name: 'Card Wallet Recharges (Cash & UPI)', amount: formatPdfCurrency(params.totalRechargeVolume), status: 'Deposited' },
+      { name: 'Card Returns & Refund Volume', amount: formatPdfCurrency(params.totalRefundVolume), status: 'Processed' },
+      { name: 'Platform Subscription Invoicing', amount: formatPdfCurrency(params.totalGatewayRevenue), status: 'Collected' },
     ];
 
     let finCurY = finTableY + 7;
@@ -828,7 +867,7 @@ function drawPlatformPdfPage2(
       doc.text(String(br.transactionCount), margin + 90, brCurY + 4.5);
       doc.text(String(br.purchaseCount), margin + 108, brCurY + 4.5);
       doc.text(String(br.rechargeCount), margin + 130, brCurY + 4.5);
-      doc.text(formatCurrency(br.totalRevenue), margin + 155, brCurY + 4.5);
+      doc.text(formatPdfCurrency(br.totalRevenue), margin + 155, brCurY + 4.5);
 
       brCurY += 6.5;
     });
@@ -887,7 +926,7 @@ function drawPlatformPdfPage3(
       doc.text(prod.name.substring(0, 28), margin + 3, rowY + 4.5);
       doc.text(prod.category, margin + 65, rowY + 4.5);
       doc.text(`${prod.quantitySold} units`, margin + 105, rowY + 4.5);
-      doc.text(formatCurrency(prod.revenue), margin + 135, rowY + 4.5);
+      doc.text(formatPdfCurrency(prod.revenue), margin + 135, rowY + 4.5);
       doc.text(prod.stockStatus, margin + 165, rowY + 4.5);
 
       rowY += 6.5;
@@ -954,7 +993,7 @@ function drawPlatformPdfPage3(
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8);
       doc.setTextColor(5, 150, 105);
-      doc.text(`${formatCurrency(plan.price)}/${plan.billingInterval.toLowerCase()}`, px + 3, planBoxY + 17);
+      doc.text(`${formatPdfCurrency(plan.price)}/${plan.billingInterval.toLowerCase()}`, px + 3, planBoxY + 17);
     });
   }
 }
