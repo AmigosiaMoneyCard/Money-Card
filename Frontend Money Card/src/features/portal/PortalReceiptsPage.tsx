@@ -13,7 +13,7 @@ import {
   ErrorState,
 } from '@/components/ui';
 import { formatDateTime, formatCurrency } from '@/utils';
-import { ArrowLeft, Receipt, Clock, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, Receipt, Clock } from 'lucide-react';
 
 export function PortalReceiptsPage() {
   const navigate = useNavigate();
@@ -113,56 +113,32 @@ export function PortalReceiptsPage() {
         <div className="space-y-4">
           {receipts.map((rcpt) => (
             <Card key={rcpt.receiptId} padding="md" className="space-y-3.5 border-slate-200 bg-white shadow-sm">
-              {/* Receipt Header with Timestamp */}
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div>
-                  <span className="font-mono text-xs font-bold text-emerald-600">
-                    {rcpt.receiptId}
-                  </span>
-                  <p className="flex items-center gap-1 text-[11px] text-slate-500 mt-0.5">
-                    <Clock className="h-3 w-3 text-slate-400 shrink-0" />
-                    <span>{formatDateTime(rcpt.date)}</span>
-                  </p>
+              {/* Receipt Header with Timestamp & Status (Receipt ID hidden) */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
+                  <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                  <span>{formatDateTime(rcpt.date)}</span>
                 </div>
                 <Badge variant="success" className="text-[10px]">
                   PAID
                 </Badge>
               </div>
 
-              {/* Itemized Details in Small Box */}
-              <div className="rounded-xl border border-slate-200/80 bg-slate-50/75 p-3 space-y-2 text-xs">
-                <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 uppercase tracking-wider pb-1.5 border-b border-slate-200/60">
-                  <span className="flex items-center gap-1.5">
-                    <ShoppingBag className="h-3 w-3 text-emerald-600" />
-                    Purchased Items ({rcpt.items.length})
-                  </span>
-                  <span>Amount</span>
-                </div>
-
-                <div className="space-y-2 text-xs divide-y divide-slate-100">
-                  {rcpt.items.map((item, idx) => (
-                    <div key={idx} className="flex justify-between items-center text-slate-700 pt-1.5 first:pt-0">
-                      <div className="pr-2">
-                        <p className="font-medium text-slate-900">{item.itemName}</p>
-                        <p className="text-[11px] text-slate-500 font-mono">
-                          {item.quantity} × {formatCurrency(item.unitPrice)}
-                        </p>
-                      </div>
-                      <span className="font-mono font-semibold text-slate-900 whitespace-nowrap">
-                        {formatCurrency(item.totalPrice)}
-                      </span>
+              {/* Items List (Single whole box layout) */}
+              <div className="space-y-2 text-xs divide-y divide-slate-100">
+                {rcpt.items.map((item, idx) => (
+                  <div key={idx} className="flex justify-between items-center text-slate-700 pt-2 first:pt-0">
+                    <div className="pr-2">
+                      <p className="font-medium text-slate-900">{item.itemName}</p>
+                      <p className="text-[11px] text-slate-500 font-mono">
+                        {item.quantity} × {formatCurrency(item.unitPrice)}
+                      </p>
                     </div>
-                  ))}
-                </div>
-
-                {rcpt.paymentMethod && (
-                  <div className="flex items-center justify-between pt-2 border-t border-dashed border-slate-200 text-[11px]">
-                    <span className="text-slate-500">Payment Method</span>
-                    <span className="font-medium text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200">
-                      {rcpt.paymentMethod === 'SMART_CARD' ? 'Card Balance' : rcpt.paymentMethod}
+                    <span className="font-mono font-semibold text-slate-900 whitespace-nowrap">
+                      {formatCurrency(item.totalPrice)}
                     </span>
                   </div>
-                )}
+                ))}
               </div>
 
               {/* Receipt Total */}
