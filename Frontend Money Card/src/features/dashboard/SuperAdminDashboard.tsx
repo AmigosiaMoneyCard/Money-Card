@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '@/services/api';
 import type {
+  AnalyticsOverview,
   OrganizationOverview,
   Plan,
   PlanChangeRequest,
@@ -40,13 +41,23 @@ import {
   PlusCircle,
   Bell,
   CheckCircle2,
+  ShoppingBag,
+  TrendingUp,
+  CreditCard,
 } from 'lucide-react';
 
 export type DatePreset = 'all' | 'today' | 'yesterday' | 'last7' | 'last30' | 'thisMonth' | 'custom';
 
+function formatLocalDate(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export function getPresetDates(preset: DatePreset): { startDate: string; endDate: string } {
   const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
+  const todayStr = formatLocalDate(now);
 
   if (preset === 'today') {
     return { startDate: todayStr, endDate: todayStr };
@@ -54,22 +65,22 @@ export function getPresetDates(preset: DatePreset): { startDate: string; endDate
   if (preset === 'yesterday') {
     const yest = new Date(now);
     yest.setDate(yest.getDate() - 1);
-    const yestStr = yest.toISOString().split('T')[0];
+    const yestStr = formatLocalDate(yest);
     return { startDate: yestStr, endDate: yestStr };
   }
   if (preset === 'last7') {
     const start = new Date(now);
     start.setDate(start.getDate() - 7);
-    return { startDate: start.toISOString().split('T')[0], endDate: todayStr };
+    return { startDate: formatLocalDate(start), endDate: todayStr };
   }
   if (preset === 'last30') {
     const start = new Date(now);
     start.setDate(start.getDate() - 30);
-    return { startDate: start.toISOString().split('T')[0], endDate: todayStr };
+    return { startDate: formatLocalDate(start), endDate: todayStr };
   }
   if (preset === 'thisMonth') {
     const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { startDate: start.toISOString().split('T')[0], endDate: todayStr };
+    return { startDate: formatLocalDate(start), endDate: todayStr };
   }
 
   return { startDate: '', endDate: '' };
@@ -83,8 +94,11 @@ export function SuperAdminDashboard() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [planRequests, setPlanRequests] = useState<PlanChangeRequest[]>([]);
 
-  // Organization Filter State
+  const [analytics, setAnalytics] = useState<AnalyticsOverview | null>(null);
   const [selectedOrgId, setSelectedOrgId] = useState<string>('');
+  const [datePreset, setDatePreset] = useState<DatePreset>('all');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
 
   // Search & Cafeterias Accordion / Dropdown Toggle
   const [searchOrgTerm, setSearchOrgTerm] = useState('');
@@ -94,16 +108,30 @@ export function SuperAdminDashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const handlePresetChange = (preset: DatePreset) => {
+    setDatePreset(preset);
+    if (preset !== 'custom') {
+      const { startDate: s, endDate: e } = getPresetDates(preset);
+      setStartDate(s);
+      setEndDate(e);
+    }
+  };
+
   const fetchPlatformData = useCallback(async (isSilent = false) => {
     if (!isSilent) setIsLoading(true);
     setIsRefreshing(true);
     setError(null);
     try {
-      const [orgsRes, plansRes, reqsRes, subsRes] = await Promise.all([
+      const [orgsRes, plansRes, reqsRes, subsRes, analyticsRes] = await Promise.all([
         apiService.organizations.getOrganizations(),
         apiService.plans.getPlans(),
         apiService.subscriptions.getPlanRequests(),
         apiService.subscriptions.getAllSubscriptions(),
+        apiService.analytics.getOverview({
+          organizationId: selectedOrgId || undefined,
+          startDate: startDate || undefined,
+          endDate: endDate || undefined,
+        }),
       ]);
 
       if (!orgsRes.success) {
@@ -115,13 +143,14 @@ export function SuperAdminDashboard() {
       if (plansRes.success) setPlans(plansRes.data);
       if (reqsRes.success) setPlanRequests(reqsRes.data || []);
       if (subsRes.success) setSubscriptions(subsRes.data || []);
+      if (analyticsRes.success) setAnalytics(analyticsRes.data);
     } catch {
       setError('Unable to load platform data. Please try again.');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [selectedOrgId, startDate, endDate]);
 
   useEffect(() => {
     fetchPlatformData(false);
@@ -368,32 +397,110 @@ export function SuperAdminDashboard() {
         <ErrorState title="Could not load dashboard data" message={error} onRetry={() => fetchPlatformData(false)} />
       ) : (
         <div className="space-y-6">
-          {/* ── Filter Toolbar (Cafeteria Scope, Refresh Data) ── */}
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4 sm:flex-row sm:items-center sm:justify-between">
-            {/* Cafeteria Scope Filter */}
-            <div className="w-full sm:w-64">
-              <label htmlFor="dashboard-cafeteria-filter" className="mb-1 block text-[11px] font-medium text-slate-600">Cafeteria Scope</label>
-              <Select
-                id="dashboard-cafeteria-filter"
-                value={selectedOrgId}
-                onChange={(e) => setSelectedOrgId(e.target.value)}
-                options={[
-                  { value: '', label: 'All Cafeterias' },
-                  ...orgs.map((o) => ({ value: o.id, label: o.name })),
-                ]}
-              />
+          {/* ── Filter Toolbar (Cafeteria Scope, Time Window, Refresh Data) ── */}
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Cafeteria Scope Filter */}
+              <div className="w-full sm:w-56">
+                <label htmlFor="dashboard-cafeteria-filter" className="mb-1 block text-[11px] font-medium text-slate-600">Cafeteria Scope</label>
+                <Select
+                  id="dashboard-cafeteria-filter"
+                  value={selectedOrgId}
+                  onChange={(e) => setSelectedOrgId(e.target.value)}
+                  options={[
+                    { value: '', label: 'All Cafeterias' },
+                    ...orgs.map((o) => ({ value: o.id, label: o.name })),
+                  ]}
+                />
+              </div>
+
+              {/* Time Window Filter */}
+              <div className="w-full sm:w-48">
+                <label htmlFor="dashboard-preset-filter" className="mb-1 block text-[11px] font-medium text-slate-600">Time Window</label>
+                <Select
+                  id="dashboard-preset-filter"
+                  value={datePreset}
+                  onChange={(e) => handlePresetChange(e.target.value as DatePreset)}
+                  options={[
+                    { value: 'all', label: 'All Time' },
+                    { value: 'today', label: 'Today' },
+                    { value: 'yesterday', label: 'Yesterday' },
+                    { value: 'last7', label: 'Last 7 Days' },
+                    { value: 'last30', label: 'Last 30 Days' },
+                    { value: 'thisMonth', label: 'This Month' },
+                    { value: 'custom', label: 'Custom Range' },
+                  ]}
+                />
+              </div>
+
+              {/* Custom Date Inputs (if selected) */}
+              {datePreset === 'custom' && (
+                <div className="flex flex-wrap items-end gap-2">
+                  <div>
+                    <label htmlFor="dashboard-start-date" className="mb-1 block text-[11px] font-medium text-slate-600">Start Date</label>
+                    <input
+                      id="dashboard-start-date"
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="dashboard-end-date" className="mb-1 block text-[11px] font-medium text-slate-600">End Date</label>
+                    <input
+                      id="dashboard-end-date"
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <Button
               variant="outline"
               size="sm"
-              onClick={() => fetchPlatformData(false)}
+              onClick={() => fetchPlatformData(true)}
               isLoading={isRefreshing}
               leftIcon={<RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />}
-              className="shrink-0 self-start sm:self-end"
+              className="shrink-0 self-start lg:self-center"
             >
               Refresh Data
             </Button>
+          </div>
+
+          {/* ── Period Operational Metrics (Reacts to Time Window: Yesterday, Today, etc.) ── */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Operational Volume ({datePreset === 'all' ? 'All Time' : datePreset === 'yesterday' ? 'Yesterday' : datePreset === 'today' ? 'Today' : datePreset === 'last7' ? 'Last 7 Days' : datePreset === 'last30' ? 'Last 30 Days' : datePreset === 'thisMonth' ? 'This Month' : `${startDate} to ${endDate}`})
+              </h2>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <StatCard
+                label="Purchase Sales Volume"
+                value={formatCurrency(analytics?.totalPurchaseVolume || 0)}
+                icon={<ShoppingBag className="h-5 w-5 text-emerald-600" />}
+              />
+              <StatCard
+                label="Card Wallet Recharges"
+                value={formatCurrency(analytics?.totalRechargeVolume || 0)}
+                icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
+              />
+              <StatCard
+                label="Transactions Handled"
+                value={(analytics?.totalTransactions || 0).toLocaleString()}
+                icon={<BarChart3 className="h-5 w-5 text-sky-600" />}
+              />
+              <StatCard
+                label="Active Card Sessions"
+                value={(analytics?.activeSessionsCount || 0).toLocaleString()}
+                icon={<CreditCard className="h-5 w-5 text-amber-600" />}
+              />
+            </div>
           </div>
 
           {/* ── 4. Super Admin SaaS Platform Metrics (Cafeterias, Cafeteria Admins, Active Subscriptions, Plan Requests) ── */}

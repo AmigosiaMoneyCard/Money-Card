@@ -36,19 +36,30 @@ import {
   Building2,
   Layers,
   RefreshCw,
-  Receipt,
   Eye,
   Download,
   Bell,
   Check,
   SlidersHorizontal,
+  ShoppingBag,
+  TrendingUp,
+  BarChart3,
+  CreditCard,
+  Users,
 } from 'lucide-react';
 
 export type DatePreset = 'all' | 'today' | 'yesterday' | 'last7' | 'last30' | 'thisMonth' | 'custom';
 
+function formatLocalDate(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export function getPresetDates(preset: DatePreset): { startDate: string; endDate: string } {
   const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
+  const todayStr = formatLocalDate(now);
 
   if (preset === 'today') {
     return { startDate: todayStr, endDate: todayStr };
@@ -56,22 +67,22 @@ export function getPresetDates(preset: DatePreset): { startDate: string; endDate
   if (preset === 'yesterday') {
     const yest = new Date(now);
     yest.setDate(yest.getDate() - 1);
-    const yestStr = yest.toISOString().split('T')[0];
+    const yestStr = formatLocalDate(yest);
     return { startDate: yestStr, endDate: yestStr };
   }
   if (preset === 'last7') {
     const start = new Date(now);
     start.setDate(start.getDate() - 7);
-    return { startDate: start.toISOString().split('T')[0], endDate: todayStr };
+    return { startDate: formatLocalDate(start), endDate: todayStr };
   }
   if (preset === 'last30') {
     const start = new Date(now);
     start.setDate(start.getDate() - 30);
-    return { startDate: start.toISOString().split('T')[0], endDate: todayStr };
+    return { startDate: formatLocalDate(start), endDate: todayStr };
   }
   if (preset === 'thisMonth') {
     const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { startDate: start.toISOString().split('T')[0], endDate: todayStr };
+    return { startDate: formatLocalDate(start), endDate: todayStr };
   }
 
   return { startDate: '', endDate: '' };
@@ -93,6 +104,7 @@ export function SuperAdminAnalyticsView() {
   const [endDate, setEndDate] = useState<string>('');
 
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -127,8 +139,9 @@ export function SuperAdminAnalyticsView() {
     }
   };
 
-  const fetchPlatformData = useCallback(async () => {
-    setIsLoading(true);
+  const fetchPlatformData = useCallback(async (isSilent = false) => {
+    if (!isSilent) setIsLoading(true);
+    setIsRefreshing(true);
     setError(null);
     try {
       const [analyticsRes, peakRes, orgsRes, branchesRes, payRes, plansRes, reqsRes] = await Promise.all([
@@ -138,7 +151,11 @@ export function SuperAdminAnalyticsView() {
           startDate: startDate || undefined,
           endDate: endDate || undefined,
         }),
-        apiService.analytics.getPeakAnalytics(),
+        apiService.analytics.getPeakAnalytics({
+          organizationId: selectedOrgId || undefined,
+          startDate: startDate || undefined,
+          endDate: endDate || undefined,
+        }),
         apiService.organizations.getOrganizations({ limit: 100 }),
         apiService.branches.getBranches(),
         apiService.subscriptions.getPayments(),
@@ -162,11 +179,12 @@ export function SuperAdminAnalyticsView() {
       setError('Unable to connect to the server. Please try again.');
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, [selectedOrgId, startDate, endDate]);
 
   useEffect(() => {
-    fetchPlatformData();
+    fetchPlatformData(false);
   }, [fetchPlatformData]);
 
   const totalGatewayRevenue = payments
@@ -533,12 +551,44 @@ export function SuperAdminAnalyticsView() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => fetchPlatformData()}
-              leftIcon={<RefreshCw className="h-4 w-4" />}
+              onClick={() => fetchPlatformData(true)}
+              isLoading={isRefreshing}
+              leftIcon={<RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />}
               className="shrink-0 self-start lg:self-center"
             >
               Refresh Data
             </Button>
+          </div>
+
+          {/* ── Period Operational Metrics (Reacts dynamically to Time Window: Yesterday, Today, etc.) ── */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Period Operational Metrics ({datePreset === 'all' ? 'All Time' : datePreset === 'yesterday' ? 'Yesterday' : datePreset === 'today' ? 'Today' : datePreset === 'last7' ? 'Last 7 Days' : datePreset === 'last30' ? 'Last 30 Days' : datePreset === 'thisMonth' ? 'This Month' : `${startDate} to ${endDate}`})
+              </h2>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <StatCard
+                label="Purchase Sales Volume"
+                value={formatCurrency(analytics?.totalPurchaseVolume || 0)}
+                icon={<ShoppingBag className="h-5 w-5 text-emerald-600" />}
+              />
+              <StatCard
+                label="Card Wallet Recharges"
+                value={formatCurrency(analytics?.totalRechargeVolume || 0)}
+                icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
+              />
+              <StatCard
+                label="Total Transactions"
+                value={(analytics?.totalTransactions || 0).toLocaleString()}
+                icon={<BarChart3 className="h-5 w-5 text-sky-600" />}
+              />
+              <StatCard
+                label="Active Card Sessions"
+                value={(analytics?.activeSessionsCount || 0).toLocaleString()}
+                icon={<CreditCard className="h-5 w-5 text-amber-600" />}
+              />
+            </div>
           </div>
 
           {/* Top Platform KPI Cards (Super Admin B2B SaaS Metrics) */}
@@ -550,15 +600,15 @@ export function SuperAdminAnalyticsView() {
             />
 
             <StatCard
-              label="Active Subscriptions"
-              value={activeOrgsCount}
-              icon={<Layers className="h-5 w-5 text-emerald-600" />}
+              label="Cafeteria Admins"
+              value={`${orgs.filter((o) => Boolean(o.adminUser)).length} Admins`}
+              icon={<Users className="h-5 w-5 text-teal-600" />}
             />
 
             <StatCard
-              label="Gateway Subscription Revenue"
-              value={formatCurrency(subscriptionRevenue)}
-              icon={<Receipt className="h-5 w-5 text-emerald-600" />}
+              label="Active Subscriptions"
+              value={activeOrgsCount}
+              icon={<Layers className="h-5 w-5 text-emerald-600" />}
             />
 
             <StatCard
