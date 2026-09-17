@@ -1800,7 +1800,6 @@ export function StaffPage() {
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         title="Add New Staff Member"
-        description="Register a staff member, authorize counters, and assign operational permissions."
         size="xl"
       >
         <div className="space-y-6">
@@ -1926,54 +1925,31 @@ export function StaffPage() {
                   />
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <Input
-                      id="add-staff-password"
-                      type={showAddPassword ? 'text' : 'password'}
-                      label="Login Password *"
-                      placeholder="Min 6 characters"
-                      maxLength={50}
-                      value={formPassword}
-                      onChange={(e) => {
-                        setFormPassword(e.target.value);
-                        if (formErrors.password) setFormErrors((prev) => ({ ...prev, password: '' }));
-                      }}
-                      error={formErrors.password}
-                      disabled={isSubmitting}
-                      rightElement={
-                        <button
-                          type="button"
-                          onClick={() => setShowAddPassword(!showAddPassword)}
-                          className="text-slate-400 hover:text-slate-600 focus:outline-none p-1 flex items-center justify-center cursor-pointer"
-                          title={showAddPassword ? 'Hide password' : 'Show password'}
-                          tabIndex={-1}
-                        >
-                          {showAddPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      }
-                    />
-                  </div>
-
-                  <Input
-                    id="add-staff-email"
-                    type="email"
-                    label="Staff Email (Optional)"
-                    placeholder="e.g. staff@example.com"
-                    maxLength={100}
-                    value={formEmail}
-                    onChange={(e) => {
-                      setFormEmail(e.target.value);
-                      if (formErrors.email) setFormErrors((prev) => ({ ...prev, email: '' }));
-                    }}
-                    error={formErrors.email}
-                    disabled={isSubmitting}
-                  />
-                </div>
-
-                <p className="text-[11px] text-slate-500">
-                  Staff log in to the mobile POS app using their <strong>Phone Number</strong> and <strong>Password</strong>. Their account is activated immediately upon creation.
-                </p>
+                <Input
+                  id="add-staff-password"
+                  type={showAddPassword ? 'text' : 'password'}
+                  label="Login Password *"
+                  placeholder="Min 6 characters"
+                  maxLength={50}
+                  value={formPassword}
+                  onChange={(e) => {
+                    setFormPassword(e.target.value);
+                    if (formErrors.password) setFormErrors((prev) => ({ ...prev, password: '' }));
+                  }}
+                  error={formErrors.password}
+                  disabled={isSubmitting}
+                  rightElement={
+                    <button
+                      type="button"
+                      onClick={() => setShowAddPassword(!showAddPassword)}
+                      className="text-slate-400 hover:text-slate-600 focus:outline-none p-1 flex items-center justify-center cursor-pointer"
+                      title={showAddPassword ? 'Hide password' : 'Show password'}
+                      tabIndex={-1}
+                    >
+                      {showAddPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  }
+                />
 
                 {orgOverview?.usage && (
                   <p className="text-xs text-slate-500 pt-2">
