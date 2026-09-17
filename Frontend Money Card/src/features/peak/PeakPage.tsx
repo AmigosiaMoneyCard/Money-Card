@@ -520,7 +520,7 @@ function usePeakPageData() {
   };
 }
 
-function PeakKpiGrid({ comparison }: { comparison: PeakAnalyticsOverview['comparison'] }) {
+export function PeakKpiGrid({ comparison }: { comparison: PeakAnalyticsOverview['comparison'] }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <StatCard
@@ -547,7 +547,7 @@ function PeakKpiGrid({ comparison }: { comparison: PeakAnalyticsOverview['compar
   );
 }
 
-function PeakHourlyTrafficChart({
+export function PeakHourlyTrafficChart({
   hourlyDistribution,
   busiestHour,
   busiestDay,
@@ -988,7 +988,7 @@ interface PeakFoodDemandSectionProps {
   setDemandSortBy: (sort: 'REVENUE' | 'ORDERS') => void;
 }
 
-function PeakFoodDemandSection({
+export function PeakFoodDemandSection({
   filteredProducts,
   demandSortBy,
   setDemandSortBy,

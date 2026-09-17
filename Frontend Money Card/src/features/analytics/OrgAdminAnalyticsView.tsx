@@ -1,4 +1,4 @@
-import { Eye, RefreshCw } from 'lucide-react';
+import { Eye, RefreshCw, BarChart3, Flame } from 'lucide-react';
 import { Badge, Button, Select, LoadingState, ErrorState } from '@/components/ui';
 import {
   OrgAdminKpiCards,
@@ -9,6 +9,11 @@ import {
   OrgAdminPdfModal,
   OrgAdminBranchDetailModal,
 } from './OrgAdminAnalyticsComponents';
+import {
+  PeakKpiGrid,
+  PeakHourlyTrafficChart,
+  PeakFoodDemandSection,
+} from '@/features/peak';
 import type { SortMetric } from './OrgAdminAnalyticsComponents';
 import {
   useOrgAdminAnalytics,
@@ -31,6 +36,12 @@ export function OrgAdminAnalyticsView() {
   const {
     branches,
     analytics,
+    peakData,
+    activeTab,
+    handleTabChange,
+    demandSortBy,
+    setDemandSortBy,
+    filteredProducts,
     isLoading,
     error,
     isExportingPdf,
@@ -182,36 +193,85 @@ export function OrgAdminAnalyticsView() {
         </Button>
       </div>
 
+      {/* ── Tab Navigation Bar ── */}
+      <div className="flex items-center gap-2 border-b border-slate-200">
+        <button
+          type="button"
+          onClick={() => handleTabChange('overview')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+            activeTab === 'overview'
+              ? 'border-emerald-600 text-emerald-700 bg-emerald-50/50 rounded-t-lg'
+              : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+          }`}
+        >
+          <BarChart3 className="h-4 w-4" />
+          <span>Financial Overview</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabChange('demand')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+            activeTab === 'demand'
+              ? 'border-emerald-600 text-emerald-700 bg-emerald-50/50 rounded-t-lg'
+              : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+          }`}
+        >
+          <Flame className="h-4 w-4 text-rose-500" />
+          <span>Rush Hours & Food Demand</span>
+        </button>
+      </div>
+
       {isLoading ? (
-        <LoadingState message="Calculating cafeteria metrics & ledger analytics..." />
+        <LoadingState message="Calculating cafeteria metrics & peak demand analytics..." />
       ) : error ? (
         <ErrorState title="Failed to load analytics" message={error} onRetry={fetchAnalytics} />
-      ) : analytics ? (
-        <div className="space-y-8">
-          <OrgAdminKpiCards analytics={analytics} />
-          <OrgAdminLifecycleCards analytics={analytics} />
-          <OrgAdminPaymentRefundCards
-            cashRecharge={cashRechargeAmount}
-            upiRecharge={upiRechargeAmount}
-            totalRefund={analytics.totalRefundVolume ?? 0}
-          />
-          <OrgAdminBranchComparison
-            sortedBranches={sortedBranchComparison}
-            sortBy={sortBy}
-            onSortChange={setSortBy}
-            onSelectDetail={setSelectedBranchDetail}
-          />
-        </div>
-      ) : null}
+      ) : activeTab === 'overview' ? (
+        analytics ? (
+          <div className="space-y-8">
+            <OrgAdminKpiCards analytics={analytics} />
+            <OrgAdminLifecycleCards analytics={analytics} />
+            <OrgAdminPaymentRefundCards
+              cashRecharge={cashRechargeAmount}
+              upiRecharge={upiRechargeAmount}
+              totalRefund={analytics.totalRefundVolume ?? 0}
+            />
+            <OrgAdminBranchComparison
+              sortedBranches={sortedBranchComparison}
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+              onSelectDetail={setSelectedBranchDetail}
+            />
 
-      {/* Staff Operational Performance Summary */}
-      {analytics?.staffPerformance && analytics.staffPerformance.length > 0 && (
-        <OrgAdminStaffSummary
-          activeCount={activeStaffList.length}
-          cardsActivated={totalCardsActivatedByStaff}
-          cardsSettled={totalCardsSettledByStaff}
-          totalVolume={totalStaffVolume}
-        />
+            {/* Staff Operational Performance Summary */}
+            {analytics?.staffPerformance && analytics.staffPerformance.length > 0 && (
+              <OrgAdminStaffSummary
+                activeCount={activeStaffList.length}
+                cardsActivated={totalCardsActivatedByStaff}
+                cardsSettled={totalCardsSettledByStaff}
+                totalVolume={totalStaffVolume}
+              />
+            )}
+          </div>
+        ) : null
+      ) : (
+        peakData ? (
+          <div className="space-y-8">
+            <PeakKpiGrid comparison={peakData.comparison} />
+            <PeakHourlyTrafficChart
+              hourlyDistribution={peakData.hourlyDistribution}
+              busiestHour={peakData.comparison.busiestHour}
+              busiestDay={peakData.busiestDay}
+            />
+            <PeakFoodDemandSection
+              filteredProducts={filteredProducts}
+              demandSortBy={demandSortBy}
+              setDemandSortBy={setDemandSortBy}
+            />
+          </div>
+        ) : (
+          <LoadingState message="Calculating hour-by-hour peak and food demand..." />
+        )
       )}
 
       {/* PDF Viewer Modal */}

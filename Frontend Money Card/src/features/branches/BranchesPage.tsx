@@ -32,10 +32,9 @@ import {
   MoreVertical,
   ChevronDown,
   X,
-  UtensilsCrossed,
   Layers,
 } from 'lucide-react';
-import { BranchMenuModal } from './BranchMenuModal';
+import { useNavigate } from 'react-router-dom';
 import { AllBranchesOverviewModal } from './AllBranchesOverviewModal';
 import { BranchDetailsModal } from './BranchDetailsModal';
 
@@ -199,6 +198,7 @@ function BranchActionMenu({
 }
 
 export function BranchesPage() {
+  const navigate = useNavigate();
   const { currentBranch, selectBranch, setBranches: updateBranchContext } = useBranch();
   const { hasPermission } = usePermissions();
 
@@ -217,21 +217,12 @@ export function BranchesPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteApiConflict, setDeleteApiConflict] = useState<boolean>(false);
 
-  // Branch-wise Menu modal state
-  const [showMenuModal, setShowMenuModal] = useState(false);
-  const [selectedMenuBranch, setSelectedMenuBranch] = useState<Branch | null>(null);
-
   // All Branches Consolidated Overview Modal state
   const [showOverviewModal, setShowOverviewModal] = useState(false);
 
   // Individual Branch 360 End-to-End Details Modal state
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedDetailsBranch, setSelectedDetailsBranch] = useState<Branch | null>(null);
-
-  const handleOpenBranchMenu = (branch: Branch) => {
-    setSelectedMenuBranch(branch);
-    setShowMenuModal(true);
-  };
 
   const handleOpenBranchDetails = (branch: Branch) => {
     setSelectedDetailsBranch(branch);
@@ -551,17 +542,6 @@ export function BranchesPage() {
       className: 'text-right',
       render: (branch: Branch) => (
         <div className="flex items-center justify-end gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleOpenBranchMenu(branch)}
-            className="flex items-center gap-1.5 text-xs py-1 px-2.5 bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100 hover:border-emerald-400 font-semibold shadow-2xs cursor-pointer"
-            title={`View & Manage Menu for ${branch.name}`}
-          >
-            <UtensilsCrossed className="h-3.5 w-3.5 text-emerald-600" />
-            <span>Menu</span>
-          </Button>
-
           <BranchActionMenu
             branch={branch}
             canManage={canManage}
@@ -738,7 +718,7 @@ export function BranchesPage() {
                   </Badge>
                 </button>
 
-                {/* Action Buttons: Details, Menu & Actions buttons */}
+                {/* Action Buttons: Details & Actions buttons */}
                 <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                   <Button
                     variant="outline"
@@ -748,17 +728,6 @@ export function BranchesPage() {
                     title={`View details for ${branch.name}`}
                   >
                     <span>Details</span>
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleOpenBranchMenu(branch)}
-                    className="flex items-center gap-1.5 text-xs py-1 px-2.5 bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100 hover:border-emerald-400 font-semibold shadow-2xs cursor-pointer"
-                    title={`View & Manage Menu for ${branch.name}`}
-                  >
-                    <UtensilsCrossed className="h-3.5 w-3.5 text-emerald-600" />
-                    <span>Menu</span>
                   </Button>
 
                   <BranchActionMenu
@@ -966,20 +935,13 @@ export function BranchesPage() {
         </div>
       </Modal>
 
-      {/* ── Branch Menu Modal ─────────────────────────────────────── */}
-      <BranchMenuModal
-        branch={selectedMenuBranch}
-        isOpen={showMenuModal}
-        onClose={() => setShowMenuModal(false)}
-      />
-
       {/* ── All Branches End-to-End Overview Modal ───────────────── */}
       <AllBranchesOverviewModal
         isOpen={showOverviewModal}
         onClose={() => setShowOverviewModal(false)}
-        onOpenBranchMenu={(branch) => {
+        onOpenBranchMenu={(_branch) => {
           setShowOverviewModal(false);
-          handleOpenBranchMenu(branch);
+          navigate('/products');
         }}
         onEditBranch={(branch) => {
           setShowOverviewModal(false);
@@ -992,9 +954,9 @@ export function BranchesPage() {
         branch={selectedDetailsBranch}
         isOpen={showDetailsModal}
         onClose={() => setShowDetailsModal(false)}
-        onOpenMenu={(branch) => {
+        onOpenMenu={(_branch) => {
           setShowDetailsModal(false);
-          handleOpenBranchMenu(branch);
+          navigate('/products');
         }}
         onEditBranch={(branch) => {
           setShowDetailsModal(false);

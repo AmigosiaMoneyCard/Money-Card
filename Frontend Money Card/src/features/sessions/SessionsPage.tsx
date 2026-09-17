@@ -144,7 +144,6 @@ export function SessionsPage() {
     setBranchFilter(currentBranch ? currentBranch.id : 'ALL');
   }, [currentBranch]);
   const [dateRangeFilter, setDateRangeFilter] = useState<'ALL' | 'today' | 'yesterday' | '7d' | '30d'>('ALL');
-  const [viewMode, setViewMode] = useState<'simple' | 'detailed'>('simple');
 
   // ─── Session Details Inspection Modal ─────────────────────────────
   const [selectedItem, setSelectedItem] = useState<CustomerHistoryItem | null>(null);
@@ -431,69 +430,6 @@ export function SessionsPage() {
         </span>
       ),
     },
-  ];
-
-  // ─── Streamlined Columns for Simple View (Non-Technical Friendly) ──
-  const simpleColumns = [
-    {
-      key: 'customerName',
-      header: 'Customer',
-      render: (item: CustomerHistoryItem) => (
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 font-bold text-sm shrink-0 border border-emerald-200">
-            {item.customerName ? item.customerName.charAt(0).toUpperCase() : <User className="h-4 w-4" />}
-          </div>
-          <div>
-            <span className="font-bold text-slate-900 block">
-              {item.customerName || 'Walk-in Customer'}
-            </span>
-            {item.customerPhone && (
-              <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                <Phone className="h-3 w-3 text-slate-400" />
-                {item.customerPhone}
-              </p>
-            )}
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: 'physicalCardNumber',
-      header: 'Card Number',
-      render: (item: CustomerHistoryItem) => (
-        <div className="flex items-center gap-2">
-          <CreditCard className="h-4 w-4 text-emerald-600" />
-          <span className="font-mono font-bold text-slate-900 text-sm">
-            {item.physicalCardNumber}
-          </span>
-        </div>
-      ),
-    },
-    {
-      key: 'balance',
-      header: 'Balance Remaining',
-      render: (item: CustomerHistoryItem) => (
-        <div className="flex items-center gap-2">
-          <span className="font-mono font-bold text-base text-slate-900">
-            {formatCurrency(item.balance)}
-          </span>
-          {item.balance < 100 && item.sessionStatus === 'ACTIVE' && (
-            <Badge variant="warning" className="text-[10px]">
-              LOW
-            </Badge>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'sessionStatus',
-      header: 'Status',
-      render: (item: CustomerHistoryItem) => (
-        <Badge variant={item.sessionStatus === 'ACTIVE' ? 'success' : 'outline'}>
-          {item.sessionStatus === 'ACTIVE' ? 'Active' : 'Settled'}
-        </Badge>
-      ),
-    },
     {
       key: 'action',
       header: '',
@@ -519,37 +455,8 @@ export function SessionsPage() {
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Customer History & Audit Trail
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Historical customer card sessions, purchases, and recharge audits
-          </p>
         </div>
         <div className="flex items-center gap-3">
-          {/* Simple vs Detailed View Toggle */}
-          <div className="inline-flex rounded-lg border border-slate-200 bg-slate-100 p-1">
-            <button
-              type="button"
-              onClick={() => setViewMode('simple')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                viewMode === 'simple'
-                  ? 'bg-white text-emerald-700 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Simple View
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('detailed')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                viewMode === 'detailed'
-                  ? 'bg-white text-emerald-700 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Detailed View
-            </button>
-          </div>
-
           <Button
             variant="outline"
             size="sm"
@@ -647,7 +554,7 @@ export function SessionsPage() {
           }
         />
       ) : (
-        <DataTable data={filteredSessions} columns={viewMode === 'simple' ? simpleColumns : sessionColumns} />
+        <DataTable data={filteredSessions} columns={sessionColumns} />
       )}
 
       {/* ─── Session & Card Inspection Modal ──────────────────────── */}

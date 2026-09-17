@@ -483,7 +483,7 @@ export function OrgAdminPdfModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2.5 pt-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-2.5">
             <button
               type="button"
               id="pdf-toggle-executive-kpis"
@@ -552,6 +552,72 @@ export function OrgAdminPdfModal({
 
             <button
               type="button"
+              id="pdf-toggle-rush-kpis"
+              onClick={() => onToggleSection('includeRushKpis')}
+              className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-all cursor-pointer ${
+                pdfSections.includeRushKpis
+                  ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
+                  : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
+              }`}
+            >
+              <div
+                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                  pdfSections.includeRushKpis
+                    ? 'border-emerald-600 bg-emerald-600 text-white'
+                    : 'border-slate-300 bg-white'
+                }`}
+              >
+                {pdfSections.includeRushKpis && <Check className="h-3 w-3 stroke-[3]" />}
+              </div>
+              <span className="text-xs font-semibold leading-tight">4. Peak Hour Metrics</span>
+            </button>
+
+            <button
+              type="button"
+              id="pdf-toggle-traffic-distribution"
+              onClick={() => onToggleSection('includeTrafficDistribution')}
+              className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-all cursor-pointer ${
+                pdfSections.includeTrafficDistribution
+                  ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
+                  : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
+              }`}
+            >
+              <div
+                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                  pdfSections.includeTrafficDistribution
+                    ? 'border-emerald-600 bg-emerald-600 text-white'
+                    : 'border-slate-300 bg-white'
+                }`}
+              >
+                {pdfSections.includeTrafficDistribution && <Check className="h-3 w-3 stroke-[3]" />}
+              </div>
+              <span className="text-xs font-semibold leading-tight">5. 24-Hour Traffic</span>
+            </button>
+
+            <button
+              type="button"
+              id="pdf-toggle-food-demand"
+              onClick={() => onToggleSection('includeFoodDemand')}
+              className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-all cursor-pointer ${
+                pdfSections.includeFoodDemand
+                  ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
+                  : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
+              }`}
+            >
+              <div
+                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                  pdfSections.includeFoodDemand
+                    ? 'border-emerald-600 bg-emerald-600 text-white'
+                    : 'border-slate-300 bg-white'
+                }`}
+              >
+                {pdfSections.includeFoodDemand && <Check className="h-3 w-3 stroke-[3]" />}
+              </div>
+              <span className="text-xs font-semibold leading-tight">6. Food Demand</span>
+            </button>
+
+            <button
+              type="button"
               id="pdf-toggle-branch-comparison"
               onClick={() => onToggleSection('includeBranchComparison')}
               className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-all cursor-pointer ${
@@ -569,7 +635,7 @@ export function OrgAdminPdfModal({
               >
                 {pdfSections.includeBranchComparison && <Check className="h-3 w-3 stroke-[3]" />}
               </div>
-              <span className="text-xs font-semibold leading-tight">4. Counter Comparison</span>
+              <span className="text-xs font-semibold leading-tight">7. Counter Comparison</span>
             </button>
 
             <button
@@ -591,7 +657,7 @@ export function OrgAdminPdfModal({
               >
                 {pdfSections.includeStaffPerformance && <Check className="h-3 w-3 stroke-[3]" />}
               </div>
-              <span className="text-xs font-semibold leading-tight">5. Staff Performance</span>
+              <span className="text-xs font-semibold leading-tight">8. Staff Performance</span>
             </button>
           </div>
         </div>
