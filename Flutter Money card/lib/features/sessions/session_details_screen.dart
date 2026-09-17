@@ -189,7 +189,7 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
           const SizedBox(height: AppSpacing.lg),
 
           // ─── Activity & Transactions Timeline ────────────────────────
-          const SectionHeader(title: 'Transactions'),
+          const SectionHeader(title: 'Transaction History'),
           const SizedBox(height: AppSpacing.xs),
 
           // Render Transactions (Purchases, Recharges, Settlement)

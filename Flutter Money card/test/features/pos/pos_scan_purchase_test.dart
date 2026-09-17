@@ -122,18 +122,8 @@ void main() {
       // Verify all authorized action tiles are present
       expect(find.text('Add Products (POS Sale)'), findsOneWidget);
       expect(find.text('Recharge Card'), findsOneWidget);
-      expect(find.text('View Session Details'), findsOneWidget);
-      expect(find.text('Transactions History'), findsOneWidget);
+      expect(find.text('View Session & Transaction History'), findsOneWidget);
       expect(find.text('Settle / Return Card'), findsOneWidget);
-
-      // Test Transactions Bottom Sheet
-      await tester.tap(find.text('Transactions History'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Session Transactions (MC-001)'), findsOneWidget);
-      expect(find.text('Live Available Funds'), findsOneWidget);
-      await tester.tap(find.text('Close'));
-      await tester.pumpAndSettle();
 
       // Test Settle / Return Card
       await tester.tap(find.text('Settle / Return Card'));
@@ -189,8 +179,7 @@ void main() {
 
       // Staff lacks RECHARGE, SESSION_VIEW, and REFUND permissions -> They are NOT shown
       expect(find.text('Recharge Card'), findsNothing);
-      expect(find.text('View Session Details'), findsNothing);
-      expect(find.text('Transactions History'), findsNothing);
+      expect(find.text('View Session & Transaction History'), findsNothing);
       expect(find.text('Settle / Return Card'), findsNothing);
     });
 

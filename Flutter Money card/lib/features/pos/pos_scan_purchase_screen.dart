@@ -1,9 +1,7 @@
-import '../../models/transaction.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart' hide Card;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import '../../core/config/app_config.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
@@ -16,7 +14,6 @@ import '../../providers/card_operations_provider.dart';
 import '../../providers/permission_provider.dart';
 import '../../providers/session_operations_provider.dart';
 import '../../widgets/common/app_badge.dart';
-import '../../widgets/common/app_bottom_sheet.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_card.dart';
 import '../../widgets/common/app_dialog.dart';
@@ -326,15 +323,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     }
   }
 
-  String _formatDateTime(String? dateTimeStr) {
-    if (dateTimeStr == null || dateTimeStr.isEmpty) return 'N/A';
-    try {
-      final dateTime = DateTime.parse(dateTimeStr);
-      return DateFormat('dd MMM yyyy, hh:mm a').format(dateTime.toLocal());
-    } catch (_) {
-      return dateTimeStr;
-    }
-  }
+
 
   // ==========================================
   // ACTION HANDLERS
@@ -368,219 +357,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       await context.push('/app/sessions/${session.id}');
     }
     await _refreshSession();
-  }
-
-  void _showTransactionsBottomSheet() {
-    final session = _activeSession;
-    final card = _resolvedCard;
-    if (session == null || card == null) return;
-
-    final txns = session.transactions ?? [];
-
-    AppBottomSheet.show(
-      context,
-      title: 'Session Transactions (${card.displayCardNumber})',
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: AppSpacing.paddingMd,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceVariantLight,
-              borderRadius: AppSpacing.roundedSm,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Current Balance:', style: TextStyle(fontWeight: FontWeight.w500)),
-                Text(
-                  '₹${session.balance.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Activity & Purchases',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-              ),
-              if (txns.isNotEmpty)
-                Text(
-                  '${txns.length} transaction${txns.length > 1 ? "s" : ""}',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
-                ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.account_balance_wallet, color: AppColors.primary, size: 20),
-            ),
-            title: const Text('Live Available Funds', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            subtitle: const Text('Usable for cafeteria purchases', style: TextStyle(fontSize: 12)),
-            trailing: Text(
-              '₹${session.balance.toStringAsFixed(2)}',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary),
-            ),
-          ),
-          const Divider(height: 1),
-          if (txns.isEmpty) ...[
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.successLight,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.check_circle_outline, color: AppColors.success, size: 20),
-              ),
-              title: const Text('Session Started', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-              subtitle: Text(_formatDateTime(session.startedAt), style: const TextStyle(fontSize: 12)),
-              trailing: const AppBadge(label: 'ACTIVE', variant: AppBadgeVariant.success),
-            ),
-          ] else ...[
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 320),
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: txns.length,
-                separatorBuilder: (context, index) => const Divider(height: 12),
-                itemBuilder: (context, idx) {
-                  final t = txns[idx];
-                  final isPurch = t.type == TransactionType.purchase;
-                  final isRech = t.type == TransactionType.recharge;
-                  final items = t.items ?? [];
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: isRech
-                                  ? AppColors.successLight
-                                  : isPurch
-                                      ? AppColors.primaryLight
-                                      : AppColors.warningLight,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Icon(
-                              isRech
-                                  ? Icons.arrow_upward
-                                  : isPurch
-                                      ? Icons.shopping_bag_outlined
-                                      : Icons.assignment_return_outlined,
-                              size: 16,
-                              color: isRech
-                                  ? AppColors.success
-                                  : isPurch
-                                      ? AppColors.primary
-                                      : AppColors.warning,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  isRech
-                                      ? 'Recharge (${t.paymentMethod?.value ?? "CASH"})'
-                                      : isPurch
-                                          ? 'POS Purchase'
-                                          : 'Settlement Refund',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                ),
-                                Text(
-                                  _formatDateTime(t.createdAt),
-                                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Text(
-                            '${isRech ? "+" : isPurch ? "-" : ""}₹${t.amount.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: isRech
-                                  ? AppColors.success
-                                  : isPurch
-                                      ? AppColors.error
-                                      : AppColors.textPrimaryLight,
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (isPurch && items.isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: Colors.grey.shade200),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: items.map((it) {
-                              final name = (it.itemName != null && it.itemName!.isNotEmpty) ? it.itemName! : 'Cafeteria Item';
-                              final subtotal = it.totalAmount ?? ((it.unitPrice ?? 0) * it.quantity);
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 2),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        '$name × ${it.quantity}',
-                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                                      ),
-                                    ),
-                                    Text(
-                                      '₹${subtotal.toStringAsFixed(2)}',
-                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                      ],
-                    ],
-                  );
-                },
-              ),
-            ),
-          ],
-          const SizedBox(height: AppSpacing.md),
-          AppButton(
-            label: 'Close',
-            isFullWidth: true,
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<void> _handleSettleReturn() async {
@@ -1205,26 +981,14 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
               const SizedBox(height: AppSpacing.sm),
             ],
 
-            // ACTION 3: VIEW SESSION
-            if (canViewSession) ...[
-              _buildActionTile(
-                icon: Icons.info_outline,
-                iconColor: Colors.blue,
-                title: 'View Session Details',
-                subtitle: 'Inspect session timeline, status, and linked card details',
-                onTap: _openViewSession,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-            ],
-
-            // ACTION 4: TRANSACTIONS
+            // ACTION 3: VIEW SESSION & TRANSACTIONS
             if (canViewSession) ...[
               _buildActionTile(
                 icon: Icons.receipt_long_outlined,
-                iconColor: Colors.purple,
-                title: 'Transactions History',
-                subtitle: 'View summary of purchases, recharges, and settlements',
-                onTap: _showTransactionsBottomSheet,
+                iconColor: Colors.blue,
+                title: 'View Session & Transaction History',
+                subtitle: 'Inspect session timeline, live balance, and complete transactions',
+                onTap: _openViewSession,
               ),
               const SizedBox(height: AppSpacing.sm),
             ],
