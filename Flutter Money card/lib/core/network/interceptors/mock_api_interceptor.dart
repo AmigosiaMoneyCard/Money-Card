@@ -909,17 +909,22 @@ class MockApiInterceptor extends Interceptor {
     if (path.endsWith(ApiEndpoints.login) && method == 'POST') {
       final data = options.data is String ? jsonDecode(options.data) : options.data;
       final email = (data?['email'] as String?)?.toLowerCase().trim();
+      final phone = (data?['phone'] as String?)?.trim();
       final password = data?['password'] as String?;
 
-      if (email == null || password == null || email.isEmpty || password.isEmpty) {
-        return _reject(handler, options, 400, 'VALIDATION_ERROR', 'Email and password are required');
+      if ((email == null || email.isEmpty) && (phone == null || phone.isEmpty)) {
+        return _reject(handler, options, 400, 'VALIDATION_ERROR', 'Phone number or email is required');
+      }
+      if (password == null || password.isEmpty) {
+        return _reject(handler, options, 400, 'VALIDATION_ERROR', 'Password is required');
       }
 
       // Check against mock users database
-      final user = mockUsersByEmail[email] ?? {
+      final user = (email != null ? mockUsersByEmail[email] : null) ?? {
         'id': 'staff-custom-001',
-        'email': email,
-        'name': email.split('@').first.toUpperCase(),
+        'email': email ?? '$phone@mock.local',
+        'phone': phone,
+        'name': phone != null ? 'Staff ($phone)' : (email?.split('@').first.toUpperCase() ?? 'STAFF'),
         'role': 'STAFF',
         'organizationId': 'org-demo-001',
         'assignedBranchIds': ['branch-001', 'branch-002'],
@@ -982,7 +987,7 @@ class MockApiInterceptor extends Interceptor {
       }
 
       // Match strictly by qrToken or physicalCardNumber or id
-      final card = mockCards.firstWhere(
+      var card = mockCards.firstWhere(
         (c) =>
             c['qrToken'] == qrToken ||
             c['physicalCardNumber'] == qrToken ||
@@ -991,8 +996,20 @@ class MockApiInterceptor extends Interceptor {
         orElse: () => <String, dynamic>{},
       );
 
+      // If card does not exist yet, auto-register on scan (raw token as card name)
       if (card.isEmpty) {
-        return _reject(handler, options, 404, 'NOT_FOUND', 'Card not registered');
+        final rawToken = qrToken.trim();
+        card = {
+          'id': 'card-${DateTime.now().millisecondsSinceEpoch}',
+          'organizationId': currentActiveUser['organizationId'] ?? 'org-demo-001',
+          'qrToken': rawToken,
+          'physicalCardNumber': rawToken,
+          'status': 'AVAILABLE',
+          'currentBranchId': null,
+          'createdAt': DateTime.now().toIso8601String(),
+          'updatedAt': DateTime.now().toIso8601String(),
+        };
+        mockCards.add(card);
       }
 
       // Enforce organization isolation
@@ -1228,52 +1245,9 @@ class MockApiInterceptor extends Interceptor {
         );
       }
 
-      // Check inventory stock availability before proceeding
-      for (final item in items) {
-        final prodId = item['productId'] as String?;
-        final qty = (item['quantity'] as num?)?.toInt() ?? 1;
-        final inv = mockInventory.firstWhere(
-          (i) => i['productId'] == prodId,
-          orElse: () => <String, dynamic>{},
-        );
-        if (inv.isNotEmpty) {
-          final cur = (inv['currentStock'] as num).toInt();
-          if (cur < qty) {
-            final pName = inv['productName'] ?? 'Item';
-            return _reject(
-              handler,
-              options,
-              400,
-              'INSUFFICIENT_STOCK',
-              "Insufficient stock for '$pName'. Available: $cur, Requested: $qty",
-            );
-          }
-        }
-      }
-
       final updatedBalance = currentBalance - total;
       session['balance'] = updatedBalance;
       session['updatedAt'] = DateTime.now().toIso8601String();
-
-      // Deduct inventory items
-      for (final item in items) {
-        final prodId = item['productId'] as String?;
-        final qty = (item['quantity'] as num?)?.toInt() ?? 1;
-        final inv = mockInventory.firstWhere(
-          (i) => i['productId'] == prodId,
-          orElse: () => <String, dynamic>{},
-        );
-        if (inv.isNotEmpty) {
-          final cur = (inv['currentStock'] as num).toInt();
-          final next = (cur - qty).clamp(0, 99999);
-          inv['currentStock'] = next;
-          if (next <= 0) {
-            inv['status'] = 'OUT_OF_STOCK';
-          } else if (next <= (inv['reorderLevel'] as num).toInt()) {
-            inv['status'] = 'LOW_STOCK';
-          }
-        }
-      }
 
       final detailedItems = <Map<String, dynamic>>[];
       for (final it in items) {

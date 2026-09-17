@@ -993,6 +993,10 @@ export async function resendOrgAdminInvite(req: Request, res: Response) {
   const clientOrigin = req.headers.origin || process.env.FRONTEND_URL || defaultFrontend;
   const activationLink = `${clientOrigin}/activate?token=${rawToken}`;
 
+  if (!orgAdmin.email) {
+    return sendError(res, 400, 'NO_EMAIL', 'Org admin has no email associated.');
+  }
+
   sendAccountActivationEmail(
     orgAdmin.email,
     orgAdmin.name,

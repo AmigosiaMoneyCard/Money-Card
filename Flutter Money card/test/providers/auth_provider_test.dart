@@ -15,7 +15,7 @@ class FakeAuthServiceSuccess extends AuthService {
   FakeAuthServiceSuccess() : super(ApiService(Dio()));
 
   @override
-  Future<AuthResponseData> login({required String email, required String password}) async {
+  Future<AuthResponseData> login({String? email, String? phone, required String password}) async {
     return const AuthResponseData(
       accessToken: 'test-jwt-token',
       refreshToken: 'test-refresh-token',
@@ -52,7 +52,7 @@ class FakeAuthServiceFailure extends AuthService {
   FakeAuthServiceFailure() : super(ApiService(Dio()));
 
   @override
-  Future<AuthResponseData> login({required String email, required String password}) async {
+  Future<AuthResponseData> login({String? email, String? phone, required String password}) async {
     throw const ApiException(
       code: ApiErrorCode.unauthorized,
       message: 'Invalid credentials',
@@ -115,7 +115,7 @@ void main() {
 
       expect(result, isFalse);
       expect(notifier.state.status, AuthStatus.error);
-      expect(notifier.state.errorMessage, 'Email or password is incorrect.');
+      expect(notifier.state.errorMessage, 'Phone number, email or password is incorrect.');
       expect(notifier.state.isAuthenticated, isFalse);
     });
 

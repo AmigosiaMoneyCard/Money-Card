@@ -15,7 +15,7 @@ class FakeFailingAuthService extends AuthService {
   FakeFailingAuthService(this.errorToThrow) : super(ApiService(Dio()));
 
   @override
-  Future<AuthResponseData> login({required String email, required String password}) async {
+  Future<AuthResponseData> login({String? email, String? phone, required String password}) async {
     throw errorToThrow;
   }
 
@@ -47,7 +47,7 @@ void main() {
       expect(notifier.state.status, AuthStatus.error);
       expect(
         notifier.state.errorMessage,
-        'Your staff account is no longer active. Please contact your Cafeteria Administrator.',
+        'Your staff account is no longer active. Please contact your Organisation Administrator.',
       );
     });
 
@@ -70,7 +70,7 @@ void main() {
       expect(notifier.state.status, AuthStatus.error);
       expect(
         notifier.state.errorMessage,
-        'Your cafeteria account is currently inactive or suspended. Please contact platform administration.',
+        'Your organisation account is currently inactive or suspended. Please contact platform administration.',
       );
     });
   });

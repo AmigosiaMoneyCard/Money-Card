@@ -15,13 +15,14 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
   static final RegExp _emailRegExp = RegExp(
     r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
   );
+  static final RegExp _phoneRegExp = RegExp(r'^\d{10}$');
 
   @override
   void initState() {
@@ -33,7 +34,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -42,17 +43,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) return;
 
-    final email = _emailController.text.trim();
+    final input = _phoneController.text.trim();
     final password = _passwordController.text;
 
+    final isEmail = input.contains('@');
     await ref.read(authNotifierProvider.notifier).login(
-          email: email,
+          email: isEmail ? input : null,
+          phone: isEmail ? null : input,
           password: password,
         );
   }
 
   void _showForgotPasswordDialog() {
-    final emailController = TextEditingController(text: _emailController.text.trim());
+    final phoneOrEmailController = TextEditingController(text: _phoneController.text.trim());
     final dialogFormKey = GlobalKey<FormState>();
     bool isSubmitting = false;
 
@@ -81,7 +84,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Enter your registered Gmail address to receive a secure password reset link.',
+                  'Enter your registered email address to receive a password reset link, or contact your Organisation Administrator.',
                   style: TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondaryLight,
@@ -90,12 +93,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 TextFormField(
-                  controller: emailController,
+                  controller: phoneOrEmailController,
                   keyboardType: TextInputType.emailAddress,
                   autofocus: true,
                   decoration: const InputDecoration(
-                    labelText: 'Gmail Address',
-                    hintText: 'staff@gmail.com',
+                    labelText: 'Registered Email',
+                    hintText: 'staff@example.com',
                     prefixIcon: Icon(Icons.email_outlined, size: 20),
                   ),
                   validator: (val) {
@@ -103,8 +106,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       return 'Email is required';
                     }
                     final trimmed = val.trim().toLowerCase();
-                    if (!RegExp(r'^[a-zA-Z0-9._%+-]+@(gmail|googlemail)\.com$').hasMatch(trimmed)) {
-                      return 'Please enter a valid Gmail (@gmail.com)';
+                    if (!_emailRegExp.hasMatch(trimmed)) {
+                      return 'Please enter a valid email address';
                     }
                     return null;
                   },
@@ -123,7 +126,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   : () async {
                       if (!dialogFormKey.currentState!.validate()) return;
                       setModalState(() => isSubmitting = true);
-                      final email = emailController.text.trim().toLowerCase();
+                      final email = phoneOrEmailController.text.trim().toLowerCase();
 
                       final success = await ref
                           .read(authNotifierProvider.notifier)
@@ -152,7 +155,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         );
                       } else {
                         final authErr = ref.read(authNotifierProvider).errorMessage ??
-                            'Failed to send reset email. Please try again.';
+                            'Failed to send reset email. Please contact your Organisation Administrator.';
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             backgroundColor: AppColors.error,
@@ -314,9 +317,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         const SizedBox(height: AppSpacing.md),
                       ],
 
-                      // Email Field
+                      // Phone Number Field
                       const Text(
-                        'Email',
+                        'Phone Number',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -325,19 +328,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       const SizedBox(height: AppSpacing.xs),
                       TextFormField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
                         textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(
-                          hintText: 'staff@example.com',
-                          prefixIcon: Icon(Icons.email_outlined, size: 20),
+                          hintText: '10-digit mobile number',
+                          prefixIcon: Icon(Icons.phone_android_outlined, size: 20),
                         ),
                         validator: (val) {
                           if (val == null || val.trim().isEmpty) {
-                            return 'Email is required';
+                            return 'Phone number is required';
                           }
-                          if (!_emailRegExp.hasMatch(val.trim())) {
-                            return 'Enter a valid email address';
+                          final trimmed = val.trim();
+                          if (trimmed.contains('@')) {
+                            if (!_emailRegExp.hasMatch(trimmed)) {
+                              return 'Enter a valid email address';
+                            }
+                            return null;
+                          }
+                          if (!_phoneRegExp.hasMatch(trimmed)) {
+                            return 'Enter a valid 10-digit mobile number';
                           }
                           return null;
                         },

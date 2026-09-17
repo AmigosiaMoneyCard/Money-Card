@@ -59,7 +59,7 @@ class MoreScreen extends ConsumerWidget {
                         ),
                       ),
                     Text(
-                      '${user?.email ?? ''} • ${user?.role ?? 'STAFF'}',
+                      '${(user?.phone != null && user!.phone!.isNotEmpty) ? user.phone : (user?.email ?? '')} • ${user?.role ?? 'STAFF'}',
                       style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondaryLight,
@@ -67,7 +67,7 @@ class MoreScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: AppSpacing.xxs),
                     Text(
-                      'Active Counter: ${branch?.name ?? 'Not Assigned'}',
+                      'Active Cafeteria: ${branch?.name ?? 'Not Assigned'}',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -90,9 +90,9 @@ class MoreScreen extends ConsumerWidget {
           mode: PermissionGuardMode.any,
           permissions: const [AppPermission.inventoryView, AppPermission.productView],
           child: _buildMenuTile(
-            icon: Icons.inventory_2_outlined,
-            title: 'Menu & Inventory',
-            onTap: () => context.push('/app/inventory'),
+            icon: Icons.restaurant_menu,
+            title: 'Menu Catalog',
+            onTap: () => context.push('/app/products'),
           ),
         ),
 

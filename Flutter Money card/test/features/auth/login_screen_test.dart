@@ -16,7 +16,7 @@ class FakeAuthRepository implements AuthRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   @override
-  Future<AuthUser> login({required String email, required String password}) async {
+  Future<AuthUser> login({String? email, String? phone, required String password}) async {
     if (!shouldSucceed) {
       throw Exception(errorMessage ?? 'Login failed');
     }
@@ -39,10 +39,29 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   Future<bool> hasStoredSession() async => false;
+
+  @override
+  Future<AuthUser> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    String? confirmPassword,
+  }) async {
+    return const AuthUser(
+      id: 'staff-1',
+      email: 'staff@moneycard.io',
+      name: 'Alex Morgan',
+      role: 'STAFF',
+      permissions: [],
+      assignedBranchIds: [],
+    );
+  }
+
+  @override
+  Future<void> forgotPassword(String email) async {}
 }
 
 class TestAuthNotifier extends AuthNotifier {
-  TestAuthNotifier(super.authRepo, {AuthState? initialState}) {
+  TestAuthNotifier(super.authRepository, {AuthState? initialState}) {
     if (initialState != null) {
       state = initialState;
     }
@@ -57,7 +76,7 @@ class TestAuthNotifier extends AuthNotifier {
 void main() {
   AppConfig.apiMode = ApiMode.mock;
   group('LoginScreen Widget Tests', () {
-    testWidgets('renders all login UI elements (Brand, Title, Email, Password, Button)', (tester) async {
+    testWidgets('renders all login UI elements (Brand, Title, Phone Number, Password, Button)', (tester) async {
       final fakeRepo = FakeAuthRepository();
 
       await tester.pumpWidget(
@@ -73,13 +92,13 @@ void main() {
 
       expect(find.text('MONEY CARD'), findsOneWidget);
       expect(find.text('Staff Login'), findsOneWidget);
-      expect(find.text('Email'), findsOneWidget);
+      expect(find.text('Phone Number'), findsOneWidget);
       expect(find.text('Password'), findsOneWidget);
       expect(find.text('Login'), findsOneWidget);
       expect(find.byType(TextFormField), findsNWidgets(2));
     });
 
-    testWidgets('shows validation errors when fields are empty or email is invalid', (tester) async {
+    testWidgets('shows validation errors when fields are empty or phone is invalid', (tester) async {
       final fakeRepo = FakeAuthRepository();
 
       await tester.pumpWidget(
@@ -99,15 +118,15 @@ void main() {
       await tester.tap(find.text('Login'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Email is required'), findsOneWidget);
+      expect(find.text('Phone number is required'), findsOneWidget);
       expect(find.text('Password is required'), findsOneWidget);
 
-      // Enter invalid email
-      await tester.enterText(find.byType(TextFormField).first, 'invalid-email');
+      // Enter invalid phone
+      await tester.enterText(find.byType(TextFormField).first, '123');
       await tester.tap(find.text('Login'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Enter a valid email address'), findsOneWidget);
+      expect(find.text('Enter a valid 10-digit mobile number'), findsOneWidget);
     });
 
     testWidgets('toggles password visibility', (tester) async {

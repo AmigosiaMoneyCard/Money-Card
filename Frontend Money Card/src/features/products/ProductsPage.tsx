@@ -26,9 +26,6 @@ import {
   Plus,
   AlertCircle,
   Power,
-  Sliders,
-  TrendingUp,
-  AlertTriangle,
   Layers,
   Trash2,
   Search,
@@ -103,14 +100,14 @@ function matchesProductFilter(
 
 function ProductsMetricsCards({ metrics }: { metrics: ProductsMetrics }) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       <Card padding="md" className="space-y-1">
         <div className="flex items-center justify-between text-slate-500">
           <span className="text-xs font-semibold uppercase tracking-wider">Catalog Items</span>
           <Package className="h-4 w-4 text-emerald-600" />
         </div>
         <p className="text-xl font-bold text-slate-900">{metrics.totalProducts}</p>
-        <p className="text-[11px] text-slate-500">Master products</p>
+        <p className="text-[11px] text-slate-500">Menu products in catalog</p>
       </Card>
 
       <Card padding="md" className="space-y-1">
@@ -119,45 +116,16 @@ function ProductsMetricsCards({ metrics }: { metrics: ProductsMetrics }) {
           <Layers className="h-4 w-4 text-indigo-600" />
         </div>
         <p className="text-xl font-bold text-emerald-700">{metrics.activeProducts}</p>
-        <p className="text-[11px] text-slate-500">Available at counter</p>
+        <p className="text-[11px] text-slate-500">Available at POS terminals</p>
       </Card>
 
       <Card padding="md" className="space-y-1">
         <div className="flex items-center justify-between text-slate-500">
-          <span className="text-xs font-semibold uppercase tracking-wider">Stock Units</span>
-          <Package className="h-4 w-4 text-sky-600" />
+          <span className="text-xs font-semibold uppercase tracking-wider">Inactive / Hidden</span>
+          <Power className="h-4 w-4 text-slate-400" />
         </div>
-        <p className="text-xl font-bold text-sky-700">{metrics.totalUnits}</p>
-        <p className="text-[11px] text-slate-500">Units in inventory</p>
-      </Card>
-
-      <Card padding="md" className="space-y-1">
-        <div className="flex items-center justify-between text-slate-500">
-          <span className="text-xs font-semibold uppercase tracking-wider">Stock Valuation</span>
-          <TrendingUp className="h-4 w-4 text-teal-600" />
-        </div>
-        <p className="text-xl font-bold text-teal-700 font-mono">
-          {formatCurrency(metrics.totalValuation)}
-        </p>
-        <p className="text-[11px] text-slate-500">Inventory worth</p>
-      </Card>
-
-      <Card padding="md" className="space-y-1">
-        <div className="flex items-center justify-between text-slate-500">
-          <span className="text-xs font-semibold uppercase tracking-wider">Low Stock (&lt; 10)</span>
-          <AlertTriangle className="h-4 w-4 text-amber-500" />
-        </div>
-        <p className="text-xl font-bold text-amber-600">{metrics.lowStock}</p>
-        <p className="text-[11px] text-slate-500">Needs restock</p>
-      </Card>
-
-      <Card padding="md" className="space-y-1">
-        <div className="flex items-center justify-between text-slate-500">
-          <span className="text-xs font-semibold uppercase tracking-wider">Out of Stock</span>
-          <AlertCircle className="h-4 w-4 text-rose-500" />
-        </div>
-        <p className="text-xl font-bold text-rose-600">{metrics.outOfStock}</p>
-        <p className="text-[11px] text-slate-500">Unavailable for POS</p>
+        <p className="text-xl font-bold text-slate-700">{metrics.totalProducts - metrics.activeProducts}</p>
+        <p className="text-[11px] text-slate-500">Hidden from POS sale</p>
       </Card>
     </div>
   );
@@ -180,7 +148,6 @@ function ProductsCreateModal({
   const [formCategories, setFormCategories] = useState<string[]>([]);
   const [formPrice, setFormPrice] = useState('');
   const [formBranchId, setFormBranchId] = useState('');
-  const [formStockQty, setFormStockQty] = useState('0');
   const [formStatus, setFormStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [modalApiError, setModalApiError] = useState<string | null>(null);
@@ -192,7 +159,6 @@ function ProductsCreateModal({
       setFormCategories([]);
       setFormPrice('');
       setFormBranchId(currentBranch?.id || branches[0]?.id || '');
-      setFormStockQty('0');
       setFormStatus('ACTIVE');
       setFormErrors({});
       setModalApiError(null);
@@ -208,10 +174,7 @@ function ProductsCreateModal({
     const priceNum = parseFloat(formPrice);
     if (isNaN(priceNum) || priceNum <= 0) errs.price = 'Price must be greater than 0';
 
-    if (!formBranchId) errs.branchId = 'Select a branch';
-
-    const qtyNum = parseInt(formStockQty, 10);
-    if (isNaN(qtyNum) || qtyNum < 0) errs.stockQty = 'Stock quantity must be 0 or greater';
+    if (!formBranchId) errs.branchId = 'Select a cafeteria';
 
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
@@ -230,7 +193,6 @@ function ProductsCreateModal({
         category: formCategories,
         price: Math.round(parseFloat(formPrice)),
         branchId: formBranchId,
-        initialQuantity: parseInt(formStockQty, 10),
         status: formStatus,
       });
 
@@ -254,7 +216,7 @@ function ProductsCreateModal({
       isOpen={isOpen}
       onClose={onClose}
       title="Create New Master Product"
-      description="Add a new item to catalog and set initial inventory stock"
+      description="Add a new item to catalog menu"
       size="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -308,29 +270,13 @@ function ProductsCreateModal({
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Initial Counter <span className="text-rose-500">*</span>
+              Cafeteria <span className="text-rose-500">*</span>
             </label>
             <Select
               value={formBranchId}
               onChange={(e) => setFormBranchId(e.target.value)}
               options={branches.map((b) => ({ value: b.id, label: b.name }))}
               error={formErrors.branchId}
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Initial Stock Quantity (Units)
-            </label>
-            <Input
-              type="number"
-              min="0"
-              placeholder="e.g. 50"
-              value={formStockQty}
-              onChange={(e) => setFormStockQty(e.target.value)}
-              error={formErrors.stockQty}
             />
           </div>
 
@@ -821,32 +767,8 @@ function renderProductItemCategoryBadges(category: string | string[] | undefined
   );
 }
 
-function renderProductItemStockBadge(quantity: number) {
-  if (quantity === 0) {
-    return (
-      <span className="inline-flex items-center font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200 text-xs">
-        Out of stock (0)
-      </span>
-    );
-  }
-  if (quantity < 10) {
-    return (
-      <span className="inline-flex items-center font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 text-xs">
-        Low: {quantity} units
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 text-xs">
-      {quantity} in stock
-    </span>
-  );
-}
-
 function useProductsPageColumns(
-  canManageInventory: boolean,
   canManageProducts: boolean,
-  onAdjust: (p: UnifiedProductItem) => void,
   onToggle: (p: UnifiedProductItem) => void,
   onDelete: (p: UnifiedProductItem) => void,
 ): Column<UnifiedProductItem>[] {
@@ -882,12 +804,6 @@ function useProductsPageColumns(
         ),
       },
       {
-        key: 'quantity',
-        header: 'Counter Stock',
-        className: 'whitespace-nowrap',
-        render: (p: UnifiedProductItem) => renderProductItemStockBadge(p.quantity),
-      },
-      {
         key: 'status',
         header: 'Status',
         className: 'whitespace-nowrap',
@@ -903,18 +819,6 @@ function useProductsPageColumns(
         className: 'text-right whitespace-nowrap',
         render: (p: UnifiedProductItem) => (
           <div className="flex items-center justify-end gap-1.5">
-            {canManageInventory && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs h-7 px-2.5 border-slate-200 text-slate-700 hover:border-emerald-500 hover:text-emerald-700"
-                onClick={() => onAdjust(p)}
-                leftIcon={<Sliders className="h-3 w-3" />}
-              >
-                Adjust Stock
-              </Button>
-            )}
-
             {canManageProducts && (
               <Button
                 variant={p.status === 'ACTIVE' ? 'ghost' : 'outline'}
@@ -942,7 +846,7 @@ function useProductsPageColumns(
         ),
       },
     ],
-    [canManageInventory, canManageProducts, onAdjust, onToggle, onDelete],
+    [canManageProducts, onToggle, onDelete],
   );
 }
 
@@ -955,10 +859,8 @@ interface ProductsPageTableContentProps {
   categoryFilter: string;
   statusStockFilter: string;
   canManageProducts: boolean;
-  canManageInventory: boolean;
   onRetry: () => void;
   onOpenCreate: () => void;
-  onAdjust: (p: UnifiedProductItem) => void;
   onToggle: (p: UnifiedProductItem) => void;
   onDelete: (p: UnifiedProductItem) => void;
 }
@@ -972,40 +874,36 @@ function ProductsPageTableContent({
   categoryFilter,
   statusStockFilter,
   canManageProducts,
-  canManageInventory,
   onRetry,
   onOpenCreate,
-  onAdjust,
   onToggle,
   onDelete,
 }: ProductsPageTableContentProps) {
   if (isLoading) {
     return (
-      <div className="py-12">
-        <LoadingState message="Loading master products and counter stock..." />
+      <div className="py-8">
+        <LoadingState message="Loading master products..." />
       </div>
     );
   }
 
   if (loadError) {
     return (
-      <div className="p-6">
+      <div className="py-8">
         <ErrorState message={loadError} onRetry={onRetry} />
       </div>
     );
   }
 
-  const hasFilters = Boolean(searchQuery || categoryFilter !== 'ALL' || statusStockFilter !== 'ALL');
-
   if (filteredProducts.length === 0) {
     return (
-      <div className="py-12">
+      <div className="py-8">
         <EmptyState
-          title={hasFilters ? 'No matching products found' : 'No products in catalog yet'}
+          title="No Products Found"
           description={
-            hasFilters
-              ? 'Try broadening your search query or reset filter dropdowns.'
-              : 'Create your first product to configure cafeteria menus, counter pricing, and stock.'
+            searchQuery || statusStockFilter !== 'ALL' || categoryFilter !== 'ALL'
+              ? 'No products matched your search or filters. Try adjusting them.'
+              : 'Create your first product to configure menu items and pricing.'
           }
           action={
             canManageProducts ? (
@@ -1059,24 +957,7 @@ function ProductsPageTableContent({
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-              <span className="text-slate-500 font-medium">Counter Stock:</span>
-              {renderProductItemStockBadge(p.quantity)}
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 pt-1">
-              {canManageInventory && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full text-xs py-1.5 justify-center border-slate-200 text-slate-700 hover:border-emerald-500 hover:text-emerald-700"
-                  onClick={() => onAdjust(p)}
-                  leftIcon={<Sliders className="h-3.5 w-3.5" />}
-                >
-                  Stock
-                </Button>
-              )}
-
+            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
               {canManageProducts && (
                 <Button
                   variant={p.status === 'ACTIVE' ? 'ghost' : 'outline'}
@@ -1114,19 +995,15 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
 
   const canViewProducts = hasPermission('PRODUCT_VIEW');
   const canManageProducts = hasPermission('PRODUCT_MANAGE');
-  const canViewInventory = hasPermission('INVENTORY_VIEW');
-  const canManageInventory = hasPermission('INVENTORY_MANAGE');
 
   const pageData = useProductsPageData({ currentBranch });
   const productColumns = useProductsPageColumns(
-    canManageInventory,
     canManageProducts,
-    pageData.handleOpenAdjust,
     pageData.handleToggleStatus,
     pageData.handleOpenDelete,
   );
 
-  if (!canViewProducts && !canViewInventory) {
+  if (!canViewProducts) {
     return <UnauthorizedPage />;
   }
 
@@ -1135,9 +1012,9 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
       {/* ─── Page Header ─── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Products & Inventory Hub</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Products & Menu Catalog</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Master food catalog, real-time counter stock levels, and instant price management.
+            Master food catalog, cafeteria menus, and instant price management.
           </p>
         </div>
 
@@ -1176,7 +1053,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
                 selectBranch(e.target.value);
               }}
               options={[
-                { value: 'ALL', label: 'All Counters' },
+                { value: 'ALL', label: 'All Cafeterias' },
                 ...pageData.branches.map((b) => ({ value: b.id, label: b.name })),
               ]}
             />
@@ -1200,12 +1077,9 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
               value={pageData.statusStockFilter}
               onChange={(e) => pageData.setStatusStockFilter(e.target.value)}
               options={[
-                { value: 'ALL', label: 'All Stock & Status' },
+                { value: 'ALL', label: 'All Statuses' },
                 { value: 'ACTIVE', label: 'Active Items Only' },
                 { value: 'INACTIVE', label: 'Inactive / Hidden Items' },
-                { value: 'IN_STOCK', label: 'In Stock (10+)' },
-                { value: 'LOW_STOCK', label: 'Low Stock (< 10)' },
-                { value: 'OUT_OF_STOCK', label: 'Out of Stock (0)' },
               ]}
             />
           </div>
@@ -1234,10 +1108,8 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
           categoryFilter={pageData.categoryFilter}
           statusStockFilter={pageData.statusStockFilter}
           canManageProducts={canManageProducts}
-          canManageInventory={canManageInventory}
           onRetry={pageData.fetchUnifiedData}
           onOpenCreate={() => pageData.setShowCreateModal(true)}
-          onAdjust={pageData.handleOpenAdjust}
           onToggle={pageData.handleToggleStatus}
           onDelete={pageData.handleOpenDelete}
         />

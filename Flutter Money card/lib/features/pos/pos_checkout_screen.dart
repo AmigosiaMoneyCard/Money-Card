@@ -188,49 +188,19 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
                   ],
                 ),
               ),
-              Builder(
-                builder: (context) {
-                  final hasOutOfStock = cartState.items.values.any(
-                    (i) => i.product.currentStock <= 0 || i.quantity > i.product.currentStock,
-                  );
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (hasOutOfStock)
-                        Container(
-                          margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                          padding: const EdgeInsets.all(AppSpacing.xs),
-                          decoration: BoxDecoration(
-                            color: AppColors.errorLight.withValues(alpha: 0.2),
-                            borderRadius: AppSpacing.roundedSm,
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.warning_amber, size: 16, color: AppColors.error),
-                              SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  'Some items in your cart exceed available stock.',
-                                  style: TextStyle(fontSize: 11, color: AppColors.error, fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      AppButton(
-                        label: 'Confirm & Charge Balance',
-                        icon: Icons.check_circle_outline,
-                        isLoading: cartState.isSubmitting,
-                        onPressed: hasOutOfStock
-                            ? null
-                            : () {
-                                Navigator.of(context).pop();
-                                _handleConfirmPurchase();
-                              },
-                      ),
-                    ],
-                  );
-                },
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AppButton(
+                    label: 'Confirm & Charge Balance',
+                    icon: Icons.check_circle_outline,
+                    isLoading: cartState.isSubmitting,
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _handleConfirmPurchase();
+                    },
+                  ),
+                ],
               ),
             ],
           );
@@ -244,28 +214,6 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
     final sessionState = ref.read(sessionDetailsNotifierProvider);
 
     if (cartState.isEmpty) return;
-
-    // Reject purchase if any cart item is out of stock or exceeds stock
-    for (final item in cartState.items.values) {
-      if (item.product.currentStock <= 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("'${item.product.itemName}' is out of stock and cannot be purchased."),
-            backgroundColor: AppColors.error,
-          ),
-        );
-        return;
-      }
-      if (item.quantity > item.product.currentStock) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Cannot purchase ${item.quantity}x '${item.product.itemName}'. Only ${item.product.currentStock} available in stock."),
-            backgroundColor: AppColors.error,
-          ),
-        );
-        return;
-      }
-    }
 
     final currentBalance = sessionState.session?.balance ?? 0.0;
     if (cartState.totalAmount > currentBalance) {
@@ -714,20 +662,6 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
                             color: AppColors.primary,
                           ),
                         ),
-                        Text(
-                          product.currentStock > 0
-                              ? '${product.currentStock} in stock'
-                              : 'Out of stock',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: product.currentStock > 0
-                                ? (product.currentStock < 10
-                                    ? AppColors.warning
-                                    : AppColors.success)
-                                : AppColors.error,
-                          ),
-                        ),
                       ],
                     ),
                   ],
@@ -735,24 +669,7 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
               ),
 
               // Add (+) / Quantity Controls
-              if (product.currentStock <= 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: AppColors.errorLight.withValues(alpha: 0.15),
-                    borderRadius: AppSpacing.roundedSm,
-                    border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
-                  ),
-                  child: const Text(
-                    'Out of Stock',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.error,
-                    ),
-                  ),
-                )
-              else if (quantityInCart == 0)
+              if (quantityInCart == 0)
                 AppButton(
                   label: 'Add',
                   icon: Icons.add,

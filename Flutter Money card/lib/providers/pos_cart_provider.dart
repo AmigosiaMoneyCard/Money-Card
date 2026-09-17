@@ -170,19 +170,13 @@ class PosCartNotifier extends StateNotifier<PosCartState> {
   PosCartNotifier(this._sessionRepository, [this._onPurchaseSuccess]) : super(const PosCartState());
 
   void addToCart(Product product) {
-    if (product.currentStock <= 0) {
-      state = state.copyWith(errorMessage: "'${product.itemName}' is out of stock.");
+    if (product.status.toUpperCase() != 'ACTIVE') {
+      state = state.copyWith(errorMessage: "'${product.itemName}' is currently inactive.");
       return;
     }
     final updated = Map<String, CartItem>.from(state.items);
     if (updated.containsKey(product.id)) {
       final existing = updated[product.id]!;
-      if (existing.quantity >= product.currentStock) {
-        state = state.copyWith(
-          errorMessage: "Cannot add more. Only ${product.currentStock} in stock for '${product.itemName}'.",
-        );
-        return;
-      }
       updated[product.id] = existing.copyWith(quantity: existing.quantity + 1);
     } else {
       updated[product.id] = CartItem(product: product, quantity: 1);
@@ -194,12 +188,6 @@ class PosCartNotifier extends StateNotifier<PosCartState> {
     if (!state.items.containsKey(productId)) return;
     final updated = Map<String, CartItem>.from(state.items);
     final item = updated[productId]!;
-    if (item.quantity >= item.product.currentStock) {
-      state = state.copyWith(
-        errorMessage: "Cannot add more. Only ${item.product.currentStock} in stock for '${item.product.itemName}'.",
-      );
-      return;
-    }
     updated[productId] = item.copyWith(quantity: item.quantity + 1);
     state = state.copyWith(items: updated, errorMessage: null);
   }

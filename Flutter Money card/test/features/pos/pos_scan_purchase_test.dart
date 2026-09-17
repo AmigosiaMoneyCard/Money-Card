@@ -253,7 +253,7 @@ void main() {
       expect(find.text('Scan Another'), findsOneWidget);
     });
 
-    testWidgets('Scanning unregistered QR displays error state with Cancel and Scan Another', (tester) async {
+    testWidgets('Scanning unregistered QR auto-registers and prompts for Card Activation', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -275,17 +275,18 @@ void main() {
       // Simulate scanning unregistered QR
       final scanner = tester.widget<QrScannerView>(find.byType(QrScannerView));
       scanner.onQrScanned('QR-UNKNOWN-999');
-      await tester.pumpAndSettle();
-
-      // Verify unregistered error state
-      expect(find.text('Card Not Registered'), findsOneWidget);
-      expect(find.text('Cancel'), findsOneWidget);
-      expect(find.text('Scan Another'), findsOneWidget);
-
-      // Pressing Scan Another resets scanner
-      await tester.tap(find.text('Scan Another'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
+
+      // Verify auto-registered card prompts for Activation
+      expect(find.text('Confirm Card Activation'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+      expect(find.text('Confirm & Activate'), findsOneWidget);
+
+      // Pressing Cancel dismisses dialog
+      await tester.tap(find.text('Cancel'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('Scan QR Card'), findsOneWidget);
     });

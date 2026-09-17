@@ -1,11 +1,10 @@
 import { formatCurrency, formatDate, cn, buildCardBlockReason, formatBlockedCardMessage, countWords } from '@/utils';
-import { generateSecureToken } from '@/utils/cryptoRandom';
 import { toast } from 'sonner';
 // ─── Cards Management Page (M7) ──────────────────────────────
 // External Bulk QR Import & Organization Card Number Management.
 // Uses apiService abstraction strictly — does NOT import mock handlers directly.
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiService } from '@/services/api';
 import { usePermissions, useAuth, useBranch } from '@/hooks';
 import type {
@@ -14,11 +13,9 @@ import type {
   Branch,
   CardSession,
   Transaction,
-  OrganizationOverview,
 } from '@/types';
 import {
   Button,
-  Input,
   Select,
   Card,
   Badge,
@@ -39,17 +36,12 @@ import {
   RefreshCw,
   AlertCircle,
   CheckCircle2,
-  AlertTriangle,
   QrCode,
   Copy,
   Check,
   Zap,
-  Tag,
   ShieldAlert,
   Trash2,
-  Camera,
-  CameraOff,
-  Scan,
   X,
   ArrowDown,
   Phone,
@@ -57,7 +49,6 @@ import {
   Building2,
 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
-import { CameraQrScanner } from '@/components/scanner/CameraQrScanner';
 import { getPublicCustomerPortalUrl } from '@/utils';
 import { filterCards } from './cardsFilter';
 
@@ -75,13 +66,11 @@ export function CardsPage() {
   const isBlockReasonOverLimit = blockReasonWordCount > 30;
 
   const canView = hasPermission('CARD_VIEW');
-  const canIssue = hasPermission('CARD_ISSUE');
   const canBlock = hasPermission('CARD_BLOCK');
   const canUnblock = hasPermission('CARD_UNBLOCK');
 
   const [allCards, setAllCards] = useState<CardEntity[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [orgOverview, setOrgOverview] = useState<OrganizationOverview | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -96,8 +85,6 @@ export function CardsPage() {
   }, [currentBranch]);
 
   // Modals
-  const [showQrImportModal, setShowQrImportModal] = useState(false);
-  const [showAssignModal, setShowAssignModal] = useState(false);
   const [showDeleteCardModal, setShowDeleteCardModal] = useState(false);
   const [deleteCardApiError, setDeleteCardApiError] = useState<string | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -106,34 +93,19 @@ export function CardsPage() {
   const [selectedQrCard, setSelectedQrCard] = useState<CardEntity | null>(null);
   const [isCopiedToken, setIsCopiedToken] = useState(false);
 
-  // Selected Card for Details, Assign, or Block
+  // Selected Card for Details or Block
   const [selectedCard, setSelectedCard] = useState<CardEntity | null>(null);
   const [_cardTransactions, setCardTransactions] = useState<Transaction[]>([]);
   const [cardHistorySessions, setCardHistorySessions] = useState<CardSession[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
-  // Individual Card Number Assignment Form State
-  const [assignCardNumberInput, setAssignCardNumberInput] = useState('');
-  const [assignError, setAssignError] = useState<string | null>(null);
-  const [isAssigning, setIsAssigning] = useState(false);
-
-  // Multi-QR Scan & Auto-Register State
-  const [cardPrefix, setCardPrefix] = useState('MC-');
-  const [startSequence, setStartSequence] = useState<number>(1);
-  const padZeros = true;
-  const autoRegisterOnScan = true;
-  const [scannerInputValue, setScannerInputValue] = useState('');
-  const [isCameraActive, setIsCameraActive] = useState(false);
-  const scannerInputRef = useRef<HTMLInputElement>(null);
-
   // ─── Fetch Cards Data ─────────────────────────────────────────────
   const fetchCardsData = useCallback(async () => {
     setError(null);
     try {
-      const [cardsRes, branchesRes, orgRes] = await Promise.all([
+      const [cardsRes, branchesRes] = await Promise.all([
         apiService.cards.getCards({ limit: 1000 }),
         apiService.branches.getBranches(),
-        apiService.organizations.getOrganization(),
       ]);
 
       if (!cardsRes.success) {
@@ -147,7 +119,6 @@ export function CardsPage() {
         const bItems = Array.isArray(branchesRes.data) ? branchesRes.data : (branchesRes.data?.items || []);
         setBranches(bItems);
       }
-      if (orgRes.success) setOrgOverview(orgRes.data);
     } catch {
       setError('Unable to connect to the server. Please try again.');
     } finally {
@@ -196,7 +167,6 @@ export function CardsPage() {
     return allCards.filter((c) => c.status === 'BLOCKED');
   }, [allCards]);
   const blockedCardsCount = blockedCardsList.length;
-  const effectiveCardLimit = (orgOverview as any)?.effectiveLimits?.cardLimit ?? 100;
 
   // Filtered Blocked Cards for the Merged Blocked Cards View
   const filteredBlockedCards = useMemo(() => {
@@ -255,213 +225,7 @@ export function CardsPage() {
     return null;
   }, [cardHistorySessions, selectedCard]);
 
-  // ─── Execute Individual Card Number Assignment ────────────────────
-  const handleOpenAssignModal = (card: CardEntity) => {
-    setSelectedCard(card);
-    setAssignCardNumberInput(card.physicalCardNumber || '');
-    setAssignError(null);
-    setShowAssignModal(true);
-  };
 
-  const handleAssignCardNumber = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedCard) return;
-
-    const clean = assignCardNumberInput.trim().toUpperCase();
-    if (!clean) {
-      setAssignError('Please enter a valid card number');
-      return;
-    }
-
-    // Check existing card numbers in current org
-    const exists = allCards.some(
-      (c) => c.id !== selectedCard.id && c.physicalCardNumber?.toUpperCase() === clean,
-    );
-    if (exists) {
-      setAssignError(`Card number '${clean}' is already assigned to another card in your cafeteria.`);
-      return;
-    }
-
-    setIsAssigning(true);
-    setAssignError(null);
-    try {
-      const res = await apiService.cards.assignCardNumber(selectedCard.id, { cardNumber: clean });
-      if (!res.success) {
-        setAssignError(res.error.message || 'Failed to assign card number');
-        return;
-      }
-
-      toast.success(`Card number ${clean} successfully assigned to QR ${selectedCard.qrToken}!`);
-      setShowAssignModal(false);
-      setSelectedCard(null);
-      fetchCardsData();
-    } catch {
-      setAssignError('Network error while assigning card number');
-    } finally {
-      setIsAssigning(false);
-    }
-  };
-
-  // ─── Multi-QR Scan, Camera & Auto-Register Logic ─────────────────
-  const initSequenceForPrefix = useCallback(
-    (prefix: string) => {
-      const cleanPrefix = prefix.trim().toUpperCase();
-      let maxNum = 0;
-      for (const c of allCards) {
-        if (c.physicalCardNumber) {
-          const upper = c.physicalCardNumber.trim().toUpperCase();
-          if (upper.startsWith(cleanPrefix)) {
-            const numPart = upper.slice(cleanPrefix.length).trim();
-            const val = parseInt(numPart, 10);
-            if (!isNaN(val) && val > maxNum) {
-              maxNum = val;
-            }
-          }
-        }
-      }
-      return maxNum + 1;
-    },
-    [allCards],
-  );
-
-  const getNextAvailableNumber = useCallback(
-    (prefix: string, baseSeq: number, excludeList: string[] = []): number => {
-      const cleanPrefix = prefix.trim().toUpperCase();
-      const existingNumbers = new Set(
-        allCards
-          .map((c) => (c.physicalCardNumber || '').trim().toUpperCase())
-          .filter(Boolean),
-      );
-      excludeList.forEach((n) => existingNumbers.add(n.toUpperCase()));
-
-      let current = Math.max(1, baseSeq);
-      while (true) {
-        const formatted = padZeros
-          ? `${cleanPrefix}${String(current).padStart(3, '0')}`
-          : `${cleanPrefix}${current}`;
-        if (!existingNumbers.has(formatted)) {
-          return current;
-        }
-        current++;
-      }
-    },
-    [allCards, padZeros],
-  );
-
-  const playBeep = (isSuccess = true) => {
-    try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = isSuccess ? 'sine' : 'triangle';
-      osc.frequency.setValueAtTime(isSuccess ? 880 : 330, ctx.currentTime);
-      gain.gain.setValueAtTime(0.12, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + (isSuccess ? 0.12 : 0.25));
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + (isSuccess ? 0.12 : 0.25));
-    } catch {
-      // Ignore audio policy restrictions
-    }
-  };
-
-  const handleProcessScannedQr = async (rawQr: string) => {
-    let cleanQr = rawQr.trim();
-    if (!cleanQr) return;
-
-    // Normalize QR if URL
-    if (cleanQr.includes('/')) {
-      const parts = cleanQr.split('/');
-      cleanQr = parts[parts.length - 1].split('?')[0].trim();
-    }
-
-    // Check if already registered in organization
-    const existingCard = allCards.find((c) => c.qrToken.toLowerCase() === cleanQr.toLowerCase());
-    if (existingCard) {
-      toast.error(
-        `QR '${cleanQr}' is already registered (${existingCard.physicalCardNumber || 'Card'}).`,
-      );
-      playBeep(false);
-      setScannerInputValue('');
-      return;
-    }
-
-    // Quota check
-    const plannedCount = allCards.length + 1;
-    if (plannedCount > effectiveCardLimit) {
-      toast.error(`Subscription limit reached (${effectiveCardLimit} cards max). Cannot register more.`);
-      playBeep(false);
-      setScannerInputValue('');
-      return;
-    }
-
-    // Compute next card number
-    const nextSeq = getNextAvailableNumber(cardPrefix, startSequence, []);
-    const assignedCardNumber = padZeros
-      ? `${cardPrefix.trim().toUpperCase()}${String(nextSeq).padStart(3, '0')}`
-      : `${cardPrefix.trim().toUpperCase()}${nextSeq}`;
-
-    setScannerInputValue('');
-
-    if (autoRegisterOnScan) {
-      try {
-        const res = await apiService.cards.importQrCodes({
-          mappings: [{ qrCode: cleanQr, cardNumber: assignedCardNumber }],
-        });
-
-        if (!res.success) {
-          toast.error(res.error.message || 'Failed to auto-register card');
-          playBeep(false);
-          return;
-        }
-
-        playBeep(true);
-        toast.success(`✓ Auto-Registered: ${assignedCardNumber}`);
-        setStartSequence(nextSeq + 1);
-
-        // Instant optimistic state update: 0ms UI lag
-        const createdCard: CardEntity = (res.data as any)?.cards?.[0] || {
-          id: generateSecureToken('card'),
-          organizationId: user?.organizationId || '',
-          qrToken: cleanQr,
-          physicalCardNumber: assignedCardNumber,
-          assignmentStatus: 'ASSIGNED',
-          status: 'AVAILABLE',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        setAllCards((prev) => [createdCard, ...prev]);
-      } catch {
-        toast.error('Network error while auto-registering card');
-        playBeep(false);
-      }
-    } else {
-      // Queued mode
-      playBeep(true);
-      toast.info(`Scanned ${assignedCardNumber} (Queued)`);
-      setStartSequence(nextSeq + 1);
-    }
-
-    scannerInputRef.current?.focus();
-  };
-
-  const handleOpenQrImportModal = () => {
-    const nextSeq = initSequenceForPrefix(cardPrefix);
-    setStartSequence(nextSeq);
-    setIsCameraActive(false);
-    setShowQrImportModal(true);
-    setTimeout(() => scannerInputRef.current?.focus(), 150);
-  };
-
-  const handleCloseQrImportModal = () => {
-    setShowQrImportModal(false);
-    setIsCameraActive(false);
-    setScannerInputValue('');
-    fetchCardsData();
-  };
 
   // ─── Inspect Card Details ─────────────────────────────────────────
   const handleOpenDetails = async (card: CardEntity) => {
@@ -570,7 +334,7 @@ export function CardsPage() {
       key: 'physicalCardNumber',
       header: 'Card & QR',
       render: (card: CardEntity) => {
-        const isAssigned = !!card.physicalCardNumber && card.assignmentStatus !== 'UNASSIGNED';
+        const displayName = card.physicalCardNumber || card.qrToken;
         return (
           <div className="flex items-center gap-2.5">
             <button
@@ -581,53 +345,23 @@ export function CardsPage() {
               <QrCode className="h-4 w-4 text-emerald-600" />
             </button>
             <div className="flex items-center gap-2">
-              {isAssigned ? (
-                <>
-                  <span className="font-mono font-bold text-slate-900 text-sm">
-                    {card.physicalCardNumber}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenDetails(card)}
-                    className={cn(
-                      'p-1 rounded-md border transition-colors cursor-pointer',
-                      card.status === 'BLOCKED'
-                        ? 'text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200'
-                        : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-slate-200 hover:border-emerald-300',
-                    )}
-                    title={card.status === 'BLOCKED' ? 'View detailed blocked card audit' : 'View card details & actions'}
-                    aria-label={`View card ${card.physicalCardNumber}`}
-                  >
-                    <Eye className="h-3.5 w-3.5" />
-                  </button>
-                </>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center text-amber-800 text-xs font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                    Unassigned
-                  </span>
-                  {card.status === 'BLOCKED' && (
-                    <button
-                      type="button"
-                      onClick={() => handleOpenDetails(card)}
-                      className="p-1 rounded-md text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 transition-colors cursor-pointer"
-                      title="View detailed blocked card audit"
-                      aria-label={`View blocked unassigned card ${card.qrToken}`}
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    className="gap-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs py-0.5 px-2 shadow-sm"
-                    onClick={() => handleOpenAssignModal(card)}
-                  >
-                    <Tag className="h-3 w-3" />
-                    <span>Assign</span>
-                  </Button>
-                </div>
-              )}
+              <span className="font-mono font-bold text-slate-900 text-sm">
+                {displayName}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleOpenDetails(card)}
+                className={cn(
+                  'p-1 rounded-md border transition-colors cursor-pointer',
+                  card.status === 'BLOCKED'
+                    ? 'text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200'
+                    : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-slate-200 hover:border-emerald-300',
+                )}
+                title={card.status === 'BLOCKED' ? 'View detailed blocked card audit' : 'View card details & actions'}
+                aria-label={`View card ${displayName}`}
+              >
+                <Eye className="h-3.5 w-3.5" />
+              </button>
             </div>
           </div>
         );
@@ -637,7 +371,6 @@ export function CardsPage() {
       key: 'status',
       header: 'Status',
       render: (card: CardEntity) => {
-        const isUnassigned = !card.physicalCardNumber || card.assignmentStatus === 'UNASSIGNED';
         if (card.status === 'BLOCKED') {
           const displayReason = formatBlockedCardMessage(card.blockedReason, card.blockedBy);
           return (
@@ -649,14 +382,6 @@ export function CardsPage() {
                 </span>
               )}
             </div>
-          );
-        }
-        if (isUnassigned) {
-          return (
-            <Badge variant="warning" className="gap-1 font-semibold text-xs">
-              <AlertTriangle className="h-3 w-3" />
-              Unassigned
-            </Badge>
           );
         }
         if (card.status === 'ACTIVE') {
@@ -691,12 +416,12 @@ export function CardsPage() {
     },
     {
       key: 'currentBranchId',
-      header: 'Counter',
+      header: 'Cafeteria',
       render: (card: CardEntity) => {
         const branch = branches.find((b) => b.id === card.currentBranchId);
         return (
           <span className="text-xs text-slate-600">
-            {branch ? branch.name : 'All Counters'}
+            {branch ? branch.name : 'All Cafeterias'}
           </span>
         );
       },
@@ -869,18 +594,19 @@ export function CardsPage() {
             <RefreshCw className="h-4 w-4 text-slate-500" />
             <span className="hidden sm:inline">Refresh</span>
           </Button>
+        </div>
+      </div>
 
-          {canIssue && (
-            <Button
-              variant="primary"
-              size="md"
-              className="gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold shadow-md shadow-emerald-600/20"
-              onClick={handleOpenQrImportModal}
-            >
-              <Scan className="h-4 w-4" />
-              <span>Import & Scan QR Codes</span>
-            </Button>
-          )}
+      {/* ─── Auto-Registration Information Banner ─────────────────────── */}
+      <div className="flex items-center gap-3.5 p-4 rounded-xl border border-emerald-200 bg-emerald-50/70 text-emerald-950 shadow-sm">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+          <Zap className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="text-sm font-bold text-slate-900">Card Auto-Registration Active</p>
+          <p className="text-xs text-slate-600 mt-0.5">
+            Cards are automatically registered when staff scans them at any cafeteria. The scanned QR code UID is used directly as the card name. No manual registration needed.
+          </p>
         </div>
       </div>
 
@@ -1137,15 +863,6 @@ export function CardsPage() {
                 <RefreshCw className="h-4 w-4" />
                 <span>Clear Filters</span>
               </Button>
-            ) : canIssue ? (
-              <Button
-                variant="primary"
-                onClick={() => setShowQrImportModal(true)}
-                className="gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold shadow-md shadow-emerald-600/20"
-              >
-                <QrCode className="h-4 w-4" />
-                <span>Import & Scan Cards</span>
-              </Button>
             ) : undefined
           }
         />
@@ -1153,195 +870,7 @@ export function CardsPage() {
         <DataTable data={filteredCards} columns={cardColumns} keyExtractor={(c) => c.id} />
       )}
 
-      {/* ─── MODAL 1: Multi-QR Scanner & Bulk QR Import ───────────────── */}
-      {showQrImportModal && (
-        <Modal
-          isOpen={showQrImportModal}
-          onClose={handleCloseQrImportModal}
-          title="Scan & Register Cards"
-          size="lg"
-        >
-          <div className="space-y-4">
-            {/* Next Card Indicator & Prefix */}
-            <div className="flex flex-wrap items-center justify-between p-4 rounded-xl border border-emerald-200 bg-emerald-50/70 gap-3">
-              <div>
-                <span className="text-xs text-slate-600 font-medium">Next Card to be Registered:</span>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="font-mono text-xl font-extrabold text-emerald-700 tracking-wider">
-                    {padZeros
-                      ? `${cardPrefix.trim().toUpperCase()}${String(startSequence).padStart(3, '0')}`
-                      : `${cardPrefix.trim().toUpperCase()}${startSequence}`}
-                  </span>
-                </div>
-              </div>
 
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-slate-600 font-medium">Card Prefix:</span>
-                <input
-                  type="text"
-                  value={cardPrefix}
-                  onChange={(e) => {
-                    const p = e.target.value;
-                    setCardPrefix(p);
-                    setStartSequence(initSequenceForPrefix(p));
-                  }}
-                  className="w-20 px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 font-mono text-xs text-center font-bold focus:border-emerald-500 focus:outline-none shadow-sm"
-                  placeholder="MC-"
-                />
-              </div>
-            </div>
-
-            {/* Large Scan Input & Camera Trigger */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Scan className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-600" />
-                  <input
-                    ref={scannerInputRef}
-                    type="text"
-                    value={scannerInputValue}
-                    onChange={(e) => setScannerInputValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (scannerInputValue.trim()) {
-                          handleProcessScannedQr(scannerInputValue);
-                        }
-                      }
-                    }}
-                    placeholder="Scan or enter card QR code..."
-                    className="w-full pl-11 pr-24 py-3 rounded-xl border-2 border-emerald-500 bg-white text-sm font-mono text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 focus:outline-none shadow-inner"
-                    autoFocus
-                  />
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 font-bold"
-                    disabled={!scannerInputValue.trim()}
-                    onClick={() => {
-                      if (scannerInputValue.trim()) {
-                        handleProcessScannedQr(scannerInputValue);
-                      }
-                    }}
-                  >
-                    Register
-                  </Button>
-                </div>
-
-                <Button
-                  variant={isCameraActive ? 'danger' : 'outline'}
-                  size="md"
-                  onClick={() => setIsCameraActive(!isCameraActive)}
-                  className={cn(
-                    'gap-2 text-xs font-semibold shrink-0 py-3',
-                    isCameraActive
-                      ? 'bg-rose-600 hover:bg-rose-500 text-white'
-                      : 'border-slate-300 hover:border-slate-400 text-slate-700',
-                  )}
-                >
-                  {isCameraActive ? (
-                    <>
-                      <CameraOff className="h-4 w-4" />
-                      <span>Stop Camera</span>
-                    </>
-                  ) : (
-                    <>
-                      <Camera className="h-4 w-4 text-emerald-600" />
-                      <span>Use Camera</span>
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {/* Live Camera Viewport */}
-              {isCameraActive && (
-                <CameraQrScanner
-                  isActive={isCameraActive}
-                  onScan={(decoded) => handleProcessScannedQr(decoded)}
-                  onToggleActive={(active) => setIsCameraActive(active)}
-                />
-              )}
-            </div>
-          </div>
-
-          <ModalFooter>
-            <Button
-              variant="outline"
-              onClick={handleCloseQrImportModal}
-            >
-              Done / Close
-            </Button>
-          </ModalFooter>
-        </Modal>
-      )}
-
-      {/* ─── MODAL 2: Assign Card Number to Unassigned Card ──────────── */}
-      {showAssignModal && selectedCard && (
-        <Modal
-          isOpen={showAssignModal}
-          onClose={() => {
-            setShowAssignModal(false);
-            setSelectedCard(null);
-          }}
-          title="Assign Cafeteria Card Number"
-          size="md"
-        >
-          <form onSubmit={handleAssignCardNumber} className="space-y-4">
-            <p className="text-sm text-slate-600">
-              Link a cafeteria-specific human-readable card number (e.g. <code>MC 105</code>, <code>STU-001</code>) to this physical QR card.
-            </p>
-
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
-              <p className="text-xs text-slate-500">Physical QR Identifier</p>
-              <p className="font-mono text-sm font-bold text-slate-800 break-all">{selectedCard.qrToken}</p>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                Cafeteria Card Number <span className="text-rose-500">*</span>
-              </label>
-              <Input
-                type="text"
-                placeholder="e.g. MC 105, STU-001, EMP-450"
-                value={assignCardNumberInput}
-                onChange={(e) => setAssignCardNumberInput(e.target.value)}
-                autoFocus
-              />
-              <p className="text-xs text-slate-500 mt-1">
-                Must be unique within your cafeteria. Staff will see this card number when scanning.
-              </p>
-            </div>
-
-            {assignError && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                <span>{assignError}</span>
-              </div>
-            )}
-
-            <ModalFooter>
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => {
-                  setShowAssignModal(false);
-                  setSelectedCard(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                type="submit"
-                disabled={isAssigning || !assignCardNumberInput.trim()}
-                className="bg-emerald-600 hover:bg-emerald-500 font-bold"
-              >
-                {isAssigning ? 'Assigning...' : 'Assign Card Number'}
-              </Button>
-            </ModalFooter>
-          </form>
-        </Modal>
-      )}
 
       {/* ─── MODAL 5: Single QR Code View Modal ──────────────────────── */}
       {selectedQrCard && (

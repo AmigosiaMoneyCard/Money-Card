@@ -34,8 +34,6 @@ export const PERMISSION_DEPENDENCIES: Partial<Record<Permission, Permission[]>> 
   CARD_BLOCK: ['CARD_VIEW'],
   CARD_UNBLOCK: ['CARD_VIEW'],
   PRODUCT_MANAGE: ['PRODUCT_VIEW'],
-  INVENTORY_MANAGE: ['PRODUCT_VIEW', 'INVENTORY_VIEW'],
-  INVENTORY_IMPORT: ['PRODUCT_VIEW', 'INVENTORY_VIEW'],
   BRANCH_MANAGE: ['BRANCH_VIEW', 'STAFF_VIEW'],
   STAFF_MANAGE: ['BRANCH_VIEW', 'STAFF_VIEW'],
   VIEW_ANALYTICS: ['BRANCH_VIEW', 'STAFF_VIEW'],
@@ -45,8 +43,7 @@ export const PERMISSION_DEPENDENCIES: Partial<Record<Permission, Permission[]>> 
 
 export const PERMISSION_CHILDREN: Partial<Record<Permission, Permission[]>> = {
   CARD_VIEW: ['CARD_ISSUE', 'CARD_RETURN', 'CARD_BLOCK', 'CARD_UNBLOCK'],
-  PRODUCT_VIEW: ['PRODUCT_MANAGE', 'INVENTORY_MANAGE', 'INVENTORY_IMPORT'],
-  INVENTORY_VIEW: ['PRODUCT_MANAGE', 'INVENTORY_MANAGE', 'INVENTORY_IMPORT'],
+  PRODUCT_VIEW: ['PRODUCT_MANAGE'],
   BRANCH_VIEW: ['BRANCH_MANAGE', 'STAFF_MANAGE', 'VIEW_ANALYTICS', 'VIEW_REPORTS'],
   STAFF_VIEW: ['BRANCH_MANAGE', 'STAFF_MANAGE', 'VIEW_ANALYTICS', 'VIEW_REPORTS'],
   SESSION_VIEW: ['REFUND'],
@@ -77,26 +74,24 @@ export const PERMISSION_GROUPS: PermissionCategoryConfig[] = [
     permissions: [
       { key: 'RECHARGE', label: 'RECHARGE', description: 'Recharge card balance with cash/UPI' },
       { key: 'PURCHASE', label: 'PURCHASE', description: 'Allows staff to add products to cart and checkout' },
-      { key: 'SESSION_VIEW', label: 'SESSION_VIEW', description: 'View active and historical counter sessions' },
+      { key: 'SESSION_VIEW', label: 'SESSION_VIEW', description: 'View active and historical cafeteria sessions' },
       { key: 'REFUND', label: 'REFUND', description: 'Refund purchase transactions (Requires SESSION_VIEW)', prerequisite: 'SESSION_VIEW' },
     ],
   },
   {
     id: 'products',
-    title: 'Menu & Inventory',
+    title: 'Products & Menu',
     icon: React.createElement(Package, { className: 'h-4 w-4 text-emerald-600' }),
     permissions: [
       {
         key: 'PRODUCT_VIEW',
-        linkedKeys: ['INVENTORY_VIEW'],
-        label: 'PRODUCT & INVENTORY VIEW',
-        description: 'View catalog products and live inventory stock levels (Prerequisite for management)',
+        label: 'PRODUCT_VIEW',
+        description: 'View catalog products and prices (Prerequisite for management)',
       },
       {
         key: 'PRODUCT_MANAGE',
-        linkedKeys: ['INVENTORY_MANAGE', 'INVENTORY_IMPORT'],
-        label: 'PRODUCT & INVENTORY MANAGE',
-        description: 'Create and edit products, adjust stock levels, and import inventory (Requires View)',
+        label: 'PRODUCT_MANAGE',
+        description: 'Create and edit products (Requires View)',
         prerequisite: 'PRODUCT_VIEW',
       },
     ],

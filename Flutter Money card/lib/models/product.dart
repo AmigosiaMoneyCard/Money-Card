@@ -23,7 +23,7 @@ class Product {
     this.updatedAt,
   });
 
-  bool get isOutOfStock => currentStock <= 0;
+  bool get isOutOfStock => false;
 
   factory Product.fromJson(Map<String, dynamic> json) {
     List<String> parsedCategories = [];
