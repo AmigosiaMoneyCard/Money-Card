@@ -1125,7 +1125,12 @@ export function StaffPage() {
               </button>
             </div>
             <div className="flex items-center gap-1.5 text-xs text-slate-500">
-              {staff.phone && <span className="font-mono text-slate-700 font-medium">📱 {staff.phone}</span>}
+              {staff.phone && (
+                <span className="font-mono text-slate-700 font-medium flex items-center gap-1">
+                  <Phone className="h-3 w-3 text-slate-400" />
+                  {staff.phone}
+                </span>
+              )}
               {staff.phone && staff.email && <span>•</span>}
               {staff.email && <span className="text-slate-400 truncate">{staff.email}</span>}
             </div>
@@ -2456,7 +2461,7 @@ export function StaffPage() {
                 if (!createdStaffCredentials) return;
                 const cleanPhone = createdStaffCredentials.phone.replace(/\D/g, '');
                 const targetPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
-                const message = `Hello ${createdStaffCredentials.name},\n\nYour staff account for Money Card POS has been created!\n\n📱 Login Phone: ${createdStaffCredentials.phone}\n🔑 Password: ${createdStaffCredentials.password}\n\nPlease open the Money Card POS App on your phone and log in with your phone number and password.`;
+                const message = `Hello ${createdStaffCredentials.name},\n\nYour staff account for Money Card POS has been created!\n\nLogin Phone: ${createdStaffCredentials.phone}\nPassword: ${createdStaffCredentials.password}\n\nPlease open the Money Card POS App on your phone and log in with your phone number and password.`;
                 const waUrl = `https://wa.me/${targetPhone}?text=${encodeURIComponent(message)}`;
                 window.open(waUrl, '_blank');
               }}
