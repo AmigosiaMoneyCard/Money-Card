@@ -14,6 +14,8 @@ import type {
   HourlyActivityMetric,
   ProductDemandMetric,
   PeakPeriodComparison,
+  CardFleetAnalytics,
+  CardFleetTrackItem,
 } from '@/types';
 
 export const mockAnalyticsHandlers = {
@@ -499,6 +501,103 @@ export const mockAnalyticsHandlers = {
       };
     });
 
+    // ─── Card Fleet & Tracking Analytics ───────────────────────
+    const orgCards = mockStore.cards.filter((c) => {
+      if (targetOrgId && c.organizationId !== targetOrgId) return false;
+      if (branchId && branchId !== 'ALL' && c.currentBranchId && c.currentBranchId !== branchId) return false;
+      return true;
+    });
+
+    let totalFloatBalance = 0;
+    const allFleetItems: CardFleetTrackItem[] = [];
+    const now = Date.now();
+    const fourteenDaysMs = 14 * 24 * 60 * 60 * 1000;
+
+    for (const c of orgCards) {
+      const cardNum = c.physicalCardNumber || (c as any).cardNumber || c.id;
+      const cardSessions = mockStore.sessions.filter((s) => s.cardId === c.id || s.sessionCardNumber === cardNum);
+      const activeSession = cardSessions.find((s) => s.status === 'ACTIVE');
+      const cardBalance = activeSession ? activeSession.balance : 0;
+
+      if (c.status === 'ACTIVE') {
+        totalFloatBalance += cardBalance;
+      }
+
+      const cardTxns = mockStore.transactions.filter(
+        (t) =>
+          (t as any).cardNumber === cardNum ||
+          cardSessions.some((s) => s.id === t.sessionId),
+      );
+
+      let totalRecharged = 0;
+      let totalSpent = 0;
+      let totalRefunded = 0;
+      const branchFrequency = new Map<string, number>();
+
+      for (const t of cardTxns) {
+        if (t.type === 'PURCHASE') {
+          totalSpent += t.amount;
+        } else if (String(t.type).includes('RECHARGE')) {
+          totalRecharged += t.amount;
+        } else if (t.type === 'REFUND') {
+          totalRefunded += t.amount;
+        }
+        if (t.branchId) {
+          branchFrequency.set(t.branchId, (branchFrequency.get(t.branchId) || 0) + 1);
+        }
+      }
+
+      let favBranchId = c.currentBranchId || 'branch_001';
+      let maxCount = 0;
+      branchFrequency.forEach((count, bId) => {
+        if (count > maxCount) {
+          maxCount = count;
+          favBranchId = bId;
+        }
+      });
+      const favBranchName = mockStore.branches.find((b) => b.id === favBranchId)?.name || 'Main Cafeteria';
+
+      const lastTxnTime = cardTxns.length > 0
+        ? new Date(cardTxns[cardTxns.length - 1].createdAt).getTime()
+        : new Date(c.updatedAt || c.createdAt).getTime();
+
+      const isDormant = c.status === 'ACTIVE' && cardBalance > 0 && (now - lastTxnTime > fourteenDaysMs);
+
+      allFleetItems.push({
+        id: c.id,
+        cardNumber: cardNum,
+        status: c.status as 'ACTIVE' | 'BLOCKED' | 'AVAILABLE',
+        balance: cardBalance,
+        totalRecharged: Number(totalRecharged.toFixed(2)),
+        totalSpent: Number(totalSpent.toFixed(2)),
+        totalRefunded: Number(totalRefunded.toFixed(2)),
+        transactionCount: cardTxns.length,
+        favoriteBranchName: favBranchName,
+        lastUsedAt: cardTxns.length > 0 ? cardTxns[cardTxns.length - 1].createdAt : c.updatedAt,
+        isDormant,
+      });
+    }
+
+    const totalCardsInCirculation = orgCards.filter((c) => c.status === 'ACTIVE').length;
+    const dormantCards = allFleetItems.filter((i) => i.isDormant);
+    const blockedCardsCount = orgCards.filter((c) => c.status === 'BLOCKED').length;
+    const availableCardsCount = orgCards.filter((c) => c.status === 'AVAILABLE').length;
+
+    const topActiveCards = [...allFleetItems]
+      .filter((i) => i.status === 'ACTIVE')
+      .sort((a, b) => b.totalSpent - a.totalSpent)
+      .slice(0, 10);
+
+    const cardFleetAnalytics: CardFleetAnalytics = {
+      totalCardsInCirculation,
+      totalFloatBalance: Number(totalFloatBalance.toFixed(2)),
+      dormantCardsCount: dormantCards.length,
+      blockedCardsCount,
+      availableCardsCount,
+      topActiveCards,
+      dormantCards: dormantCards.slice(0, 10),
+    };
+
     return createMockSuccess({
       totalTransactions: filteredTransactions.length,
       totalRechargeVolume: Number(totalRechargeVolume.toFixed(2)),
@@ -519,6 +618,7 @@ export const mockAnalyticsHandlers = {
       zeroBalanceActiveCardsCount,
       activeStaffCount,
       totalStaffCount: orgStaffList.length,
+      cardFleetAnalytics,
     });
   },
 

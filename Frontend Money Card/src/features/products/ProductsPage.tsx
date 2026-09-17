@@ -257,7 +257,7 @@ function ProductCopyCounterModal({
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <span>Currently assigned to:</span>
             <span className="font-semibold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200">
-              🏪 {currentCounterName}
+              Counter: {currentCounterName}
             </span>
           </div>
         </div>
@@ -762,7 +762,7 @@ function useProductsPageData({ currentBranch }: UseProductsPageDataProps) {
   const fetchUnifiedData = useCallback(async () => {
     setLoadError(null);
     try {
-      const targetBranch = branchFilter !== 'ALL' ? branchFilter : currentBranch?.id;
+      const targetBranch = branchFilter !== 'ALL' ? branchFilter : undefined;
       const [prodRes, invRes, branchRes] = await Promise.all([
         apiService.products.getProducts({
           branchId: targetBranch,
@@ -822,6 +822,9 @@ function useProductsPageData({ currentBranch }: UseProductsPageDataProps) {
   }, [fetchUnifiedData]);
 
   const unifiedProducts = useMemo<UnifiedProductItem[]>(() => {
+    const branchMap = new Map<string, string>();
+    branches.forEach((b) => branchMap.set(b.id, b.name));
+
     return products.map((product) => {
       const matchingInv = inventoryList.filter((i) => i.productId === product.id);
       const totalQty =
@@ -829,17 +832,21 @@ function useProductsPageData({ currentBranch }: UseProductsPageDataProps) {
           ? matchingInv.reduce((sum, i) => sum + i.quantity, 0)
           : product.quantity || 0;
 
-      const branchName = product.branchName || matchingInv[0]?.branchName || undefined;
+      const resolvedBranchName =
+        (product.branchId ? branchMap.get(product.branchId) : null) ||
+        product.branchName ||
+        matchingInv[0]?.branchName ||
+        'All Counters';
       const inventoryId = matchingInv[0]?.id;
 
       return {
         ...product,
         quantity: totalQty,
-        branchName,
+        branchName: resolvedBranchName,
         inventoryId,
       };
     });
-  }, [products, inventoryList]);
+  }, [products, inventoryList, branches]);
 
   const filteredProducts = useMemo(() => {
     return unifiedProducts.filter((product) =>
@@ -992,10 +999,12 @@ function useProductsPageColumns(
         header: 'Item Name',
         className: 'min-w-[180px]',
         render: (p: UnifiedProductItem) => (
-          <div className="flex flex-col">
+          <div className="flex flex-col gap-1">
             <span className="font-semibold text-slate-900 text-sm">{p.itemName}</span>
             {p.branchName && (
-              <span className="text-[11px] text-slate-500 mt-0.5">🏪 {p.branchName}</span>
+              <span className="inline-flex items-center gap-1 w-fit px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                Counter: {p.branchName}
+              </span>
             )}
           </div>
         ),
@@ -1161,7 +1170,9 @@ function ProductsPageTableContent({
               <div className="min-w-0">
                 <h4 className="font-bold text-slate-900 text-sm">{p.itemName}</h4>
                 {p.branchName && (
-                  <span className="text-[11px] text-slate-500 block mt-0.5">🏪 {p.branchName}</span>
+                  <span className="inline-flex items-center gap-1 w-fit px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 mt-1">
+                    Counter: {p.branchName}
+                  </span>
                 )}
                 <div className="mt-1.5">{renderProductItemCategoryBadges(p.category)}</div>
               </div>
@@ -1293,14 +1304,9 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
               value={pageData.categoryFilter}
               onChange={(e) => pageData.setCategoryFilter(e.target.value)}
               options={[
-                { value: 'ALL', label: 'All Categories' },
-                { value: 'Veg', label: 'Veg' },
-                { value: 'Non-Veg', label: 'Non-Veg' },
-                { value: 'Beverage', label: 'Beverage' },
-                { value: 'Snack', label: 'Snack' },
-                { value: 'Breakfast', label: 'Breakfast' },
-                { value: 'Lunch', label: 'Lunch' },
-                { value: 'Dinner', label: 'Dinner' },
+                { value: 'ALL', label: 'All (Veg & Non-Veg)' },
+                { value: 'Veg', label: '🟢 Veg' },
+                { value: 'Non-Veg', label: '🔴 Non-Veg' },
               ]}
             />
 

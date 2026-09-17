@@ -1,4 +1,4 @@
-import { Eye, RefreshCw, BarChart3, Flame } from 'lucide-react';
+import { Eye, RefreshCw, BarChart3, Flame, CreditCard } from 'lucide-react';
 import { Badge, Button, Select, LoadingState, ErrorState } from '@/components/ui';
 import {
   OrgAdminKpiCards,
@@ -9,6 +9,7 @@ import {
   OrgAdminPdfModal,
   OrgAdminBranchDetailModal,
 } from './OrgAdminAnalyticsComponents';
+import { OrgAdminCardTracker } from './OrgAdminCardTracker';
 import {
   PeakKpiGrid,
   PeakHourlyTrafficChart,
@@ -220,6 +221,19 @@ export function OrgAdminAnalyticsView() {
           <Flame className="h-4 w-4 text-rose-500" />
           <span>Rush Hours & Food Demand</span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabChange('cards')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+            activeTab === 'cards'
+              ? 'border-emerald-600 text-emerald-700 bg-emerald-50/50 rounded-t-lg'
+              : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+          }`}
+        >
+          <CreditCard className="h-4 w-4 text-indigo-600" />
+          <span>Card Fleet & Tracker</span>
+        </button>
       </div>
 
       {isLoading ? (
@@ -254,7 +268,7 @@ export function OrgAdminAnalyticsView() {
             )}
           </div>
         ) : null
-      ) : (
+      ) : activeTab === 'demand' ? (
         peakData ? (
           <div className="space-y-8">
             <PeakKpiGrid comparison={peakData.comparison} />
@@ -272,6 +286,8 @@ export function OrgAdminAnalyticsView() {
         ) : (
           <LoadingState message="Calculating hour-by-hour peak and food demand..." />
         )
+      ) : (
+        <OrgAdminCardTracker cardFleet={analytics?.cardFleetAnalytics} />
       )}
 
       {/* PDF Viewer Modal */}
