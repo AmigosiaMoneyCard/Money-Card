@@ -2,16 +2,17 @@ import { describe, it, expect } from 'vitest';
 import { NAVIGATION_ITEMS } from '@/config/navigation';
 
 describe('Branch-Wise Menu Configuration & Sidebar Navigation Tests', () => {
-  it('should verify that Menu/Products is removed from the Org Admin sidebar navigation', () => {
+  it('should verify that Menu & Products is present in the Org Admin sidebar navigation', () => {
     const orgAdminNavItems = NAVIGATION_ITEMS.filter((item) =>
       item.roles.includes('ORG_ADMIN'),
     );
 
     const menuNavItem = orgAdminNavItems.find(
-      (item) => item.id === 'products' || item.label.toLowerCase() === 'menu',
+      (item) => item.id === 'products' || item.path === '/products',
     );
 
-    expect(menuNavItem).toBeUndefined();
+    expect(menuNavItem).toBeDefined();
+    expect(menuNavItem?.path).toBe('/products');
   });
 
   it('should verify that Branches is present in the Org Admin sidebar navigation', () => {

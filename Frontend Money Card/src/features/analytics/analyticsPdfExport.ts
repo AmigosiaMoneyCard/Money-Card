@@ -3,7 +3,7 @@
 // Produces a single, valid .pdf document for both in-app preview and browser download.
 
 import { jsPDF } from 'jspdf';
-import type { AnalyticsOverview, Branch } from '@/types';
+import type { AnalyticsOverview, Branch, PeakAnalyticsOverview } from '@/types';
 
 // ─── PDF Safe Currency Formatter ──────────────────────────────────────────
 // Renders currency safely using 'Rs.' to prevent WinAnsi / ISO-8859-1 glyph
@@ -21,12 +21,16 @@ export interface OrgPdfSectionOptions {
   includeExecutiveKpis: boolean;
   includeCardLifecycle: boolean;
   includePaymentBreakdown: boolean;
+  includeRushKpis: boolean;
+  includeTrafficDistribution: boolean;
+  includeFoodDemand: boolean;
   includeBranchComparison: boolean;
   includeStaffPerformance: boolean;
 }
 
 export interface GenerateOrgPdfOptions {
   analytics: AnalyticsOverview;
+  peakData?: PeakAnalyticsOverview | null;
   branches: Branch[];
   selectedBranchName: string;
   dateRangeLabel: string;
@@ -36,6 +40,7 @@ export interface GenerateOrgPdfOptions {
 
 export function buildOrgAnalyticsJsPdf({
   analytics,
+  peakData,
   branches,
   selectedBranchName,
   dateRangeLabel,
@@ -52,6 +57,9 @@ export function buildOrgAnalyticsJsPdf({
     includeExecutiveKpis: sections?.includeExecutiveKpis ?? true,
     includeCardLifecycle: sections?.includeCardLifecycle ?? true,
     includePaymentBreakdown: sections?.includePaymentBreakdown ?? true,
+    includeRushKpis: sections?.includeRushKpis ?? true,
+    includeTrafficDistribution: sections?.includeTrafficDistribution ?? true,
+    includeFoodDemand: sections?.includeFoodDemand ?? true,
     includeBranchComparison: sections?.includeBranchComparison ?? true,
     includeStaffPerformance: sections?.includeStaffPerformance ?? true,
   };
@@ -375,6 +383,204 @@ export function buildOrgAnalyticsJsPdf({
     });
 
     curY += 8;
+  }
+
+  // ── Section: Operational Rush & Peak Hour Metrics ──
+  if (effectiveSections.includeRushKpis && peakData?.comparison) {
+    if (hasAnySection && curY > 210) {
+      curY = addNewPage();
+    }
+    hasAnySection = true;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${sectionCounter}. Operational Rush & Peak Hour Metrics`, margin, curY);
+    sectionCounter++;
+
+    const rushKpis = [
+      { label: 'Busiest Peak Hour', val: peakData.comparison.busiestHour || '13:00' },
+      { label: 'Peak Hours Volume', val: formatPdfCurrency(peakData.comparison.peakVolume || 0) },
+      { label: 'Peak Transactions', val: (peakData.comparison.peakTransactions || 0).toLocaleString() },
+      { label: 'Busiest Counter', val: peakData.comparison.busiestBranchName || selectedBranchName },
+    ];
+
+    const cardW4 = (contentWidth - 9) / 4;
+    rushKpis.forEach((kpi, idx) => {
+      const x = margin + idx * (cardW4 + 3);
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(x, curY + 3, cardW4, 16, 2, 2, 'FD');
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(100, 116, 139);
+      doc.text(kpi.label, x + 3, curY + 8);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(kpi.val.substring(0, 18), x + 3, curY + 14.5);
+    });
+
+    curY += 24;
+  }
+
+  // ── Section: 24-Hour Traffic & Volume Distribution ──
+  if (effectiveSections.includeTrafficDistribution && peakData?.hourlyDistribution) {
+    if (hasAnySection && curY > 200) {
+      curY = addNewPage();
+    }
+    hasAnySection = true;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${sectionCounter}. 24-Hour Traffic & Volume Distribution`, margin, curY);
+    sectionCounter++;
+
+    const trafficTableY = curY + 2;
+    doc.setFillColor(241, 245, 249);
+    doc.setDrawColor(203, 213, 225);
+    doc.rect(margin, trafficTableY, contentWidth, 7, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(51, 65, 85);
+    doc.text('Hour Window', margin + 4, trafficTableY + 5);
+    doc.text('Transactions', margin + 50, trafficTableY + 5);
+    doc.text('Purchases', margin + 85, trafficTableY + 5);
+    doc.text('Recharges', margin + 120, trafficTableY + 5);
+    doc.text('Hourly Volume', margin + 155, trafficTableY + 5);
+
+    curY = trafficTableY + 7;
+    const hourlyRows = peakData.hourlyDistribution || [];
+
+    if (hourlyRows.length === 0) {
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text('No hourly distribution data available for this range.', margin + 4, curY + 5);
+      curY += 8;
+    } else {
+      hourlyRows.forEach((row, idx) => {
+        if (curY > 265) {
+          curY = addNewPage();
+          doc.setFillColor(241, 245, 249);
+          doc.setDrawColor(203, 213, 225);
+          doc.rect(margin, curY, contentWidth, 7, 'FD');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7);
+          doc.setTextColor(51, 65, 85);
+          doc.text('Hour Window (Cont.)', margin + 4, curY + 5);
+          doc.text('Transactions', margin + 50, curY + 5);
+          doc.text('Purchases', margin + 85, curY + 5);
+          doc.text('Recharges', margin + 120, curY + 5);
+          doc.text('Hourly Volume', margin + 155, curY + 5);
+          curY += 7;
+        }
+
+        if (idx % 2 === 1) {
+          doc.setFillColor(248, 250, 252);
+          doc.rect(margin, curY, contentWidth, 5.5, 'F');
+        }
+        doc.setDrawColor(226, 232, 240);
+        doc.line(margin, curY + 5.5, margin + contentWidth, curY + 5.5);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(51, 65, 85);
+        const nextH = (row.hour + 1) % 24;
+        const windowLabel = `${row.hourLabel} - ${String(nextH).padStart(2, '0')}:00`;
+        doc.text(windowLabel, margin + 4, curY + 4);
+        doc.text(String(row.transactionCount), margin + 50, curY + 4);
+        doc.text(String(row.purchaseCount), margin + 85, curY + 4);
+        doc.text(String(row.rechargeCount), margin + 120, curY + 4);
+        doc.text(formatPdfCurrency(row.totalVolume), margin + 155, curY + 4);
+
+        curY += 5.5;
+      });
+      curY += 6;
+    }
+  }
+
+  // ── Section: Top Food & Product Demand ──
+  if (effectiveSections.includeFoodDemand && peakData?.productDemand) {
+    if (hasAnySection && curY > 200) {
+      curY = addNewPage();
+    }
+    hasAnySection = true;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${sectionCounter}. Top Food & Item Demand Summary`, margin, curY);
+    sectionCounter++;
+
+    const prodTableY = curY + 2;
+    doc.setFillColor(241, 245, 249);
+    doc.setDrawColor(203, 213, 225);
+    doc.rect(margin, prodTableY, contentWidth, 7, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(51, 65, 85);
+    doc.text('Food / Product Item', margin + 4, prodTableY + 5);
+    doc.text('Gross Revenue', margin + 70, prodTableY + 5);
+    doc.text('Stock Status', margin + 110, prodTableY + 5);
+    doc.text('Units Sold', margin + 145, prodTableY + 5);
+    doc.text('Category', margin + 170, prodTableY + 5);
+
+    curY = prodTableY + 7;
+    const products = peakData.productDemand || [];
+
+    if (products.length === 0) {
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text('No product demand records available for this filter.', margin + 4, curY + 5);
+      curY += 8;
+    } else {
+      products.forEach((p, idx) => {
+        if (curY > 265) {
+          curY = addNewPage();
+          doc.setFillColor(241, 245, 249);
+          doc.setDrawColor(203, 213, 225);
+          doc.rect(margin, curY, contentWidth, 7, 'FD');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7);
+          doc.setTextColor(51, 65, 85);
+          doc.text('Food / Product Item (Cont.)', margin + 4, curY + 5);
+          doc.text('Gross Revenue', margin + 70, curY + 5);
+          doc.text('Stock Status', margin + 110, curY + 5);
+          doc.text('Units Sold', margin + 145, curY + 5);
+          doc.text('Category', margin + 170, curY + 5);
+          curY += 7;
+        }
+
+        if (idx % 2 === 1) {
+          doc.setFillColor(248, 250, 252);
+          doc.rect(margin, curY, contentWidth, 5.5, 'F');
+        }
+        doc.setDrawColor(226, 232, 240);
+        doc.line(margin, curY + 5.5, margin + contentWidth, curY + 5.5);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(51, 65, 85);
+        doc.text(p.productName.substring(0, 32), margin + 4, curY + 4);
+        doc.text(formatPdfCurrency(p.revenue), margin + 70, curY + 4);
+        const stockText = p.currentStock !== undefined
+          ? `${p.stockStatus.replace(/_/g, ' ')} (${p.currentStock})`
+          : p.stockStatus.replace(/_/g, ' ');
+        doc.text(stockText.substring(0, 18), margin + 110, curY + 4);
+        doc.text(`${p.quantitySold} units`, margin + 145, curY + 4);
+        doc.text((p.category || 'General Food').substring(0, 16), margin + 170, curY + 4);
+
+        curY += 5.5;
+      });
+      curY += 6;
+    }
   }
 
   // ── Section 5: Staff Performance & Operational Audit ──

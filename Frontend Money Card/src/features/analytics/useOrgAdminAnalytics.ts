@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useBranch, useAuth } from '@/hooks';
 import { apiService } from '@/services/api';
 import { notify } from '@/utils/toast';
-import type { Branch, AnalyticsOverview, BranchPerformanceMetric } from '@/types';
+import type { Branch, AnalyticsOverview, BranchPerformanceMetric, PeakAnalyticsOverview } from '@/types';
 import type { OrgPdfSectionOptions } from './analyticsPdfExport';
 import {
   generateAnalyticsPdfBlob,
@@ -86,6 +86,9 @@ function countActiveSections(sections: OrgPdfSectionOptions): number {
   if (sections.includeExecutiveKpis) count++;
   if (sections.includeCardLifecycle) count++;
   if (sections.includePaymentBreakdown) count++;
+  if (sections.includeRushKpis) count++;
+  if (sections.includeTrafficDistribution) count++;
+  if (sections.includeFoodDemand) count++;
   if (sections.includeBranchComparison) count++;
   if (sections.includeStaffPerformance) count++;
   return count;
@@ -113,6 +116,24 @@ export function useOrgAdminAnalytics() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
+  const [activeTab, setActiveTab] = useState<'overview' | 'demand'>(() => {
+    return (searchParams.get('tab') as 'overview' | 'demand') || 'overview';
+  });
+
+  const handleTabChange = (tab: 'overview' | 'demand') => {
+    setActiveTab(tab);
+    const newParams = new URLSearchParams(searchParams);
+    if (tab === 'demand') {
+      newParams.set('tab', 'demand');
+    } else {
+      newParams.delete('tab');
+    }
+    setSearchParams(newParams);
+  };
+
+  const [peakData, setPeakData] = useState<PeakAnalyticsOverview | null>(null);
+  const [demandSortBy, setDemandSortBy] = useState<'REVENUE' | 'ORDERS'>('REVENUE');
+
   const [branches, setBranches] = useState<Branch[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsOverview | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -125,6 +146,9 @@ export function useOrgAdminAnalytics() {
     includeExecutiveKpis: true,
     includeCardLifecycle: true,
     includePaymentBreakdown: true,
+    includeRushKpis: true,
+    includeTrafficDistribution: true,
+    includeFoodDemand: true,
     includeBranchComparison: true,
     includeStaffPerformance: true,
   });
@@ -174,18 +198,28 @@ export function useOrgAdminAnalytics() {
     setError(null);
     try {
       const targetBranch = branchFilter !== 'ALL' ? branchFilter : undefined;
-      const res = await apiService.analytics.getOverview({
-        branchId: targetBranch,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
-      });
+      const [overviewRes, peakRes] = await Promise.all([
+        apiService.analytics.getOverview({
+          branchId: targetBranch,
+          startDate: startDate || undefined,
+          endDate: endDate || undefined,
+        }),
+        apiService.analytics.getPeakAnalytics({
+          branchId: targetBranch,
+          startDate: startDate || undefined,
+          endDate: endDate || undefined,
+        }),
+      ]);
 
-      if (!res.success) {
-        setError(res.error.message || 'Failed to load analytics');
+      if (!overviewRes.success) {
+        setError(overviewRes.error.message || 'Failed to load analytics');
         return;
       }
 
-      setAnalytics(res.data);
+      setAnalytics(overviewRes.data);
+      if (peakRes.success) {
+        setPeakData(peakRes.data);
+      }
     } catch {
       setError('Unable to connect to the server. Please try again.');
     } finally {
@@ -203,19 +237,29 @@ export function useOrgAdminAnalytics() {
       setError(null);
       try {
         const targetBranch = branchFilter !== 'ALL' ? branchFilter : undefined;
-        const res = await apiService.analytics.getOverview({
-          branchId: targetBranch,
-          startDate: startDate || undefined,
-          endDate: endDate || undefined,
-        });
+        const [overviewRes, peakRes] = await Promise.all([
+          apiService.analytics.getOverview({
+            branchId: targetBranch,
+            startDate: startDate || undefined,
+            endDate: endDate || undefined,
+          }),
+          apiService.analytics.getPeakAnalytics({
+            branchId: targetBranch,
+            startDate: startDate || undefined,
+            endDate: endDate || undefined,
+          }),
+        ]);
 
         if (isCancelled) return;
-        if (!res.success) {
-          setError(res.error.message || 'Failed to load analytics');
+        if (!overviewRes.success) {
+          setError(overviewRes.error.message || 'Failed to load analytics');
           return;
         }
 
-        setAnalytics(res.data);
+        setAnalytics(overviewRes.data);
+        if (peakRes.success) {
+          setPeakData(peakRes.data);
+        }
       } catch {
         if (!isCancelled) {
           setError('Unable to connect to the server. Please try again.');
@@ -315,6 +359,12 @@ export function useOrgAdminAnalytics() {
 
     return {
       analytics,
+      peakData: peakData
+        ? {
+            ...peakData,
+            productDemand: filteredProducts,
+          }
+        : null,
       branches,
       selectedBranchName,
       dateRangeLabel,
@@ -354,6 +404,9 @@ export function useOrgAdminAnalytics() {
       includeExecutiveKpis: enable,
       includeCardLifecycle: enable,
       includePaymentBreakdown: enable,
+      includeRushKpis: enable,
+      includeTrafficDistribution: enable,
+      includeFoodDemand: enable,
       includeBranchComparison: enable,
       includeStaffPerformance: enable,
     };
@@ -445,9 +498,28 @@ export function useOrgAdminAnalytics() {
     return staffOnlyPerformance.reduce((acc, s) => acc + (s.totalVolumeHandled || 0), 0);
   }, [staffOnlyPerformance]);
 
+  const filteredProducts = useMemo(() => {
+    if (!peakData?.productDemand) return [];
+    const items = peakData.productDemand.filter(
+      (p) => !p.productName.toLowerCase().includes('temp delete'),
+    );
+    return [...items].sort((a, b) => {
+      if (demandSortBy === 'REVENUE') {
+        return b.revenue - a.revenue;
+      }
+      return b.quantitySold - a.quantitySold;
+    });
+  }, [peakData?.productDemand, demandSortBy]);
+
   return {
     branches,
     analytics,
+    peakData,
+    activeTab,
+    handleTabChange,
+    demandSortBy,
+    setDemandSortBy,
+    filteredProducts,
     isLoading,
     error,
     isExportingPdf,

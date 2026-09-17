@@ -45,6 +45,14 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
     permission: 'BRANCH_VIEW',
   },
   {
+    id: 'products',
+    label: 'Menu & Products',
+    path: '/products',
+    iconName: 'Package',
+    roles: ['ORG_ADMIN'],
+    permission: 'PRODUCT_VIEW',
+  },
+  {
     id: 'staff',
     label: 'Staff',
     path: '/staff',
@@ -74,14 +82,6 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
     path: '/analytics',
     iconName: 'BarChart3',
     roles: ['SUPER_ADMIN', 'ORG_ADMIN'],
-    permission: 'VIEW_ANALYTICS',
-  },
-  {
-    id: 'peak',
-    label: 'Peak & Demand',
-    path: '/peak',
-    iconName: 'Flame',
-    roles: ['ORG_ADMIN'],
     permission: 'VIEW_ANALYTICS',
   },
   {
