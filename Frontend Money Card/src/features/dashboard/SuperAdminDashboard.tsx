@@ -175,11 +175,11 @@ export function SuperAdminDashboard() {
     return list.filter((r) => r.status === 'PENDING').length;
   }, [planRequests, selectedOrgId]);
 
-  const cafeteriaAdminsCount = useMemo(() => {
+  const activeCardholdersCount = useMemo(() => {
     const targetOrgs = selectedOrgId
       ? orgs.filter((o) => o.id === selectedOrgId)
       : orgs;
-    return targetOrgs.filter((o) => Boolean(o.adminUser)).length;
+    return targetOrgs.reduce((sum, o) => sum + (o.usage?.cardCount || 0), 0);
   }, [orgs, selectedOrgId]);
 
   const filteredOrgs = useMemo(() => {
@@ -461,7 +461,7 @@ export function SuperAdminDashboard() {
             </Button>
           </div>
 
-          {/* ── 4. Super Admin SaaS Platform Metrics (Cafeterias, Cafeteria Admins, Active Subscriptions, Plan Requests) ── */}
+          {/* ── 4. Super Admin SaaS Platform Metrics (Cafeterias, Active Cardholders, Active Subscriptions, Plan Requests) ── */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               label="Cafeterias"
@@ -470,8 +470,8 @@ export function SuperAdminDashboard() {
             />
 
             <StatCard
-              label="Cafeteria Admins"
-              value={`${cafeteriaAdminsCount} Admin${cafeteriaAdminsCount !== 1 ? 's' : ''}`}
+              label="Active Cardholders"
+              value={`${activeCardholdersCount} User${activeCardholdersCount !== 1 ? 's' : ''}`}
               icon={<Users className="h-5 w-5 text-teal-600" />}
             />
 
