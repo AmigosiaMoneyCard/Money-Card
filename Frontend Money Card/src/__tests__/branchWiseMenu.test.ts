@@ -48,17 +48,6 @@ describe('Branch-Wise Menu Configuration & Sidebar Navigation Tests', () => {
     expect(outOfStock).toBe(1);
   });
 
-  it('should support reassigning (moving) a menu item to another counter', () => {
-    let item = { id: 'p1', itemName: 'Samosa', price: 20, branchId: 'counter-1' };
-    const targetCounter = 'counter-2';
-
-    // Move to counter-2
-    item = { ...item, branchId: targetCounter };
-    expect(item.branchId).toBe('counter-2');
-    expect(item.itemName).toBe('Samosa');
-    expect(item.price).toBe(20);
-  });
-
   it('should support replicating (copying) a menu item to another counter', () => {
     const originalItem = { id: 'p1', itemName: 'Samosa', price: 20, category: ['Veg'], branchId: 'counter-1' };
     const clonedItem = {
@@ -74,6 +63,38 @@ describe('Branch-Wise Menu Configuration & Sidebar Navigation Tests', () => {
     expect(clonedItem.itemName).toBe(originalItem.itemName);
     expect(clonedItem.price).toBe(originalItem.price);
     expect(clonedItem.category).toEqual(['Veg']);
+  });
+
+  it('should filter out the current counter from available copy target counters', () => {
+    const branches = [
+      { id: 'counter-1', name: 'Snacks Counter' },
+      { id: 'counter-2', name: 'Beverage Counter' },
+      { id: 'counter-3', name: 'Main Canteen' },
+    ];
+    const currentItem = { id: 'p1', itemName: 'Samosa', branchId: 'counter-1' };
+
+    const availableTargets = branches.filter((b) => b.id !== currentItem.branchId);
+    expect(availableTargets).toHaveLength(2);
+    expect(availableTargets.map((b) => b.id)).toEqual(['counter-2', 'counter-3']);
+  });
+
+  it('should support batch replicating a menu item across multiple target counters', () => {
+    const originalItem = { id: 'p1', itemName: 'Masala Chai', price: 15, category: ['Drink'], branchId: 'counter-1' };
+    const selectedTargetBranchIds = ['counter-2', 'counter-3'];
+
+    const replicatedItems = selectedTargetBranchIds.map((targetBranchId, index) => ({
+      id: `p-copy-${index + 1}`,
+      itemName: originalItem.itemName,
+      price: originalItem.price,
+      category: originalItem.category,
+      branchId: targetBranchId,
+      status: 'ACTIVE' as const,
+    }));
+
+    expect(replicatedItems).toHaveLength(2);
+    expect(replicatedItems[0].branchId).toBe('counter-2');
+    expect(replicatedItems[1].branchId).toBe('counter-3');
+    expect(replicatedItems.every((item) => item.itemName === 'Masala Chai')).toBe(true);
   });
 });
 
