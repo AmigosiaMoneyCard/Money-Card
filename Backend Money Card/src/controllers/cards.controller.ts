@@ -662,6 +662,7 @@ export async function resolveCard(req: Request, res: Response) {
           customerName: activeSession.customerName || null,
           customerPhone: activeSession.customerPhone || null,
           issuedAt: activeSession.issuedAt,
+          startedAt: activeSession.issuedAt,
         }
       : null,
   });
@@ -698,6 +699,10 @@ export async function getCardById(req: Request, res: Response) {
 
   return sendSuccess(res, {
     ...card,
+    sessions: (card.sessions || []).map((s) => ({
+      ...s,
+      startedAt: s.issuedAt ? s.issuedAt.toISOString() : null,
+    })),
     blockedReason: lastBlock?.reason || null,
     blockedBy: lastBlock?.performedByName || null,
     blockedAt: lastBlock?.createdAt || null,
