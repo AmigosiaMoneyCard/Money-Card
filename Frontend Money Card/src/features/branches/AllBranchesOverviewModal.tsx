@@ -206,7 +206,12 @@ export function AllBranchesOverviewModal({
       result = result.filter(
         (b) =>
           b.branch.name.toLowerCase().includes(q) ||
-          b.assignedStaff.some((s) => s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q)) ||
+          b.assignedStaff.some(
+            (s) =>
+              s.name.toLowerCase().includes(q) ||
+              (s.phone && s.phone.includes(q)) ||
+              (s.email && s.email.toLowerCase().includes(q)),
+          ) ||
           b.products.some((p) => p.itemName.toLowerCase().includes(q)),
       );
     }

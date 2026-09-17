@@ -78,7 +78,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                     const SizedBox(width: AppSpacing.xs),
                     Expanded(
                       child: Text(
-                        'Counter: ${currentBranch?.name ?? "Main Cafeteria"}',
+                        'Cafeteria: ${currentBranch?.name ?? "Main Cafeteria"}',
                         style: const TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
@@ -280,7 +280,6 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
       itemBuilder: (context, index) {
         final product = products[index];
         final isActive = product.status.toUpperCase() == 'ACTIVE';
-        final isOut = product.isOutOfStock;
 
         return AppCard(
           padding: AppSpacing.paddingMd,
@@ -289,13 +288,13 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.all(AppSpacing.sm),
-                decoration: BoxDecoration(
-                  color: isOut ? AppColors.errorLight.withValues(alpha: 0.3) : AppColors.primaryLight,
+                decoration: const BoxDecoration(
+                  color: AppColors.primaryLight,
                   borderRadius: AppSpacing.roundedSm,
                 ),
-                child: Icon(
+                child: const Icon(
                   Icons.restaurant_menu,
-                  color: isOut ? AppColors.error : AppColors.primary,
+                  color: AppColors.primary,
                   size: 24,
                 ),
               ),
@@ -309,38 +308,25 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                         Expanded(
                           child: Text(
                             product.itemName,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: isOut ? AppColors.textSecondaryLight : null,
                             ),
                           ),
                         ),
-                        if (isOut)
-                          const AppBadge(
-                            label: 'Out of Stock',
-                            variant: AppBadgeVariant.error,
-                          )
-                        else ...[
-                          AppBadge(
-                            label: product.status,
-                            variant: isActive ? AppBadgeVariant.success : AppBadgeVariant.neutral,
-                          ),
-                          const SizedBox(width: 4),
-                          AppBadge(
-                            label: '${product.currentStock} in stock',
-                            variant: product.currentStock <= 10 ? AppBadgeVariant.warning : AppBadgeVariant.primary,
-                          ),
-                        ],
+                        AppBadge(
+                          label: product.status,
+                          variant: isActive ? AppBadgeVariant.success : AppBadgeVariant.neutral,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 2),
                     Text(
                       '₹${product.price.toStringAsFixed(2)}',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: isOut ? AppColors.textSecondaryLight : AppColors.primary,
+                        color: AppColors.primary,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xs),

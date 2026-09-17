@@ -596,7 +596,7 @@ export async function resolveCard(req: Request, res: Response) {
     ? rawInput
     : `qtk_${rawInput.replace(/[^a-zA-Z0-9_-]/g, '')}`;
 
-  const card = await prisma.card.findFirst({
+  let card = await prisma.card.findFirst({
     where: {
       organizationId: orgId || undefined,
       OR: [
@@ -604,6 +604,7 @@ export async function resolveCard(req: Request, res: Response) {
         { qrToken: rawInput },
         { qrToken: tokenStr },
         { qrToken: rawInput.toLowerCase() },
+        { qrToken: rawInput.toUpperCase() },
       ],
     },
     include: {
@@ -615,16 +616,103 @@ export async function resolveCard(req: Request, res: Response) {
   });
 
   if (!card) {
-    return sendError(res, 404, 'NOT_FOUND', 'Card not found with this identifier or QR code');
+    if (!orgId) {
+      return sendError(res, 400, 'VALIDATION_ERROR', 'User has no associated organization');
+    }
+
+    const [effectiveLimits, currentCardCount] = await Promise.all([
+      getEffectiveLimits(orgId),
+      prisma.card.count({ where: { organizationId: orgId } }),
+    ]);
+
+    if (currentCardCount >= effectiveLimits.cardLimit) {
+      return sendError(
+        res,
+        409,
+        'CARD_LIMIT_REACHED',
+        `Your organization has reached its card limit of ${effectiveLimits.cardLimit}. Please upgrade your plan to register more cards.`,
+      );
+    }
+
+    const cardName = rawInput.trim().toUpperCase();
+    const token = rawInput.trim();
+
+    // Check if card with physicalCardNumber already exists in this org
+    const existingNamedCard = await prisma.card.findUnique({
+      where: {
+        organizationId_physicalCardNumber: {
+          organizationId: orgId,
+          physicalCardNumber: cardName,
+        },
+      },
+      include: {
+        sessions: {
+          where: { status: 'ACTIVE' },
+          include: { branch: true },
+        },
+      },
+    });
+
+    if (existingNamedCard) {
+      card = existingNamedCard;
+    } else {
+      try {
+        card = await prisma.card.create({
+          data: {
+            organizationId: orgId,
+            physicalCardNumber: cardName,
+            qrToken: token,
+            assignmentStatus: CardAssignmentStatus.ASSIGNED,
+            status: CardStatus.AVAILABLE,
+          },
+          include: {
+            sessions: {
+              where: { status: 'ACTIVE' },
+              include: { branch: true },
+            },
+          },
+        });
+      } catch (err: any) {
+        // In case of conflict, retrieve existing card
+        card = await prisma.card.findFirst({
+          where: {
+            organizationId: orgId,
+            OR: [
+              { physicalCardNumber: cardName },
+              { qrToken: token },
+            ],
+          },
+          include: {
+            sessions: {
+              where: { status: 'ACTIVE' },
+              include: { branch: true },
+            },
+          },
+        });
+
+        if (!card) {
+          return sendError(res, 400, 'CARD_REGISTRATION_FAILED', 'Failed to auto-register card: ' + (err?.message || 'Conflict'));
+        }
+      }
+    }
   }
 
-  if (card.assignmentStatus === CardAssignmentStatus.UNASSIGNED || !card.physicalCardNumber) {
-    return sendError(
-      res,
-      400,
-      'CARD_NOT_ASSIGNED',
-      'Card is not assigned yet. Please assign an organization card number in Org Admin portal before use.',
-    );
+  // Ensure card has physicalCardNumber and is marked ASSIGNED
+  if (!card.physicalCardNumber || card.assignmentStatus === CardAssignmentStatus.UNASSIGNED) {
+    const updated = await prisma.card.update({
+      where: { id: card.id },
+      data: {
+        physicalCardNumber: card.physicalCardNumber || card.qrToken.toUpperCase(),
+        assignmentStatus: CardAssignmentStatus.ASSIGNED,
+      },
+      include: {
+        sessions: {
+          where: { status: 'ACTIVE' },
+          include: { branch: true },
+        },
+      },
+    });
+    card = updated;
   }
 
   if (card.status === CardStatus.BLOCKED) {

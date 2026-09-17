@@ -112,11 +112,10 @@ void main() {
       expect(result2.session, isNotNull);
       expect(result2.session?.balance, 350.0);
 
-      // Resolve unregistered QR token throws 404 NOT_FOUND
-      expect(
-        () => cardService.resolveQr('UNREGISTERED-QR-TOKEN'),
-        throwsA(isA<ApiException>().having((e) => e.message, 'message', 'Card not registered')),
-      );
+      // Resolve unregistered QR token auto-registers the card as AVAILABLE
+      final autoRegistered = await cardService.resolveQr('UNREGISTERED-QR-TOKEN');
+      expect(autoRegistered.card.physicalCardNumber, 'UNREGISTERED-QR-TOKEN');
+      expect(autoRegistered.card.status, CardStatus.available);
     });
 
     test('Mock Issue Card creates active session and transitions AVAILABLE to ACTIVE', () async {
@@ -136,7 +135,7 @@ void main() {
       expect(updatedCard.status, CardStatus.active);
     });
 
-    test('Mock purchase execution deducts balance and reduces inventory', () async {
+    test('Mock purchase execution deducts balance', () async {
       await authService.login(
         email: 'staffa@demo.local',
         password: 'password123',
@@ -160,11 +159,6 @@ void main() {
       // Check session balance updated in memory
       final session = await sessionService.getSessionById('session-101');
       expect(session.balance, 190.0);
-
-      // Check inventory deducted in memory (initial 42 - 2 = 40)
-      final inventory = await inventoryService.getInventory(branchId: 'branch-001');
-      final vegRice = inventory.firstWhere((i) => i.productId == 'prod-001');
-      expect(vegRice.currentStock, 40);
     });
 
     test('Mock CASH & UPI recharge adds to balance', () async {

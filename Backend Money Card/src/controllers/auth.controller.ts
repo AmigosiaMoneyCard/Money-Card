@@ -9,31 +9,58 @@ import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '.
 import { Role, UserStatus, OrgStatus } from '@prisma/client';
 
 export const loginSchema = z.object({
-  email: z.string().email('Invalid email address'),
+  email: z.string().optional(),
+  phone: z.string().optional(),
   password: z.string().min(1, 'Password is required'),
 });
 
 export async function login(req: Request, res: Response) {
-  const { email, password } = req.body;
+  let { email, phone, password } = req.body;
 
-  if (!email || !password) {
-    return sendError(res, 400, 'VALIDATION_ERROR', 'Email and password are required');
+  if (!password || (!email && !phone)) {
+    return sendError(res, 400, 'VALIDATION_ERROR', 'Email or phone number, and password are required');
   }
 
-  const cleanEmail = String(email || '').trim().toLowerCase().replace(/\s+/g, '');
-  const user = await prisma.user.findUnique({
-    where: { email: cleanEmail },
-    include: {
-      permissions: true,
-      assignedBranches: {
-        include: { branch: true },
+  // If email contains only digits, treat it as phone number
+  if (email && /^\d{10,15}$/.test(String(email).trim())) {
+    phone = String(email).trim();
+    email = undefined;
+  }
+
+  let user;
+  if (phone) {
+    const cleanPhone = String(phone).trim().replace(/\D/g, '');
+    user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { phone: cleanPhone },
+          { phone: cleanPhone.slice(-10) },
+        ],
       },
-      organization: true,
-    },
-  });
+      include: {
+        permissions: true,
+        assignedBranches: {
+          include: { branch: true },
+        },
+        organization: true,
+      },
+    });
+  } else {
+    const cleanEmail = String(email || '').trim().toLowerCase().replace(/\s+/g, '');
+    user = await prisma.user.findUnique({
+      where: { email: cleanEmail },
+      include: {
+        permissions: true,
+        assignedBranches: {
+          include: { branch: true },
+        },
+        organization: true,
+      },
+    });
+  }
 
   if (!user) {
-    return sendError(res, 401, 'INVALID_CREDENTIALS', 'Invalid email or password');
+    return sendError(res, 401, 'INVALID_CREDENTIALS', 'Invalid credentials');
   }
 
   if (user.status !== UserStatus.ACTIVE) {
@@ -42,7 +69,7 @@ export async function login(req: Request, res: Response) {
         res,
         403,
         'ACCOUNT_PENDING_ACTIVATION',
-        'This account has not been activated yet. Please click the invitation link sent to your email to set your password.',
+        'This account has not been activated yet. Please contact your administrator.',
       );
     }
     return sendError(
@@ -60,7 +87,7 @@ export async function login(req: Request, res: Response) {
         res,
         403,
         'ORGANIZATION_PENDING_ACTIVATION',
-        'This cafeteria is pending email activation. Please click the invitation link sent to the administrator email to activate the cafeteria.',
+        'This organisation is pending email activation. Please click the invitation link sent to the administrator email to activate the organisation.',
       );
     }
     if (orgStatus === 'SUSPENDED' || orgStatus === 'INACTIVE') {
@@ -87,12 +114,12 @@ export async function login(req: Request, res: Response) {
   }
 
   if (!isPasswordValid) {
-    return sendError(res, 401, 'INVALID_CREDENTIALS', 'Invalid email or password');
+    return sendError(res, 401, 'INVALID_CREDENTIALS', 'Invalid credentials');
   }
 
   const tokenPayload = {
     userId: user.id,
-    email: user.email,
+    email: user.email || user.phone || user.id,
     role: user.role,
     organizationId: user.organizationId,
     tokenVersion: user.tokenVersion,
@@ -128,6 +155,7 @@ export async function login(req: Request, res: Response) {
     user: {
       id: user.id,
       email: user.email,
+      phone: user.phone,
       name: user.name,
       role: user.role,
       organizationId: user.organizationId,
@@ -162,7 +190,7 @@ export async function refresh(req: Request, res: Response) {
 
   const newAccessToken = generateAccessToken({
     userId: user.id,
-    email: user.email,
+    email: user.email || user.phone || user.id,
     role: user.role,
     organizationId: user.organizationId,
     tokenVersion: user.tokenVersion,
@@ -253,14 +281,15 @@ export async function forgotPassword(req: Request, res: Response) {
         : 'https://money-card-frontend-staging.vercel.app');
     const resetLink = `${frontendUrl}/reset-password?token=${rawToken}`;
 
-    // Dispatch email asynchronously so HTTP request doesn't block
-    sendPasswordResetEmail(user.email, user.name, resetLink, user.role, user.organization?.name)
-      .then((result) => {
-        console.log(`[PASSWORD_RESET_DISPATCHED] To: ${user.email}, Provider: ${result.provider}, Sent: ${result.sent}`);
-      })
-      .catch((err) => {
-        console.error('[PASSWORD_RESET_DISPATCH_ERROR]', err?.message || err);
-      });
+    if (user.email) {
+      sendPasswordResetEmail(user.email, user.name, resetLink, user.role, user.organization?.name)
+        .then((result) => {
+          console.log(`[PASSWORD_RESET_DISPATCHED] To: ${user.email}, Provider: ${result.provider}, Sent: ${result.sent}`);
+        })
+        .catch((err) => {
+          console.error('[PASSWORD_RESET_DISPATCH_ERROR]', err?.message || err);
+        });
+    }
   }
 
   // Anti-user enumeration message (always generic for all users)
@@ -385,7 +414,7 @@ export async function changePassword(req: Request, res: Response) {
   // Generate fresh token with updated tokenVersion and mustChangePassword = false
   const tokenPayload = {
     userId: updatedUser.id,
-    email: updatedUser.email,
+    email: updatedUser.email || updatedUser.phone || updatedUser.id,
     role: updatedUser.role,
     organizationId: updatedUser.organizationId,
     tokenVersion: updatedUser.tokenVersion,
@@ -568,7 +597,7 @@ export async function activateAccount(req: Request, res: Response) {
 
   const tokenPayload = {
     userId: updatedUser.id,
-    email: updatedUser.email,
+    email: updatedUser.email || updatedUser.phone || updatedUser.id,
     role: updatedUser.role,
     organizationId: updatedUser.organizationId,
     tokenVersion: updatedUser.tokenVersion,

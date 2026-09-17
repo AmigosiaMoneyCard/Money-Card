@@ -476,7 +476,7 @@ export const mockAnalyticsHandlers = {
       return {
         staffId: st.id,
         staffName: st.name,
-        staffEmail: st.email,
+        staffEmail: st.email || st.phone || 'N/A',
         role: 'Counter Staff',
         status: (st.status || 'ACTIVE') as 'ACTIVE' | 'INACTIVE',
         branchId: st.assignedBranchIds?.[0] || 'branch_001',

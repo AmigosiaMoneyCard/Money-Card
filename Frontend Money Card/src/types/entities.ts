@@ -56,7 +56,8 @@ export interface Staff {
   id: string;
   organizationId: string;
   name: string;
-  email: string;
+  phone?: string;
+  email?: string;
   status: 'ACTIVE' | 'INACTIVE' | 'PENDING_ACTIVATION';
   permissions: Permission[];
   assignedBranchIds: string[];
@@ -80,14 +81,16 @@ export interface AuditLog {
 
 export interface CreateStaffRequest {
   name: string;
-  email: string;
+  phone: string;
   password?: string;
+  email?: string;
   assignedBranchIds: string[];
   permissions: Permission[];
 }
 
 export interface UpdateStaffRequest {
   name?: string;
+  phone?: string;
   email?: string;
   status?: 'ACTIVE' | 'INACTIVE';
   assignedBranchIds?: string[];

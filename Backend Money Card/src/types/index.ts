@@ -48,7 +48,8 @@ export type Permission =
 
 export interface AuthenticatedUser {
   id: string;
-  email: string;
+  email: string | null;
+  phone?: string | null;
   name: string;
   role: Role;
   organizationId: string | null;

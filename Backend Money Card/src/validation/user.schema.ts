@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   safeEmail,
   safeGmail,
+  safePhone,
   strongPasswordSchema,
   simplePasswordSchema,
   safeDisplayName,
@@ -13,8 +14,9 @@ import {
 export const createStaffMemberSchema = z
   .object({
     name: safeDisplayName,
-    email: safeGmail,
-    password: strongPasswordSchema.optional(),
+    phone: safePhone,
+    email: safeEmail.optional(),
+    password: z.string({ required_error: 'Password is required' }).min(4, 'Password must be at least 4 characters long').max(128),
     assignedBranchIds: z.array(safeId).optional(),
     branchIds: z.array(safeId).optional(),
     permissions: z.array(z.string().max(50)).optional(),
@@ -25,6 +27,7 @@ export const createStaffMemberSchema = z
 export const updateStaffMemberSchema = z
   .object({
     name: safeDisplayName.optional(),
+    phone: safePhone.optional(),
     email: safeEmail.optional(),
     status: z.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED']).optional(),
     branchIds: z.array(safeId).optional(),

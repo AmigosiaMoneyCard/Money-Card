@@ -9,7 +9,6 @@ import '../features/cards/card_details_screen.dart';
 import '../features/cards/cards_screen.dart';
 import '../features/cards/issue_card_screen.dart';
 import '../features/home/home_screen.dart';
-import '../features/inventory/inventory_screen.dart';
 import '../features/more/mock_qr_codes_screen.dart';
 import '../features/more/more_screen.dart';
 import '../features/payments/recharge_screen.dart';
@@ -182,7 +181,7 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/app/inventory',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const InventoryScreen(),
+        builder: (context, state) => const ProductsScreen(),
       ),
       GoRoute(
         path: '/app/analytics',

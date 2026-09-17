@@ -50,7 +50,10 @@ export const mockStaffHandlers = {
     if (params?.search) {
       const q = params.search.toLowerCase();
       staffList = staffList.filter(
-        (s) => s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q),
+        (s) =>
+          s.name.toLowerCase().includes(q) ||
+          (s.phone && s.phone.includes(q)) ||
+          (s.email && s.email.toLowerCase().includes(q)),
       );
     }
 
@@ -77,15 +80,31 @@ export const mockStaffHandlers = {
 
     const orgId = currentUser.organizationId || 'org_001';
 
-    // Email Uniqueness check
-    const emailExists = mockStore.staffUsers.some(
-      (u) => u.email.toLowerCase() === req.email.toLowerCase(),
-    );
-    if (emailExists) {
-      return createMockError(
-        'VALIDATION_ERROR',
-        `Account with email '${req.email}' already exists`,
+    // Phone Uniqueness check
+    if (req.phone) {
+      const cleanPhone = req.phone.replace(/\D/g, '');
+      const phoneExists = (mockStore.staffUsers as any[]).some(
+        (u) => u.phone && u.phone.replace(/\D/g, '') === cleanPhone,
       );
+      if (phoneExists) {
+        return createMockError(
+          'VALIDATION_ERROR',
+          `Account with phone '${req.phone}' already exists`,
+        );
+      }
+    }
+
+    // Email Uniqueness check if provided
+    if (req.email) {
+      const emailExists = mockStore.staffUsers.some(
+        (u) => u.email && u.email.toLowerCase() === req.email!.toLowerCase(),
+      );
+      if (emailExists) {
+        return createMockError(
+          'VALIDATION_ERROR',
+          `Account with email '${req.email}' already exists`,
+        );
+      }
     }
 
     // Check Plan Staff Limit
@@ -112,7 +131,8 @@ export const mockStaffHandlers = {
       id: newStaffId,
       organizationId: orgId,
       name: req.name,
-      email: req.email,
+      phone: req.phone,
+      email: req.email || '',
       status: 'ACTIVE',
       permissions: req.permissions,
       assignedBranchIds: req.assignedBranchIds,
@@ -125,14 +145,15 @@ export const mockStaffHandlers = {
     // Create user login auth record
     mockStore.staffUsers.push({
       id: newStaffId,
-      email: req.email,
+      phone: req.phone,
+      email: req.email || '',
       name: req.name,
       role: 'STAFF', // Single operational STAFF role from M0 Section 0 & 1
       organizationId: orgId,
       permissions: req.permissions,
       assignedBranchIds: req.assignedBranchIds,
       passwordHash: req.password || 'password',
-    });
+    } as any);
 
     return createMockSuccess(newStaffEntity);
   },
@@ -163,7 +184,8 @@ export const mockStaffHandlers = {
       mockStore.staffUsers[userIndex] = {
         ...mockStore.staffUsers[userIndex],
         name: updated.name,
-        email: updated.email,
+        email: updated.email || mockStore.staffUsers[userIndex].email,
+        phone: updated.phone || mockStore.staffUsers[userIndex].phone,
         permissions: updated.permissions,
         assignedBranchIds: updated.assignedBranchIds,
       };

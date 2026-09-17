@@ -1,12 +1,16 @@
 import { z } from 'zod';
-import { safeEmail, loginPasswordSchema, strongPasswordSchema, simplePasswordSchema } from './common.schema.js';
+import { safeEmail, safePhone, loginPasswordSchema, strongPasswordSchema, simplePasswordSchema } from './common.schema.js';
 
 export const loginSchema = z
   .object({
-    email: safeEmail,
+    email: safeEmail.optional(),
+    phone: safePhone.optional(),
     password: loginPasswordSchema,
   })
-  .strict();
+  .strict()
+  .refine((data) => data.email !== undefined || data.phone !== undefined, {
+    message: 'Either email or phone is required',
+  });
 
 export const forgotPasswordSchema = z
   .object({

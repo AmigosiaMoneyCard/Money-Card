@@ -48,22 +48,37 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
     super.dispose();
   }
 
+  DateTime? _parseDateTime(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    try {
+      final parsed = DateTime.tryParse(raw.trim());
+      if (parsed == null) return null;
+      return parsed.toLocal();
+    } catch (_) {
+      return null;
+    }
+  }
+
   bool _isWithinRange(DateTime dt, String range) {
+    final localDt = dt.toLocal();
     final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final targetDate = DateTime(localDt.year, localDt.month, localDt.day);
+
     switch (range.toLowerCase()) {
       case 'today':
-        return dt.year == now.year && dt.month == now.month && dt.day == now.day;
+        return targetDate.isAtSameMomentAs(today) || targetDate.isAfter(today);
       case 'yesterday':
-        final yesterday = now.subtract(const Duration(days: 1));
-        return dt.year == yesterday.year && dt.month == yesterday.month && dt.day == yesterday.day;
+        final yesterday = DateTime(today.year, today.month, today.day - 1);
+        return targetDate.isAtSameMomentAs(yesterday);
       case 'this week':
-        final startOfWeek = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
-        return dt.isAfter(startOfWeek) || dt.isAtSameMomentAs(startOfWeek);
+        final startOfWeek = DateTime(today.year, today.month, today.day - (today.weekday - 1));
+        return !targetDate.isBefore(startOfWeek);
       case 'this month':
-        return dt.year == now.year && dt.month == now.month;
+        return (localDt.year == now.year && localDt.month == now.month) || targetDate.isAfter(today);
       case 'last 30 days':
-        final thirtyDaysAgo = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 30));
-        return dt.isAfter(thirtyDaysAgo) || dt.isAtSameMomentAs(thirtyDaysAgo);
+        final thirtyDaysAgo = DateTime(today.year, today.month, today.day - 30);
+        return !targetDate.isBefore(thirtyDaysAgo);
       case 'all time':
       default:
         return true;
@@ -331,7 +346,7 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
 
     final sessions = state.filteredSessions.where((s) {
       if (_selectedRange == 'All Time') return true;
-      final dt = DateTime.tryParse(s.startedAt)?.toLocal();
+      final dt = _parseDateTime(s.startedAt);
       if (dt == null) return true;
       return _isWithinRange(dt, _selectedRange);
     }).toList();

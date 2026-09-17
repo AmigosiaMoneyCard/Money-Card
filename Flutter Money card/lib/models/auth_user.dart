@@ -5,7 +5,8 @@ import 'branch.dart';
 
 class AuthUser {
   final String id;
-  final String email;
+  final String? email;
+  final String? phone;
   final String name;
   final String role; // 'STAFF'
   final String? organizationId;
@@ -18,7 +19,8 @@ class AuthUser {
 
   const AuthUser({
     required this.id,
-    required this.email,
+    this.email,
+    this.phone,
     required this.name,
     this.role = 'STAFF',
     this.organizationId,
@@ -44,7 +46,8 @@ class AuthUser {
 
     return AuthUser(
       id: json['id'] as String? ?? '',
-      email: json['email'] as String? ?? '',
+      email: json['email'] as String?,
+      phone: json['phone'] as String?,
       name: json['name'] as String? ?? '',
       role: json['role'] as String? ?? 'STAFF',
       organizationId: json['organizationId'] as String?,
@@ -59,7 +62,8 @@ class AuthUser {
 
   Map<String, dynamic> toJson() => {
         'id': id,
-        'email': email,
+        if (email != null) 'email': email,
+        if (phone != null) 'phone': phone,
         'name': name,
         'role': role,
         'organizationId': organizationId,

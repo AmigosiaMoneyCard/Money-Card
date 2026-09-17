@@ -74,9 +74,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /// Perform Staff Login with email and password
+  /// Perform Staff Login with phone/email and password
   Future<bool> login({
-    required String email,
+    String? email,
+    String? phone,
     required String password,
   }) async {
     state = state.copyWith(
@@ -86,7 +87,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
     try {
       final user = await _authRepository.login(
-        email: email.trim(),
+        email: email?.trim(),
+        phone: phone?.trim(),
         password: password,
       );
 
@@ -99,15 +101,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
       String userMessage;
 
       if (e.code.name.toUpperCase().contains('STAFF_INACTIVE') || e.message.toLowerCase().contains('no longer active') || e.message.toLowerCase().contains('deactivated')) {
-        userMessage = 'Your staff account is no longer active. Please contact your Cafeteria Administrator.';
+        userMessage = 'Your staff account is no longer active. Please contact your Organisation Administrator.';
       } else if (e.code.name.toUpperCase().contains('ORGANIZATION_INACTIVE') || e.message.toLowerCase().contains('organization')) {
-        userMessage = 'Your cafeteria account is currently inactive or suspended. Please contact platform administration.';
+        userMessage = 'Your organisation account is currently inactive or suspended. Please contact platform administration.';
       } else if (e.code == ApiErrorCode.unauthorized || e.statusCode == 401) {
-        userMessage = 'Email or password is incorrect.';
+        userMessage = 'Phone number, email or password is incorrect.';
       } else if (e.code == ApiErrorCode.networkError || e.code == ApiErrorCode.timeoutError) {
         userMessage = 'Unable to connect. Check your internet connection and try again.';
       } else if (e.code == ApiErrorCode.validationError) {
-        userMessage = e.message.isNotEmpty ? e.message : 'Please check your email and password format.';
+        userMessage = e.message.isNotEmpty ? e.message : 'Please check your login credentials and password.';
       } else {
         userMessage = 'Something went wrong. Please try again.';
       }

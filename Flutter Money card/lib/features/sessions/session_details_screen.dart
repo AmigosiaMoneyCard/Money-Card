@@ -39,6 +39,14 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
   ];
   String _selectedRange = 'All Time';
 
+  final List<String> _types = [
+    'All Types',
+    'Purchases',
+    'Recharges',
+    'Refunds',
+  ];
+  String _selectedType = 'All Types';
+
   @override
   void initState() {
     super.initState();
@@ -50,23 +58,52 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
     });
   }
 
+  DateTime? _parseDateTime(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    try {
+      final parsed = DateTime.tryParse(raw.trim());
+      if (parsed == null) return null;
+      return parsed.toLocal();
+    } catch (_) {
+      return null;
+    }
+  }
+
   bool _isWithinRange(DateTime dt, String range) {
+    final localDt = dt.toLocal();
     final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final targetDate = DateTime(localDt.year, localDt.month, localDt.day);
+
     switch (range.toLowerCase()) {
       case 'today':
-        return dt.year == now.year && dt.month == now.month && dt.day == now.day;
+        return targetDate.isAtSameMomentAs(today) || targetDate.isAfter(today);
       case 'yesterday':
-        final yesterday = now.subtract(const Duration(days: 1));
-        return dt.year == yesterday.year && dt.month == yesterday.month && dt.day == yesterday.day;
+        final yesterday = DateTime(today.year, today.month, today.day - 1);
+        return targetDate.isAtSameMomentAs(yesterday);
       case 'this week':
-        final startOfWeek = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
-        return dt.isAfter(startOfWeek) || dt.isAtSameMomentAs(startOfWeek);
+        final startOfWeek = DateTime(today.year, today.month, today.day - (today.weekday - 1));
+        return !targetDate.isBefore(startOfWeek);
       case 'this month':
-        return dt.year == now.year && dt.month == now.month;
+        return (localDt.year == now.year && localDt.month == now.month) || targetDate.isAfter(today);
       case 'last 30 days':
-        final thirtyDaysAgo = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 30));
-        return dt.isAfter(thirtyDaysAgo) || dt.isAtSameMomentAs(thirtyDaysAgo);
+        final thirtyDaysAgo = DateTime(today.year, today.month, today.day - 30);
+        return !targetDate.isBefore(thirtyDaysAgo);
       case 'all time':
+      default:
+        return true;
+    }
+  }
+
+  bool _matchesType(Transaction txn, String selectedType) {
+    switch (selectedType.toLowerCase()) {
+      case 'purchases':
+        return txn.type == TransactionType.purchase;
+      case 'recharges':
+        return txn.type == TransactionType.recharge;
+      case 'refunds':
+        return txn.type == TransactionType.refund;
+      case 'all types':
       default:
         return true;
     }
@@ -109,13 +146,16 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
     final isActive = session.status == SessionStatus.active;
     final allTransactions = session.transactions ?? [];
     final filteredTransactions = allTransactions.where((txn) {
+      if (!_matchesType(txn, _selectedType)) return false;
       if (_selectedRange == 'All Time') return true;
-      final raw = txn.createdAt;
-      if (raw == null || raw.isEmpty) return true;
-      final dt = DateTime.tryParse(raw)?.toLocal();
+      final dt = _parseDateTime(txn.createdAt);
       if (dt == null) return true;
       return _isWithinRange(dt, _selectedRange);
     }).toList();
+
+    final startedDt = _parseDateTime(session.startedAt);
+    final showCardIssued = (_selectedType == 'All Types' || _selectedType == 'Recharges') &&
+        (_selectedRange == 'All Time' || (startedDt != null && _isWithinRange(startedDt, _selectedRange)));
 
     return Scaffold(
       appBar: AppBar(
@@ -223,67 +263,111 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
           const SizedBox(height: AppSpacing.lg),
 
           // ─── Activity & Transactions Timeline ────────────────────────
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Expanded(
-                child: SectionHeader(title: 'Transaction History'),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: AppSpacing.roundedSm,
-                  border: Border.all(color: AppColors.borderLight),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.schedule, size: 14, color: AppColors.primary),
-                    const SizedBox(width: 4),
-                    DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: _ranges.contains(_selectedRange) ? _selectedRange : _ranges.first,
-                        isDense: true,
-                        icon: const Icon(Icons.arrow_drop_down, size: 18, color: AppColors.primary),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimaryLight,
-                        ),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() {
-                              _selectedRange = value;
-                            });
-                          }
-                        },
-                        items: _ranges.map((range) {
-                          return DropdownMenuItem<String>(
-                            value: range,
-                            child: Text(range),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+          const SectionHeader(title: 'Transaction History'),
           const SizedBox(height: AppSpacing.xs),
+
+          // Unified Filter Box: Date Range + Transaction Type in ONE single container box
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: AppSpacing.roundedSm,
+              border: Border.all(color: AppColors.borderLight),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 3,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                // Date Range Filter
+                const Icon(Icons.calendar_today_outlined, size: 14, color: AppColors.primary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _ranges.contains(_selectedRange) ? _selectedRange : _ranges.first,
+                      isDense: true,
+                      isExpanded: true,
+                      icon: const Icon(Icons.arrow_drop_down, size: 18, color: AppColors.primary),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimaryLight,
+                      ),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            _selectedRange = value;
+                          });
+                        }
+                      },
+                      items: _ranges.map((range) {
+                        return DropdownMenuItem<String>(
+                          value: range,
+                          child: Text(range, overflow: TextOverflow.ellipsis),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+
+                // Vertical Divider separating Date and Type within the box
+                Container(
+                  width: 1,
+                  height: 20,
+                  color: AppColors.borderLight,
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+
+                // Transaction Type Filter
+                const Icon(Icons.tune, size: 14, color: AppColors.primary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _types.contains(_selectedType) ? _selectedType : _types.first,
+                      isDense: true,
+                      isExpanded: true,
+                      icon: const Icon(Icons.arrow_drop_down, size: 18, color: AppColors.primary),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimaryLight,
+                      ),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            _selectedType = value;
+                          });
+                        }
+                      },
+                      items: _types.map((type) {
+                        return DropdownMenuItem<String>(
+                          value: type,
+                          child: Text(type, overflow: TextOverflow.ellipsis),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
 
           // Render Transactions (Purchases, Recharges, Settlement)
           if (filteredTransactions.isNotEmpty)
             ...filteredTransactions.map((txn) => _buildTransactionCard(txn)),
 
           // Render Card Issuance Base Timeline Event
-          if (_selectedRange == 'All Time' || (DateTime.tryParse(session.startedAt) != null && _isWithinRange(DateTime.parse(session.startedAt).toLocal(), _selectedRange)))
+          if (showCardIssued)
             _buildCardIssuedTimelineCard(session),
 
-          if (filteredTransactions.isEmpty) ...[
-            const SizedBox(height: AppSpacing.sm),
+          if (filteredTransactions.isEmpty && !showCardIssued) ...[
             Container(
               padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
@@ -297,9 +381,9 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
-                      _selectedRange == 'All Time'
-                          ? 'No additional transactions in this card session yet.'
-                          : 'No transactions found for $_selectedRange.',
+                      _selectedRange == 'All Time' && _selectedType == 'All Types'
+                          ? 'No transactions in this card session yet.'
+                          : 'No transactions found for $_selectedRange ($_selectedType).',
                       style: const TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
                     ),
                   ),

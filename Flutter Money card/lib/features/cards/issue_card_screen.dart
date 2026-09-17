@@ -60,7 +60,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
 
     if (branch == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select an active counter before issuing a card.')),
+        const SnackBar(content: Text('Please select an active cafeteria before issuing a card.')),
       );
       return;
     }
@@ -115,7 +115,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Counter:', style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight)),
+                          const Text('Cafeteria:', style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight)),
                           Text(branch?.name ?? 'Main Branch', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                         ],
                       ),
@@ -500,7 +500,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                   : AppEmptyState(
                       title: 'No Available Cards',
                       description:
-                          'No available cards found for ${branch?.name ?? "this branch"}. Cards must first be created or imported by a Cafeteria Admin via the Web Portal.',
+                          'No pre-created cards found. You can switch to the "Scan QR Code" tab to scan any card QR code and issue it instantly.',
                       icon: Icons.credit_card_off_outlined,
                     ))
               : RefreshIndicator(
