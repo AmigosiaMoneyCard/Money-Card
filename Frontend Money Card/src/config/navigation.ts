@@ -46,7 +46,7 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
   },
   {
     id: 'products',
-    label: 'Menu & Products',
+    label: 'Menu',
     path: '/products',
     iconName: 'Package',
     roles: ['ORG_ADMIN'],

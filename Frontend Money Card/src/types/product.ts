@@ -67,6 +67,7 @@ export interface UpdateProductRequest {
   category?: string[];
   price?: number;
   status?: 'ACTIVE' | 'INACTIVE';
+  branchId?: string;
 }
 
 export interface UpdateInventoryRequest {

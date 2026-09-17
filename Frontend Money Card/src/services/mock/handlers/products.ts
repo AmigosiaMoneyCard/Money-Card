@@ -170,6 +170,7 @@ export const mockProductsHandlers = {
       ...(req.category !== undefined ? { category: categoriesArray } : {}),
       ...(req.price !== undefined ? { price: req.price } : {}),
       ...(req.status !== undefined ? { status: req.status } : {}),
+      ...(req.branchId !== undefined ? { branchId: req.branchId } : {}),
       updatedAt: mockStore.getTimestamp(),
     };
 

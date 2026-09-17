@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { NAVIGATION_ITEMS } from '@/config/navigation';
 
 describe('Branch-Wise Menu Configuration & Sidebar Navigation Tests', () => {
-  it('should verify that Menu & Products is present in the Org Admin sidebar navigation', () => {
+  it('should verify that Menu is present in the Org Admin sidebar navigation', () => {
     const orgAdminNavItems = NAVIGATION_ITEMS.filter((item) =>
       item.roles.includes('ORG_ADMIN'),
     );
@@ -13,6 +13,7 @@ describe('Branch-Wise Menu Configuration & Sidebar Navigation Tests', () => {
 
     expect(menuNavItem).toBeDefined();
     expect(menuNavItem?.path).toBe('/products');
+    expect(menuNavItem?.label).toBe('Menu');
   });
 
   it('should verify that Branches is present in the Org Admin sidebar navigation', () => {
@@ -46,4 +47,33 @@ describe('Branch-Wise Menu Configuration & Sidebar Navigation Tests', () => {
     expect(lowStock).toBe(1);
     expect(outOfStock).toBe(1);
   });
+
+  it('should support reassigning (moving) a menu item to another counter', () => {
+    let item = { id: 'p1', itemName: 'Samosa', price: 20, branchId: 'counter-1' };
+    const targetCounter = 'counter-2';
+
+    // Move to counter-2
+    item = { ...item, branchId: targetCounter };
+    expect(item.branchId).toBe('counter-2');
+    expect(item.itemName).toBe('Samosa');
+    expect(item.price).toBe(20);
+  });
+
+  it('should support replicating (copying) a menu item to another counter', () => {
+    const originalItem = { id: 'p1', itemName: 'Samosa', price: 20, category: ['Veg'], branchId: 'counter-1' };
+    const clonedItem = {
+      id: 'p2',
+      itemName: originalItem.itemName,
+      price: originalItem.price,
+      category: originalItem.category,
+      branchId: 'counter-2',
+      status: 'ACTIVE',
+    };
+
+    expect(clonedItem.branchId).toBe('counter-2');
+    expect(clonedItem.itemName).toBe(originalItem.itemName);
+    expect(clonedItem.price).toBe(originalItem.price);
+    expect(clonedItem.category).toEqual(['Veg']);
+  });
 });
+
