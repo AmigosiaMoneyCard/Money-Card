@@ -413,7 +413,7 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('Transactions'), findsOneWidget);
+      expect(find.text('Transaction History'), findsOneWidget);
       expect(find.text('POS Purchase'), findsOneWidget);
       expect(find.text('-₹180.00'), findsOneWidget);
       expect(find.text('Chicken Sandwich'), findsNothing);
