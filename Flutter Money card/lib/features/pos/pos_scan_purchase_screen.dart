@@ -20,6 +20,7 @@ import '../../widgets/common/app_dialog.dart';
 import '../../widgets/common/section_header.dart';
 import '../../widgets/scanner/qr_scanner_view.dart';
 import '../../widgets/states/app_loading_view.dart';
+import '../../core/utils/formatters.dart';
 
 class PosScanPurchaseScreen extends ConsumerStatefulWidget {
   const PosScanPurchaseScreen({super.key});
@@ -325,15 +326,8 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
 
   String _formatDateTime(String? raw) {
     if (raw == null || raw.isEmpty) return '—';
-    try {
-      final dt = DateTime.parse(raw).toLocal();
-      final date = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
-      final hour = dt.hour.toString().padLeft(2, '0');
-      final min = dt.minute.toString().padLeft(2, '0');
-      return '$date $hour:$min';
-    } catch (_) {
-      return raw;
-    }
+    final formatted = AppFormatters.formatIsoDate(raw);
+    return formatted == '-' ? '—' : formatted;
   }
 
   // ==========================================

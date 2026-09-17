@@ -91,7 +91,7 @@ class CardSession {
       sessionCardNumber: json['sessionCardNumber'] as String?,
       customerName: json['customerName'] as String? ?? json['userName'] as String?,
       customerPhone: json['customerPhone'] as String? ?? json['phone'] as String?,
-      startedAt: json['startedAt'] as String? ?? '',
+      startedAt: json['startedAt'] as String? ?? json['issuedAt'] as String? ?? json['createdAt'] as String? ?? '',
       transactions: (json['transactions'] as List<dynamic>?)?.map((t) => Transaction.fromJson(t as Map<String, dynamic>)).toList(),
       settledAt: json['settledAt'] as String?,
       createdAt: json['createdAt'] as String?,

@@ -10,6 +10,7 @@ import '../../widgets/common/app_card.dart';
 import '../../widgets/common/section_header.dart';
 import '../../widgets/states/app_error_state.dart';
 import '../../widgets/states/app_loading_view.dart';
+import '../../core/utils/formatters.dart';
 
 /// Authoritative Session Details & Activity Timeline Screen.
 /// Displays live balance, customer profile, operational action buttons,
@@ -28,6 +29,16 @@ class SessionDetailsScreen extends ConsumerStatefulWidget {
 }
 
 class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
+  final List<String> _ranges = [
+    'All Time',
+    'Today',
+    'Yesterday',
+    'This Week',
+    'This Month',
+    'Last 30 Days',
+  ];
+  String _selectedRange = 'All Time';
+
   @override
   void initState() {
     super.initState();
@@ -39,17 +50,32 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
     });
   }
 
+  bool _isWithinRange(DateTime dt, String range) {
+    final now = DateTime.now();
+    switch (range.toLowerCase()) {
+      case 'today':
+        return dt.year == now.year && dt.month == now.month && dt.day == now.day;
+      case 'yesterday':
+        final yesterday = now.subtract(const Duration(days: 1));
+        return dt.year == yesterday.year && dt.month == yesterday.month && dt.day == yesterday.day;
+      case 'this week':
+        final startOfWeek = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+        return dt.isAfter(startOfWeek) || dt.isAtSameMomentAs(startOfWeek);
+      case 'this month':
+        return dt.year == now.year && dt.month == now.month;
+      case 'last 30 days':
+        final thirtyDaysAgo = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 30));
+        return dt.isAfter(thirtyDaysAgo) || dt.isAtSameMomentAs(thirtyDaysAgo);
+      case 'all time':
+      default:
+        return true;
+    }
+  }
+
   String _formatDateTime(String? raw) {
     if (raw == null || raw.isEmpty) return '—';
-    try {
-      final dt = DateTime.parse(raw).toLocal();
-      final date = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
-      final hour = dt.hour.toString().padLeft(2, '0');
-      final min = dt.minute.toString().padLeft(2, '0');
-      return '$date $hour:$min';
-    } catch (_) {
-      return raw;
-    }
+    final formatted = AppFormatters.formatIsoDate(raw);
+    return formatted == '-' ? '—' : formatted;
   }
 
   @override
@@ -81,7 +107,15 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
     }
 
     final isActive = session.status == SessionStatus.active;
-    final transactions = session.transactions ?? [];
+    final allTransactions = session.transactions ?? [];
+    final filteredTransactions = allTransactions.where((txn) {
+      if (_selectedRange == 'All Time') return true;
+      final raw = txn.createdAt;
+      if (raw == null || raw.isEmpty) return true;
+      final dt = DateTime.tryParse(raw)?.toLocal();
+      if (dt == null) return true;
+      return _isWithinRange(dt, _selectedRange);
+    }).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -189,17 +223,66 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
           const SizedBox(height: AppSpacing.lg),
 
           // ─── Activity & Transactions Timeline ────────────────────────
-          const SectionHeader(title: 'Transaction History'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Expanded(
+                child: SectionHeader(title: 'Transaction History'),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: AppSpacing.roundedSm,
+                  border: Border.all(color: AppColors.borderLight),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.schedule, size: 14, color: AppColors.primary),
+                    const SizedBox(width: 4),
+                    DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _ranges.contains(_selectedRange) ? _selectedRange : _ranges.first,
+                        isDense: true,
+                        icon: const Icon(Icons.arrow_drop_down, size: 18, color: AppColors.primary),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimaryLight,
+                        ),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() {
+                              _selectedRange = value;
+                            });
+                          }
+                        },
+                        items: _ranges.map((range) {
+                          return DropdownMenuItem<String>(
+                            value: range,
+                            child: Text(range),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: AppSpacing.xs),
 
           // Render Transactions (Purchases, Recharges, Settlement)
-          if (transactions.isNotEmpty)
-            ...transactions.map((txn) => _buildTransactionCard(txn)),
+          if (filteredTransactions.isNotEmpty)
+            ...filteredTransactions.map((txn) => _buildTransactionCard(txn)),
 
           // Render Card Issuance Base Timeline Event
-          _buildCardIssuedTimelineCard(session),
+          if (_selectedRange == 'All Time' || (DateTime.tryParse(session.startedAt) != null && _isWithinRange(DateTime.parse(session.startedAt).toLocal(), _selectedRange)))
+            _buildCardIssuedTimelineCard(session),
 
-          if (transactions.isEmpty) ...[
+          if (filteredTransactions.isEmpty) ...[
             const SizedBox(height: AppSpacing.sm),
             Container(
               padding: const EdgeInsets.all(AppSpacing.md),
@@ -212,10 +295,12 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                 children: [
                   Icon(Icons.info_outline, size: 18, color: Colors.grey.shade500),
                   const SizedBox(width: AppSpacing.sm),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'No additional transactions in this card session yet.',
-                      style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
+                      _selectedRange == 'All Time'
+                          ? 'No additional transactions in this card session yet.'
+                          : 'No transactions found for $_selectedRange.',
+                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
                     ),
                   ),
                 ],

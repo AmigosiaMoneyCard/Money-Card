@@ -13,6 +13,7 @@ import '../../widgets/common/app_badge.dart';
 import '../../widgets/common/app_card.dart';
 import '../../widgets/states/app_empty_state.dart';
 import '../../widgets/states/app_loading_view.dart';
+import '../../core/utils/formatters.dart';
 
 class SessionsScreen extends ConsumerStatefulWidget {
   const SessionsScreen({super.key});
@@ -23,6 +24,15 @@ class SessionsScreen extends ConsumerStatefulWidget {
 
 class _SessionsScreenState extends ConsumerState<SessionsScreen> {
   final _searchController = TextEditingController();
+  final List<String> _ranges = [
+    'All Time',
+    'Today',
+    'Yesterday',
+    'This Week',
+    'This Month',
+    'Last 30 Days',
+  ];
+  String _selectedRange = 'All Time';
 
   @override
   void initState() {
@@ -38,17 +48,32 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
     super.dispose();
   }
 
+  bool _isWithinRange(DateTime dt, String range) {
+    final now = DateTime.now();
+    switch (range.toLowerCase()) {
+      case 'today':
+        return dt.year == now.year && dt.month == now.month && dt.day == now.day;
+      case 'yesterday':
+        final yesterday = now.subtract(const Duration(days: 1));
+        return dt.year == yesterday.year && dt.month == yesterday.month && dt.day == yesterday.day;
+      case 'this week':
+        final startOfWeek = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+        return dt.isAfter(startOfWeek) || dt.isAtSameMomentAs(startOfWeek);
+      case 'this month':
+        return dt.year == now.year && dt.month == now.month;
+      case 'last 30 days':
+        final thirtyDaysAgo = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 30));
+        return dt.isAfter(thirtyDaysAgo) || dt.isAtSameMomentAs(thirtyDaysAgo);
+      case 'all time':
+      default:
+        return true;
+    }
+  }
+
   String _formatDateTime(String? raw) {
     if (raw == null || raw.isEmpty) return '—';
-    try {
-      final dt = DateTime.parse(raw).toLocal();
-      final date = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
-      final hour = dt.hour.toString().padLeft(2, '0');
-      final min = dt.minute.toString().padLeft(2, '0');
-      return '$date $hour:$min';
-    } catch (_) {
-      return raw;
-    }
+    final formatted = AppFormatters.formatIsoDate(raw);
+    return formatted == '-' ? '—' : formatted;
   }
 
   @override
@@ -174,6 +199,62 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
                 ),
               ),
             ),
+
+            // Date Range Dropdown from Analytics & Reports
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.xs,
+              ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: AppSpacing.roundedSm,
+                  border: Border.all(color: AppColors.borderLight),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.03),
+                      blurRadius: 3,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.schedule, size: 16, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _ranges.contains(_selectedRange)
+                              ? _selectedRange
+                              : _ranges.first,
+                          isExpanded: true,
+                          icon: const Icon(Icons.arrow_drop_down, color: AppColors.primary),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimaryLight,
+                          ),
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => _selectedRange = value);
+                            }
+                          },
+                          items: _ranges.map((range) {
+                            return DropdownMenuItem<String>(
+                              value: range,
+                              child: Text(range),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const Divider(height: 1),
 
             // Sessions List Content
@@ -248,7 +329,12 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
       );
     }
 
-    final sessions = state.filteredSessions;
+    final sessions = state.filteredSessions.where((s) {
+      if (_selectedRange == 'All Time') return true;
+      final dt = DateTime.tryParse(s.startedAt)?.toLocal();
+      if (dt == null) return true;
+      return _isWithinRange(dt, _selectedRange);
+    }).toList();
 
     if (sessions.isEmpty) {
       return RefreshIndicator(
@@ -263,13 +349,19 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
                     description: 'No sessions match "${state.searchQuery}".',
                     icon: Icons.search_off,
                   )
-                : AppEmptyState(
-                    title: state.statusFilter == 'ACTIVE' ? 'No Active Sessions' : 'No Sessions Found',
-                    description: state.statusFilter == 'ACTIVE'
-                        ? 'There are currently no active cafeteria card sessions in ${branchName ?? "this counter"}.'
-                        : 'No card sessions found for the selected filter in ${branchName ?? "this counter"}.',
-                    icon: Icons.account_balance_wallet_outlined,
-                  ),
+                : _selectedRange != 'All Time'
+                    ? AppEmptyState(
+                        title: 'No Sessions Found',
+                        description: 'No ${state.statusFilter == "ALL" ? "" : state.statusFilter.toLowerCase()} sessions found for $_selectedRange in ${branchName ?? "this counter"}.',
+                        icon: Icons.calendar_today_outlined,
+                      )
+                    : AppEmptyState(
+                        title: state.statusFilter == 'ACTIVE' ? 'No Active Sessions' : 'No Sessions Found',
+                        description: state.statusFilter == 'ACTIVE'
+                            ? 'There are currently no active cafeteria card sessions in ${branchName ?? "this counter"}.'
+                            : 'No card sessions found for the selected filter in ${branchName ?? "this counter"}.',
+                        icon: Icons.account_balance_wallet_outlined,
+                      ),
           ],
         ),
       );
