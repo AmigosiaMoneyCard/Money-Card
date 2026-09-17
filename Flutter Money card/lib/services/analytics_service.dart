@@ -15,6 +15,7 @@ class AnalyticsService {
     final queryParameters = <String, dynamic>{
       'branchId': branchId,
       if (range != null && range.isNotEmpty) 'range': range,
+      'timezone': 'Asia/Kolkata',
     };
 
     return _apiService.get<BranchPerformanceMetric>(
