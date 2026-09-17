@@ -319,6 +319,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       );
     }
 
+    final activePeaks = (data.peakPeriods ?? [])
+        .where((p) => p.transactionCount > 0)
+        .toList();
+
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: AppSpacing.paddingMd,
@@ -488,7 +492,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         ],
 
         // Peak Activity Periods Section
-        if (data.peakPeriods != null && data.peakPeriods!.isNotEmpty) ...[
+        if (activePeaks.isNotEmpty) ...[
           const SectionHeader(title: 'Peak Activity Periods'),
           const SizedBox(height: AppSpacing.sm),
           AppCard(
@@ -496,11 +500,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             child: ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: data.peakPeriods!.length,
+              itemCount: activePeaks.length,
               separatorBuilder: (_, _) => const Divider(height: 1),
               itemBuilder: (context, idx) {
-                final peak = data.peakPeriods![idx];
+                final peak = activePeaks[idx];
                 final isHighest = peak.activityLevel.toLowerCase() == 'highest';
+                final cleanTimeSlot = peak.timeSlot.replaceAll(RegExp(r'\s*\([^)]*\)'), '').trim();
 
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
@@ -517,7 +522,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              peak.timeSlot,
+                              cleanTimeSlot,
                               style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                             ),
                             Text(

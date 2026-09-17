@@ -81,9 +81,9 @@ class PurchaseItem {
     return PurchaseItem(
       productId: json['productId'] as String? ?? '',
       quantity: (json['quantity'] as num?)?.toInt() ?? 1,
-      itemName: json['itemName'] as String?,
-      unitPrice: (json['unitPrice'] as num?)?.toDouble(),
-      totalAmount: (json['totalAmount'] as num?)?.toDouble(),
+      itemName: (json['itemName'] ?? json['name'] ?? json['productName']) as String?,
+      unitPrice: (json['unitPrice'] as num?)?.toDouble() ?? (json['price'] as num?)?.toDouble(),
+      totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? (json['subtotal'] as num?)?.toDouble(),
     );
   }
 

@@ -249,13 +249,15 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
       badgeBg = AppColors.primaryLight;
       badgeFg = AppColors.primary;
       icon = Icons.shopping_bag_outlined;
-      typeLabel = 'POS Purchase';
+      typeLabel = 'Purchase';
     } else {
       badgeBg = AppColors.warningLight;
       badgeFg = AppColors.warning;
       icon = Icons.assignment_return_outlined;
       typeLabel = 'Settlement Refund';
     }
+
+    final hasItems = isPurchase && txn.items != null && txn.items!.isNotEmpty;
 
     return Container(
       key: ValueKey('txn-${txn.id}'),
@@ -294,14 +296,46 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        typeLabel,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimaryLight,
+                      if (hasItems) ...[
+                        for (final item in txn.items!)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 2),
+                            child: Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    item.itemName ?? 'Item',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.textPrimaryLight,
+                                    ),
+                                  ),
+                                ),
+                                if (item.quantity > 1) ...[
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '× ${item.quantity}',
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textSecondaryLight,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                      ] else ...[
+                        Text(
+                          typeLabel,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimaryLight,
+                          ),
                         ),
-                      ),
+                      ],
                       const SizedBox(height: 2),
                       Text(
                         _formatDateTime(txn.createdAt),
@@ -313,66 +347,37 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                     ],
                   ),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '${isRecharge ? "+" : isPurchase ? "-" : ""}₹${txn.amount.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: isRecharge
-                            ? AppColors.success
-                            : isPurchase
-                                ? AppColors.error
-                                : AppColors.textPrimaryLight,
-                      ),
-                    ),
-                    if (txn.balanceAfter != null)
-                      Text(
-                        'Bal: ₹${txn.balanceAfter!.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.textSecondaryLight,
-                        ),
-                      ),
-                  ],
+                Text(
+                  '${isRecharge ? "+" : isPurchase ? "-" : ""}₹${txn.amount.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: isRecharge
+                        ? AppColors.success
+                        : isPurchase
+                            ? AppColors.error
+                            : AppColors.textPrimaryLight,
+                  ),
                 ),
               ],
             ),
           ),
 
-          // Footer details (Payment method & Balance after line)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.sm),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  isPurchase
-                      ? 'Paid via: Money Card Balance'
-                      : isRecharge
-                          ? 'Payment: ${txn.paymentMethod == PaymentMethod.upi ? "UPI" : "Cash"}'
-                          : 'Refund via: Cash Return',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondaryLight,
-                    fontWeight: FontWeight.w500,
-                  ),
+          // Footer details ONLY for recharge or refund (no "paid via" for purchase, no "balance after")
+          if (!isPurchase)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.sm),
+              child: Text(
+                isRecharge
+                    ? 'Payment: ${txn.paymentMethod == PaymentMethod.upi ? "UPI" : "Cash"}'
+                    : 'Refund via: Cash Return',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textSecondaryLight,
+                  fontWeight: FontWeight.w500,
                 ),
-                if (txn.balanceAfter != null)
-                  Text(
-                    'Balance after: ₹${txn.balanceAfter!.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimaryLight,
-                    ),
-                  ),
-              ],
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -433,7 +438,7 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Card: ${session.displayCardNumber}',
+                    'Issued Card: ${session.displayCardNumber}',
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -442,7 +447,7 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                   ),
                   if (session.customerName != null && session.customerName!.isNotEmpty)
                     Text(
-                      'Customer: ${session.customerName}${session.customerPhone != null && session.customerPhone!.isNotEmpty ? " (${session.customerPhone})" : ""}',
+                      'Issued to: ${session.customerName}${session.customerPhone != null && session.customerPhone!.isNotEmpty ? " (${session.customerPhone})" : ""}',
                       style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondaryLight,

@@ -263,13 +263,89 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Main Central 1'), findsOneWidget);
-      expect(find.text('Switch Branch'), findsOneWidget);
+      expect(find.text('Switch Counter'), findsOneWidget);
 
-      // Tap Switch Branch button
-      await tester.tap(find.text('Switch Branch'));
+      // Tap Switch Counter button
+      await tester.tap(find.text('Switch Counter'));
       await tester.pumpAndSettle();
 
       expect(find.text('Main Central 2'), findsOneWidget);
+    });
+
+    testWidgets('InventoryScreen Restock History omits Initial Product Stock Allocation text', (tester) async {
+      const authorizedUser = AuthUser(
+        id: 'staff-1',
+        email: 'staff@moneycard.io',
+        name: 'Alex Morgan',
+        role: 'STAFF',
+        organizationId: 'org-1',
+        permissions: [AppPermission.inventoryView, AppPermission.inventoryManage],
+        assignedBranchIds: ['b-1'],
+      );
+
+      final fakeRepo = FakeInventoryRepository();
+      fakeRepo.movements = [
+        const InventoryMovement(
+          id: 'mov-1',
+          inventoryId: 'inv-1',
+          productId: 'prod-1',
+          productName: 'Veg Burger',
+          branchId: 'b-1',
+          changeQuantity: 25,
+          balanceAfter: 25,
+          type: MovementType.restock,
+          reason: 'Initial Product Stock Allocation',
+          staffName: 'Org Admin',
+          createdAt: '2026-09-17 10:00',
+        ),
+        const InventoryMovement(
+          id: 'mov-2',
+          inventoryId: 'inv-2',
+          productId: 'prod-2',
+          productName: 'Cold Coffee',
+          branchId: 'b-1',
+          changeQuantity: 15,
+          balanceAfter: 40,
+          type: MovementType.restock,
+          reason: 'Fresh Kitchen Batch',
+          staffName: 'Chef John',
+          createdAt: '2026-09-17 11:30',
+        ),
+      ];
+
+      final inventoryNotifier = InventoryNotifier(fakeRepo, 'b-1');
+      await inventoryNotifier.loadInventory();
+      await inventoryNotifier.loadMovements();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            currentUserProvider.overrideWithValue(authorizedUser),
+            branchNotifierProvider.overrideWith((ref) => BranchNotifier(FakeBranchRepository())),
+            inventoryNotifierProvider.overrideWith((ref) => inventoryNotifier),
+          ],
+          child: const MaterialApp(
+            home: InventoryScreen(),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Tap on Restock History tab
+      await tester.tap(find.text('Restock History'));
+      await tester.pumpAndSettle();
+
+      // Verify product names are rendered
+      expect(find.text('Veg Burger'), findsOneWidget);
+      expect(find.text('Cold Coffee'), findsOneWidget);
+
+      // Verify legitimate reason is shown
+      expect(find.text('Fresh Kitchen Batch'), findsOneWidget);
+
+      // Verify Initial Product Stock Allocation text is COMPLETELY OMITTED
+      expect(find.text('Initial Product Stock Allocation'), findsNothing);
+      expect(find.textContaining('Initial Product Stock Allocation'), findsNothing);
     });
   });
 }

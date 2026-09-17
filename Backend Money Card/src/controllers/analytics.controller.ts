@@ -262,36 +262,34 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       inventoryItemCount: b.inventoryItems.length,
       lowStockItemCount: lowStock,
       productDemand: bProductDemand,
-      peakPeriods: [
-        {
-          timeSlot: '12:00 PM - 02:30 PM (Lunch Peak)',
-          activityLevel: 'Highest',
-          transactionCount: 0,
-          purchaseVolume: 0,
-        },
-        {
-          timeSlot: '04:30 PM - 06:30 PM (Evening Refreshment)',
-          activityLevel: 'Moderate',
-          transactionCount: 0,
-          purchaseVolume: 0,
-        },
-        {
-          timeSlot: '07:30 PM - 09:30 PM (Dinner)',
-          activityLevel: 'High',
-          transactionCount: 0,
-          purchaseVolume: 0,
-        },
-      ],
+      peakPeriods: [],
     });
   });
 
   let cashRechargeVolume = 0;
   let upiRechargeVolume = 0;
+  const branchHourlyBuckets = new Map<string, Map<number, { count: number; volume: number }>>();
 
   transactions.forEach((tx) => {
     const bm = branchMetricsMap.get(tx.branchId);
     const txType = String(tx.type || '');
     const paymentMethod = String((tx as any).paymentMethod || '').toUpperCase();
+
+    // Track hourly activity for live peak calculation
+    if (tx.branchId) {
+      let bBuckets = branchHourlyBuckets.get(tx.branchId);
+      if (!bBuckets) {
+        bBuckets = new Map<number, { count: number; volume: number }>();
+        branchHourlyBuckets.set(tx.branchId, bBuckets);
+      }
+      const txHour = new Date(tx.createdAt).getHours();
+      const current = bBuckets.get(txHour) || { count: 0, volume: 0 };
+      current.count++;
+      if (txType === 'PURCHASE') {
+        current.volume += tx.amount;
+      }
+      bBuckets.set(txHour, current);
+    }
 
     if (txType === 'PURCHASE') {
       totalPurchaseVolume += tx.amount;
@@ -301,18 +299,6 @@ export async function getOrgAnalytics(req: Request, res: Response) {
         bm.purchaseVolume += tx.amount;
         bm.totalRevenue += tx.amount;
         bm.productsSoldCount++;
-
-        const txHour = new Date(tx.createdAt).getHours();
-        if (txHour >= 12 && txHour <= 14) {
-          bm.peakPeriods[0].transactionCount++;
-          bm.peakPeriods[0].purchaseVolume += tx.amount;
-        } else if (txHour >= 16 && txHour <= 18) {
-          bm.peakPeriods[1].transactionCount++;
-          bm.peakPeriods[1].purchaseVolume += tx.amount;
-        } else if (txHour >= 19 && txHour <= 21) {
-          bm.peakPeriods[2].transactionCount++;
-          bm.peakPeriods[2].purchaseVolume += tx.amount;
-        }
       }
     } else if (txType === 'RECHARGE_CASH' || paymentMethod === 'CASH' || paymentMethod === 'CARD' || txType === 'CASH') {
       totalRechargeVolume += tx.amount;
@@ -369,6 +355,12 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     }
   });
 
+  const formatHour12 = (h: number): string => {
+    const period = h >= 12 ? 'PM' : 'AM';
+    const displayHour = h % 12 === 0 ? 12 : h % 12;
+    return `${String(displayHour).padStart(2, '0')}:00 ${period}`;
+  };
+
   branchMetricsMap.forEach((bm) => {
     bm.avgTransactionValue = bm.transactionCount > 0 ? Number((bm.purchaseVolume / bm.transactionCount).toFixed(2)) : 0;
     bm.avgPurchaseValue = bm.purchaseCount > 0 ? Number((bm.purchaseVolume / bm.purchaseCount).toFixed(2)) : 0;
@@ -379,6 +371,28 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     bm.upiRechargeVolume = Number((bm.upiRechargeVolume || 0).toFixed(2));
     bm.refundVolume = Number(bm.refundVolume.toFixed(2));
     bm.totalRevenue = Number(bm.totalRevenue.toFixed(2));
+
+    // Calculate real live peak activity periods from actual transactions
+    const bBuckets = branchHourlyBuckets.get(bm.branchId);
+    if (bBuckets && bBuckets.size > 0) {
+      const activeHours = Array.from(bBuckets.entries())
+        .filter(([_, data]) => data.count > 0)
+        .sort((a, b) => b[1].count - a[1].count || b[1].volume - a[1].volume)
+        .slice(0, 3);
+
+      const levels = ['Highest', 'High', 'Moderate'];
+      bm.peakPeriods = activeHours.map(([hour, data], idx) => {
+        const nextHour = (hour + 1) % 24;
+        return {
+          timeSlot: `${formatHour12(hour)} - ${formatHour12(nextHour)}`,
+          activityLevel: levels[idx] || 'Moderate',
+          transactionCount: data.count,
+          purchaseVolume: Number(data.volume.toFixed(2)),
+        };
+      });
+    } else {
+      bm.peakPeriods = [];
+    }
   });
 
   const zeroBalanceActiveCardsCount = activeSessionsList.filter((s) => s.balance === 0).length;
