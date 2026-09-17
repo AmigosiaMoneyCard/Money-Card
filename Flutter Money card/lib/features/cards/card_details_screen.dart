@@ -59,6 +59,19 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
     super.dispose();
   }
 
+  String _formatDateTime(String? raw) {
+    if (raw == null || raw.isEmpty) return '—';
+    try {
+      final dt = DateTime.parse(raw).toLocal();
+      final date = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+      final hour = dt.hour.toString().padLeft(2, '0');
+      final min = dt.minute.toString().padLeft(2, '0');
+      return '$date $hour:$min';
+    } catch (_) {
+      return raw;
+    }
+  }
+
   AppBadgeVariant _getCardStatusVariant(CardStatus status) {
     switch (status) {
       case CardStatus.available:
@@ -668,7 +681,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                       const Icon(Icons.access_time, size: 16, color: AppColors.textSecondaryLight),
                       const SizedBox(width: AppSpacing.xs),
                       Text(
-                        'Started: ${activeSession.startedAt}',
+                        'Started: ${_formatDateTime(activeSession.startedAt)}',
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondaryLight,

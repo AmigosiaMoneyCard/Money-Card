@@ -411,7 +411,7 @@ class AnalyticsPdfService {
                     for (final peak in analytics.peakPeriods!)
                       pw.TableRow(
                         children: [
-                          _buildCell(peak.timeSlot, isBold: true),
+                          _buildCell(peak.timeSlot.replaceAll(RegExp(r'\s*\([^)]*\)'), '').trim(), isBold: true),
                           _buildCell(peak.activityLevel),
                           _buildCell('${peak.transactionCount} txns', alignRight: true),
                           _buildCell(currencyFmt.format(peak.purchaseVolume), alignRight: true),

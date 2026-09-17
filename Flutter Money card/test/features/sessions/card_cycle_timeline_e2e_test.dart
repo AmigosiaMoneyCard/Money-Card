@@ -194,13 +194,11 @@ void main() {
       await tester.scrollUntilVisible(find.text('Burger'), 100);
       expect(find.text('Burger'), findsOneWidget);
       expect(find.text('-₹100.00'), findsOneWidget);
-      expect(find.text('Bal: ₹530.00'), findsOneWidget);
 
       // 3. Verify Recharge ₹300 UPI
       await tester.scrollUntilVisible(find.text('Wallet Recharge (UPI)'), 100);
       expect(find.text('Wallet Recharge (UPI)'), findsOneWidget);
       expect(find.text('+₹300.00'), findsOneWidget);
-      expect(find.text('Bal: ₹630.00'), findsOneWidget);
 
       // 4. Scroll to verify Multi-Product Purchase: Chicken Roll x 2 & Veg Roll x 1
       await tester.scrollUntilVisible(find.text('Chicken Roll'), 100);
@@ -208,17 +206,20 @@ void main() {
       expect(find.text('× 2'), findsOneWidget);
       expect(find.text('Veg Roll'), findsOneWidget);
       expect(find.text('-₹170.00'), findsOneWidget);
-      expect(find.text('Bal: ₹330.00'), findsOneWidget);
 
       // 5. Scroll down to verify Cash Recharge ₹500 and Card Issuance event
       await tester.scrollUntilVisible(find.text('Wallet Recharge (Cash)'), 150);
       expect(find.text('Wallet Recharge (Cash)'), findsOneWidget);
       expect(find.text('+₹500.00'), findsOneWidget);
-      expect(find.text('Bal: ₹500.00'), findsOneWidget);
 
       await tester.scrollUntilVisible(find.text('Card Issued'), 150);
       expect(find.text('Card Issued'), findsOneWidget);
       expect(find.text('SESSION START'), findsOneWidget);
+
+      // Verify Bal: and Balance after: and Paid via: are not rendered on purchase
+      expect(find.textContaining('Bal:'), findsNothing);
+      expect(find.textContaining('Balance after:'), findsNothing);
+      expect(find.textContaining('Paid via:'), findsNothing);
     });
 
     testWidgets('Card 104 Cycle 2 Isolation: When Card 104 is re-issued in Cycle 2, new session does NOT show Cycle 1 transactions', (tester) async {

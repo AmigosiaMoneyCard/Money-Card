@@ -323,7 +323,18 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     }
   }
 
-
+  String _formatDateTime(String? raw) {
+    if (raw == null || raw.isEmpty) return '—';
+    try {
+      final dt = DateTime.parse(raw).toLocal();
+      final date = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+      final hour = dt.hour.toString().padLeft(2, '0');
+      final min = dt.minute.toString().padLeft(2, '0');
+      return '$date $hour:$min';
+    } catch (_) {
+      return raw;
+    }
+  }
 
   // ==========================================
   // ACTION HANDLERS
@@ -943,6 +954,24 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                             ),
                           ),
                         ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(Icons.access_time, size: 14, color: AppColors.textSecondaryLight),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          'Started: ${_formatDateTime(session.startedAt)}',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondaryLight,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ),
                     ],
                   ),

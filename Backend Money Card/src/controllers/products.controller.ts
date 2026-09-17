@@ -193,7 +193,7 @@ export async function createProduct(req: Request, res: Response) {
           changeQuantity: initialQty,
           balanceAfter: initialQty,
           type: 'RESTOCK',
-          reason: 'Initial Product Stock Allocation',
+          reason: '',
           staffName: (req as any).user?.name || 'Org Admin',
         });
       }
@@ -569,7 +569,7 @@ export async function getInventoryMovements(req: Request, res: Response) {
         changeQuantity: inv.quantity,
         balanceAfter: inv.quantity,
         type: 'RESTOCK',
-        reason: 'Initial Product Stock Allocation',
+        reason: '',
         createdAt: inv.updatedAt.toISOString(),
         staffName: 'Org Admin',
       });

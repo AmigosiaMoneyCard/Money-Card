@@ -47,7 +47,7 @@ void main() {
       expect(notifier.state.status, AuthStatus.error);
       expect(
         notifier.state.errorMessage,
-        'Your staff account is no longer active. Please contact your Organization Administrator.',
+        'Your staff account is no longer active. Please contact your Cafeteria Administrator.',
       );
     });
 
@@ -70,7 +70,7 @@ void main() {
       expect(notifier.state.status, AuthStatus.error);
       expect(
         notifier.state.errorMessage,
-        'Your organization account is currently inactive or suspended. Please contact platform administration.',
+        'Your cafeteria account is currently inactive or suspended. Please contact platform administration.',
       );
     });
   });

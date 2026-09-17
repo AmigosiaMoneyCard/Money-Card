@@ -554,17 +554,20 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                           fontSize: 15,
                         ),
                       ),
-                      const SizedBox(height: 3),
-                      Text(
-                        movement.reason != null && movement.reason!.isNotEmpty
-                            ? movement.reason!
-                            : 'Restock / Fresh Batch Addition',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w500,
-                          fontSize: 13,
-                          color: AppColors.textSecondaryLight,
+                      if (movement.reason != null &&
+                          movement.reason!.isNotEmpty &&
+                          !movement.reason!.toLowerCase().contains('initial product stock allocation') &&
+                          movement.reason != 'Restock / Fresh Batch Addition') ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          movement.reason!,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 13,
+                            color: AppColors.textSecondaryLight,
+                          ),
                         ),
-                      ),
+                      ],
                       const SizedBox(height: 2),
                       Text(
                         movement.staffName != null && movement.staffName!.isNotEmpty

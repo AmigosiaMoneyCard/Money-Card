@@ -209,13 +209,97 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Main Central 1'), findsOneWidget);
-      expect(find.text('Switch Branch'), findsOneWidget);
+      expect(find.text('Switch Counter'), findsOneWidget);
 
-      // Tap Switch Branch button
-      await tester.tap(find.text('Switch Branch'));
+      // Tap Switch Counter button
+      await tester.tap(find.text('Switch Counter'));
       await tester.pumpAndSettle();
 
       expect(find.text('Main Central 2'), findsOneWidget);
+    });
+
+    testWidgets('AnalyticsScreen renders pure live time for Peak Activity Periods and strips meal labels', (tester) async {
+      const authorizedUser = AuthUser(
+        id: 'staff-1',
+        email: 'staff@moneycard.io',
+        name: 'Alex Morgan',
+        role: 'STAFF',
+        organizationId: 'org-1',
+        permissions: [AppPermission.viewAnalytics],
+        assignedBranchIds: ['b-1'],
+      );
+
+      final fakeRepoWithMealLabels = FakeAnalyticsRepository();
+      fakeRepoWithMealLabels.metric = const BranchPerformanceMetric(
+        branchId: 'b-1',
+        branchName: 'Main Cafeteria',
+        transactionCount: 148,
+        purchaseCount: 96,
+        purchaseVolume: 18450.0,
+        rechargeCount: 52,
+        rechargeVolume: 24800.0,
+        totalRevenue: 43250.0,
+        peakPeriods: [
+          PeakPeriod(
+            timeSlot: '12:00 PM - 02:30 PM (Lunch Peak)',
+            activityLevel: 'Highest',
+            transactionCount: 35,
+            purchaseVolume: 4200.0,
+          ),
+          PeakPeriod(
+            timeSlot: '04:30 PM - 06:30 PM (Evening Refreshment)',
+            activityLevel: 'Moderate',
+            transactionCount: 0, // 0 transactions: should be omitted
+            purchaseVolume: 0.0,
+          ),
+          PeakPeriod(
+            timeSlot: '07:30 PM - 09:30 PM (Dinner)',
+            activityLevel: 'High',
+            transactionCount: 18,
+            purchaseVolume: 2500.0,
+          ),
+        ],
+      );
+
+      final notifier = AnalyticsNotifier(fakeRepoWithMealLabels, 'b-1');
+      await notifier.loadAnalytics();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            currentUserProvider.overrideWithValue(authorizedUser),
+            branchNotifierProvider.overrideWith((ref) => BranchNotifier(FakeBranchRepository())),
+            analyticsNotifierProvider.overrideWith((ref) => notifier),
+          ],
+          child: const MaterialApp(
+            home: AnalyticsScreen(),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Scroll to Peak Activity Periods
+      await tester.scrollUntilVisible(
+        find.text('Peak Activity Periods'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+
+      // Verify Peak Activity Periods header is present
+      expect(find.text('Peak Activity Periods'), findsOneWidget);
+
+      // Verify clean live time without meal labels
+      expect(find.text('12:00 PM - 02:30 PM'), findsOneWidget);
+      expect(find.text('07:30 PM - 09:30 PM'), findsOneWidget);
+
+      // Verify meal names are removed
+      expect(find.textContaining('Lunch Peak'), findsNothing);
+      expect(find.textContaining('Evening Refreshment'), findsNothing);
+      expect(find.textContaining('Dinner'), findsNothing);
+
+      // Verify 0-transaction period is omitted
+      expect(find.textContaining('04:30 PM'), findsNothing);
     });
   });
 }
