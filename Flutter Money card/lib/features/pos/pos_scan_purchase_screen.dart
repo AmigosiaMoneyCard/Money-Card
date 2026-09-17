@@ -957,13 +957,12 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
             ),
             const SizedBox(height: AppSpacing.sm),
 
-            // ACTION 1: ADD PRODUCTS (POS Catalog)
+            // ACTION 1: ADD PRODUCTS
             if (canPurchase) ...[
               _buildActionTile(
                 icon: Icons.fastfood_outlined,
                 iconColor: AppColors.primary,
-                title: 'Add Products (POS Sale)',
-                subtitle: 'Select cafeteria items, review cart, and charge card balance',
+                title: 'Add Products',
                 onTap: _openAddProducts,
               ),
               const SizedBox(height: AppSpacing.sm),
@@ -975,7 +974,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                 icon: Icons.account_balance_wallet_outlined,
                 iconColor: AppColors.success,
                 title: 'Recharge Card',
-                subtitle: 'Credit funds using Cash or verified store counter UPI payment',
                 onTap: _openRecharge,
               ),
               const SizedBox(height: AppSpacing.sm),
@@ -987,7 +985,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                 icon: Icons.receipt_long_outlined,
                 iconColor: Colors.blue,
                 title: 'View Session & Transaction History',
-                subtitle: 'Inspect session timeline, live balance, and complete transactions',
                 onTap: _openViewSession,
               ),
               const SizedBox(height: AppSpacing.sm),
@@ -999,9 +996,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                 icon: Icons.assignment_return_outlined,
                 iconColor: AppColors.warning,
                 title: 'Settle / Return Card',
-                subtitle: session.balance > 0
-                    ? 'Refund ₹${session.balance.toStringAsFixed(2)} balance and return card to AVAILABLE'
-                    : 'Close active session and return card to AVAILABLE state',
                 isDestructive: session.balance > 0,
                 onTap: _handleSettleReturn,
               ),
@@ -1024,13 +1018,13 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     required IconData icon,
     required Color iconColor,
     required String title,
-    required String subtitle,
+    String? subtitle,
     required VoidCallback onTap,
     bool isDestructive = false,
   }) {
     return AppCard(
       onTap: onTap,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm + 2),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
       child: Row(
         children: [
           Container(
@@ -1045,6 +1039,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   title,
@@ -1054,14 +1049,16 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                     color: isDestructive ? AppColors.error : AppColors.textPrimaryLight,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondaryLight,
+                if (subtitle != null && subtitle.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondaryLight,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

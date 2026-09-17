@@ -120,7 +120,7 @@ void main() {
       expect(find.text('Session Active'), findsOneWidget);
 
       // Verify all authorized action tiles are present
-      expect(find.text('Add Products (POS Sale)'), findsOneWidget);
+      expect(find.text('Add Products'), findsOneWidget);
       expect(find.text('Recharge Card'), findsOneWidget);
       expect(find.text('View Session & Transaction History'), findsOneWidget);
       expect(find.text('Settle / Return Card'), findsOneWidget);
@@ -175,7 +175,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Staff has PURCHASE permission -> Add Products is visible
-      expect(find.text('Add Products (POS Sale)'), findsOneWidget);
+      expect(find.text('Add Products'), findsOneWidget);
 
       // Staff lacks RECHARGE, SESSION_VIEW, and REFUND permissions -> They are NOT shown
       expect(find.text('Recharge Card'), findsNothing);
@@ -219,7 +219,7 @@ void main() {
       // Verify available card was issued and is now ACTIVE in Action Hub
       expect(find.text('MC-004'), findsOneWidget);
       expect(find.text('ACTIVE'), findsOneWidget);
-      expect(find.text('Add Products (POS Sale)'), findsOneWidget);
+      expect(find.text('Add Products'), findsOneWidget);
     });
 
     testWidgets('Scanning QR-MOCK-003 (BLOCKED card) displays blocked state and prevents operations', (tester) async {
@@ -324,7 +324,7 @@ void main() {
       expect(find.text('Session Active'), findsOneWidget);
 
       // Verify prominent action buttons are visible immediately below it
-      expect(find.text('Add Products (POS Sale)'), findsOneWidget);
+      expect(find.text('Add Products'), findsOneWidget);
       expect(find.text('Recharge Card'), findsOneWidget);
       expect(find.text('Settle / Return Card'), findsOneWidget);
     });
@@ -362,7 +362,7 @@ void main() {
       expect(find.textContaining('Balance: ₹750.00'), findsOneWidget);
       expect(find.text('Session Active'), findsOneWidget);
 
-      expect(find.text('Add Products (POS Sale)'), findsOneWidget);
+      expect(find.text('Add Products'), findsOneWidget);
       expect(find.text('Recharge Card'), findsOneWidget);
       expect(find.text('Settle / Return Card'), findsOneWidget);
     });
