@@ -67,7 +67,7 @@ class MoreScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: AppSpacing.xxs),
                     Text(
-                      'Active Cafeteria: ${branch?.name ?? 'Not Assigned'}',
+                      'Active Counter: ${branch?.name ?? 'Not Assigned'}',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,

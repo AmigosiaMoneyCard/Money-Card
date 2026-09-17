@@ -6,6 +6,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/permission_constants.dart';
 import '../../models/card_session.dart';
+import '../../providers/analytics_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/branch_provider.dart';
 import '../../providers/card_operations_provider.dart';
@@ -73,6 +74,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final permissionChecker = ref.watch(permissionCheckerProvider);
 
     final canIssueCard = permissionChecker.hasPermission(AppPermission.cardIssue);
+    final analyticsState = ref.watch(analyticsNotifierProvider);
+    final todayMetric = analyticsState.analytics;
 
     // Filter strictly for ACTIVE sessions
     final activeSessions = sessionListState.sessions
@@ -113,7 +116,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         Text(
                           currentBranch != null
                               ? 'Counter: ${currentBranch.name}'
-                              : 'Ready for cafeteria transactions',
+                              : 'Ready to serve customers',
                           style: const TextStyle(
                             fontSize: 13,
                             color: AppColors.textSecondaryLight,
@@ -205,7 +208,92 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
 
-              // 3. Quick Action Buttons Row (Issue New Card, Sessions, Inventory, Analytics)
+              // 2b. Today at a Glance Summary Card
+              AppCard(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 14),
+                child: Row(
+                  children: [
+                    // Revenue
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Today\'s Sales',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondaryLight,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          analyticsState.isLoading
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : Text(
+                                  todayMetric != null
+                                      ? '₹${todayMetric.purchaseVolume.toStringAsFixed(0)}'
+                                      : '—',
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      width: 1,
+                      height: 36,
+                      color: AppColors.borderLight,
+                      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                    ),
+                    // Transactions
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Transactions',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondaryLight,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          analyticsState.isLoading
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : Text(
+                                  todayMetric != null
+                                      ? '${todayMetric.purchaseCount} orders'
+                                      : '—',
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textPrimaryLight,
+                                  ),
+                                ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.bar_chart_rounded,
+                      color: AppColors.primary,
+                      size: 22,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
                   if (canIssueCard)
@@ -551,6 +639,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          if (session.balance < 100) ...[
+                            const SizedBox(width: AppSpacing.xs),
+                            const AppBadge(
+                              label: 'LOW BAL',
+                              variant: AppBadgeVariant.warning,
+                            ),
+                          ],
                           const SizedBox(width: AppSpacing.xs),
                           const AppBadge(
                             label: 'ACTIVE',
@@ -558,6 +653,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         ],
                       ),
+                      if (session.customerName != null && session.customerName!.trim().isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            const Icon(Icons.person, size: 12, color: AppColors.primary),
+                            const SizedBox(width: 3),
+                            Expanded(
+                              child: Text(
+                                session.customerName!.trim(),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimaryLight,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 2),
                       Text(
                         'Started: ${_formatDateTime(session.startedAt)}',

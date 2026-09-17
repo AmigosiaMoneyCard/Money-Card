@@ -14,6 +14,9 @@ import type {
   Card as CardEntity,
   InventoryItem,
   AnalyticsOverview,
+  ReportItem,
+  CardSession,
+  Transaction,
 } from '@/types';
 import {
   Button,
@@ -26,7 +29,8 @@ import {
   LoadingState,
   ErrorState,
 } from '@/components/ui';
-import { formatCurrency, storage } from '@/utils';
+import { formatCurrency, storage, notify } from '@/utils';
+import { generateReportPdfBlob } from '../reports/reportsPdfExport';
 import {
   Building2,
   Users,
@@ -40,6 +44,7 @@ import {
   CheckCircle2,
   Sparkles,
   X,
+  Download,
 } from 'lucide-react';
 
 export type DatePreset = 'thisMonth' | 'today' | 'yesterday' | 'last7' | 'last30' | 'all' | 'custom';
@@ -317,12 +322,84 @@ export function OrgAdminDashboard() {
     !isDismissed &&
     !isSetupComplete;
 
+  const [isDownloadingReport, setIsDownloadingReport] = useState(false);
+
+  const handleDownloadTodayReport = async () => {
+    setIsDownloadingReport(true);
+    try {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const targetBranchId = currentBranch?.id;
+      const [sessRes, prodRes] = await Promise.all([
+        apiService.sessions.getSessions({ branchId: targetBranchId, limit: 50 }),
+        apiService.products.getProducts({ branchId: targetBranchId, limit: 50 }),
+      ]);
+
+      const sessionsList: CardSession[] = sessRes.success && sessRes.data?.items ? sessRes.data.items : [];
+      const transactionsList: Transaction[] = [];
+
+      if (sessionsList.length > 0) {
+        for (const s of sessionsList.slice(0, 10)) {
+          const tRes = await apiService.sessions.getSessionTransactions(s.id);
+          if (tRes.success && Array.isArray(tRes.data)) {
+            transactionsList.push(...tRes.data);
+          }
+        }
+      }
+
+      const todayReport: ReportItem = {
+        id: `daily-report-${todayStr}`,
+        title: `Daily Operations & Financial Report (${todayStr})`,
+        type: 'FINANCIAL',
+        generatedAt: new Date().toISOString(),
+        downloadUrl: '',
+      };
+
+      const blob = generateReportPdfBlob({
+        report: todayReport,
+        branches,
+        selectedBranchName: currentBranch ? currentBranch.name : 'All Counters',
+        transactions: transactionsList,
+        sessions: sessionsList,
+        inventory: prodRes.success && prodRes.data?.items ? prodRes.data.items : [],
+        organizationName: user?.organizationName || 'Organization Portal',
+      });
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `daily-report-${todayStr}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      notify.success("Today's Report PDF downloaded successfully.");
+    } catch {
+      notify.error("Failed to generate today's report. Please try again.");
+    } finally {
+      setIsDownloadingReport(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header Bar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Organisation Dashboard</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Organization Dashboard</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Real-time overview of counter operations and sales.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="primary"
+            size="md"
+            onClick={handleDownloadTodayReport}
+            isLoading={isDownloadingReport}
+            leftIcon={<Download className="h-4 w-4" />}
+            className="shadow-sm font-semibold"
+          >
+            Download Today's Report
+          </Button>
         </div>
       </div>
 

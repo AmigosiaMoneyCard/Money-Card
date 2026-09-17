@@ -75,6 +75,9 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
 
       if (!mounted) return;
 
+      // Tactile haptic feedback on successful card scan
+      HapticFeedback.mediumImpact();
+
       // ─── Available Card Detected: Prompt for Customer Details Before Issuing ───
       if (result.card.status == CardStatus.available ||
           (result.session == null && result.card.status != CardStatus.blocked)) {
@@ -582,7 +585,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 const Text(
-                  'This QR card is not registered in your cafeteria.',
+                  'This QR card is not registered in your counter. Try scanning a different card.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
@@ -651,7 +654,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
               const Text(
-                'Card is BLOCKED. Cannot perform operations on a blocked card.',
+                                'This card is blocked and cannot be used. Please contact your manager.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppColors.error,
@@ -877,21 +880,58 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
-                        child: Text(
-                          card.displayCardNumber,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                            color: AppColors.textPrimaryLight,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              card.displayCardNumber,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                                color: AppColors.textPrimaryLight,
+                              ),
+                            ),
+                            if (session.customerName != null && session.customerName!.trim().isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Row(
+                                children: [
+                                  const Icon(Icons.person, size: 14, color: AppColors.primary),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      session.customerName!.trim(),
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textPrimaryLight,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                       const SizedBox(width: AppSpacing.xs),
-                      const AppBadge(
-                        label: 'ACTIVE',
-                        variant: AppBadgeVariant.success,
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (session.balance < 100) ...[
+                            const AppBadge(
+                              label: 'LOW BAL',
+                              variant: AppBadgeVariant.warning,
+                            ),
+                            const SizedBox(width: AppSpacing.xs),
+                          ],
+                          const AppBadge(
+                            label: 'ACTIVE',
+                            variant: AppBadgeVariant.success,
+                          ),
+                        ],
                       ),
                     ],
                   ),
