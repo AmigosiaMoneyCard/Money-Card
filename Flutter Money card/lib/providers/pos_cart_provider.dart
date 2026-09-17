@@ -29,7 +29,7 @@ class PosCatalogState {
   });
 
   List<Product> get filteredProducts {
-    var list = products;
+    var list = products.where((p) => !p.isOutOfStock).toList();
     if (selectedCategory != 'All') {
       final filter = selectedCategory.toLowerCase();
       list = list.where((p) {

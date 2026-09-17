@@ -24,7 +24,7 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
   },
   {
     id: 'organizations',
-    label: 'Organisations',
+    label: 'Organizations',
     path: '/organizations',
     iconName: 'Building',
     roles: ['SUPER_ADMIN'],

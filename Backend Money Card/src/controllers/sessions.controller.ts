@@ -293,7 +293,7 @@ export async function getActiveSessionByQr(req: Request, res: Response) {
       res,
       403,
       'CARD_BLOCKED',
-      `Card ${card.physicalCardNumber} is blocked and cannot be used for any organisation transactions.`,
+      `Card ${card.physicalCardNumber} is blocked and cannot be used for any organization transactions.`,
     );
   }
 

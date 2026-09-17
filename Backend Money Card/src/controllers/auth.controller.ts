@@ -87,7 +87,7 @@ export async function login(req: Request, res: Response) {
         res,
         403,
         'ORGANIZATION_PENDING_ACTIVATION',
-        'This organisation is pending email activation. Please click the invitation link sent to the administrator email to activate the organisation.',
+        'This organization is pending email activation. Please click the invitation link sent to the administrator email to activate the organization.',
       );
     }
     if (orgStatus === 'SUSPENDED' || orgStatus === 'INACTIVE') {

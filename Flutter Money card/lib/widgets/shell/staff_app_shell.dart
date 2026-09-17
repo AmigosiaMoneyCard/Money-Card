@@ -8,6 +8,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/branch_provider.dart';
 import '../../providers/card_operations_provider.dart';
 import '../../providers/session_operations_provider.dart';
+import '../no_internet_banner.dart';
 
 class StaffAppShell extends ConsumerStatefulWidget {
   final Widget child;
@@ -111,7 +112,12 @@ class _StaffAppShellState extends ConsumerState<StaffAppShell> with WidgetsBindi
           _buildUserProfileMenu(context, ref, user?.name ?? 'Staff'),
         ],
       ),
-      body: SafeArea(child: widget.child),
+      body: Column(
+        children: [
+          const NoInternetBanner(),
+          Expanded(child: SafeArea(child: widget.child)),
+        ],
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _calculateSelectedIndex(),
         onDestinationSelected: (idx) => _onItemTapped(idx, context),

@@ -322,7 +322,8 @@ export function OrgAdminDashboard() {
       {/* Header Bar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Organisation Dashboard</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Organization Dashboard</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Real-time overview of counter operations and sales.</p>
         </div>
       </div>
 
