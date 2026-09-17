@@ -1,6 +1,7 @@
 import axios from 'axios';
 import type { AxiosInstance, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
 import type { ApiResponse } from '@/types';
+import { storage, STORAGE_KEYS } from '@/utils';
 
 // ─── API Client Configuration ────────────────────────────────────────────────
 // Centralized HTTP client abstraction.
@@ -23,6 +24,7 @@ export interface ApiError {
 class ApiClient {
   private readonly client: AxiosInstance;
   private accessToken: string | null = null;
+  private refreshToken: string | null = null;
   private isRefreshing = false;
   private failedQueue: Array<{
     resolve: (token: string) => void;
@@ -31,6 +33,9 @@ class ApiClient {
   private onSessionExpiredCallbacks: Array<() => void> = [];
 
   constructor() {
+    this.accessToken = storage.get<string>(STORAGE_KEYS.ACCESS_TOKEN);
+    this.refreshToken = storage.get<string>(STORAGE_KEYS.REFRESH_TOKEN);
+
     this.client = axios.create({
       baseURL: API_BASE_URL,
       headers: {
@@ -43,8 +48,9 @@ class ApiClient {
     // Request interceptor — attach auth token
     this.client.interceptors.request.use(
       (config: InternalAxiosRequestConfig) => {
-        if (this.accessToken) {
-          config.headers.Authorization = `Bearer ${this.accessToken}`;
+        const token = this.accessToken || storage.get<string>(STORAGE_KEYS.ACCESS_TOKEN);
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
       },
@@ -94,14 +100,22 @@ class ApiClient {
           this.isRefreshing = true;
 
           try {
-            const refreshRes = await this.client.post<ApiResponse<{ accessToken: string }>>(
+            const tokenToUse = this.getRefreshToken();
+            const refreshRes = await this.client.post<
+              ApiResponse<{ accessToken?: string; token?: string; refreshToken?: string }>
+            >(
               '/v1/auth/refresh',
-              {},
+              tokenToUse ? { refreshToken: tokenToUse } : {},
             );
 
-            if (refreshRes.data?.success && refreshRes.data.data?.accessToken) {
-              const newToken = refreshRes.data.data.accessToken;
+            const resData = refreshRes.data?.data;
+            const newToken = resData?.accessToken || resData?.token;
+
+            if (refreshRes.data?.success && newToken) {
               this.setAccessToken(newToken);
+              if (resData?.refreshToken) {
+                this.setRefreshToken(resData.refreshToken);
+              }
               if (originalRequest.headers) {
                 originalRequest.headers.Authorization = `Bearer ${newToken}`;
               }
@@ -145,6 +159,7 @@ class ApiClient {
 
   public notifySessionExpired(): void {
     this.setAccessToken(null);
+    this.setRefreshToken(null);
     for (const cb of this.onSessionExpiredCallbacks) {
       cb();
     }
@@ -154,10 +169,28 @@ class ApiClient {
 
   setAccessToken(token: string | null): void {
     this.accessToken = token;
+    if (token) {
+      storage.set(STORAGE_KEYS.ACCESS_TOKEN, token);
+    } else {
+      storage.remove(STORAGE_KEYS.ACCESS_TOKEN);
+    }
   }
 
   getAccessToken(): string | null {
-    return this.accessToken;
+    return this.accessToken || storage.get<string>(STORAGE_KEYS.ACCESS_TOKEN);
+  }
+
+  setRefreshToken(token: string | null): void {
+    this.refreshToken = token;
+    if (token) {
+      storage.set(STORAGE_KEYS.REFRESH_TOKEN, token);
+    } else {
+      storage.remove(STORAGE_KEYS.REFRESH_TOKEN);
+    }
+  }
+
+  getRefreshToken(): string | null {
+    return this.refreshToken || storage.get<string>(STORAGE_KEYS.REFRESH_TOKEN);
   }
 
   // ─── HTTP Methods ──────────────────────────────────────────────────────────

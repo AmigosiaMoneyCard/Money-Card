@@ -47,19 +47,23 @@ describe('Auth Role Persistence & Refresh Protection', () => {
     vi.clearAllMocks();
   });
 
-  it('STORAGE_KEYS should include USER key', () => {
+  it('STORAGE_KEYS should include USER, ACCESS_TOKEN, and REFRESH_TOKEN keys', () => {
     expect(STORAGE_KEYS.USER).toBe('user');
     expect(STORAGE_KEYS.ACCESS_TOKEN).toBe('access_token');
+    expect(STORAGE_KEYS.REFRESH_TOKEN).toBe('refresh_token');
   });
 
-  it('should persist and retrieve AuthUser from storage across page reloads', () => {
+  it('should persist and retrieve AuthUser and tokens from storage across page reloads', () => {
     storage.set(STORAGE_KEYS.ACCESS_TOKEN, 'test_superadmin_token');
+    storage.set(STORAGE_KEYS.REFRESH_TOKEN, 'mock_jwt_refresh_super');
     storage.set(STORAGE_KEYS.USER, superAdminUser);
 
     const savedToken = storage.get<string>(STORAGE_KEYS.ACCESS_TOKEN);
+    const savedRefreshToken = storage.get<string>(STORAGE_KEYS.REFRESH_TOKEN);
     const savedUser = storage.get<AuthUser>(STORAGE_KEYS.USER);
 
     expect(savedToken).toBe('test_superadmin_token');
+    expect(savedRefreshToken).toBe('mock_jwt_refresh_super');
     expect(savedUser).not.toBeNull();
     expect(savedUser?.role).toBe('SUPER_ADMIN');
     expect(savedUser?.email).toBe('amigosiamoneycard@gmail.com');
@@ -78,14 +82,26 @@ describe('Auth Role Persistence & Refresh Protection', () => {
     }
   });
 
-  it('should clear USER key on logout or auth state reset', () => {
+  it('mockAuthHandlers.refresh should succeed using stored refresh token fallback', async () => {
+    storage.set(STORAGE_KEYS.REFRESH_TOKEN, 'mock_jwt_refresh_test');
+    const result = await mockAuthHandlers.refresh();
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.accessToken).toContain('mock_jwt_access_rotated_');
+    }
+  });
+
+  it('should clear USER, ACCESS_TOKEN, and REFRESH_TOKEN keys on logout or auth state reset', () => {
     storage.set(STORAGE_KEYS.ACCESS_TOKEN, 'token_123');
+    storage.set(STORAGE_KEYS.REFRESH_TOKEN, 'refresh_123');
     storage.set(STORAGE_KEYS.USER, orgAdminUser);
 
     storage.remove(STORAGE_KEYS.ACCESS_TOKEN);
+    storage.remove(STORAGE_KEYS.REFRESH_TOKEN);
     storage.remove(STORAGE_KEYS.USER);
 
     expect(storage.get(STORAGE_KEYS.ACCESS_TOKEN)).toBeNull();
+    expect(storage.get(STORAGE_KEYS.REFRESH_TOKEN)).toBeNull();
     expect(storage.get(STORAGE_KEYS.USER)).toBeNull();
   });
 

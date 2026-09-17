@@ -70,14 +70,15 @@ export const mockAuthHandlers = {
     });
   },
 
-  async refresh(refreshToken: string): Promise<ApiResult<{ accessToken: string }>> {
+  async refresh(refreshToken?: string): Promise<ApiResult<{ accessToken: string; refreshToken?: string }>> {
     await mockDelay();
-    if (!refreshToken || !refreshToken.startsWith('mock_jwt_refresh_')) {
+    const token = refreshToken || storage.get<string>(STORAGE_KEYS.REFRESH_TOKEN);
+    if (!token || !token.startsWith('mock_jwt_refresh_')) {
       return createMockError('UNAUTHORIZED', 'Invalid or expired refresh token');
     }
 
     const newAccessToken = `mock_jwt_access_rotated_${Date.now()}`;
-    return createMockSuccess({ accessToken: newAccessToken });
+    return createMockSuccess({ accessToken: newAccessToken, refreshToken: token });
   },
 
   async logout(): Promise<ApiResult<{ message: string }>> {

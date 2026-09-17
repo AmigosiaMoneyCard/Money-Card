@@ -13,9 +13,6 @@ import { storage, STORAGE_KEYS } from '@/utils';
 // - Access-token attachment via apiClient
 // - Mid-session 401 interceptor & token refresh
 // - Session-expired handling with /login?expired=true redirect
-//
-// IMPORTANT: Refresh token is NOT stored in localStorage.
-// M0 specifies HttpOnly cookie for refresh in React Web.
 
 function createInitialState(): AuthState {
   if (typeof window !== 'undefined') {
@@ -36,15 +33,19 @@ function createInitialState(): AuthState {
   }
 
   const savedToken = storage.get<string>(STORAGE_KEYS.ACCESS_TOKEN);
+  const savedRefreshToken = storage.get<string>(STORAGE_KEYS.REFRESH_TOKEN);
   const savedUser = storage.get<AuthUser>(STORAGE_KEYS.USER);
   if (savedToken) {
     apiClient.setAccessToken(savedToken);
+  }
+  if (savedRefreshToken) {
+    apiClient.setRefreshToken(savedRefreshToken);
   }
   return {
     user: savedUser,
     accessToken: savedToken,
     isAuthenticated: !!savedToken && !!savedUser,
-    isLoading: !!savedToken && !savedUser,
+    isLoading: (!!savedToken || !!savedRefreshToken) && !savedUser,
   };
 }
 
@@ -60,7 +61,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // ── Clear Auth State Helper & Session Expired Redirect ──────
   const clearAuthState = useCallback((isExpired = false) => {
     apiClient.setAccessToken(null);
+    apiClient.setRefreshToken(null);
     storage.remove(STORAGE_KEYS.ACCESS_TOKEN);
+    storage.remove(STORAGE_KEYS.REFRESH_TOKEN);
     storage.remove(STORAGE_KEYS.USER);
     storage.remove(STORAGE_KEYS.SELECTED_BRANCH_ID);
     setState({
@@ -85,9 +88,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   // ── Login ─────────────────────────────────────────────────
-  const login = useCallback((user: AuthUser, accessToken: string) => {
+  const login = useCallback((user: AuthUser, accessToken: string, refreshToken?: string) => {
     apiClient.setAccessToken(accessToken);
     storage.set(STORAGE_KEYS.ACCESS_TOKEN, accessToken);
+    if (refreshToken) {
+      apiClient.setRefreshToken(refreshToken);
+      storage.set(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+    }
     storage.set(STORAGE_KEYS.USER, user);
     setState({
       user,
@@ -117,45 +124,51 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   // ── Token Refresh ─────────────────────────────────────────
-  const handleTokenRefresh = useCallback(
-    (_currentToken: string) => {
-      if (isRefreshing.current) return;
-      isRefreshing.current = true;
+  const handleTokenRefresh = useCallback(() => {
+    if (isRefreshing.current) return;
+    const tokenToUse = storage.get<string>(STORAGE_KEYS.REFRESH_TOKEN) || apiClient.getRefreshToken();
+    if (!tokenToUse) {
+      clearAuthState(true);
+      return;
+    }
+    isRefreshing.current = true;
 
-      apiService.auth
-        .refresh(_currentToken)
-        .then((refreshResult: ApiResult<{ accessToken: string }>) => {
-          if (refreshResult.success) {
-            const newToken = refreshResult.data.accessToken;
-            apiClient.setAccessToken(newToken);
-            storage.set(STORAGE_KEYS.ACCESS_TOKEN, newToken);
-
-            return apiService.auth.getMe().then((meResult: ApiResult<AuthUser>) => {
-              if (meResult.success) {
-                storage.set(STORAGE_KEYS.USER, meResult.data);
-                setState({
-                  user: meResult.data,
-                  accessToken: newToken,
-                  isAuthenticated: true,
-                  isLoading: false,
-                });
-              } else {
-                clearAuthState(true);
-              }
-            });
-          } else {
-            clearAuthState(true);
+    apiService.auth
+      .refresh(tokenToUse)
+      .then((refreshResult: ApiResult<{ accessToken: string; refreshToken?: string }>) => {
+        if (refreshResult.success) {
+          const newToken = refreshResult.data.accessToken;
+          apiClient.setAccessToken(newToken);
+          storage.set(STORAGE_KEYS.ACCESS_TOKEN, newToken);
+          if (refreshResult.data.refreshToken) {
+            apiClient.setRefreshToken(refreshResult.data.refreshToken);
+            storage.set(STORAGE_KEYS.REFRESH_TOKEN, refreshResult.data.refreshToken);
           }
-        })
-        .catch(() => {
+
+          return apiService.auth.getMe().then((meResult: ApiResult<AuthUser>) => {
+            if (meResult.success) {
+              storage.set(STORAGE_KEYS.USER, meResult.data);
+              setState({
+                user: meResult.data,
+                accessToken: newToken,
+                isAuthenticated: true,
+                isLoading: false,
+              });
+            } else {
+              clearAuthState(true);
+            }
+          });
+        } else {
           clearAuthState(true);
-        })
-        .finally(() => {
-          isRefreshing.current = false;
-        });
-    },
-    [clearAuthState],
-  );
+        }
+      })
+      .catch(() => {
+        clearAuthState(true);
+      })
+      .finally(() => {
+        isRefreshing.current = false;
+      });
+  }, [clearAuthState]);
 
   // ── Session Initialization (validate existing token on mount) ──
   useEffect(() => {
@@ -173,7 +186,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     const savedToken = storage.get<string>(STORAGE_KEYS.ACCESS_TOKEN);
-    if (!savedToken) return;
+    const savedRefreshToken = storage.get<string>(STORAGE_KEYS.REFRESH_TOKEN);
+    if (!savedToken && !savedRefreshToken) return;
 
     apiService.auth
       .getMe()
@@ -187,11 +201,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
             isLoading: false,
           });
         } else {
-          handleTokenRefresh(savedToken);
+          handleTokenRefresh();
         }
       })
       .catch(() => {
-        clearAuthState(true);
+        handleTokenRefresh();
       });
   }, [clearAuthState, handleTokenRefresh]);
 
