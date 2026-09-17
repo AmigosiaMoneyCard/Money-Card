@@ -242,7 +242,6 @@ function usePeakPageData() {
     () => getPeakPresetDates('thisMonth').endDate,
   );
 
-  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [demandSortBy, setDemandSortBy] = useState<'REVENUE' | 'ORDERS'>('REVENUE');
   const [isExporting, setIsExporting] = useState(false);
 
@@ -380,31 +379,10 @@ function usePeakPageData() {
       });
   }, [data?.productDemand]);
 
-  const categories = useMemo(() => {
-    const set = new Set<string>();
-    productDemand.forEach((p) => {
-      const cats = (p as any)._categoryList || extractProductCategories(p.category);
-      cats.forEach((c: string) => {
-        if (c && c.toLowerCase() !== 'general food') {
-          set.add(c);
-        }
-      });
-    });
-    STANDARD_FOOD_CATEGORIES.forEach((cat) => set.add(cat));
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [productDemand]);
-
   const filteredProducts = useMemo(() => {
     if (!productDemand) return [];
-    let items = productDemand;
-    if (selectedCategory !== 'ALL') {
-      items = items.filter((p) => {
-        const cats = (p as any)._categoryList || extractProductCategories(p.category);
-        return matchesFoodCategory(cats, selectedCategory);
-      });
-    }
-    return sortProductDemand(items, demandSortBy);
-  }, [productDemand, selectedCategory, demandSortBy]);
+    return sortProductDemand(productDemand, demandSortBy);
+  }, [productDemand, demandSortBy]);
 
   const getPeakReportOptions = (overrideSections?: Partial<PeakPdfSectionOptions>) => {
     if (!data) return null;
@@ -422,10 +400,7 @@ function usePeakPageData() {
         productDemand: filteredProducts,
       },
       selectedBranchName,
-      dateRangeLabel:
-        selectedCategory !== 'ALL'
-          ? `${baseLabel} (${sortLabel}, Category: ${selectedCategory})`
-          : `${baseLabel} (${sortLabel})`,
+      dateRangeLabel: `${baseLabel} (${sortLabel})`,
       organizationName: 'Money Card Cafeteria',
       sections: overrideSections ?? pdfSections,
     };
@@ -524,8 +499,6 @@ function usePeakPageData() {
     setCustomStartDate,
     customEndDate,
     setCustomEndDate,
-    selectedCategory,
-    setSelectedCategory,
     demandSortBy,
     setDemandSortBy,
     isExporting,
@@ -542,7 +515,6 @@ function usePeakPageData() {
     handleSetAllSections,
     handleViewPdf,
     handleDownloadPdf,
-    categories,
     filteredProducts,
     selectBranch,
   };
@@ -889,9 +861,6 @@ interface PeakFilterToolbarProps {
   allBranches: Branch[];
   selectedDateRange: TimeWindowPreset;
   handlePresetChange: (preset: TimeWindowPreset) => void;
-  selectedCategory: string;
-  setSelectedCategory: (cat: string) => void;
-  categories: string[];
   customStartDate: string;
   setCustomStartDate: (d: string) => void;
   customEndDate: string;
@@ -908,9 +877,6 @@ function PeakFilterToolbar({
   allBranches,
   selectedDateRange,
   handlePresetChange,
-  selectedCategory,
-  setSelectedCategory,
-  categories,
   customStartDate,
   setCustomStartDate,
   customEndDate,
@@ -922,7 +888,7 @@ function PeakFilterToolbar({
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 flex-1">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 flex-1">
           <div>
             <label htmlFor="peak-branch-scope" className="text-xs font-semibold text-slate-600 block mb-1.5">
               Counter Scope
@@ -956,21 +922,6 @@ function PeakFilterToolbar({
                 { value: 'last7', label: 'Last 7 Days' },
                 { value: 'last30', label: 'Last 30 Days' },
                 { value: 'custom', label: 'Custom Range' },
-              ]}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="peak-food-category" className="text-xs font-semibold text-slate-600 block mb-1.5">
-              Food Category
-            </label>
-            <Select
-              id="peak-food-category"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              options={[
-                { value: 'ALL', label: 'All Food Categories' },
-                ...categories.map((c) => ({ value: c, label: c })),
               ]}
             />
           </div>
@@ -1033,29 +984,20 @@ function PeakFilterToolbar({
 
 interface PeakFoodDemandSectionProps {
   filteredProducts: ProductDemandMetric[];
-  selectedCategory: string;
   demandSortBy: 'REVENUE' | 'ORDERS';
   setDemandSortBy: (sort: 'REVENUE' | 'ORDERS') => void;
-  setSelectedCategory: (cat: string) => void;
 }
 
 function PeakFoodDemandSection({
   filteredProducts,
-  selectedCategory,
   demandSortBy,
   setDemandSortBy,
-  setSelectedCategory,
 }: PeakFoodDemandSectionProps) {
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2.5">
           <h2 className="text-lg font-bold text-slate-900">Top Food & Item Demand</h2>
-          {selectedCategory !== 'ALL' && (
-            <Badge variant="info" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs">
-              Filtered: {selectedCategory} ({filteredProducts.length})
-            </Badge>
-          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
@@ -1085,12 +1027,6 @@ function PeakFoodDemandSection({
               Order Wise
             </button>
           </div>
-
-          {selectedCategory !== 'ALL' && (
-            <Button variant="ghost" size="sm" onClick={() => setSelectedCategory('ALL')}>
-              Reset Category Filter
-            </Button>
-          )}
         </div>
       </div>
 
@@ -1128,8 +1064,6 @@ export function PeakPage() {
     setCustomStartDate,
     customEndDate,
     setCustomEndDate,
-    selectedCategory,
-    setSelectedCategory,
     demandSortBy,
     setDemandSortBy,
     isExporting,
@@ -1146,7 +1080,6 @@ export function PeakPage() {
     handleSetAllSections,
     handleViewPdf,
     handleDownloadPdf,
-    categories,
     filteredProducts,
     selectBranch,
   } = usePeakPageData();
@@ -1196,9 +1129,6 @@ export function PeakPage() {
         allBranches={allBranches}
         selectedDateRange={selectedDateRange}
         handlePresetChange={handlePresetChange}
-        selectedCategory={selectedCategory}
-        setSelectedCategory={setSelectedCategory}
-        categories={categories}
         customStartDate={customStartDate}
         setCustomStartDate={setCustomStartDate}
         customEndDate={customEndDate}
@@ -1224,10 +1154,8 @@ export function PeakPage() {
 
           <PeakFoodDemandSection
             filteredProducts={filteredProducts}
-            selectedCategory={selectedCategory}
             demandSortBy={demandSortBy}
             setDemandSortBy={setDemandSortBy}
-            setSelectedCategory={setSelectedCategory}
           />
         </div>
       ) : null}
