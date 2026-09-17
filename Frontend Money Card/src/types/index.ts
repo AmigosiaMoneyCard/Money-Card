@@ -104,6 +104,8 @@ export type {
   ProductDemandMetric,
   PeakPeriodComparison,
   PeakAnalyticsOverview,
+  CardFleetAnalytics,
+  CardFleetTrackItem,
 } from './analytics';
 
 export type {

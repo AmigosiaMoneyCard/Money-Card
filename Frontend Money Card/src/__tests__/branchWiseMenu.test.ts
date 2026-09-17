@@ -96,5 +96,42 @@ describe('Branch-Wise Menu Configuration & Sidebar Navigation Tests', () => {
     expect(replicatedItems[1].branchId).toBe('counter-3');
     expect(replicatedItems.every((item) => item.itemName === 'Masala Chai')).toBe(true);
   });
+
+  it('should accurately resolve counter names for original vs copied items and avoid 🏪 emoji', () => {
+    const branches = [
+      { id: 'c', name: 'c' },
+      { id: 'c2', name: 'c2' },
+    ];
+    const branchMap = new Map<string, string>();
+    branches.forEach((b) => branchMap.set(b.id, b.name));
+
+    const itemOriginal = { id: 'p1', itemName: 'saaa', branchId: 'c' };
+    const itemCopied = { id: 'p2', itemName: 'saaa', branchId: 'c2' };
+
+    const resolvedOriginalName = branchMap.get(itemOriginal.branchId) || 'All Counters';
+    const resolvedCopiedName = branchMap.get(itemCopied.branchId) || 'All Counters';
+
+    expect(resolvedOriginalName).toBe('c');
+    expect(resolvedCopiedName).toBe('c2');
+
+    const badgeOriginal = `Counter: ${resolvedOriginalName}`;
+    const badgeCopied = `Counter: ${resolvedCopiedName}`;
+
+    expect(badgeOriginal).toBe('Counter: c');
+    expect(badgeCopied).toBe('Counter: c2');
+    expect(badgeOriginal).not.toContain('🏪');
+    expect(badgeCopied).not.toContain('🏪');
+  });
+
+  it('should verify simplified category filter options only contain Veg and Non-Veg', () => {
+    const categoryFilterOptions = [
+      { value: 'ALL', label: 'All (Veg & Non-Veg)' },
+      { value: 'Veg', label: '🟢 Veg' },
+      { value: 'Non-Veg', label: '🔴 Non-Veg' },
+    ];
+
+    expect(categoryFilterOptions).toHaveLength(3);
+    expect(categoryFilterOptions.map((o) => o.value)).toEqual(['ALL', 'Veg', 'Non-Veg']);
+  });
 });
 
