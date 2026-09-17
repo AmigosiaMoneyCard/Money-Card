@@ -28,6 +28,7 @@ import {
   Trash2,
   Search,
   Building2,
+  Copy,
 } from 'lucide-react';
 
 export interface InventoryItemWithDetails extends InventoryItem {
@@ -130,7 +131,7 @@ function ProductsMetricsCards({ metrics }: { metrics: ProductsMetrics }) {
   );
 }
 
-interface ProductCounterModalProps {
+interface ProductCopyCounterModalProps {
   isOpen: boolean;
   onClose: () => void;
   product: UnifiedProductItem | null;
@@ -138,25 +139,29 @@ interface ProductCounterModalProps {
   onUpdated: () => void;
 }
 
-function ProductCounterModal({
+function ProductCopyCounterModal({
   isOpen,
   onClose,
   product,
   branches,
   onUpdated,
-}: ProductCounterModalProps) {
-  const [mode, setMode] = useState<'move' | 'copy'>('move');
-  const [targetBranchId, setTargetBranchId] = useState('');
+}: ProductCopyCounterModalProps) {
+  const [selectedBranchIds, setSelectedBranchIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
+  // Exclude current counter from target choices
+  const availableTargetCounters = useMemo(() => {
+    if (!product) return [];
+    return branches.filter((b) => b.id !== product.branchId);
+  }, [branches, product]);
+
   useEffect(() => {
-    if (isOpen && product) {
-      setMode('move');
-      setTargetBranchId(product.branchId || '');
+    if (isOpen) {
+      setSelectedBranchIds([]);
       setApiError(null);
     }
-  }, [isOpen, product]);
+  }, [isOpen]);
 
   if (!product) return null;
 
@@ -165,40 +170,51 @@ function ProductCounterModal({
     product.branchName ||
     'All Counters (Global Menu)';
 
+  const handleToggleBranch = (id: string) => {
+    setSelectedBranchIds((prev) =>
+      prev.includes(id) ? prev.filter((bId) => bId !== id) : [...prev, id],
+    );
+  };
+
+  const handleToggleAll = () => {
+    if (selectedBranchIds.length === availableTargetCounters.length) {
+      setSelectedBranchIds([]);
+    } else {
+      setSelectedBranchIds(availableTargetCounters.map((b) => b.id));
+    }
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (selectedBranchIds.length === 0) return;
     setApiError(null);
     setIsSubmitting(true);
 
     try {
-      const targetName =
-        targetBranchId === ''
-          ? 'All Counters (Global Menu)'
-          : branches.find((b) => b.id === targetBranchId)?.name || 'selected counter';
+      const results = await Promise.allSettled(
+        selectedBranchIds.map((targetBranchId) =>
+          apiService.products.createProduct({
+            itemName: product.itemName,
+            price: product.price,
+            category: product.category,
+            branchId: targetBranchId,
+            status: 'ACTIVE',
+          }),
+        ),
+      );
 
-      if (mode === 'move') {
-        const res = await apiService.products.updateProduct(product.id, {
-          branchId: targetBranchId || '',
-        });
-        if (!res.success) {
-          setApiError(res.error.message || 'Failed to reassign counter');
-          return;
-        }
-        notify.success(`Moved "${product.itemName}" to ${targetName}`);
-      } else {
-        const res = await apiService.products.createProduct({
-          itemName: product.itemName,
-          price: product.price,
-          category: product.category,
-          branchId: targetBranchId || undefined,
-          status: 'ACTIVE',
-        });
-        if (!res.success) {
-          setApiError(res.error.message || 'Failed to copy item to counter');
-          return;
-        }
-        notify.success(`Copied "${product.itemName}" to ${targetName}`);
+      const successCount = results.filter(
+        (r) => r.status === 'fulfilled' && r.value.success,
+      ).length;
+
+      if (successCount === 0) {
+        setApiError('Failed to copy item to selected counter(s). Please try again.');
+        return;
       }
+
+      notify.success(
+        `Copied "${product.itemName}" to ${successCount} counter${successCount > 1 ? 's' : ''}`,
+      );
       onClose();
       onUpdated();
     } catch {
@@ -208,11 +224,15 @@ function ProductCounterModal({
     }
   };
 
+  const allSelected =
+    availableTargetCounters.length > 0 &&
+    selectedBranchIds.length === availableTargetCounters.length;
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={() => !isSubmitting && onClose()}
-      title="Counter Assignment & Sharing"
+      title="Copy Item to Other Counters"
       size="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -242,65 +262,87 @@ function ProductCounterModal({
           </div>
         </div>
 
-        {/* Mode Switcher Tabs */}
-        <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
-          <button
-            type="button"
-            onClick={() => setMode('move')}
-            className={`py-2 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-              mode === 'move'
-                ? 'bg-white text-emerald-700 shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <span>🔄 Move Counter</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('copy')}
-            className={`py-2 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-              mode === 'copy'
-                ? 'bg-white text-emerald-700 shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <span>📋 Copy to Counter</span>
-          </button>
-        </div>
+        {/* Available Counters Section */}
+        {availableTargetCounters.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-xs text-slate-500">
+            <p>No other counters available in this organization to copy to.</p>
+            <p className="mt-1 text-slate-400">
+              Create additional counters in <strong>Branches</strong> to enable multi-counter sharing.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-slate-700">
+                Select target counter(s) to copy to:
+              </label>
+              <button
+                type="button"
+                onClick={handleToggleAll}
+                disabled={isSubmitting}
+                className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 cursor-pointer transition-colors"
+              >
+                {allSelected ? 'Deselect All' : `Select All (${availableTargetCounters.length})`}
+              </button>
+            </div>
 
-        {/* Explanatory text */}
-        <p className="text-xs text-slate-600 leading-relaxed">
-          {mode === 'move'
-            ? `Transfer "${product.itemName}" to another counter. It will no longer appear on ${currentCounterName}.`
-            : `Duplicate "${product.itemName}" to another counter. It will be available at both ${currentCounterName} and the new counter.`}
-        </p>
+            <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+              {availableTargetCounters.map((b) => {
+                const isSelected = selectedBranchIds.includes(b.id);
+                return (
+                  <label
+                    key={b.id}
+                    className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                      isSelected
+                        ? 'border-emerald-500 bg-emerald-50/50 shadow-2xs'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleBranch(b.id)}
+                        disabled={isSubmitting}
+                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                      />
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-3.5 w-3.5 text-slate-400" />
+                        <span className="text-xs font-bold text-slate-800">{b.name}</span>
+                      </div>
+                    </div>
+                    <span
+                      className={`text-[11px] font-medium ${
+                        isSelected ? 'text-emerald-600 font-semibold' : 'text-slate-400'
+                      }`}
+                    >
+                      {isSelected ? '✓ Selected' : '+ Add'}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
 
-        {/* Counter Dropdown */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-            {mode === 'move' ? 'New Assigned Counter' : 'Target Counter for Copy'}
-          </label>
-          <select
-            value={targetBranchId}
-            onChange={(e) => setTargetBranchId(e.target.value)}
-            disabled={isSubmitting}
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden cursor-pointer"
-          >
-            <option value="">All Counters (Global Menu)</option>
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
-        </div>
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              💡 Replicating this item will make it available on the selected counters with its own independent stock tracking.
+            </p>
+          </div>
+        )}
 
         <ModalFooter>
           <Button variant="ghost" type="button" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button variant="primary" type="submit" isLoading={isSubmitting}>
-            {mode === 'move' ? 'Confirm Counter Move' : 'Duplicate Item to Counter'}
+          <Button
+            variant="primary"
+            type="submit"
+            disabled={selectedBranchIds.length === 0 || isSubmitting}
+            isLoading={isSubmitting}
+            leftIcon={<Copy className="h-3.5 w-3.5" />}
+          >
+            {selectedBranchIds.length > 0
+              ? `Copy to ${selectedBranchIds.length} Counter${selectedBranchIds.length > 1 ? 's' : ''}`
+              : 'Select Counters to Copy'}
           </Button>
         </ModalFooter>
       </form>
@@ -996,10 +1038,10 @@ function useProductsPageColumns(
                 size="sm"
                 className="text-xs h-7 px-2 text-slate-700 hover:text-emerald-700 hover:border-emerald-300"
                 onClick={() => onOpenCounter(p)}
-                leftIcon={<Building2 className="h-3 w-3 text-emerald-600" />}
-                title="Move or copy this item to another counter"
+                leftIcon={<Copy className="h-3 w-3 text-emerald-600" />}
+                title="Copy this menu item to other counters"
               >
-                Counter
+                Copy to Counter
               </Button>
             )}
 
@@ -1141,9 +1183,9 @@ function ProductsPageTableContent({
                   size="sm"
                   className="w-full text-xs py-1.5 justify-center text-slate-700"
                   onClick={() => onOpenCounter(p)}
-                  leftIcon={<Building2 className="h-3.5 w-3.5 text-emerald-600" />}
+                  leftIcon={<Copy className="h-3.5 w-3.5 text-emerald-600" />}
                 >
-                  Counter
+                  Copy to Counter
                 </Button>
               )}
 
@@ -1304,7 +1346,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
         />
       </Card>
 
-      <ProductCounterModal
+      <ProductCopyCounterModal
         isOpen={pageData.showCounterModal}
         onClose={() => pageData.setShowCounterModal(false)}
         product={pageData.selectedProductForCounter}
