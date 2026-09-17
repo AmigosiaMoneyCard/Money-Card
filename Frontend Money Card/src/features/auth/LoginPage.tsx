@@ -61,7 +61,7 @@ export function LoginPage() {
           return;
         }
 
-        const { user, accessToken } = result.data;
+        const { user, accessToken, refreshToken } = result.data;
 
         // M3 Web authentication is for SUPER_ADMIN and ORG_ADMIN only.
         // Staff uses Flutter app. Reject Staff login here.
@@ -70,7 +70,7 @@ export function LoginPage() {
           return;
         }
 
-        login(user, accessToken);
+        login(user, accessToken, refreshToken);
 
         // If user must change temporary password, redirect immediately to /change-password
         if (user.mustChangePassword) {

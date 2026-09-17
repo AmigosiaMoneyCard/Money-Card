@@ -101,11 +101,12 @@ export async function login(req: Request, res: Response) {
   const accessToken = generateAccessToken(tokenPayload);
   const refreshToken = generateRefreshToken(tokenPayload);
 
+  const isProd = process.env.NODE_ENV === 'production';
   // Set HTTP-only cookie for refresh token
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 
@@ -170,6 +171,7 @@ export async function refresh(req: Request, res: Response) {
   return sendSuccess(res, {
     token: newAccessToken,
     accessToken: newAccessToken,
+    refreshToken: token,
   });
 }
 
@@ -414,7 +416,12 @@ export async function changePassword(req: Request, res: Response) {
 }
 
 export async function logout(_req: Request, res: Response) {
-  res.clearCookie('refreshToken');
+  const isProd = process.env.NODE_ENV === 'production';
+  res.clearCookie('refreshToken', {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
+  });
   return sendSuccess(res, { message: 'Logged out successfully' });
 }
 
@@ -570,10 +577,11 @@ export async function activateAccount(req: Request, res: Response) {
   const accessToken = generateAccessToken(tokenPayload);
   const refreshToken = generateRefreshToken(tokenPayload);
 
+  const isProd = process.env.NODE_ENV === 'production';
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
