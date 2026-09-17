@@ -1,7 +1,7 @@
 // ─── Products & Inventory Unified Hub (Org Admin) ──────────────────────────
 // Merged single view: Product catalog, live branch stock, pricing, and adjustments.
 
-import { useState, useEffect, useCallback, useMemo, type FormEvent } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, type FormEvent } from 'react';
 import { apiService } from '@/services/api';
 import { useBranch, usePermissions } from '@/hooks';
 import type { ProductWithInventory, Branch, InventoryItem } from '@/types';
@@ -20,7 +20,6 @@ import {
 import { notify, formatCurrency } from '@/utils';
 import { UnauthorizedPage } from '@/features/auth';
 import { DataTable, type Column } from '@/components/tables';
-import { CategorySelector } from './CategorySelector';
 import {
   Package,
   Plus,
@@ -156,9 +155,9 @@ function ProductsCreateModal({
   useEffect(() => {
     if (isOpen) {
       setFormItemName('');
-      setFormCategories([]);
+      setFormCategories(['Veg']);
       setFormPrice('');
-      setFormBranchId(currentBranch?.id || branches[0]?.id || '');
+      setFormBranchId(currentBranch?.id || '');
       setFormStatus('ACTIVE');
       setFormErrors({});
       setModalApiError(null);
@@ -169,12 +168,9 @@ function ProductsCreateModal({
     const errs: Record<string, string> = {};
     if (!formItemName.trim()) errs.itemName = 'Product name is required';
     if (formItemName.trim().length > 40) errs.itemName = 'Product name must be 40 characters or less';
-    if (!formCategories || formCategories.length === 0) errs.categories = 'Select at least one category';
 
     const priceNum = parseFloat(formPrice);
     if (isNaN(priceNum) || priceNum <= 0) errs.price = 'Price must be greater than 0';
-
-    if (!formBranchId) errs.branchId = 'Select a cafeteria';
 
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
@@ -190,9 +186,9 @@ function ProductsCreateModal({
     try {
       const res = await apiService.products.createProduct({
         itemName: formItemName.trim(),
-        category: formCategories,
+        category: formCategories.length > 0 ? formCategories : ['Veg'],
         price: Math.round(parseFloat(formPrice)),
-        branchId: formBranchId,
+        branchId: formBranchId || undefined,
         status: formStatus,
       });
 
@@ -211,13 +207,21 @@ function ProductsCreateModal({
     }
   };
 
+  const QUICK_PILLS = [
+    { val: 'Veg', label: '🟢 Veg' },
+    { val: 'Non-Veg', label: '🔴 Non-Veg' },
+    { val: 'Beverage', label: '☕ Drink' },
+    { val: 'Snack', label: '🍟 Snack' },
+    { val: 'Meal', label: '🍱 Meal' },
+    { val: 'Dessert', label: '🍰 Dessert' },
+  ];
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Create New Master Product"
-      description="Add a new item to catalog menu"
-      size="lg"
+      title="Add New Product"
+      size="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {modalApiError && (
@@ -232,7 +236,7 @@ function ProductsCreateModal({
 
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Product Name <span className="text-rose-500">*</span>
+            Item Name <span className="text-rose-500">*</span>
           </label>
           <Input
             placeholder="e.g. Masala Chai, Veg Burger, Cold Coffee"
@@ -245,11 +249,38 @@ function ProductsCreateModal({
         </div>
 
         <div>
-          <CategorySelector
-            selectedCategories={formCategories}
-            onChange={(cats) => setFormCategories(cats)}
-            error={formErrors.categories}
-          />
+          <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            Category
+          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            {QUICK_PILLS.map((cat) => {
+              const active = formCategories.includes(cat.val);
+              return (
+                <button
+                  key={cat.val}
+                  type="button"
+                  onClick={() => {
+                    if (cat.val === 'Veg') {
+                      setFormCategories((prev) => [...prev.filter((c) => c !== 'Veg' && c !== 'Non-Veg'), 'Veg']);
+                    } else if (cat.val === 'Non-Veg') {
+                      setFormCategories((prev) => [...prev.filter((c) => c !== 'Veg' && c !== 'Non-Veg'), 'Non-Veg']);
+                    } else if (active) {
+                      setFormCategories((prev) => prev.filter((c) => c !== cat.val));
+                    } else {
+                      setFormCategories((prev) => [...prev, cat.val]);
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                    active
+                      ? 'border-emerald-600 bg-emerald-50 text-emerald-800 shadow-2xs'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -270,25 +301,14 @@ function ProductsCreateModal({
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Cafeteria <span className="text-rose-500">*</span>
+              Canteen / Counter
             </label>
             <Select
               value={formBranchId}
               onChange={(e) => setFormBranchId(e.target.value)}
-              options={branches.map((b) => ({ value: b.id, label: b.name }))}
-              error={formErrors.branchId}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="create-product-status" className="block text-xs font-semibold text-slate-700 mb-1">Status</label>
-            <Select
-              id="create-product-status"
-              value={formStatus}
-              onChange={(e) => setFormStatus(e.target.value as 'ACTIVE' | 'INACTIVE')}
               options={[
-                { value: 'ACTIVE', label: 'Active' },
-                { value: 'INACTIVE', label: 'Inactive' },
+                { value: '', label: 'All Canteens & Counters (Recommended)' },
+                ...branches.map((b) => ({ value: b.id, label: b.name })),
               ]}
             />
           </div>
@@ -304,6 +324,167 @@ function ProductsCreateModal({
         </ModalFooter>
       </form>
     </Modal>
+  );
+}
+
+// ─── ⚡ Rapid Quick-Add Bar Component ────────────────────────────────────────
+interface QuickAddProductBarProps {
+  branches: Branch[];
+  currentBranchId: string;
+  onSuccess: () => void;
+}
+
+function QuickAddProductBar({
+  branches,
+  currentBranchId,
+  onSuccess,
+}: QuickAddProductBarProps) {
+  const [itemName, setItemName] = useState('');
+  const [price, setPrice] = useState('');
+  const [isVeg, setIsVeg] = useState(true);
+  const [selectedBranchId, setSelectedBranchId] = useState(currentBranchId || '');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const itemNameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setSelectedBranchId(currentBranchId || '');
+  }, [currentBranchId]);
+
+  const handleQuickAdd = async (e?: FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmedName = itemName.trim();
+    if (!trimmedName) {
+      notify.error('Please enter an item name');
+      itemNameInputRef.current?.focus();
+      return;
+    }
+    const numPrice = parseFloat(price);
+    if (isNaN(numPrice) || numPrice <= 0) {
+      notify.error('Please enter a valid price greater than 0');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await apiService.products.createProduct({
+        itemName: trimmedName,
+        price: Math.round(numPrice),
+        category: [isVeg ? 'Veg' : 'Non-Veg'],
+        branchId: selectedBranchId || undefined,
+        status: 'ACTIVE',
+      });
+
+      if (!res.success) {
+        notify.error(res.error.message || 'Failed to add product');
+        return;
+      }
+
+      notify.success(`"${trimmedName}" (₹${Math.round(numPrice)}) added to menu!`);
+      setItemName('');
+      setPrice('');
+      itemNameInputRef.current?.focus();
+      onSuccess();
+    } catch {
+      notify.error('Failed to add product. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-emerald-200/90 bg-gradient-to-r from-emerald-50/70 via-white to-emerald-50/40 p-4 shadow-xs">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white text-xs font-bold shadow-xs">
+            ⚡
+          </span>
+          <h3 className="text-sm font-bold text-slate-900">
+            Quick Add Menu Item
+          </h3>
+          <span className="text-xs text-slate-500 hidden sm:inline">
+            Type name & price, hit Enter to add items continuously
+          </span>
+        </div>
+      </div>
+
+      <form onSubmit={handleQuickAdd} className="grid grid-cols-1 gap-2.5 sm:grid-cols-12 sm:items-center">
+        {/* Item Name (5 cols) */}
+        <div className="sm:col-span-5">
+          <input
+            ref={itemNameInputRef}
+            type="text"
+            placeholder="Item name (e.g. Samosa, Masala Chai, Cold Coffee)"
+            value={itemName}
+            onChange={(e) => setItemName(e.target.value.slice(0, 40))}
+            maxLength={40}
+            disabled={isSubmitting}
+            className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
+          />
+        </div>
+
+        {/* Price (2 cols) */}
+        <div className="sm:col-span-2 relative">
+          <span className="absolute left-3 top-2 text-xs font-bold text-slate-400">₹</span>
+          <input
+            type="number"
+            step="1"
+            min="1"
+            placeholder="Price"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            disabled={isSubmitting}
+            className="w-full rounded-xl border border-slate-300 bg-white pl-7 pr-3 py-2 text-xs font-bold text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
+          />
+        </div>
+
+        {/* Veg / Non-Veg Toggle (2 cols) */}
+        <div className="sm:col-span-2">
+          <button
+            type="button"
+            onClick={() => setIsVeg(!isVeg)}
+            disabled={isSubmitting}
+            className={`w-full flex items-center justify-center gap-1.5 rounded-xl border py-2 px-3 text-xs font-bold transition-all cursor-pointer ${
+              isVeg
+                ? 'border-emerald-300 bg-emerald-100/70 text-emerald-800 hover:bg-emerald-100'
+                : 'border-rose-300 bg-rose-100/70 text-rose-800 hover:bg-rose-100'
+            }`}
+            title="Click to toggle Veg / Non-Veg"
+          >
+            <span>{isVeg ? '🟢 Veg' : '🔴 Non-Veg'}</span>
+          </button>
+        </div>
+
+        {/* Canteen / Counter Selector (2 cols) */}
+        <div className="sm:col-span-2">
+          <select
+            value={selectedBranchId}
+            onChange={(e) => setSelectedBranchId(e.target.value)}
+            disabled={isSubmitting}
+            className="w-full rounded-xl border border-slate-300 bg-white px-2.5 py-2 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden cursor-pointer"
+          >
+            <option value="">All Counters</option>
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Submit Button (1 col) */}
+        <div className="sm:col-span-1">
+          <Button
+            type="submit"
+            variant="primary"
+            size="sm"
+            isLoading={isSubmitting}
+            className="w-full h-8.5 rounded-xl text-xs font-bold shadow-xs flex items-center justify-center"
+          >
+            + Add
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 }
 
@@ -1030,6 +1211,15 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
       </div>
 
       <ProductsMetricsCards metrics={pageData.metrics} />
+
+      {/* ─── ⚡ Rapid Quick-Add Bar ─── */}
+      {canManageProducts && (
+        <QuickAddProductBar
+          branches={pageData.branches}
+          currentBranchId={pageData.branchFilter !== 'ALL' ? pageData.branchFilter : ''}
+          onSuccess={pageData.fetchUnifiedData}
+        />
+      )}
 
       {/* ─── Filter & Search Bar ─── */}
       <Card padding="md">
