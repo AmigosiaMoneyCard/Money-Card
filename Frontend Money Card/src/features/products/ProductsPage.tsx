@@ -22,12 +22,12 @@ import { UnauthorizedPage } from '@/features/auth';
 import { DataTable, type Column } from '@/components/tables';
 import {
   Package,
-  Plus,
   AlertCircle,
   Power,
   Layers,
   Trash2,
   Search,
+  Building2,
 } from 'lucide-react';
 
 export interface InventoryItemWithDetails extends InventoryItem {
@@ -130,196 +130,177 @@ function ProductsMetricsCards({ metrics }: { metrics: ProductsMetrics }) {
   );
 }
 
-function ProductsCreateModal({
-  isOpen,
-  onClose,
-  branches,
-  currentBranch,
-  onCreated,
-}: {
+interface ProductCounterModalProps {
   isOpen: boolean;
   onClose: () => void;
+  product: UnifiedProductItem | null;
   branches: Branch[];
-  currentBranch: Branch | null;
-  onCreated: () => void;
-}) {
-  const [formItemName, setFormItemName] = useState('');
-  const [formCategories, setFormCategories] = useState<string[]>([]);
-  const [formPrice, setFormPrice] = useState('');
-  const [formBranchId, setFormBranchId] = useState('');
-  const [formStatus, setFormStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [modalApiError, setModalApiError] = useState<string | null>(null);
+  onUpdated: () => void;
+}
+
+function ProductCounterModal({
+  isOpen,
+  onClose,
+  product,
+  branches,
+  onUpdated,
+}: ProductCounterModalProps) {
+  const [mode, setMode] = useState<'move' | 'copy'>('move');
+  const [targetBranchId, setTargetBranchId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isOpen) {
-      setFormItemName('');
-      setFormCategories(['Veg']);
-      setFormPrice('');
-      setFormBranchId(currentBranch?.id || '');
-      setFormStatus('ACTIVE');
-      setFormErrors({});
-      setModalApiError(null);
+    if (isOpen && product) {
+      setMode('move');
+      setTargetBranchId(product.branchId || '');
+      setApiError(null);
     }
-  }, [isOpen, currentBranch, branches]);
+  }, [isOpen, product]);
 
-  const validateProductForm = () => {
-    const errs: Record<string, string> = {};
-    if (!formItemName.trim()) errs.itemName = 'Product name is required';
-    if (formItemName.trim().length > 40) errs.itemName = 'Product name must be 40 characters or less';
+  if (!product) return null;
 
-    const priceNum = parseFloat(formPrice);
-    if (isNaN(priceNum) || priceNum <= 0) errs.price = 'Price must be greater than 0';
-
-    setFormErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
+  const currentCounterName =
+    branches.find((b) => b.id === product.branchId)?.name ||
+    product.branchName ||
+    'All Counters (Global Menu)';
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!validateProductForm()) return;
-
-    setModalApiError(null);
+    setApiError(null);
     setIsSubmitting(true);
 
     try {
-      const res = await apiService.products.createProduct({
-        itemName: formItemName.trim(),
-        category: formCategories.length > 0 ? formCategories : ['Veg'],
-        price: Math.round(parseFloat(formPrice)),
-        branchId: formBranchId || undefined,
-        status: formStatus,
-      });
+      const targetName =
+        targetBranchId === ''
+          ? 'All Counters (Global Menu)'
+          : branches.find((b) => b.id === targetBranchId)?.name || 'selected counter';
 
-      if (!res.success) {
-        setModalApiError(res.error.message || 'Failed to create product');
-        return;
+      if (mode === 'move') {
+        const res = await apiService.products.updateProduct(product.id, {
+          branchId: targetBranchId || '',
+        });
+        if (!res.success) {
+          setApiError(res.error.message || 'Failed to reassign counter');
+          return;
+        }
+        notify.success(`Moved "${product.itemName}" to ${targetName}`);
+      } else {
+        const res = await apiService.products.createProduct({
+          itemName: product.itemName,
+          price: product.price,
+          category: product.category,
+          branchId: targetBranchId || undefined,
+          status: 'ACTIVE',
+        });
+        if (!res.success) {
+          setApiError(res.error.message || 'Failed to copy item to counter');
+          return;
+        }
+        notify.success(`Copied "${product.itemName}" to ${targetName}`);
       }
-
-      notify.success(`Product "${res.data.itemName}" created successfully`);
       onClose();
-      onCreated();
+      onUpdated();
     } catch {
-      setModalApiError('An unexpected error occurred. Please try again.');
+      setApiError('An unexpected error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const QUICK_PILLS = [
-    { val: 'Veg', label: '🟢 Veg' },
-    { val: 'Non-Veg', label: '🔴 Non-Veg' },
-    { val: 'Beverage', label: '☕ Drink' },
-    { val: 'Snack', label: '🍟 Snack' },
-    { val: 'Meal', label: '🍱 Meal' },
-    { val: 'Dessert', label: '🍰 Dessert' },
-  ];
-
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
-      title="Add New Product"
+      onClose={() => !isSubmitting && onClose()}
+      title="Counter Assignment & Sharing"
       size="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        {modalApiError && (
+        {apiError && (
           <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-700">
             <AlertCircle className="h-4 w-4 shrink-0 text-rose-500 mt-0.5" />
             <div className="space-y-1">
-              <p className="font-semibold">Creation Failed</p>
-              <p>{modalApiError}</p>
+              <p className="font-semibold">Action Failed</p>
+              <p>{apiError}</p>
             </div>
           </div>
         )}
 
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Item Name <span className="text-rose-500">*</span>
-          </label>
-          <Input
-            placeholder="e.g. Masala Chai, Veg Burger, Cold Coffee"
-            value={formItemName}
-            maxLength={40}
-            onChange={(e) => setFormItemName(e.target.value.slice(0, 40))}
-            error={formErrors.itemName}
-            autoFocus
-          />
+        {/* Item Summary Card */}
+        <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3.5 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <h4 className="font-bold text-slate-900 text-sm">{product.itemName}</h4>
+            <span className="font-mono text-emerald-700 font-bold text-sm">
+              {formatCurrency(product.price)}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <span>Currently assigned to:</span>
+            <span className="font-semibold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200">
+              🏪 {currentCounterName}
+            </span>
+          </div>
         </div>
 
+        {/* Mode Switcher Tabs */}
+        <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
+          <button
+            type="button"
+            onClick={() => setMode('move')}
+            className={`py-2 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              mode === 'move'
+                ? 'bg-white text-emerald-700 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <span>🔄 Move Counter</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('copy')}
+            className={`py-2 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              mode === 'copy'
+                ? 'bg-white text-emerald-700 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <span>📋 Copy to Counter</span>
+          </button>
+        </div>
+
+        {/* Explanatory text */}
+        <p className="text-xs text-slate-600 leading-relaxed">
+          {mode === 'move'
+            ? `Transfer "${product.itemName}" to another counter. It will no longer appear on ${currentCounterName}.`
+            : `Duplicate "${product.itemName}" to another counter. It will be available at both ${currentCounterName} and the new counter.`}
+        </p>
+
+        {/* Counter Dropdown */}
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-            Category
+            {mode === 'move' ? 'New Assigned Counter' : 'Target Counter for Copy'}
           </label>
-          <div className="flex flex-wrap items-center gap-2">
-            {QUICK_PILLS.map((cat) => {
-              const active = formCategories.includes(cat.val);
-              return (
-                <button
-                  key={cat.val}
-                  type="button"
-                  onClick={() => {
-                    if (cat.val === 'Veg') {
-                      setFormCategories((prev) => [...prev.filter((c) => c !== 'Veg' && c !== 'Non-Veg'), 'Veg']);
-                    } else if (cat.val === 'Non-Veg') {
-                      setFormCategories((prev) => [...prev.filter((c) => c !== 'Veg' && c !== 'Non-Veg'), 'Non-Veg']);
-                    } else if (active) {
-                      setFormCategories((prev) => prev.filter((c) => c !== cat.val));
-                    } else {
-                      setFormCategories((prev) => [...prev, cat.val]);
-                    }
-                  }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                    active
-                      ? 'border-emerald-600 bg-emerald-50 text-emerald-800 shadow-2xs'
-                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  {cat.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Selling Price (₹) <span className="text-rose-500">*</span>
-            </label>
-            <Input
-              type="number"
-              step="1"
-              min="0"
-              placeholder="e.g. ₹120.00"
-              value={formPrice}
-              onChange={(e) => setFormPrice(e.target.value)}
-              error={formErrors.price}
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Canteen / Counter
-            </label>
-            <Select
-              value={formBranchId}
-              onChange={(e) => setFormBranchId(e.target.value)}
-              options={[
-                { value: '', label: 'All Canteens & Counters (Recommended)' },
-                ...branches.map((b) => ({ value: b.id, label: b.name })),
-              ]}
-            />
-          </div>
+          <select
+            value={targetBranchId}
+            onChange={(e) => setTargetBranchId(e.target.value)}
+            disabled={isSubmitting}
+            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden cursor-pointer"
+          >
+            <option value="">All Counters (Global Menu)</option>
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <ModalFooter>
-          <Button variant="ghost" type="button" onClick={onClose}>
+          <Button variant="ghost" type="button" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
           <Button variant="primary" type="submit" isLoading={isSubmitting}>
-            Create Product
+            {mode === 'move' ? 'Confirm Counter Move' : 'Duplicate Item to Counter'}
           </Button>
         </ModalFooter>
       </form>
@@ -724,11 +705,17 @@ function useProductsPageData({ currentBranch }: UseProductsPageDataProps) {
   const [statusStockFilter, setStatusStockFilter] = useState('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
 
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCounterModal, setShowCounterModal] = useState(false);
+  const [selectedProductForCounter, setSelectedProductForCounter] = useState<UnifiedProductItem | null>(null);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedProductToDelete, setSelectedProductToDelete] = useState<UnifiedProductItem | null>(null);
   const [selectedInventory, setSelectedInventory] = useState<InventoryItemWithDetails | null>(null);
+
+  const handleOpenCounter = (product: UnifiedProductItem) => {
+    setSelectedProductForCounter(product);
+    setShowCounterModal(true);
+  };
 
   const fetchUnifiedData = useCallback(async () => {
     setLoadError(null);
@@ -887,8 +874,10 @@ function useProductsPageData({ currentBranch }: UseProductsPageDataProps) {
     setStatusStockFilter,
     categoryFilter,
     setCategoryFilter,
-    showCreateModal,
-    setShowCreateModal,
+    showCounterModal,
+    setShowCounterModal,
+    selectedProductForCounter,
+    handleOpenCounter,
     showAdjustModal,
     setShowAdjustModal,
     showDeleteModal,
@@ -951,6 +940,7 @@ function renderProductItemCategoryBadges(category: string | string[] | undefined
 function useProductsPageColumns(
   canManageProducts: boolean,
   onToggle: (p: UnifiedProductItem) => void,
+  onOpenCounter: (p: UnifiedProductItem) => void,
   onDelete: (p: UnifiedProductItem) => void,
 ): Column<UnifiedProductItem>[] {
   return useMemo(
@@ -1002,6 +992,19 @@ function useProductsPageColumns(
           <div className="flex items-center justify-end gap-1.5">
             {canManageProducts && (
               <Button
+                variant="outline"
+                size="sm"
+                className="text-xs h-7 px-2 text-slate-700 hover:text-emerald-700 hover:border-emerald-300"
+                onClick={() => onOpenCounter(p)}
+                leftIcon={<Building2 className="h-3 w-3 text-emerald-600" />}
+                title="Move or copy this item to another counter"
+              >
+                Counter
+              </Button>
+            )}
+
+            {canManageProducts && (
+              <Button
                 variant={p.status === 'ACTIVE' ? 'ghost' : 'outline'}
                 size="sm"
                 className="text-xs h-7 px-2.5"
@@ -1027,7 +1030,7 @@ function useProductsPageColumns(
         ),
       },
     ],
-    [canManageProducts, onToggle, onDelete],
+    [canManageProducts, onToggle, onOpenCounter, onDelete],
   );
 }
 
@@ -1041,7 +1044,7 @@ interface ProductsPageTableContentProps {
   statusStockFilter: string;
   canManageProducts: boolean;
   onRetry: () => void;
-  onOpenCreate: () => void;
+  onOpenCounter: (p: UnifiedProductItem) => void;
   onToggle: (p: UnifiedProductItem) => void;
   onDelete: (p: UnifiedProductItem) => void;
 }
@@ -1056,7 +1059,7 @@ function ProductsPageTableContent({
   statusStockFilter,
   canManageProducts,
   onRetry,
-  onOpenCreate,
+  onOpenCounter,
   onToggle,
   onDelete,
 }: ProductsPageTableContentProps) {
@@ -1080,18 +1083,11 @@ function ProductsPageTableContent({
     return (
       <div className="py-8">
         <EmptyState
-          title="No Products Found"
+          title="No Menu Items Found"
           description={
             searchQuery || statusStockFilter !== 'ALL' || categoryFilter !== 'ALL'
               ? 'No products matched your search or filters. Try adjusting them.'
-              : 'Create your first product to configure menu items and pricing.'
-          }
-          action={
-            canManageProducts ? (
-              <Button variant="primary" onClick={onOpenCreate}>
-                Create First Product
-              </Button>
-            ) : undefined
+              : 'Add your first menu item using the Quick Add Menu Item bar above.'
           }
         />
       </div>
@@ -1138,7 +1134,19 @@ function ProductsPageTableContent({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100">
+              {canManageProducts && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs py-1.5 justify-center text-slate-700"
+                  onClick={() => onOpenCounter(p)}
+                  leftIcon={<Building2 className="h-3.5 w-3.5 text-emerald-600" />}
+                >
+                  Counter
+                </Button>
+              )}
+
               {canManageProducts && (
                 <Button
                   variant={p.status === 'ACTIVE' ? 'ghost' : 'outline'}
@@ -1181,6 +1189,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
   const productColumns = useProductsPageColumns(
     canManageProducts,
     pageData.handleToggleStatus,
+    pageData.handleOpenCounter,
     pageData.handleOpenDelete,
   );
 
@@ -1193,21 +1202,11 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
       {/* ─── Page Header ─── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Products & Menu Catalog</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Menu</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Master food catalog, cafeteria menus, and instant price management.
+            Cafeteria menus, rapid item creation, and counter assignments.
           </p>
         </div>
-
-        {canManageProducts && (
-          <Button
-            variant="primary"
-            onClick={() => pageData.setShowCreateModal(true)}
-            leftIcon={<Plus className="h-4 w-4" />}
-          >
-            Add New Product
-          </Button>
-        )}
       </div>
 
       <ProductsMetricsCards metrics={pageData.metrics} />
@@ -1299,18 +1298,18 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
           statusStockFilter={pageData.statusStockFilter}
           canManageProducts={canManageProducts}
           onRetry={pageData.fetchUnifiedData}
-          onOpenCreate={() => pageData.setShowCreateModal(true)}
+          onOpenCounter={pageData.handleOpenCounter}
           onToggle={pageData.handleToggleStatus}
           onDelete={pageData.handleOpenDelete}
         />
       </Card>
 
-      <ProductsCreateModal
-        isOpen={pageData.showCreateModal}
-        onClose={() => pageData.setShowCreateModal(false)}
+      <ProductCounterModal
+        isOpen={pageData.showCounterModal}
+        onClose={() => pageData.setShowCounterModal(false)}
+        product={pageData.selectedProductForCounter}
         branches={pageData.branches}
-        currentBranch={currentBranch}
-        onCreated={pageData.fetchUnifiedData}
+        onUpdated={pageData.fetchUnifiedData}
       />
 
       <ProductsAdjustModal
