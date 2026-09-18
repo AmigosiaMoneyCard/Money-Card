@@ -137,10 +137,10 @@ export function buildOrgAnalyticsJsPdf({
     // Primary Financial Metrics (4 cards)
     const floatBal = analytics.cardFleetAnalytics?.totalFloatBalance ?? 0;
     const kpis = [
-      { label: 'Food Sales (POS)', val: formatPdfCurrency(analytics.totalPurchaseVolume) },
-      { label: 'Total Recharges', val: formatPdfCurrency(analytics.totalRechargeVolume) },
-      { label: 'Total Card Balance', val: formatPdfCurrency(floatBal) },
-      { label: 'Total Transactions', val: (analytics.totalTransactions ?? (analytics as any).transactionCount ?? 0).toLocaleString() },
+      { label: 'Food Sales (POS)', val: formatPdfCurrency(analytics.totalPurchaseVolume), sub: 'Gross cafeteria sales' },
+      { label: 'Total Recharges', val: formatPdfCurrency(analytics.totalRechargeVolume), sub: 'Total card deposits' },
+      { label: 'Total Card Balance', val: formatPdfCurrency(floatBal), sub: 'Money remaining on cards' },
+      { label: 'Total Transactions', val: (analytics.totalTransactions ?? (analytics as any).transactionCount ?? 0).toLocaleString(), sub: 'Total cafeteria activity' },
     ];
 
     const cardW = (contentWidth - 9) / 4;
@@ -148,20 +148,25 @@ export function buildOrgAnalyticsJsPdf({
       const x = margin + idx * (cardW + 3);
       doc.setFillColor(248, 250, 252);
       doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(x, curY + 4, cardW, 18, 2, 2, 'FD');
+      doc.roundedRect(x, curY + 4, cardW, 20, 2, 2, 'FD');
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
+      doc.setFontSize(7);
       doc.setTextColor(100, 116, 139);
-      doc.text(kpi.label, x + 3, curY + 10);
+      doc.text(kpi.label, x + 3, curY + 9.5);
 
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9.5);
+      doc.setFontSize(9);
       doc.setTextColor(15, 23, 42);
-      doc.text(kpi.val, x + 3, curY + 17);
+      doc.text(kpi.val, x + 3, curY + 15.5);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(kpi.sub, x + 3, curY + 20);
     });
 
-    curY += 27;
+    curY += 28;
   }
 
   // ── Section 2: Card Analytics ──
@@ -201,7 +206,7 @@ export function buildOrgAnalyticsJsPdf({
       {
         label: 'Inactive Cards',
         val: `${fleet?.dormantCardsCount ?? 0} Cards`,
-        sub: 'Unused balance > 2 days',
+        sub: 'Inactive cards but have balance in it',
       },
     ];
 
@@ -246,11 +251,27 @@ export function buildOrgAnalyticsJsPdf({
     const cashRecharge = analytics.cashRechargeVolume ?? 0;
     const upiRecharge = analytics.upiRechargeVolume ?? 0;
     const totalRefund = analytics.totalRefundVolume ?? 0;
+    const totalRechargeVol = cashRecharge + upiRecharge;
+
+    const cashPct = totalRechargeVol > 0 ? Math.round((cashRecharge / totalRechargeVol) * 100) : (totalRechargeVol === 0 && cashRecharge > 0 ? 100 : 0);
+    const upiPct = totalRechargeVol > 0 ? 100 - cashPct : 0;
 
     const paymentCards = [
-      { label: 'Cash Recharges', val: formatPdfCurrency(cashRecharge) },
-      { label: 'UPI Recharges', val: formatPdfCurrency(upiRecharge) },
-      { label: 'Cash Returned', val: formatPdfCurrency(totalRefund) },
+      {
+        label: 'Cash Recharges',
+        val: formatPdfCurrency(cashRecharge),
+        sub: `${cashPct}% of total recharges`,
+      },
+      {
+        label: 'UPI Recharges',
+        val: formatPdfCurrency(upiRecharge),
+        sub: `${upiPct}% of total recharges`,
+      },
+      {
+        label: 'Cash Returned',
+        val: formatPdfCurrency(totalRefund),
+        sub: 'Total refunded / returned to customers',
+      },
     ];
 
     const cardW3 = (contentWidth - 6) / 3;
@@ -258,7 +279,7 @@ export function buildOrgAnalyticsJsPdf({
       const x = margin + idx * (cardW3 + 3);
       doc.setFillColor(248, 250, 252);
       doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(x, curY + 3, cardW3, 15, 2, 2, 'FD');
+      doc.roundedRect(x, curY + 3, cardW3, 19, 2, 2, 'FD');
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(7);
@@ -269,9 +290,14 @@ export function buildOrgAnalyticsJsPdf({
       doc.setFontSize(9);
       doc.setTextColor(15, 23, 42);
       doc.text(card.val, x + 3, curY + 14);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(card.sub, x + 3, curY + 18.5);
     });
 
-    curY += 23;
+    curY += 27;
   }
 
   // ── Section 4: Counter Performance Comparison ──

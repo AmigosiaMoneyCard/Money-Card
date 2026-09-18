@@ -122,7 +122,7 @@ export function OrgAdminCardTracker({
             {inactiveCount.toLocaleString()}
           </p>
           <p className="mt-1 text-xs text-slate-500 leading-snug">
-            Unused balance &gt; 2 days
+            Inactive cards but have balance in it
           </p>
         </div>
       </Card>

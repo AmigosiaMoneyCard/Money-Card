@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   TrendingUp,
@@ -5,6 +6,7 @@ import {
   BarChart3,
   RefreshCw,
   CheckCircle2,
+  Check,
   AlertCircle,
   DollarSign,
   ArrowUpDown,
@@ -602,9 +604,11 @@ interface PdfModalProps {
   activeSectionsCount?: number;
   onToggleSection?: (sectionKey: keyof OrgPdfSectionOptions) => void;
   onSetAllSections?: (enable: boolean) => void;
-  onDownloadPdf: () => void;
+  onDownloadPdf?: () => void;
   onDownloadFinancial?: () => void;
   onDownloadCardAnalytics?: () => void;
+  onDownloadBoth?: () => void;
+  onPreviewSectionsChange?: (selected: { financial: boolean; cards: boolean }) => void;
 }
 
 export function OrgAdminPdfModal({
@@ -613,45 +617,216 @@ export function OrgAdminPdfModal({
   pdfPreviewUrl,
   onDownloadFinancial,
   onDownloadCardAnalytics,
+  onDownloadBoth,
+  onPreviewSectionsChange,
 }: PdfModalProps) {
+  const [selected, setSelected] = useState<{ financial: boolean; cards: boolean }>({
+    financial: true,
+    cards: true,
+  });
+
+  const toggleSection = (section: 'financial' | 'cards') => {
+    const updated = { ...selected, [section]: !selected[section] };
+    setSelected(updated);
+    if (onPreviewSectionsChange) {
+      onPreviewSectionsChange(updated);
+    }
+  };
+
+  const handleDownloadSelected = () => {
+    if (selected.financial && selected.cards) {
+      if (onDownloadBoth) {
+        onDownloadBoth();
+      } else if (onDownloadFinancial) {
+        onDownloadFinancial();
+      }
+    } else if (selected.financial) {
+      onDownloadFinancial?.();
+    } else if (selected.cards) {
+      onDownloadCardAnalytics?.();
+    }
+  };
+
+  const hasSelection = selected.financial || selected.cards;
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Analytics Report — PDF Preview" size="xl">
       <div className="space-y-4">
+        {/* ─── Top Section: 2 Clickable Checkbox Tiles ─── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Tile 1: Financial Overview */}
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => toggleSection('financial')}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleSection('financial');
+              }
+            }}
+            id="pdf-tile-financial"
+            className={`group relative flex items-center justify-between p-3.5 rounded-xl border-2 transition-all cursor-pointer select-none ${
+              selected.financial
+                ? 'border-emerald-500 bg-emerald-50/50 shadow-xs'
+                : 'border-slate-200 bg-slate-50/60 hover:border-slate-300 hover:bg-white text-slate-400'
+            }`}
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${
+                  selected.financial
+                    ? 'bg-emerald-600 border-emerald-600 text-white'
+                    : 'border-slate-300 bg-white'
+                }`}
+              >
+                {selected.financial && <Check className="h-3.5 w-3.5 stroke-[3]" />}
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`text-sm font-bold truncate ${
+                      selected.financial ? 'text-slate-900' : 'text-slate-500'
+                    }`}
+                  >
+                    Financial Overview
+                  </span>
+                  <span
+                    className={`text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0 ${
+                      selected.financial
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-slate-200 text-slate-500'
+                    }`}
+                  >
+                    7 Metrics
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 truncate mt-0.5">
+                  Food Sales, Recharges, Balances &amp; Payments
+                </p>
+              </div>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDownloadFinancial?.();
+              }}
+              disabled={!onDownloadFinancial}
+              leftIcon={<Download className="h-3.5 w-3.5" />}
+              className="shrink-0 ml-2 bg-white hover:bg-slate-50 text-xs py-1 px-2.5 shadow-2xs"
+              title="Download Financial Overview PDF directly"
+              id="tile-download-financial-btn"
+            >
+              Download
+            </Button>
+          </div>
+
+          {/* Tile 2: Card Analytics */}
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => toggleSection('cards')}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleSection('cards');
+              }
+            }}
+            id="pdf-tile-cards"
+            className={`group relative flex items-center justify-between p-3.5 rounded-xl border-2 transition-all cursor-pointer select-none ${
+              selected.cards
+                ? 'border-indigo-500 bg-indigo-50/50 shadow-xs'
+                : 'border-slate-200 bg-slate-50/60 hover:border-slate-300 hover:bg-white text-slate-400'
+            }`}
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${
+                  selected.cards
+                    ? 'bg-indigo-600 border-indigo-600 text-white'
+                    : 'border-slate-300 bg-white'
+                }`}
+              >
+                {selected.cards && <Check className="h-3.5 w-3.5 stroke-[3]" />}
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`text-sm font-bold truncate ${
+                      selected.cards ? 'text-slate-900' : 'text-slate-500'
+                    }`}
+                  >
+                    Card Analytics
+                  </span>
+                  <span
+                    className={`text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0 ${
+                      selected.cards
+                        ? 'bg-indigo-100 text-indigo-800'
+                        : 'bg-slate-200 text-slate-500'
+                    }`}
+                  >
+                    5 Metrics
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 truncate mt-0.5">
+                  Active, Settled, Blocked, Zero Balance &amp; Inactive
+                </p>
+              </div>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDownloadCardAnalytics?.();
+              }}
+              disabled={!onDownloadCardAnalytics}
+              leftIcon={<Download className="h-3.5 w-3.5" />}
+              className="shrink-0 ml-2 bg-white hover:bg-slate-50 text-xs py-1 px-2.5 shadow-2xs"
+              title="Download Card Analytics PDF directly"
+              id="tile-download-cards-btn"
+            >
+              Download
+            </Button>
+          </div>
+        </div>
+
+        {/* ─── PDF Preview Iframe ─── */}
         {pdfPreviewUrl && (
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-lg">
             <iframe
               src={`${pdfPreviewUrl}#toolbar=0`}
-              className="w-full h-[75vh] rounded-lg"
+              className="w-full h-[65vh] rounded-lg"
               title="Analytics Report PDF Preview"
             />
           </div>
         )}
 
+        {/* ─── Footer ─── */}
         <ModalFooter>
           <Button variant="outline" size="sm" onClick={onClose}>
             Close
           </Button>
           <div className="flex items-center gap-2 ml-auto">
-            <span className="text-xs text-slate-500 font-medium">Download by section:</span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onDownloadFinancial}
-              disabled={!onDownloadFinancial}
-              leftIcon={<Download className="h-3.5 w-3.5" />}
-              id="download-financial-pdf-btn"
-            >
-              Financial Overview
-            </Button>
             <Button
               variant="primary"
               size="sm"
-              onClick={onDownloadCardAnalytics}
-              disabled={!onDownloadCardAnalytics}
+              onClick={handleDownloadSelected}
+              disabled={!hasSelection}
               leftIcon={<Download className="h-3.5 w-3.5" />}
-              id="download-card-analytics-pdf-btn"
+              id="download-selected-pdf-btn"
             >
-              Card Analytics
+              {selected.financial && selected.cards
+                ? 'Download Selected (Both)'
+                : selected.financial
+                ? 'Download Financial Overview'
+                : selected.cards
+                ? 'Download Card Analytics'
+                : 'Select a Section'}
             </Button>
           </div>
         </ModalFooter>
