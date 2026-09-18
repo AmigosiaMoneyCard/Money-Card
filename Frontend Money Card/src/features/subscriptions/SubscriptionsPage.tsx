@@ -32,12 +32,9 @@ import { notify, formatDate, formatCurrency } from '@/utils';
 import { AdminPlansSubscriptionsView } from './AdminPlansSubscriptionsView';
 import { UnauthorizedPage } from '@/features/auth';
 import {
-  CreditCard,
   Check,
   RefreshCw,
   AlertCircle,
-  Building2,
-  Users,
   Send,
   Clock,
   ChevronDown,
@@ -111,7 +108,7 @@ function OrgAdminSubscriptionsView() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Collapsible Dropdown Sections
-  const [isPlansOpen, setIsPlansOpen] = useState(false);
+  const [isPlansOpen, setIsPlansOpen] = useState(true);
 
   // ── Fetch Organization Subscription Data ───────────────────
   const fetchOrgSubscriptionData = useCallback(async () => {
@@ -408,7 +405,7 @@ function OrgAdminSubscriptionsView() {
           <Card>
             <CardHeader
               title={`Current Plan: ${currentPlan?.name || 'Active Subscription'}`}
-              description={`${branchLimit} Counters • ${staffLimit} Staff • ${cardLimit} Cards`}
+              description="Active subscription and billing details"
               action={
                 <Badge
                   variant={
@@ -453,66 +450,6 @@ function OrgAdminSubscriptionsView() {
                   </p>
                 </div>
               </div>
-
-              {/* Real-Time Usage Bars */}
-              <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
-                {/* Branches */}
-                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1.5 text-slate-600">
-                      <Building2 className="h-4 w-4 text-emerald-600" />
-                      Branch Locations
-                    </span>
-                    <span className="font-mono font-bold text-slate-900">
-                      {branchUsage} / {branchLimit}
-                    </span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className="h-full bg-emerald-600 transition-all duration-300"
-                      style={{ width: `${Math.min((branchUsage / branchLimit) * 100, 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Staff Accounts */}
-                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1.5 text-slate-600">
-                      <Users className="h-4 w-4 text-teal-600" />
-                      Staff Accounts
-                    </span>
-                    <span className="font-mono font-bold text-slate-900">
-                      {staffUsage} / {staffLimit}
-                    </span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className="h-full bg-teal-600 transition-all duration-300"
-                      style={{ width: `${Math.min((staffUsage / staffLimit) * 100, 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Active Cards */}
-                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1.5 text-slate-600">
-                      <CreditCard className="h-4 w-4 text-sky-600" />
-                      Active Cards
-                    </span>
-                    <span className="font-mono font-bold text-slate-900">
-                      {cardUsage} / {cardLimit}
-                    </span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className="h-full bg-sky-500 transition-all duration-300"
-                      style={{ width: `${Math.min((cardUsage / cardLimit) * 100, 100)}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
             </CardContent>
           </Card>
 
@@ -555,21 +492,23 @@ function OrgAdminSubscriptionsView() {
                     return (
                       <div
                         key={plan.id}
-                        className={`relative flex flex-col justify-between rounded-xl border p-5 transition-all ${
+                        className={`relative flex flex-col justify-between rounded-xl border-2 p-5 transition-all ${
                           isCurrent
-                            ? 'border-emerald-500 bg-emerald-50/40 shadow-md shadow-emerald-500/10'
+                            ? 'border-emerald-500 bg-emerald-50/50 shadow-md ring-2 ring-emerald-500/20'
                             : 'border-slate-200 bg-white hover:border-slate-300 shadow-xs'
                         }`}
                       >
-                        {isCurrent && (
-                          <Badge variant="success" className="absolute -top-3 right-4 text-[10px]">
-                            Active Plan
-                          </Badge>
-                        )}
-
                         <div className="space-y-4">
                           <div>
-                            <h3 className="text-lg font-bold text-slate-900">{plan.name}</h3>
+                            <div className="flex items-center justify-between gap-2">
+                              <h3 className="text-lg font-bold text-slate-900">{plan.name}</h3>
+                              {isCurrent && (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                  ACTIVE PLAN
+                                </span>
+                              )}
+                            </div>
                             <p className="mt-1 font-mono text-2xl font-bold text-emerald-700">
                               {formatCurrency(plan.price)}{' '}
                               <span className="text-xs font-normal text-slate-500">
@@ -582,15 +521,33 @@ function OrgAdminSubscriptionsView() {
                           <div className="space-y-2 border-t border-b border-slate-200 py-3 text-xs">
                             <div className="flex items-center justify-between text-slate-700">
                               <span>Counters:</span>
-                              <strong className="font-mono text-slate-900 font-bold">{plan.branchLimit}</strong>
+                              {isCurrent ? (
+                                <span className="font-mono text-sm font-bold text-slate-900">
+                                  {branchUsage} / <span className="text-emerald-700 font-extrabold">{branchLimit}</span>
+                                </span>
+                              ) : (
+                                <strong className="font-mono text-slate-900 font-bold">{plan.branchLimit}</strong>
+                              )}
                             </div>
                             <div className="flex items-center justify-between text-slate-700">
                               <span>Staff Accounts:</span>
-                              <strong className="font-mono text-slate-900 font-bold">{plan.staffLimit}</strong>
+                              {isCurrent ? (
+                                <span className="font-mono text-sm font-bold text-slate-900">
+                                  {staffUsage} / <span className="text-emerald-700 font-extrabold">{staffLimit}</span>
+                                </span>
+                              ) : (
+                                <strong className="font-mono text-slate-900 font-bold">{plan.staffLimit}</strong>
+                              )}
                             </div>
                             <div className="flex items-center justify-between text-slate-700">
                               <span>Active Cards:</span>
-                              <strong className="font-mono text-slate-900 font-bold">{plan.cardLimit}</strong>
+                              {isCurrent ? (
+                                <span className="font-mono text-sm font-bold text-slate-900">
+                                  {cardUsage} / <span className="text-emerald-700 font-extrabold">{cardLimit}</span>
+                                </span>
+                              ) : (
+                                <strong className="font-mono text-slate-900 font-bold">{plan.cardLimit}</strong>
+                              )}
                             </div>
                           </div>
 
@@ -614,8 +571,8 @@ function OrgAdminSubscriptionsView() {
                         {/* Action CTA: [ Request Upgrade / Request Downgrade ] */}
                         <div className="mt-6">
                           {isCurrent ? (
-                            <Button variant="outline" size="sm" className="w-full" disabled>
-                              Current Plan
+                            <Button variant="outline" size="sm" className="w-full bg-emerald-50 text-emerald-800 border-emerald-300 font-bold cursor-default" disabled>
+                              Current Active Plan
                             </Button>
                           ) : pendingRequest ? (
                             <Button
