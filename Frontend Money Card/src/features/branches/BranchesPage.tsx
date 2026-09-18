@@ -36,6 +36,8 @@ import {
   MessageSquare,
   Copy,
   Check,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AllBranchesOverviewModal } from './AllBranchesOverviewModal';
@@ -236,7 +238,7 @@ export function BranchesPage() {
   const [branchNameInput, setBranchNameInput] = useState('');
   const [branchPhoneInput, setBranchPhoneInput] = useState('');
   const [branchPasswordInput, setBranchPasswordInput] = useState('');
-  const [branchLocationInput, setBranchLocationInput] = useState('');
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
@@ -338,7 +340,7 @@ export function BranchesPage() {
     setBranchNameInput('');
     setBranchPhoneInput('');
     setBranchPasswordInput('');
-    setBranchLocationInput('');
+    setShowCreatePassword(false);
     setNameError(null);
     setPhoneError(null);
     setPasswordError(null);
@@ -350,8 +352,12 @@ export function BranchesPage() {
     e.preventDefault();
     let hasErr = false;
 
-    if (!branchNameInput.trim()) {
+    const trimmedName = branchNameInput.trim();
+    if (!trimmedName) {
       setNameError('Counter name is required');
+      hasErr = true;
+    } else if (trimmedName.length > 20) {
+      setNameError('Counter name cannot exceed 20 characters');
       hasErr = true;
     } else {
       setNameError(null);
@@ -359,7 +365,7 @@ export function BranchesPage() {
 
     const cleanPhone = branchPhoneInput.trim().replace(/\D/g, '');
     if (!cleanPhone) {
-      setPhoneError('Phone number is required');
+      setPhoneError('Mobile number is required');
       hasErr = true;
     } else if (cleanPhone.length !== 10) {
       setPhoneError('Please enter a valid 10-digit mobile number');
@@ -384,10 +390,9 @@ export function BranchesPage() {
     setIsSubmitting(true);
     try {
       const result: ApiResult<Branch> = await apiService.branches.createBranch({
-        name: branchNameInput.trim(),
+        name: trimmedName,
         phone: cleanPhone,
         password: branchPasswordInput,
-        location: branchLocationInput.trim() || undefined,
       });
 
       if (!result.success) {
@@ -856,9 +861,10 @@ export function BranchesPage() {
             id="create-branch-name"
             label="Counter Name"
             placeholder="e.g. South Indian Express, Juice Bar, Bakery..."
+            maxLength={20}
             value={branchNameInput}
             onChange={(e) => {
-              setBranchNameInput(e.target.value);
+              setBranchNameInput(e.target.value.slice(0, 20));
               if (nameError) setNameError(null);
             }}
             error={nameError || undefined}
@@ -870,10 +876,12 @@ export function BranchesPage() {
             id="create-branch-phone"
             label="Counter Mobile Number (Login ID)"
             type="tel"
+            maxLength={10}
             placeholder="e.g. 9876543210 (10-digit mobile)"
             value={branchPhoneInput}
             onChange={(e) => {
-              setBranchPhoneInput(e.target.value);
+              const numericOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
+              setBranchPhoneInput(numericOnly);
               if (phoneError) setPhoneError(null);
             }}
             error={phoneError || undefined}
@@ -883,23 +891,25 @@ export function BranchesPage() {
           <Input
             id="create-branch-password"
             label="Login Password"
-            type="password"
+            type={showCreatePassword ? 'text' : 'password'}
             placeholder="Minimum 6 characters"
             value={branchPasswordInput}
             onChange={(e) => {
               setBranchPasswordInput(e.target.value);
               if (passwordError) setPasswordError(null);
             }}
+            rightElement={
+              <button
+                type="button"
+                onClick={() => setShowCreatePassword(!showCreatePassword)}
+                className="text-slate-400 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer p-1"
+                tabIndex={-1}
+                aria-label={showCreatePassword ? 'Hide password' : 'Show password'}
+              >
+                {showCreatePassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            }
             error={passwordError || undefined}
-            disabled={isSubmitting}
-          />
-
-          <Input
-            id="create-branch-location"
-            label="Location / Floor (Optional)"
-            placeholder="e.g. Ground Floor, Food Court Stall 3..."
-            value={branchLocationInput}
-            onChange={(e) => setBranchLocationInput(e.target.value)}
             disabled={isSubmitting}
           />
 
