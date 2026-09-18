@@ -72,130 +72,149 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     return PermissionGuard.single(
       permission: AppPermission.viewAnalytics,
       fallback: const AppUnauthorizedState(),
-      child: Scaffold(
-        appBar: AppBar(
-          title: Row(
+      child: DefaultTabController(
+        length: 2,
+        child: Scaffold(
+          appBar: AppBar(
+            title: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Analytics'),
+                      if (currentBranch != null)
+                        Text(
+                          currentBranch.name,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                    ],
+                  ),
+                ),
+                if (assignedBranches.length > 1 && currentBranch != null)
+                  _buildBranchSwitcher(context, ref, currentBranch, assignedBranches),
+              ],
+            ),
+            bottom: const TabBar(
+              tabs: [
+                Tab(icon: Icon(Icons.account_balance, size: 18), text: 'Financial Overview'),
+                Tab(icon: Icon(Icons.credit_card, size: 18), text: 'Card Analytics'),
+              ],
+              labelColor: AppColors.primary,
+              unselectedLabelColor: AppColors.textSecondaryLight,
+              indicatorColor: AppColors.primary,
+              indicatorWeight: 3,
+              labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              unselectedLabelStyle: TextStyle(fontWeight: FontWeight.normal, fontSize: 13),
+            ),
+          ),
+          body: Column(
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              // Filter Toolbar: Time Window Dropdown & View PDF Action
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                child: Row(
                   children: [
-                    const Text('Analytics & Reports'),
-                    if (currentBranch != null)
-                      Text(
-                        currentBranch.name,
-                        style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600),
-                        overflow: TextOverflow.ellipsis,
+                    // Time Window Dropdown
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: AppSpacing.roundedSm,
+                          border: Border.all(color: AppColors.borderLight),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.03),
+                              blurRadius: 3,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.schedule, size: 16, color: AppColors.primary),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: _ranges.contains(analyticsState.selectedRange)
+                                      ? analyticsState.selectedRange
+                                      : _ranges.first,
+                                  isExpanded: true,
+                                  icon: const Icon(Icons.arrow_drop_down, color: AppColors.primary),
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textPrimaryLight,
+                                  ),
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      notifier.setRange(value);
+                                    }
+                                  },
+                                  items: _ranges.map((range) {
+                                    return DropdownMenuItem<String>(
+                                      value: range,
+                                      child: Text(range),
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+
+                    // View PDF Action Button
+                    ElevatedButton.icon(
+                      onPressed: (analyticsState.isLoading || analyticsState.analytics == null)
+                          ? null
+                          : () => _openPdfPreview(
+                                context,
+                                analyticsState.analytics!,
+                                currentBranch?.name ?? 'Main Cafeteria',
+                                analyticsState.selectedRange,
+                              ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: AppColors.borderLight,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: AppSpacing.roundedSm,
+                        ),
+                      ),
+                      icon: const Icon(Icons.picture_as_pdf, size: 16),
+                      label: const Text(
+                        'View PDF',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
                   ],
                 ),
               ),
-              if (assignedBranches.length > 1 && currentBranch != null)
-                _buildBranchSwitcher(context, ref, currentBranch, assignedBranches),
+              const Divider(height: 1),
+
+              // Main Tab Content
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: notifier.loadAnalytics,
+                  child: _buildBody(context, analyticsState, notifier),
+                ),
+              ),
             ],
           ),
-        ),
-        body: Column(
-          children: [
-            // Filter Toolbar: Time Window Dropdown & View PDF Action
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
-              child: Row(
-                children: [
-                  // Time Window Dropdown
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: AppSpacing.roundedSm,
-                        border: Border.all(color: AppColors.borderLight),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.03),
-                            blurRadius: 3,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.schedule, size: 16, color: AppColors.primary),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: _ranges.contains(analyticsState.selectedRange)
-                                    ? analyticsState.selectedRange
-                                    : _ranges.first,
-                                isExpanded: true,
-                                icon: const Icon(Icons.arrow_drop_down, color: AppColors.primary),
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimaryLight,
-                                ),
-                                onChanged: (value) {
-                                  if (value != null) {
-                                    notifier.setRange(value);
-                                  }
-                                },
-                                items: _ranges.map((range) {
-                                  return DropdownMenuItem<String>(
-                                    value: range,
-                                    child: Text(range),
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-
-                  // View PDF Action Button
-                  ElevatedButton.icon(
-                    onPressed: (analyticsState.isLoading || analyticsState.analytics == null)
-                        ? null
-                        : () => _openPdfPreview(
-                              context,
-                              analyticsState.analytics!,
-                              currentBranch?.name ?? 'Main Cafeteria',
-                              analyticsState.selectedRange,
-                            ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: AppColors.borderLight,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: AppSpacing.roundedSm,
-                      ),
-                    ),
-                    icon: const Icon(Icons.picture_as_pdf, size: 16),
-                    label: const Text(
-                      'View PDF',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-
-            // Main Content
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: notifier.loadAnalytics,
-                child: _buildContent(context, analyticsState, notifier),
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -264,7 +283,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
-  Widget _buildContent(
+  Widget _buildBody(
     BuildContext context,
     AnalyticsState state,
     AnalyticsNotifier notifier,
@@ -319,10 +338,16 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       );
     }
 
-    final activePeaks = (data.peakPeriods ?? [])
-        .where((p) => p.transactionCount > 0)
-        .toList();
+    return TabBarView(
+      children: [
+        _buildFinancialOverview(context, data),
+        _buildCardAnalytics(context, data),
+      ],
+    );
+  }
 
+  // ─── Tab 1: Financial Overview ───
+  Widget _buildFinancialOverview(BuildContext context, BranchPerformanceMetric data) {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: AppSpacing.paddingMd,
@@ -336,8 +361,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Counter Performance',
+                  const Text(
+                    'Financial Overview',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -380,7 +405,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         ),
         const SizedBox(height: AppSpacing.md),
 
-        // Key Operations Grid
+        // Financial Operations Grid
         Row(
           children: [
             Expanded(
@@ -398,7 +423,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 icon: Icons.account_balance_wallet,
                 label: 'Card Recharges',
                 value: '${data.rechargeCount}',
-                subValue: 'Total ${data.rechargeCount} topups',
+                subValue: '\u20b9${data.rechargeVolume.toStringAsFixed(0)} volume',
                 color: AppColors.success,
               ),
             ),
@@ -409,10 +434,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           children: [
             Expanded(
               child: _buildMetricTile(
-                icon: Icons.credit_card,
-                label: 'Active Sessions',
-                value: '${data.activeSessionsCount}',
-                subValue: '${data.settledSessionsCount} settled',
+                icon: Icons.receipt_long,
+                label: 'Avg Transaction',
+                value: '\u20b9${data.avgTransactionValue.toStringAsFixed(0)}',
+                subValue: 'Across all orders',
                 color: AppColors.primaryDark,
               ),
             ),
@@ -428,125 +453,140 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             ),
           ],
         ),
-        const SizedBox(height: AppSpacing.lg),
+      ],
+    );
+  }
 
-        // Product Demand Section
-        if (data.productDemand != null && data.productDemand!.isNotEmpty) ...[
-          const SectionHeader(title: 'Top Product Demand'),
-          const SizedBox(height: AppSpacing.sm),
-          AppCard(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
-            child: ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: data.productDemand!.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
-              itemBuilder: (context, idx) {
-                final prod = data.productDemand![idx];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
+  // ─── Tab 2: Card Analytics ───
+  Widget _buildCardAnalytics(BuildContext context, BranchPerformanceMetric data) {
+    final totalSessions = data.sessionCount > 0 ? data.sessionCount : (data.activeSessionsCount + data.settledSessionsCount);
+    final activePct = totalSessions > 0 ? ((data.activeSessionsCount / totalSessions) * 100).toStringAsFixed(0) : '0';
+
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: AppSpacing.paddingMd,
+      children: [
+        const SectionHeader(title: 'Card Fleet & Session Lifecycle'),
+        const SizedBox(height: AppSpacing.sm),
+
+        // Card Operations Grid
+        Row(
+          children: [
+            Expanded(
+              child: _buildMetricTile(
+                icon: Icons.credit_card,
+                label: 'In Circulation',
+                value: '${data.activeSessionsCount}',
+                subValue: 'Active card sessions',
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: _buildMetricTile(
+                icon: Icons.check_circle_outline,
+                label: 'Settled Cards',
+                value: '${data.settledSessionsCount}',
+                subValue: 'Returned & settled',
+                color: AppColors.success,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          children: [
+            Expanded(
+              child: _buildMetricTile(
+                icon: Icons.history,
+                label: 'Total Sessions',
+                value: '$totalSessions',
+                subValue: 'Lifetime session count',
+                color: AppColors.primaryDark,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: _buildMetricTile(
+                icon: Icons.refresh,
+                label: 'Card Top-Ups',
+                value: '${data.rechargeCount}',
+                subValue: 'Wallet recharge actions',
+                color: AppColors.info,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+
+        // Session Distribution Card
+        AppCard(
+          padding: AppSpacing.paddingMd,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Circulation vs. Settled Ratio',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                '$activePct% of all recorded card sessions are actively circulating with customers.',
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: totalSessions > 0 ? (data.activeSessionsCount / totalSessions) : 0,
+                  backgroundColor: AppColors.borderLight,
+                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                  minHeight: 8,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
                     children: [
-                      CircleAvatar(
-                        radius: 14,
-                        backgroundColor: AppColors.primaryLight,
-                        child: Text(
-                          '${idx + 1}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryDark,
-                          ),
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
                         ),
                       ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Text(
-                          prod.productName,
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                        ),
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            '${prod.quantitySold} sold',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                          ),
-                          Text(
-                            '\u20b9${prod.totalRevenue.toStringAsFixed(0)}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondaryLight,
-                            ),
-                          ),
-                        ],
+                      const SizedBox(width: 4),
+                      Text(
+                        'Active (${data.activeSessionsCount})',
+                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
                       ),
                     ],
                   ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-        ],
-
-        // Peak Activity Periods Section
-        if (activePeaks.isNotEmpty) ...[
-          const SectionHeader(title: 'Peak Activity Periods'),
-          const SizedBox(height: AppSpacing.sm),
-          AppCard(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
-            child: ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: activePeaks.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
-              itemBuilder: (context, idx) {
-                final peak = activePeaks[idx];
-                final isHighest = peak.activityLevel.toLowerCase() == 'highest';
-                final cleanTimeSlot = peak.timeSlot.replaceAll(RegExp(r'\s*\([^)]*\)'), '').trim();
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
+                  Row(
                     children: [
-                      Icon(
-                        Icons.access_time,
-                        size: 20,
-                        color: isHighest ? AppColors.warning : AppColors.primary,
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              cleanTimeSlot,
-                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                            ),
-                            Text(
-                              '${peak.transactionCount} transactions \u2022 \u20b9${peak.purchaseVolume.toStringAsFixed(0)}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondaryLight,
-                              ),
-                            ),
-                          ],
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: AppColors.borderLight,
+                          shape: BoxShape.circle,
                         ),
                       ),
-                      AppBadge(
-                        label: peak.activityLevel,
-                        variant: isHighest ? AppBadgeVariant.warning : AppBadgeVariant.primary,
+                      const SizedBox(width: 4),
+                      Text(
+                        'Settled (${data.settledSessionsCount})',
+                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
                       ),
                     ],
                   ),
-                );
-              },
-            ),
+                ],
+              ),
+            ],
           ),
-          const SizedBox(height: AppSpacing.lg),
-        ],
+        ),
       ],
     );
   }
