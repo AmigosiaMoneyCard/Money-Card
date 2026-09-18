@@ -168,6 +168,10 @@ void main() {
     });
 
     testWidgets('PosCheckoutScreen renders catalog and adds item to cart when staff has PURCHASE permission', (tester) async {
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
       final catalogNotifier = PosCatalogNotifier(fakeProductRepo, 'b-1');
       await catalogNotifier.loadProducts();
 
@@ -189,11 +193,14 @@ void main() {
         ),
       );
 
+      await tester.pumpAndSettle();
+
       expect(find.text('Veg Burger'), findsOneWidget);
       expect(find.text('Cold Coffee'), findsOneWidget);
       expect(find.text('Add'), findsNWidgets(2));
 
-      // Tap Add on Veg Burger
+      // Ensure Add button is visible within test viewport and tap it
+      await tester.ensureVisible(find.text('Add').first);
       await tester.tap(find.text('Add').first);
       await tester.pumpAndSettle();
 

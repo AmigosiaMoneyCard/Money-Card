@@ -148,16 +148,11 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
                                 style: const TextStyle(fontWeight: FontWeight.bold),
                               ),
                               IconButton(
-                                icon: Icon(
+                                icon: const Icon(
                                   Icons.add_circle_outline,
                                   size: 20,
-                                  color: item.quantity >= item.product.currentStock
-                                      ? AppColors.textTertiaryLight
-                                      : null,
                                 ),
-                                onPressed: item.quantity >= item.product.currentStock
-                                    ? null
-                                    : () => cartNotifier.increaseQuantity(item.product.id),
+                                onPressed: () => cartNotifier.increaseQuantity(item.product.id),
                               ),
                             ],
                           ),
@@ -808,18 +803,14 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
                           ),
                         ),
                         InkWell(
-                          onTap: quantityInCart >= product.currentStock
-                              ? null
-                              : () => cartNotifier.increaseQuantity(product.id),
+                          onTap: () => cartNotifier.increaseQuantity(product.id),
                           borderRadius: BorderRadius.circular(8),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             child: Icon(
                               Icons.add,
                               size: 18,
-                              color: quantityInCart >= product.currentStock
-                                  ? AppColors.textTertiaryLight
-                                  : AppColors.primaryDark,
+                              color: AppColors.primaryDark,
                             ),
                           ),
                         ),

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/database.js';
 import { sendError, sendSuccess } from '../utils/response.js';
-import { Role } from '@prisma/client';
+import { Role, UserStatus } from '@prisma/client';
 import { getEffectiveLimits, formatSubscription } from '../utils/limits.js';
 
 export async function getOrganizationProfile(req: Request, res: Response) {
@@ -23,7 +23,13 @@ export async function getOrganizationProfile(req: Request, res: Response) {
     }),
     getEffectiveLimits(orgId),
     prisma.branch.count({ where: { organizationId: orgId } }),
-    prisma.user.count({ where: { organizationId: orgId, role: Role.STAFF } }),
+    prisma.user.count({
+      where: {
+        organizationId: orgId,
+        role: Role.STAFF,
+        status: { not: UserStatus.DEACTIVATED },
+      },
+    }),
     prisma.card.count({ where: { organizationId: orgId } }),
   ]);
 
@@ -93,12 +99,9 @@ export async function getBranches(req: Request, res: Response) {
     where.organizationId = orgId;
   }
 
-  // Staff only see their assigned active branches
+  // Staff only see active branches in their organization
   if (req.user?.role === Role.STAFF) {
     where.status = 'ACTIVE';
-    if (req.user.assignedBranchIds && req.user.assignedBranchIds.length > 0) {
-      where.id = { in: req.user.assignedBranchIds };
-    }
   }
 
   const { search } = req.query;
@@ -168,13 +171,26 @@ export async function createBranch(req: Request, res: Response) {
       throw new Error('BRANCH_LIMIT_REACHED');
     }
 
-    return tx.branch.create({
+    const created = await tx.branch.create({
       data: {
         organizationId: orgId,
         name: name.trim(),
         location: location?.trim(),
       },
     });
+
+    // Auto-assign existing active staff in this organization to newly created branch
+    const orgStaff = await tx.user.findMany({
+      where: { organizationId: orgId, role: Role.STAFF, status: 'ACTIVE' },
+      select: { id: true },
+    });
+    for (const staff of orgStaff) {
+      await tx.userBranch.create({
+        data: { userId: staff.id, branchId: created.id },
+      }).catch(() => {});
+    }
+
+    return created;
   });
 
   return sendSuccess(res, branch, 201);

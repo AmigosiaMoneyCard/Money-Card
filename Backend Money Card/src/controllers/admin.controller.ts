@@ -78,7 +78,7 @@ export async function getOrganizations(req: Request, res: Response) {
       _count: {
         select: {
           branches: true,
-          users: { where: { role: Role.STAFF } },
+          users: { where: { role: Role.STAFF, status: { not: UserStatus.DEACTIVATED } } },
           cards: true,
         },
       },

@@ -133,7 +133,13 @@ export async function createStaffMember(req: Request, res: Response) {
   // Authoritative Effective Staff Limit Check
   const [effectiveLimits, currentStaffCount] = await Promise.all([
     getEffectiveLimits(orgId),
-    prisma.user.count({ where: { organizationId: orgId, role: Role.STAFF } }),
+    prisma.user.count({
+      where: {
+        organizationId: orgId,
+        role: Role.STAFF,
+        status: { not: UserStatus.DEACTIVATED },
+      },
+    }),
   ]);
 
   if (currentStaffCount >= effectiveLimits.staffLimit) {
@@ -160,7 +166,13 @@ export async function createStaffMember(req: Request, res: Response) {
       ];
 
   const result = await prisma.$transaction(async (tx) => {
-    const countInTx = await tx.user.count({ where: { organizationId: orgId, role: Role.STAFF } });
+    const countInTx = await tx.user.count({
+      where: {
+        organizationId: orgId,
+        role: Role.STAFF,
+        status: { not: UserStatus.DEACTIVATED },
+      },
+    });
     if (countInTx >= effectiveLimits.staffLimit) {
       throw new Error('STAFF_LIMIT_REACHED');
     }

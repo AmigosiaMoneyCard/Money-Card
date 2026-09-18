@@ -106,9 +106,11 @@ class BranchNotifier extends StateNotifier<BranchState> {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final allBranches = await _branchRepository.getBranches(forceRefresh: true);
-      final assigned = allBranches
-          .where((b) => assignedBranchIds.contains(b.id) && b.status.toUpperCase() == 'ACTIVE')
+      final activeBranches = allBranches
+          .where((b) => b.status.toUpperCase() == 'ACTIVE')
           .toList();
+
+      final assigned = activeBranches.isNotEmpty ? activeBranches : allBranches;
 
       Branch? active = state.currentBranch;
       if (active == null || !assigned.any((b) => b.id == active!.id)) {

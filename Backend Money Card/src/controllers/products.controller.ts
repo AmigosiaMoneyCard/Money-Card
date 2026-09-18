@@ -57,6 +57,13 @@ export async function getProducts(req: Request, res: Response) {
     status: { not: ProductStatus.ARCHIVED },
   };
 
+  if (branchId && branchId !== 'ALL') {
+    whereClause.OR = [
+      { branchId },
+      { inventoryItems: { some: { branchId } } },
+    ];
+  }
+
   // If a specific status filter is requested (ACTIVE or INACTIVE), apply it
   if (status && status !== 'ALL' && (status === 'ACTIVE' || status === 'INACTIVE')) {
     whereClause.status = status as ProductStatus;
@@ -73,25 +80,29 @@ export async function getProducts(req: Request, res: Response) {
   const products = await prisma.product.findMany({
     where: whereClause,
     include: {
+      branch: true,
       inventoryItems: { include: { branch: true } },
     },
     orderBy: { itemName: 'asc' },
   });
 
   const formatted = products.map((p) => {
-    // Find branch-specific inventory if branchId is provided
-    const targetBranchInv = branchId && branchId !== 'ALL'
-      ? p.inventoryItems.find((inv) => inv.branchId === branchId)
+    // Find branch-specific inventory if branchId is provided or matching p.branchId
+    const effectiveBranch = branchId && branchId !== 'ALL' ? branchId : p.branchId;
+    const targetBranchInv = effectiveBranch
+      ? p.inventoryItems.find((inv) => inv.branchId === effectiveBranch)
       : p.inventoryItems[0];
 
     const currentQty = targetBranchInv ? targetBranchInv.quantity : 0;
     const threshold = targetBranchInv ? targetBranchInv.lowStockThreshold : 10;
+    const resolvedBranchId = p.branchId || targetBranchInv?.branchId || '';
+    const resolvedBranchName = p.branch?.name || targetBranchInv?.branch?.name || '';
 
     return {
       id: p.id,
       productId: p.id,
-      branchId: branchId || targetBranchInv?.branchId || '',
-      branchName: targetBranchInv?.branch?.name || '',
+      branchId: resolvedBranchId,
+      branchName: resolvedBranchName,
       itemName: p.itemName,
       name: p.itemName,
       productName: p.itemName,
@@ -151,9 +162,12 @@ export async function createProduct(req: Request, res: Response) {
   const targetBranchId = req.body.branchId;
 
   const product = await prisma.$transaction(async (tx) => {
+    const effectiveBranchId = targetBranchId && targetBranchId !== 'ALL' ? targetBranchId : null;
+
     const p = await tx.product.create({
       data: {
         organizationId: orgId,
+        branchId: effectiveBranchId,
         itemName: itemName.trim(),
         price: numPrice,
         category: categoryList,
@@ -163,11 +177,13 @@ export async function createProduct(req: Request, res: Response) {
       },
     });
 
-    // If a specific branchId is provided, initialize inventory for that branch and other branches
-    const allBranches = await tx.branch.findMany({ where: { organizationId: orgId } });
-    for (const b of allBranches) {
-      const isTarget = targetBranchId && targetBranchId !== 'ALL' ? b.id === targetBranchId : true;
-      const initialQty = isTarget ? stockQty : 0;
+    // If a specific branchId is provided, initialize inventory only for that branch
+    const branchesToInit = effectiveBranchId
+      ? await tx.branch.findMany({ where: { id: effectiveBranchId, organizationId: orgId } })
+      : await tx.branch.findMany({ where: { organizationId: orgId } });
+
+    for (const b of branchesToInit) {
+      const initialQty = stockQty;
       const inv = await tx.branchInventory.upsert({
         where: {
           branchId_productId: {
