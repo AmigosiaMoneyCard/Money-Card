@@ -19,9 +19,6 @@ export const FROZEN_M0_PERMISSIONS = [
   { code: 'SESSION_VIEW', label: 'View Active Sessions', description: 'View customer balance and session history', category: 'Sessions' },
   { code: 'PRODUCT_VIEW', label: 'View Products', description: 'Browse product catalog and prices', category: 'Products' },
   { code: 'PRODUCT_MANAGE', label: 'Manage Products', description: 'Create and edit products', category: 'Products' },
-  { code: 'INVENTORY_VIEW', label: 'View Inventory', description: 'Check branch stock counts', category: 'Inventory' },
-  { code: 'INVENTORY_MANAGE', label: 'Manage Inventory', description: 'Adjust stock quantities', category: 'Inventory' },
-  { code: 'INVENTORY_IMPORT', label: 'Import Inventory', description: 'Bulk CSV inventory import', category: 'Inventory' },
   { code: 'VIEW_ANALYTICS', label: 'View Analytics', description: 'Access branch revenue & sales KPIs', category: 'Analytics' },
   { code: 'VIEW_REPORTS', label: 'View Reports', description: 'Download PDF audit reports', category: 'Reports' },
   { code: 'STAFF_VIEW', label: 'View Staff', description: 'View staff members list', category: 'Staff' },
@@ -50,6 +47,7 @@ export async function getStaffList(req: Request, res: Response) {
     const q = search.trim();
     where.OR = [
       { name: { contains: q, mode: 'insensitive' } },
+      { phone: { contains: q, mode: 'insensitive' } },
       { email: { contains: q, mode: 'insensitive' } },
     ];
   }
@@ -68,6 +66,7 @@ export async function getStaffList(req: Request, res: Response) {
   const formatted = staffMembers.map((s) => ({
     id: s.id,
     name: s.name,
+    phone: s.phone,
     email: s.email,
     role: s.role,
     status: s.status,
@@ -90,7 +89,7 @@ export async function createStaffMember(req: Request, res: Response) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'User has no associated organization');
   }
 
-  const { name, email, password, assignedBranchIds, branchIds, permissions, permissionCodes } = req.body;
+  const { name, phone, email, password, assignedBranchIds, branchIds, permissions, permissionCodes } = req.body;
   const resolvedBranchIds = assignedBranchIds ?? branchIds;
   const resolvedPermissions = permissions ?? permissionCodes;
 
@@ -98,29 +97,49 @@ export async function createStaffMember(req: Request, res: Response) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'Staff name is required');
   }
 
-  if (!email || !email.trim()) {
-    return sendError(res, 400, 'VALIDATION_ERROR', 'Staff email is required');
+  const cleanPhone = String(phone || '').trim().replace(/\D/g, '');
+  if (!cleanPhone || cleanPhone.length < 10) {
+    return sendError(res, 400, 'VALIDATION_ERROR', 'Valid 10-digit phone number is required');
   }
 
-  const cleanEmail = email.trim().toLowerCase();
-  const existingUser = await prisma.user.findUnique({
-    where: { email: cleanEmail },
+  if (!password || password.trim().length < 4) {
+    return sendError(res, 400, 'VALIDATION_ERROR', 'Password must be at least 4 characters long');
+  }
+
+  const existingPhoneUser = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { phone: cleanPhone },
+        { phone: cleanPhone.slice(-10) },
+      ],
+    },
   });
 
-  if (existingUser) {
-    return sendError(res, 400, 'VALIDATION_ERROR', `Account with email '${email}' already exists`);
+  if (existingPhoneUser) {
+    return sendError(res, 400, 'VALIDATION_ERROR', `Account with phone number '${phone}' already exists`);
   }
 
-  // If no password provided, user will be invited via activation email
-  const isInvitation = !password || password.trim().length === 0;
-  if (password && password.trim().length < 8) {
-    return sendError(res, 400, 'VALIDATION_ERROR', 'Password must be at least 8 characters long');
+  let cleanEmail: string | null = null;
+  if (email && String(email).trim()) {
+    cleanEmail = String(email).trim().toLowerCase();
+    const existingEmailUser = await prisma.user.findUnique({
+      where: { email: cleanEmail },
+    });
+    if (existingEmailUser) {
+      return sendError(res, 400, 'VALIDATION_ERROR', `Account with email '${email}' already exists`);
+    }
   }
 
   // Authoritative Effective Staff Limit Check
   const [effectiveLimits, currentStaffCount] = await Promise.all([
     getEffectiveLimits(orgId),
-    prisma.user.count({ where: { organizationId: orgId, role: Role.STAFF } }),
+    prisma.user.count({
+      where: {
+        organizationId: orgId,
+        role: Role.STAFF,
+        status: { not: UserStatus.DEACTIVATED },
+      },
+    }),
   ]);
 
   if (currentStaffCount >= effectiveLimits.staffLimit) {
@@ -132,19 +151,7 @@ export async function createStaffMember(req: Request, res: Response) {
     );
   }
 
-  let rawActivationToken: string | null = null;
-  let tokenHash: string | null = null;
-  let activationExpires: Date | null = null;
-  let passwordHash: string;
-
-  if (isInvitation) {
-    rawActivationToken = crypto.randomBytes(32).toString('hex');
-    tokenHash = crypto.createHash('sha256').update(rawActivationToken).digest('hex');
-    activationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-    passwordHash = await hashPassword(crypto.randomBytes(16).toString('hex')); // temporary unusable hash
-  } else {
-    passwordHash = await hashPassword(password);
-  }
+  const passwordHash = await hashPassword(password);
 
   const targetPermissions: PermissionCode[] = Array.isArray(resolvedPermissions) && resolvedPermissions.length > 0
     ? resolvedPermissions
@@ -156,11 +163,16 @@ export async function createStaffMember(req: Request, res: Response) {
         PermissionCode.PURCHASE,
         PermissionCode.SESSION_VIEW,
         PermissionCode.PRODUCT_VIEW,
-        PermissionCode.INVENTORY_VIEW,
       ];
 
   const result = await prisma.$transaction(async (tx) => {
-    const countInTx = await tx.user.count({ where: { organizationId: orgId, role: Role.STAFF } });
+    const countInTx = await tx.user.count({
+      where: {
+        organizationId: orgId,
+        role: Role.STAFF,
+        status: { not: UserStatus.DEACTIVATED },
+      },
+    });
     if (countInTx >= effectiveLimits.staffLimit) {
       throw new Error('STAFF_LIMIT_REACHED');
     }
@@ -168,13 +180,13 @@ export async function createStaffMember(req: Request, res: Response) {
     const user = await tx.user.create({
       data: {
         name: name.trim(),
+        phone: cleanPhone,
         email: cleanEmail,
         passwordHash,
         role: Role.STAFF,
         organizationId: orgId,
-        status: isInvitation ? UserStatus.PENDING_ACTIVATION : UserStatus.ACTIVE,
-        activationToken: tokenHash,
-        activationTokenExpires: activationExpires,
+        status: UserStatus.ACTIVE,
+        mustChangePassword: false,
       },
     });
 
@@ -201,41 +213,19 @@ export async function createStaffMember(req: Request, res: Response) {
     return user;
   });
 
-  if (isInvitation && rawActivationToken) {
-    const org = await prisma.organization.findUnique({
-      where: { id: orgId },
-      select: { name: true },
-    });
-    const defaultFrontend = process.env.NODE_ENV === 'production'
-      ? 'https://money-card-frontend.vercel.app'
-      : 'https://money-card-frontend-staging.vercel.app';
-    const clientOrigin = req.headers.origin || process.env.FRONTEND_URL || defaultFrontend;
-    const activationLink = `${clientOrigin}/activate?token=${rawActivationToken}`;
-    sendAccountActivationEmail(
-      cleanEmail,
-      name.trim(),
-      activationLink,
-      Role.STAFF,
-      org?.name || 'Money Card Cafeteria',
-    )
-      .then((result) => {
-        console.log(`[STAFF_ACTIVATION_DISPATCHED] To: ${cleanEmail}, Provider: ${result.provider}, Sent: ${result.sent}`);
-      })
-      .catch((err) => {
-        console.error('[STAFF_ACTIVATION_ERROR]', err?.message || err);
-      });
-  }
-
   return sendSuccess(
     res,
     {
       id: result.id,
       name: result.name,
+      phone: result.phone,
       email: result.email,
       role: result.role,
       status: result.status,
       assignedBranchIds: resolvedBranchIds || [],
       permissions: targetPermissions,
+      password: password,
+      plaintextPassword: password,
       createdAt: result.createdAt,
       updatedAt: result.updatedAt,
     },
@@ -262,6 +252,7 @@ export async function getStaffById(req: Request, res: Response) {
   return sendSuccess(res, {
     id: staff.id,
     name: staff.name,
+    phone: staff.phone,
     email: staff.email,
     role: staff.role,
     status: staff.status,
@@ -276,7 +267,7 @@ export async function getStaffById(req: Request, res: Response) {
 export async function updateStaffMember(req: Request, res: Response) {
   const { id } = req.params;
   const orgId = req.user?.organizationId;
-  const { name, email, status, permissions, assignedBranchIds, branchIds } = req.body;
+  const { name, phone, email, status, permissions, assignedBranchIds, branchIds } = req.body;
 
   const staff = await prisma.user.findFirst({
     where: { id, organizationId: orgId || undefined },
@@ -291,10 +282,11 @@ export async function updateStaffMember(req: Request, res: Response) {
       res,
       400,
       'ACTIVATION_REQUIRED',
-      'This staff account is pending email activation. The staff member must activate their account and set their password via the invitation link.',
+      'This staff account is pending activation.',
     );
   }
 
+  const cleanPhone = phone ? String(phone).trim().replace(/\D/g, '') : undefined;
   const targetBranches = assignedBranchIds || branchIds;
 
   await prisma.$transaction(async (tx) => {
@@ -302,6 +294,7 @@ export async function updateStaffMember(req: Request, res: Response) {
       where: { id },
       data: {
         ...(name ? { name: name.trim() } : {}),
+        ...(cleanPhone ? { phone: cleanPhone } : {}),
         ...(email ? { email: email.trim().toLowerCase() } : {}),
         ...(status ? { status } : {}),
         ...(status === UserStatus.DEACTIVATED ? { tokenVersion: { increment: 1 } } : {}),
@@ -342,6 +335,7 @@ export async function updateStaffMember(req: Request, res: Response) {
   return sendSuccess(res, {
     id: fullStaff!.id,
     name: fullStaff!.name,
+    phone: fullStaff!.phone,
     email: fullStaff!.email,
     role: fullStaff!.role,
     status: fullStaff!.status,
@@ -450,67 +444,6 @@ export async function updateStaffPermissions(req: Request, res: Response) {
   });
 }
 
-export async function resendStaffInvite(req: Request, res: Response) {
-  const { id } = req.params;
-  const orgId = req.user?.organizationId;
-
-  if (!orgId && req.user?.role !== Role.SUPER_ADMIN) {
-    return sendError(res, 403, 'FORBIDDEN', 'No organization context found');
-  }
-
-  const user = await prisma.user.findFirst({
-    where: {
-      id,
-      ...(orgId ? { organizationId: orgId } : {}),
-      role: Role.STAFF,
-    },
-    include: { organization: true },
-  });
-
-  if (!user) {
-    return sendError(res, 404, 'NOT_FOUND', 'Staff member not found');
-  }
-
-  if (user.status !== UserStatus.PENDING_ACTIVATION) {
-    return sendError(res, 400, 'ALREADY_ACTIVE', 'This staff account is already active.');
-  }
-
-  const rawToken = crypto.randomBytes(32).toString('hex');
-  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
-  const activationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      activationToken: tokenHash,
-      activationTokenExpires: activationExpires,
-    },
-  });
-
-  const defaultFrontend = process.env.NODE_ENV === 'production'
-    ? 'https://money-card-frontend.vercel.app'
-    : 'https://money-card-frontend-staging.vercel.app';
-  const clientOrigin = req.headers.origin || process.env.FRONTEND_URL || defaultFrontend;
-  const activationLink = `${clientOrigin}/activate?token=${rawToken}`;
-
-  sendAccountActivationEmail(
-    user.email,
-    user.name,
-    activationLink,
-    Role.STAFF,
-    user.organization?.name || null,
-  )
-    .then((result) => {
-      console.log(`[RESEND_STAFF_ACTIVATION_DISPATCHED] To: ${user.email}, Provider: ${result.provider}, Sent: ${result.sent}`);
-    })
-    .catch((err) => {
-      console.error('[RESEND_STAFF_ACTIVATION_ERROR]', err?.message || err);
-    });
-
-  return sendSuccess(res, {
-    message: `Activation invitation re-sent successfully to ${user.email}.`,
-  });
-}
 
 export async function deleteStaffMember(req: Request, res: Response) {
   const { id } = req.params;

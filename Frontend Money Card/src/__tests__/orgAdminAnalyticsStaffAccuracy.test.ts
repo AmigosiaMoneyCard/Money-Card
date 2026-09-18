@@ -66,6 +66,7 @@ describe('Org Admin Analytics - Accurate Staff Count & Ledger Metrics', () => {
   it('should dynamically increase activeStaffCount when a new staff member is created', async () => {
     const createRes = await mockStaffHandlers.createStaff({
       name: 'New Chef Staff',
+      phone: '9876543210',
       email: 'chef@maincafe.com',
       permissions: ['PURCHASE', 'SESSION_VIEW'],
       assignedBranchIds: ['branch_001'],

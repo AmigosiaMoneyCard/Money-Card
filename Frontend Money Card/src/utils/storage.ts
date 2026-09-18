@@ -58,6 +58,7 @@ export const storage = {
 
 export const STORAGE_KEYS = {
   ACCESS_TOKEN: 'access_token',
+  REFRESH_TOKEN: 'refresh_token',
   USER: 'user',
   SELECTED_BRANCH_ID: 'selected_branch_id',
   THEME: 'theme',

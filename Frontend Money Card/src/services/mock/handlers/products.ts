@@ -117,9 +117,10 @@ export const mockProductsHandlers = {
     }
 
     const newProductId = mockStore.generateId('PRODUCT');
+    const effectiveBranchId = req.branchId || mockStore.branches[0]?.id || 'branch-1';
     const newProduct: Product = {
       id: newProductId,
-      branchId: req.branchId,
+      branchId: effectiveBranchId,
       itemName: req.itemName.trim(),
       category: categoriesArray,
       price: req.price,
@@ -133,7 +134,7 @@ export const mockProductsHandlers = {
     const initialQuantity = req.initialQuantity || 0;
     const newInventoryItem = {
       id: mockStore.generateId('INV'),
-      branchId: req.branchId,
+      branchId: effectiveBranchId,
       productId: newProductId,
       quantity: initialQuantity,
       updatedAt: mockStore.getTimestamp(),
@@ -169,6 +170,7 @@ export const mockProductsHandlers = {
       ...(req.category !== undefined ? { category: categoriesArray } : {}),
       ...(req.price !== undefined ? { price: req.price } : {}),
       ...(req.status !== undefined ? { status: req.status } : {}),
+      ...(req.branchId !== undefined ? { branchId: req.branchId } : {}),
       updatedAt: mockStore.getTimestamp(),
     };
 

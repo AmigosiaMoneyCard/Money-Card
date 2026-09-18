@@ -24,7 +24,7 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
   },
   {
     id: 'organizations',
-    label: 'Cafeterias',
+    label: 'Organizations',
     path: '/organizations',
     iconName: 'Building',
     roles: ['SUPER_ADMIN'],
@@ -38,11 +38,19 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
   },
   {
     id: 'branches',
-    label: 'Counters',
+    label: 'Cafeterias',
     path: '/branches',
     iconName: 'Building2',
     roles: ['ORG_ADMIN'],
     permission: 'BRANCH_VIEW',
+  },
+  {
+    id: 'products',
+    label: 'Menu',
+    path: '/products',
+    iconName: 'Package',
+    roles: ['ORG_ADMIN'],
+    permission: 'PRODUCT_VIEW',
   },
   {
     id: 'staff',
@@ -74,14 +82,6 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
     path: '/analytics',
     iconName: 'BarChart3',
     roles: ['SUPER_ADMIN', 'ORG_ADMIN'],
-    permission: 'VIEW_ANALYTICS',
-  },
-  {
-    id: 'peak',
-    label: 'Peak & Demand',
-    path: '/peak',
-    iconName: 'Flame',
-    roles: ['ORG_ADMIN'],
     permission: 'VIEW_ANALYTICS',
   },
   {

@@ -7,7 +7,6 @@ import {
   updateStaffMember,
   updateStaffBranches,
   updateStaffPermissions,
-  resendStaffInvite,
   deleteStaffMember,
   changeStaffPassword,
 } from '../controllers/staff.controller.js';
@@ -55,11 +54,6 @@ staffRouter.put(
   updateStaffPermissions,
 );
 
-staffRouter.post(
-  '/:id/resend-invite',
-  requireRole(Role.SUPER_ADMIN, Role.ORG_ADMIN),
-  resendStaffInvite,
-);
 
 staffRouter.patch(
   '/:id/password',

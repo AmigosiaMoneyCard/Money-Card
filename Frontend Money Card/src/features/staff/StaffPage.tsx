@@ -39,7 +39,6 @@ import {
   Power,
   Building2,
   ShieldCheck,
-  Send,
   RefreshCw,
   AlertCircle,
   Eye, EyeOff,
@@ -54,15 +53,17 @@ import {
   MoreVertical,
   ChevronDown,
   FileSpreadsheet,
-  Clock,
-  Mail,
+  Smartphone,
+  Copy,
+  ExternalLink,
+  Share2,
+  Phone,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface StaffActionMenuProps {
   staff: Staff;
   canManage: boolean;
-  resendingId: string | null;
-  onResendInvite: () => void;
   onEditOrView: () => void;
   onViewAudit?: () => void;
   onPermissions: () => void;
@@ -75,8 +76,6 @@ interface StaffActionMenuProps {
 function StaffActionMenu({
   staff,
   canManage,
-  resendingId,
-  onResendInvite,
   onEditOrView,
   onViewAudit,
   onPermissions,
@@ -194,22 +193,6 @@ function StaffActionMenu({
               </button>
             )}
 
-            {/* Resend Activation Invite if Pending or Inactive */}
-            {canManage && (staff.status === 'PENDING_ACTIVATION' || staff.status === 'INACTIVE') && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsOpen(false);
-                  onResendInvite();
-                }}
-                disabled={resendingId === staff.id}
-                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-amber-600 hover:bg-amber-50 hover:text-amber-700 transition-colors cursor-pointer text-left"
-              >
-                <Send className="h-4 w-4" />
-                <span>{resendingId === staff.id ? 'Sending Invite...' : 'Resend Invite'}</span>
-              </button>
-            )}
-
             {/* Profile / Details */}
             <button
               type="button"
@@ -293,9 +276,9 @@ function StaffActionMenu({
                   setIsOpen(false);
                   onDelete();
                 }}
-                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-colors cursor-pointer text-left"
+                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors cursor-pointer text-left"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-4 w-4 text-rose-600" />
                 <span>Delete Staff</span>
               </button>
             )}
@@ -320,25 +303,6 @@ export function StaffPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [resendingId, setResendingId] = useState<string | null>(null);
-  const [isPendingOpen, setIsPendingOpen] = useState(false);
-
-  const handleResendInvite = async (staffId: string) => {
-    setResendingId(staffId);
-    try {
-      const res = await apiService.staff.resendInvite(staffId);
-      if (res.success) {
-        notify.success(res.data?.message || 'Activation invitation re-sent successfully!');
-      } else {
-        notify.error(res.error?.message || 'Failed to resend activation invitation.');
-      }
-    } catch {
-      notify.error('An unexpected error occurred while sending the invitation.');
-    } finally {
-      setResendingId(null);
-    }
-  };
-
 
   // ── Unified Staff Details/Edit Modal State ─────────────────
   const [showStaffModal, setShowStaffModal] = useState(false);
@@ -360,12 +324,17 @@ export function StaffPage() {
   // ── Status Toggle Modal ───────────────────────────────────
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showDeleteStaffModal, setShowDeleteStaffModal] = useState(false);
-  const [showPendingStaffSuccessModal, setShowPendingStaffSuccessModal] = useState(false);
-  const [createdPendingStaff, setCreatedPendingStaff] = useState<Staff | null>(null);
+  const [showStaffCreatedModal, setShowStaffCreatedModal] = useState(false);
+  const [createdStaffCredentials, setCreatedStaffCredentials] = useState<{
+    name: string;
+    phone: string;
+    password: string;
+  } | null>(null);
 
   // ── Form & Selection State ────────────────────────────────
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
   const [formName, setFormName] = useState('');
+  const [formPhone, setFormPhone] = useState('');
   const [formEmail, setFormEmail] = useState('');
   const [formPassword, setFormPassword] = useState('');
   const [showAddPassword, setShowAddPassword] = useState(false);
@@ -469,7 +438,12 @@ export function StaffPage() {
     }
     if (!searchQuery.trim()) return result;
     const q = searchQuery.toLowerCase().trim();
-    return result.filter((s) => s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q));
+    return result.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        (s.phone && s.phone.includes(q)) ||
+        (s.email && s.email.toLowerCase().includes(q)),
+    );
   }, [staffList, currentBranch, searchQuery]);
 
   // If user lacks STAFF_VIEW permission, block access
@@ -480,6 +454,7 @@ export function StaffPage() {
   // ── Open Add Staff Modal ──────────────────────────────────
   const handleOpenAdd = () => {
     setFormName('');
+    setFormPhone('');
     setFormEmail('');
     setFormPassword('');
     setShowAddPassword(false);
@@ -508,16 +483,23 @@ export function StaffPage() {
     } else if (formName.trim().length > 50) {
       errors.name = 'Staff name must be at most 50 characters';
     }
-    
-    const trimmedEmail = formEmail.trim().toLowerCase();
-    if (!trimmedEmail) {
-      errors.email = 'Email address is required';
-    } else if (!/^[a-zA-Z0-9._%+-]+@(?:gmail|googlemail)\.com$/.test(trimmedEmail)) {
-      errors.email = 'Please provide a valid Gmail address (@gmail.com)';
+
+    const cleanPhone = formPhone.trim().replace(/\D/g, '');
+    if (!cleanPhone) {
+      errors.phone = 'Phone number is required';
+    } else if (cleanPhone.length < 10 || cleanPhone.length > 15) {
+      errors.phone = 'Please provide a valid 10-digit phone number';
     }
 
-    if (formPassword.trim() && formPassword.trim().length < 8) {
-      errors.password = 'Initial password must be at least 8 characters';
+    if (!formPassword.trim()) {
+      errors.password = 'Initial password is required for POS login';
+    } else if (formPassword.trim().length < 6) {
+      errors.password = 'Password must be at least 6 characters';
+    }
+
+    const trimmedEmail = formEmail.trim().toLowerCase();
+    if (trimmedEmail && !/\S+@\S+\.\S+/.test(trimmedEmail)) {
+      errors.email = 'Please provide a valid email address';
     }
 
     setFormErrors(errors);
@@ -544,20 +526,12 @@ export function StaffPage() {
         finalPermissions.add('CARD_BLOCK');
         finalPermissions.add('CARD_UNBLOCK');
       }
-      if (finalPermissions.has('PRODUCT_VIEW') || finalPermissions.has('INVENTORY_VIEW')) {
+      if (finalPermissions.has('PRODUCT_VIEW')) {
         finalPermissions.add('PRODUCT_VIEW');
-        finalPermissions.add('INVENTORY_VIEW');
       }
-      if (
-        finalPermissions.has('PRODUCT_MANAGE') ||
-        finalPermissions.has('INVENTORY_MANAGE') ||
-        finalPermissions.has('INVENTORY_IMPORT')
-      ) {
+      if (finalPermissions.has('PRODUCT_MANAGE')) {
         finalPermissions.add('PRODUCT_MANAGE');
-        finalPermissions.add('INVENTORY_MANAGE');
-        finalPermissions.add('INVENTORY_IMPORT');
         finalPermissions.add('PRODUCT_VIEW');
-        finalPermissions.add('INVENTORY_VIEW');
       }
       if (finalPermissions.has('BRANCH_VIEW') || finalPermissions.has('STAFF_VIEW')) {
         finalPermissions.add('BRANCH_VIEW');
@@ -579,8 +553,9 @@ export function StaffPage() {
 
       const res = await apiService.staff.createStaff({
         name: formName.trim(),
-        email: formEmail.trim().toLowerCase(),
-        password: formPassword.trim() || undefined,
+        phone: formPhone.trim().replace(/\D/g, ''),
+        password: formPassword.trim(),
+        email: formEmail.trim() ? formEmail.trim().toLowerCase() : undefined,
         assignedBranchIds: formBranchIds,
         permissions: Array.from(finalPermissions),
       });
@@ -597,13 +572,13 @@ export function StaffPage() {
         return;
       }
 
-      if (formPassword.trim()) {
-        notify.success(`Staff member ${res.data.name} created and activated! They can immediately log in to the mobile app.`);
-      } else {
-        notify.success(`Staff member ${res.data.name} created! Activation invite sent to ${formEmail.trim().toLowerCase()}`);
-        setCreatedPendingStaff(res.data);
-        setShowPendingStaffSuccessModal(true);
-      }
+      notify.success(`Staff member ${res.data.name} created and activated!`);
+      setCreatedStaffCredentials({
+        name: res.data.name,
+        phone: formPhone.trim().replace(/\D/g, ''),
+        password: formPassword.trim(),
+      });
+      setShowStaffCreatedModal(true);
       setShowAddModal(false);
       fetchStaffData();
     } catch {
@@ -620,7 +595,8 @@ export function StaffPage() {
   ) => {
     setSelectedStaff(staff);
     setFormName(staff.name);
-    setFormEmail(staff.email);
+    setFormPhone(staff.phone || '');
+    setFormEmail(staff.email || '');
     setFormBranchIds(staff.assignedBranchIds);
     setFormPermissions(staff.permissions);
     setStaffTab(initialTab);
@@ -696,9 +672,13 @@ export function StaffPage() {
 
     const errors: Record<string, string> = {};
     if (!formName.trim()) errors.name = 'Staff name is required';
-    if (!formEmail.trim()) {
-      errors.email = 'Email address is required';
-    } else if (!/\S+@\S+\.\S+/.test(formEmail)) {
+    if (formPhone.trim()) {
+      const cleanPhone = formPhone.trim().replace(/\D/g, '');
+      if (cleanPhone.length < 10 || cleanPhone.length > 15) {
+        errors.phone = 'Please provide a valid 10-digit phone number';
+      }
+    }
+    if (formEmail.trim() && !/\S+@\S+\.\S+/.test(formEmail)) {
       errors.email = 'Enter a valid email address';
     }
 
@@ -715,7 +695,8 @@ export function StaffPage() {
     try {
       const res = await apiService.staff.updateStaff(selectedStaff.id, {
         name: formName.trim(),
-        email: formEmail.trim(),
+        phone: formPhone.trim().replace(/\D/g, '') || undefined,
+        email: formEmail.trim() || undefined,
       });
 
       if (!res.success) {
@@ -724,7 +705,16 @@ export function StaffPage() {
       }
 
       notify.success('Staff profile updated successfully.');
-      setSelectedStaff((prev) => (prev ? { ...prev, name: formName.trim(), email: formEmail.trim() } : null));
+      setSelectedStaff((prev) =>
+        prev
+          ? {
+              ...prev,
+              name: formName.trim(),
+              phone: formPhone.trim().replace(/\D/g, '') || prev.phone,
+              email: formEmail.trim() || prev.email,
+            }
+          : null,
+      );
       fetchStaffData();
     } catch {
       setModalApiError('An unexpected error occurred. Please try again.');
@@ -748,20 +738,12 @@ export function StaffPage() {
         permissionsToSave.add('CARD_BLOCK');
         permissionsToSave.add('CARD_UNBLOCK');
       }
-      if (permissionsToSave.has('PRODUCT_VIEW') || permissionsToSave.has('INVENTORY_VIEW')) {
+      if (permissionsToSave.has('PRODUCT_VIEW')) {
         permissionsToSave.add('PRODUCT_VIEW');
-        permissionsToSave.add('INVENTORY_VIEW');
       }
-      if (
-        permissionsToSave.has('PRODUCT_MANAGE') ||
-        permissionsToSave.has('INVENTORY_MANAGE') ||
-        permissionsToSave.has('INVENTORY_IMPORT')
-      ) {
+      if (permissionsToSave.has('PRODUCT_MANAGE')) {
         permissionsToSave.add('PRODUCT_MANAGE');
-        permissionsToSave.add('INVENTORY_MANAGE');
-        permissionsToSave.add('INVENTORY_IMPORT');
         permissionsToSave.add('PRODUCT_VIEW');
-        permissionsToSave.add('INVENTORY_VIEW');
       }
       if (permissionsToSave.has('BRANCH_VIEW') || permissionsToSave.has('STAFF_VIEW')) {
         permissionsToSave.add('BRANCH_VIEW');
@@ -780,17 +762,19 @@ export function StaffPage() {
         permissionsToSave.add('BRANCH_VIEW');
         permissionsToSave.add('STAFF_VIEW');
       }
-      const normalizedPermissions = Array.from(permissionsToSave);
 
-      const res = await apiService.staff.updateStaffPermissions(selectedStaff.id, normalizedPermissions);
+      const res = await apiService.staff.updateStaffPermissions(
+        selectedStaff.id,
+        Array.from(permissionsToSave),
+      );
 
       if (!res.success) {
-        setModalApiError(res.error.message || 'Failed to update staff permissions');
+        setModalApiError(res.error.message || 'Failed to update permissions');
         return;
       }
 
       notify.success('Permissions updated successfully.');
-      setSelectedStaff((prev) => (prev ? { ...prev, permissions: normalizedPermissions } : null));
+      setSelectedStaff((prev) => (prev ? { ...prev, permissions: Array.from(permissionsToSave) } : null));
       fetchStaffData();
     } catch {
       setModalApiError('An unexpected error occurred. Please try again.');
@@ -812,11 +796,11 @@ export function StaffPage() {
       const res = await apiService.staff.updateStaffBranches(selectedStaff.id, formBranchIds);
 
       if (!res.success) {
-        setModalApiError(res.error.message || 'Failed to update counter assignments');
+        setModalApiError(res.error.message || 'Failed to update cafeteria assignments');
         return;
       }
 
-      notify.success('Counter assignments updated successfully.');
+      notify.success('Cafeteria assignments updated successfully.');
       setSelectedStaff((prev) => (prev ? { ...prev, assignedBranchIds: formBranchIds } : null));
       fetchStaffData();
     } catch {
@@ -832,9 +816,13 @@ export function StaffPage() {
 
     const errors: Record<string, string> = {};
     if (!formName.trim()) errors.name = 'Staff name is required';
-    if (!formEmail.trim()) {
-      errors.email = 'Email address is required';
-    } else if (!/\S+@\S+\.\S+/.test(formEmail)) {
+    if (formPhone.trim()) {
+      const cleanPhone = formPhone.trim().replace(/\D/g, '');
+      if (cleanPhone.length < 10 || cleanPhone.length > 15) {
+        errors.phone = 'Please provide a valid 10-digit phone number';
+      }
+    }
+    if (formEmail.trim() && !/\S+@\S+\.\S+/.test(formEmail)) {
       errors.email = 'Enter a valid email address';
     }
 
@@ -851,7 +839,8 @@ export function StaffPage() {
     try {
       const res = await apiService.staff.updateStaff(selectedStaff.id, {
         name: formName.trim(),
-        email: formEmail.trim(),
+        phone: formPhone.trim().replace(/\D/g, '') || undefined,
+        email: formEmail.trim() || undefined,
         assignedBranchIds: formBranchIds,
         permissions: formPermissions,
       });
@@ -861,7 +850,7 @@ export function StaffPage() {
         return;
       }
 
-      notify.success('Staff profile, permissions, and counter assignments updated successfully');
+      notify.success('Staff profile, permissions, and cafeteria assignments updated successfully');
       setShowStaffModal(false);
       fetchStaffData();
     } catch {
@@ -1007,11 +996,12 @@ export function StaffPage() {
       staffPerformanceList.find(
         (p) =>
           p.staffId === selectedStaffForAudit.id ||
-          p.staffEmail?.toLowerCase() === selectedStaffForAudit.email.toLowerCase(),
+          (selectedStaffForAudit.email &&
+            p.staffEmail?.toLowerCase() === selectedStaffForAudit.email.toLowerCase()),
       ) || {
         staffId: selectedStaffForAudit.id,
         staffName: selectedStaffForAudit.name,
-        staffEmail: selectedStaffForAudit.email,
+        staffEmail: selectedStaffForAudit.email || selectedStaffForAudit.phone || 'N/A',
         role: getStaffRoleLabel(selectedStaffForAudit),
         status: selectedStaffForAudit.status,
         branchId: selectedStaffForAudit.assignedBranchIds[0],
@@ -1071,10 +1061,6 @@ export function StaffPage() {
     }
     return calculateScopedStaffMetrics(scopedAuditActivities);
   }, [targetStaffMetric, scopedAuditActivities]);
-
-  const pendingStaffMembers = useMemo(() => {
-    return staffList.filter((s) => s.status === 'PENDING_ACTIVATION');
-  }, [staffList]);
 
   const handleExportAuditCsv = () => {
     if (!selectedStaffForAudit) return;
@@ -1138,7 +1124,16 @@ export function StaffPage() {
                 <Eye className="h-3.5 w-3.5" />
               </button>
             </div>
-            <p className="text-xs text-slate-500">{staff.email}</p>
+            <div className="flex items-center gap-1.5 text-xs text-slate-500">
+              {staff.phone && (
+                <span className="font-mono text-slate-700 font-medium flex items-center gap-1">
+                  <Phone className="h-3 w-3 text-slate-400" />
+                  {staff.phone}
+                </span>
+              )}
+              {staff.phone && staff.email && <span>•</span>}
+              {staff.email && <span className="text-slate-400 truncate">{staff.email}</span>}
+            </div>
           </div>
         </div>
       ),
@@ -1160,7 +1155,7 @@ export function StaffPage() {
     },
     {
       key: 'branches',
-      header: 'Assigned Counters',
+      header: 'Assigned Cafeterias',
       render: (staff: Staff) => {
         const assignedNames = branches
           .filter((b) => staff.assignedBranchIds.includes(b.id))
@@ -1169,7 +1164,7 @@ export function StaffPage() {
         return (
           <div className="space-y-1">
             <span className="text-xs font-semibold text-slate-700">
-              {staff.assignedBranchIds.length} branch(es)
+              {staff.assignedBranchIds.length} cafeteria(s)
             </span>
             {assignedNames.length > 0 && (
               <p className="max-w-[180px] truncate text-[11px] text-slate-500">
@@ -1185,8 +1180,7 @@ export function StaffPage() {
       header: 'Role & Access',
       render: (staff: Staff) => {
         const isManager = staff.permissions.includes('STAFF_MANAGE');
-        const isSupervisor = staff.permissions.includes('INVENTORY_MANAGE') || staff.permissions.includes('PRODUCT_MANAGE');
-        const roleLabel = isManager ? 'Manager / Admin' : isSupervisor ? 'Counter Supervisor' : 'Cashier / POS';
+        const roleLabel = isManager ? 'Manager / Admin' : 'Cashier / POS';
         return (
           <span className="font-semibold text-xs text-slate-700">{roleLabel}</span>
         );
@@ -1208,8 +1202,6 @@ export function StaffPage() {
           <StaffActionMenu
             staff={staff}
             canManage={canManage}
-            resendingId={resendingId}
-            onResendInvite={() => handleResendInvite(staff.id)}
             onEditOrView={() => handleOpenStaffModal(staff, 'overview')}
             onViewAudit={() => handleOpenStaffAudit(staff)}
             onPermissions={() => handleOpenStaffModal(staff, 'permissions')}
@@ -1268,107 +1260,13 @@ export function StaffPage() {
         </Card>
       )}
 
-      {/* ── Pending Activation Staff Dropdown (Automatically disappears when all staff are activated) ── */}
-      {pendingStaffMembers.length > 0 && (
-        <div className="rounded-xl border border-amber-300/80 bg-gradient-to-r from-amber-50 via-amber-50/70 to-orange-50/60 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300 overflow-hidden">
-          <div
-            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 sm:p-4 cursor-pointer hover:bg-amber-100/50 transition-colors select-none"
-            onClick={() => setIsPendingOpen(!isPendingOpen)}
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700 shrink-0">
-                <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
-              </div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-amber-950">
-                  Pending Activation
-                </h3>
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-200 text-amber-900">
-                  {pendingStaffMembers.length} {pendingStaffMembers.length === 1 ? 'Staff Member' : 'Staff Members'}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 self-start sm:self-auto">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  fetchStaffData();
-                }}
-                leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
-                className="border-amber-300 text-amber-900 hover:bg-amber-100 shrink-0"
-              >
-                Check Status
-              </Button>
-              <button
-                type="button"
-                className="p-1 rounded-lg text-amber-800 hover:bg-amber-200/60 transition-colors cursor-pointer"
-                aria-label={isPendingOpen ? 'Collapse pending staff' : 'Expand pending staff'}
-              >
-                <ChevronDown
-                  className={`h-5 w-5 transition-transform duration-200 text-amber-900 ${
-                    isPendingOpen ? 'rotate-180' : ''
-                  }`}
-                />
-              </button>
-            </div>
-          </div>
-
-          {isPendingOpen && (
-            <div className="px-3.5 pb-3.5 sm:px-4 sm:pb-4 border-t border-amber-200/70 pt-3">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {pendingStaffMembers.map((staff) => (
-                  <div
-                    key={staff.id}
-                    className="flex flex-col justify-between rounded-lg border border-amber-200/80 bg-white/95 p-3.5 shadow-sm hover:shadow transition-shadow"
-                  >
-                    <div>
-                      <div className="flex items-start justify-between gap-2">
-                        <h4 className="text-sm font-bold text-slate-900 truncate" title={staff.name}>
-                          {staff.name}
-                        </h4>
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 shrink-0">
-                          <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-                          Pending Activation
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500 mt-1 truncate" title={staff.email}>
-                        <span className="text-slate-400 font-medium">Email:</span> {staff.email}
-                      </p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        Counters: {staff.assignedBranchIds?.length || 0} assigned
-                      </p>
-                    </div>
-
-                    <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
-                      <span className="text-[11px] text-amber-700 font-medium">Awaiting invite</span>
-                      <button
-                        type="button"
-                        onClick={() => handleResendInvite(staff.id)}
-                        disabled={resendingId === staff.id}
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 hover:text-amber-900 hover:underline cursor-pointer disabled:opacity-50"
-                      >
-                        <Send className="h-3 w-3" />
-                        <span>{resendingId === staff.id ? 'Sending...' : 'Resend Invite'}</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Search & Refresh */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search staff by name or email..."
+            placeholder="Search staff by name, phone or email..."
             value={searchQuery}
             maxLength={30}
             onChange={(e) => setSearchQuery(e.target.value.slice(0, 30))}
@@ -1561,9 +1459,21 @@ export function StaffPage() {
                     />
 
                     <Input
+                      id="staff-edit-phone"
+                      label="Phone Number"
+                      placeholder="e.g. 9876543210"
+                      value={formPhone}
+                      onChange={(e) => setFormPhone(e.target.value)}
+                      error={formErrors.phone}
+                      disabled={!canManage || isSubmitting}
+                    />
+                  </div>
+
+                  <div>
+                    <Input
                       id="staff-edit-email"
                       type="email"
-                      label="Email Address"
+                      label="Email Address (Optional)"
                       value={formEmail}
                       onChange={(e) => setFormEmail(e.target.value)}
                       error={formErrors.email}
@@ -1863,6 +1773,20 @@ export function StaffPage() {
           </div>
 
           <ModalFooter>
+            {canManage && (
+              <Button
+                type="button"
+                variant="danger"
+                className="mr-auto text-xs"
+                leftIcon={<Trash2 className="h-4 w-4" />}
+                onClick={() => {
+                  setShowStaffModal(false);
+                  if (selectedStaff) handleOpenDeleteStaff(selectedStaff);
+                }}
+              >
+                Delete Staff
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setShowStaffModal(false)} disabled={isSubmitting}>
               Close
             </Button>
@@ -1890,7 +1814,6 @@ export function StaffPage() {
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         title="Add New Staff Member"
-        description="Register a staff member, authorize counters, and assign operational permissions."
         size="xl"
       >
         <div className="space-y-6">
@@ -1901,54 +1824,82 @@ export function StaffPage() {
             </div>
           )}
 
-          {/* Horizontal Step Tabs */}
-          <div className="flex border-b border-slate-200 overflow-x-auto gap-2">
+          {/* 3-Step Guided Wizard Stepper */}
+          <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/80 px-4 py-3 rounded-xl mb-4">
             <button
               type="button"
               onClick={() => setAddTab('basic')}
-              className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
-                addTab === 'basic'
-                  ? 'border-emerald-600 text-emerald-700 font-semibold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
+              className="flex items-center gap-2.5 text-left cursor-pointer focus:outline-none"
             >
-              <User className="h-4 w-4" />
-              <span>1. Basic Info</span>
-              {Object.keys(formErrors).length > 0 && (
-                <span className="h-2 w-2 rounded-full bg-rose-500" />
-              )}
+              <div
+                className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all ${
+                  addTab === 'basic'
+                    ? 'bg-emerald-600 text-white ring-4 ring-emerald-100'
+                    : 'bg-emerald-100 text-emerald-800'
+                }`}
+              >
+                1
+              </div>
+              <div>
+                <p className={`text-xs font-bold ${addTab === 'basic' ? 'text-emerald-700' : 'text-slate-700'}`}>
+                  1. Account Details
+                </p>
+                <p className="text-[10px] text-slate-400">Name & Phone</p>
+              </div>
             </button>
+
+            <div className="h-0.5 w-8 bg-slate-200 hidden sm:block" />
 
             <button
               type="button"
-              onClick={() => setAddTab('branches')}
-              className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
-                addTab === 'branches'
-                  ? 'border-emerald-600 text-emerald-700 font-semibold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
+              onClick={() => {
+                if (validateBasicInfo()) setAddTab('branches');
+              }}
+              className="flex items-center gap-2.5 text-left cursor-pointer focus:outline-none"
             >
-              <Building2 className="h-4 w-4" />
-              <span>2. Counters</span>
-              <Badge variant="outline" className="text-[10px] ml-1">
-                {formBranchIds.length}
-              </Badge>
+              <div
+                className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all ${
+                  addTab === 'branches'
+                    ? 'bg-emerald-600 text-white ring-4 ring-emerald-100'
+                    : addTab === 'permissions'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-slate-200 text-slate-600'
+                }`}
+              >
+                2
+              </div>
+              <div>
+                <p className={`text-xs font-bold ${addTab === 'branches' ? 'text-emerald-700' : 'text-slate-700'}`}>
+                  2. Role & Counter
+                </p>
+                <p className="text-[10px] text-slate-400">Counter & preset</p>
+              </div>
             </button>
+
+            <div className="h-0.5 w-8 bg-slate-200 hidden sm:block" />
 
             <button
               type="button"
-              onClick={() => setAddTab('permissions')}
-              className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
-                addTab === 'permissions'
-                  ? 'border-emerald-600 text-emerald-700 font-semibold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
+              onClick={() => {
+                if (validateBasicInfo()) setAddTab('permissions');
+              }}
+              className="flex items-center gap-2.5 text-left cursor-pointer focus:outline-none"
             >
-              <ShieldCheck className="h-4 w-4" />
-              <span>3. Permissions</span>
-              <Badge variant="outline" className="text-[10px] ml-1">
-                {formPermissions.length} / 20
-              </Badge>
+              <div
+                className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all ${
+                  addTab === 'permissions'
+                    ? 'bg-emerald-600 text-white ring-4 ring-emerald-100'
+                    : 'bg-slate-200 text-slate-600'
+                }`}
+              >
+                3
+              </div>
+              <div>
+                <p className={`text-xs font-bold ${addTab === 'permissions' ? 'text-emerald-700' : 'text-slate-700'}`}>
+                  3. Review & Create
+                </p>
+                <p className="text-[10px] text-slate-400">Summary & activate</p>
+              </div>
             </button>
           </div>
 
@@ -1960,7 +1911,7 @@ export function StaffPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Input
                     id="add-staff-name"
-                    label="Staff Full Name"
+                    label="Staff Full Name *"
                     placeholder="e.g. John Cashier"
                     maxLength={50}
                     value={formName}
@@ -1974,51 +1925,45 @@ export function StaffPage() {
                   />
 
                   <Input
-                    id="add-staff-email"
-                    type="email"
-                    label="Staff Gmail Address *"
-                    placeholder="e.g. staff.member@gmail.com"
-                    maxLength={100}
-                    value={formEmail}
+                    id="add-staff-phone"
+                    label="Staff Phone Number *"
+                    placeholder="10-digit mobile number, e.g. 9876543210"
+                    maxLength={15}
+                    value={formPhone}
                     onChange={(e) => {
-                      setFormEmail(e.target.value);
-                      if (formErrors.email) setFormErrors((prev) => ({ ...prev, email: '' }));
+                      setFormPhone(e.target.value);
+                      if (formErrors.phone) setFormErrors((prev) => ({ ...prev, phone: '' }));
                     }}
-                    error={formErrors.email}
+                    error={formErrors.phone}
                     disabled={isSubmitting}
                   />
                 </div>
 
-                <div>
-                  <Input
-                    id="add-staff-password"
-                    type={showAddPassword ? 'text' : 'password'}
-                    label="Initial Password (Optional)"
-                    placeholder="Min 8 characters (leave blank to send invite email)"
-                    maxLength={50}
-                    value={formPassword}
-                    onChange={(e) => {
-                      setFormPassword(e.target.value);
-                      if (formErrors.password) setFormErrors((prev) => ({ ...prev, password: '' }));
-                    }}
-                    error={formErrors.password}
-                    disabled={isSubmitting}
-                    rightElement={
-                      <button
-                        type="button"
-                        onClick={() => setShowAddPassword(!showAddPassword)}
-                        className="text-slate-400 hover:text-slate-600 focus:outline-none p-1 flex items-center justify-center cursor-pointer"
-                        title={showAddPassword ? 'Hide password' : 'Show password'}
-                        tabIndex={-1}
-                      >
-                        {showAddPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    }
-                  />
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    If provided, the account is activated immediately so the staff member can log in to the mobile app right away without email confirmation.
-                  </p>
-                </div>
+                <Input
+                  id="add-staff-password"
+                  type={showAddPassword ? 'text' : 'password'}
+                  label="Login Password *"
+                  placeholder="Min 6 characters"
+                  maxLength={50}
+                  value={formPassword}
+                  onChange={(e) => {
+                    setFormPassword(e.target.value);
+                    if (formErrors.password) setFormErrors((prev) => ({ ...prev, password: '' }));
+                  }}
+                  error={formErrors.password}
+                  disabled={isSubmitting}
+                  rightElement={
+                    <button
+                      type="button"
+                      onClick={() => setShowAddPassword(!showAddPassword)}
+                      className="text-slate-400 hover:text-slate-600 focus:outline-none p-1 flex items-center justify-center cursor-pointer"
+                      title={showAddPassword ? 'Hide password' : 'Show password'}
+                      tabIndex={-1}
+                    >
+                      {showAddPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  }
+                />
 
                 {orgOverview?.usage && (
                   <p className="text-xs text-slate-500 pt-2">
@@ -2100,182 +2045,240 @@ export function StaffPage() {
                     );
                   })}
                 </div>
+
+                {/* Role Preset Selection inside Step 2 */}
+                <div className="pt-4 border-t border-slate-200">
+                  <div className="mb-3">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                      Choose a Staff Role Preset
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      Pick what this staff member will do in your organization.
+                    </p>
+                  </div>
+
+                  {/* 3 Large Role Preset Cards */}
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {/* Preset 1: Cashier */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormPermissions([
+                          'CARD_VIEW',
+                          'CARD_ISSUE',
+                          'CARD_RETURN',
+                          'RECHARGE',
+                          'PURCHASE',
+                          'SESSION_VIEW',
+                          'PRODUCT_VIEW',
+                          'INVENTORY_VIEW',
+                        ]);
+                      }}
+                      className={`flex flex-col justify-between p-4 rounded-xl border text-left transition-all cursor-pointer select-none ${
+                        formPermissions.length === 8 && formPermissions.includes('PURCHASE') && !formPermissions.includes('PRODUCT_MANAGE')
+                          ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500'
+                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            Recommended
+                          </span>
+                          {formPermissions.length === 8 && formPermissions.includes('PURCHASE') && !formPermissions.includes('PRODUCT_MANAGE') && (
+                            <Check className="h-4 w-4 text-emerald-600" />
+                          )}
+                        </div>
+                        <h5 className="font-bold text-sm text-slate-900">Cashier / POS</h5>
+                        <p className="text-[11px] text-slate-500 mt-1">
+                          Card issuing, recharge, customer checkout, and sales at counter.
+                        </p>
+                      </div>
+                      <span className="text-[11px] font-mono text-emerald-600 font-semibold mt-3">
+                        8 permissions
+                      </span>
+                    </button>
+
+                    {/* Preset 2: Supervisor */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormPermissions([
+                          'CARD_VIEW',
+                          'CARD_ISSUE',
+                          'CARD_RETURN',
+                          'CARD_BLOCK',
+                          'CARD_UNBLOCK',
+                          'RECHARGE',
+                          'PURCHASE',
+                          'REFUND',
+                          'SESSION_VIEW',
+                          'PRODUCT_VIEW',
+                          'PRODUCT_MANAGE',
+                          'INVENTORY_VIEW',
+                          'INVENTORY_MANAGE',
+                          'INVENTORY_IMPORT',
+                          'BRANCH_VIEW',
+                          'STAFF_VIEW',
+                        ]);
+                      }}
+                      className={`flex flex-col justify-between p-4 rounded-xl border text-left transition-all cursor-pointer select-none ${
+                        formPermissions.length === 16 && formPermissions.includes('INVENTORY_MANAGE') && !formPermissions.includes('STAFF_MANAGE')
+                          ? 'border-amber-500 bg-amber-50 ring-1 ring-amber-500'
+                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                            Counter Lead
+                          </span>
+                          {formPermissions.length === 16 && formPermissions.includes('INVENTORY_MANAGE') && !formPermissions.includes('STAFF_MANAGE') && (
+                            <Check className="h-4 w-4 text-amber-600" />
+                          )}
+                        </div>
+                        <h5 className="font-bold text-sm text-slate-900">Supervisor</h5>
+                        <p className="text-[11px] text-slate-500 mt-1">
+                          Cashier duties + stock counting, menu pricing, and team directory view.
+                        </p>
+                      </div>
+                      <span className="text-[11px] font-mono text-amber-600 font-semibold mt-3">
+                        16 permissions
+                      </span>
+                    </button>
+
+                    {/* Preset 3: Manager / Admin */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormPermissions([
+                          'CARD_VIEW',
+                          'CARD_ISSUE',
+                          'CARD_RETURN',
+                          'CARD_BLOCK',
+                          'CARD_UNBLOCK',
+                          'RECHARGE',
+                          'PURCHASE',
+                          'REFUND',
+                          'SESSION_VIEW',
+                          'PRODUCT_VIEW',
+                          'PRODUCT_MANAGE',
+                          'INVENTORY_VIEW',
+                          'INVENTORY_MANAGE',
+                          'INVENTORY_IMPORT',
+                          'VIEW_ANALYTICS',
+                          'VIEW_REPORTS',
+                          'STAFF_VIEW',
+                          'STAFF_MANAGE',
+                          'BRANCH_VIEW',
+                          'BRANCH_MANAGE',
+                        ]);
+                      }}
+                      className={`flex flex-col justify-between p-4 rounded-xl border text-left transition-all cursor-pointer select-none ${
+                        formPermissions.length === 20
+                          ? 'border-emerald-600 bg-emerald-50 ring-1 ring-emerald-600'
+                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            Full Access
+                          </span>
+                          {formPermissions.length === 20 && (
+                            <Check className="h-4 w-4 text-emerald-600" />
+                          )}
+                        </div>
+                        <h5 className="font-bold text-sm text-slate-900">Manager / Admin</h5>
+                        <p className="text-[11px] text-slate-500 mt-1">
+                          Full access to manage team members, counter settings, and all operations.
+                        </p>
+                      </div>
+                      <span className="text-[11px] font-mono text-emerald-700 font-semibold mt-3">
+                        All 20 permissions
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Collapsible Advanced Permissions Toggle */}
+                  <div className="pt-3 border-t border-slate-200 mt-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvancedPerms(!showAdvancedPerms)}
+                      className="flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-slate-800 transition-colors cursor-pointer"
+                    >
+                      <span>{showAdvancedPerms ? '▼ Hide individual permissions' : '▶ Customize individual permissions (optional)'}</span>
+                      <Badge variant="outline" className="text-[10px]">
+                        {formPermissions.length} selected
+                      </Badge>
+                    </button>
+
+                    {showAdvancedPerms && (
+                      <div className="mt-3 pt-3 border-t border-slate-200">
+                        <PermissionMatrix
+                          selectedPermissions={formPermissions}
+                          onChange={setFormPermissions}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* ── STEP 3: PERMISSIONS ── */}
+            {/* ── STEP 3: REVIEW & CREATE ── */}
             {addTab === 'permissions' && (
               <div className="space-y-4">
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                    Choose a Staff Role Preset
-                  </h4>
-                </div>
-
-                {/* 3 Large Role Preset Cards */}
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {/* Preset 1: Cashier */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFormPermissions([
-                        'CARD_VIEW',
-                        'CARD_ISSUE',
-                        'CARD_RETURN',
-                        'RECHARGE',
-                        'PURCHASE',
-                        'SESSION_VIEW',
-                        'PRODUCT_VIEW',
-                        'INVENTORY_VIEW',
-                      ]);
-                    }}
-                    className={`flex flex-col justify-between p-4 rounded-xl border text-left transition-all cursor-pointer select-none ${
-                      formPermissions.length === 8 && formPermissions.includes('PURCHASE') && !formPermissions.includes('PRODUCT_MANAGE')
-                        ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500'
-                        : 'border-slate-200 bg-white hover:border-slate-300'
-                    }`}
-                  >
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-4">
+                  <div className="flex items-center gap-3 border-b border-slate-200 pb-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 font-bold">
+                      <User className="h-5 w-5" />
+                    </div>
                     <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          Recommended
-                        </span>
-                        {formPermissions.length === 8 && formPermissions.includes('PURCHASE') && !formPermissions.includes('PRODUCT_MANAGE') && (
-                          <Check className="h-4 w-4 text-emerald-600" />
-                        )}
-                      </div>
-                      <h5 className="font-bold text-sm text-slate-900">Cashier / POS</h5>
-                      <p className="text-[11px] text-slate-500 mt-1">
-                        Card issuing, recharge, customer checkout, and sales at counter.
+                      <h4 className="font-bold text-slate-900 text-base">{formName || 'Staff Member'}</h4>
+                      <p className="text-xs text-slate-500 font-mono flex items-center gap-1">
+                        <Phone className="h-3 w-3" />
+                        {formPhone || 'No phone entered'}
                       </p>
                     </div>
-                    <span className="text-[11px] font-mono text-emerald-600 font-semibold mt-3">
-                      8 permissions
-                    </span>
-                  </button>
+                  </div>
 
-                  {/* Preset 2: Supervisor */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFormPermissions([
-                        'CARD_VIEW',
-                        'CARD_ISSUE',
-                        'CARD_RETURN',
-                        'CARD_BLOCK',
-                        'CARD_UNBLOCK',
-                        'RECHARGE',
-                        'PURCHASE',
-                        'REFUND',
-                        'SESSION_VIEW',
-                        'PRODUCT_VIEW',
-                        'PRODUCT_MANAGE',
-                        'INVENTORY_VIEW',
-                        'INVENTORY_MANAGE',
-                        'INVENTORY_IMPORT',
-                        'BRANCH_VIEW',
-                        'STAFF_VIEW',
-                      ]);
-                    }}
-                    className={`flex flex-col justify-between p-4 rounded-xl border text-left transition-all cursor-pointer select-none ${
-                      formPermissions.length === 16 && formPermissions.includes('INVENTORY_MANAGE') && !formPermissions.includes('STAFF_MANAGE')
-                        ? 'border-amber-500 bg-amber-50 ring-1 ring-amber-500'
-                        : 'border-slate-200 bg-white hover:border-slate-300'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                          Branch Lead
-                        </span>
-                        {formPermissions.length === 16 && formPermissions.includes('INVENTORY_MANAGE') && !formPermissions.includes('STAFF_MANAGE') && (
-                          <Check className="h-4 w-4 text-amber-600" />
-                        )}
-                      </div>
-                      <h5 className="font-bold text-sm text-slate-900">Supervisor</h5>
-                      <p className="text-[11px] text-slate-500 mt-1">
-                        Cashier duties + stock counting, menu pricing, and branch/staff directory view.
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="p-3 rounded-lg border border-slate-200 bg-white">
+                      <span className="text-slate-500 font-medium block mb-1">Assigned Counters</span>
+                      <p className="font-semibold text-slate-900">
+                        {formBranchIds.length === 0
+                          ? 'No counters selected'
+                          : branches
+                              .filter((b) => formBranchIds.includes(b.id))
+                              .map((b) => b.name)
+                              .join(', ')}
                       </p>
                     </div>
-                    <span className="text-[11px] font-mono text-amber-600 font-semibold mt-3">
-                      16 permissions
-                    </span>
-                  </button>
 
-                  {/* Preset 3: Manager / Admin */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFormPermissions([
-                        'CARD_VIEW',
-                        'CARD_ISSUE',
-                        'CARD_RETURN',
-                        'CARD_BLOCK',
-                        'CARD_UNBLOCK',
-                        'RECHARGE',
-                        'PURCHASE',
-                        'REFUND',
-                        'SESSION_VIEW',
-                        'PRODUCT_VIEW',
-                        'PRODUCT_MANAGE',
-                        'INVENTORY_VIEW',
-                        'INVENTORY_MANAGE',
-                        'INVENTORY_IMPORT',
-                        'VIEW_ANALYTICS',
-                        'VIEW_REPORTS',
-                        'STAFF_VIEW',
-                        'STAFF_MANAGE',
-                        'BRANCH_VIEW',
-                        'BRANCH_MANAGE',
-                      ]);
-                    }}
-                    className={`flex flex-col justify-between p-4 rounded-xl border text-left transition-all cursor-pointer select-none ${
-                      formPermissions.length === 20
-                        ? 'border-emerald-600 bg-emerald-50 ring-1 ring-emerald-600'
-                        : 'border-slate-200 bg-white hover:border-slate-300'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                          Full Access
-                        </span>
-                        {formPermissions.length === 20 && (
-                          <Check className="h-4 w-4 text-emerald-600" />
-                        )}
-                      </div>
-                      <h5 className="font-bold text-sm text-slate-900">Manager / Admin</h5>
-                      <p className="text-[11px] text-slate-500 mt-1">
-                        Full access to manage team members, branch settings, and all operations.
+                    <div className="p-3 rounded-lg border border-slate-200 bg-white">
+                      <span className="text-slate-500 font-medium block mb-1">Assigned Role Preset</span>
+                      <p className="font-semibold text-emerald-700">
+                        {formPermissions.length === 8 && formPermissions.includes('PURCHASE') && !formPermissions.includes('PRODUCT_MANAGE')
+                          ? 'Cashier / POS (8 permissions)'
+                          : formPermissions.length === 16
+                          ? 'Supervisor (16 permissions)'
+                          : formPermissions.length === 20
+                          ? 'Manager / Admin (All 20 permissions)'
+                          : `Custom Role (${formPermissions.length} permissions)`}
                       </p>
                     </div>
-                    <span className="text-[11px] font-mono text-emerald-700 font-semibold mt-3">
-                      All 20 permissions
-                    </span>
-                  </button>
-                </div>
+                  </div>
 
-                {/* Collapsible Advanced Permissions Toggle */}
-                <div className="pt-2 border-t border-slate-200">
-                  <button
-                    type="button"
-                    onClick={() => setShowAdvancedPerms(!showAdvancedPerms)}
-                    className="flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-slate-800 transition-colors"
-                  >
-                    <span>{showAdvancedPerms ? '▼ Hide individual permissions' : '▶ Customize individual permissions (optional)'}</span>
-                    <Badge variant="outline" className="text-[10px]">
-                      {formPermissions.length} selected
-                    </Badge>
-                  </button>
-
-                  {showAdvancedPerms && (
-                    <div className="mt-3 pt-3 border-t border-slate-200">
-                      <PermissionMatrix
-                        selectedPermissions={formPermissions}
-                        onChange={setFormPermissions}
-                      />
+                  <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-3.5 text-xs text-emerald-900 flex items-start gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-semibold">Ready for immediate mobile activation</p>
+                      <p className="text-emerald-700 mt-0.5">
+                        The staff account will be activated immediately upon creation. The staff member can sign into the mobile POS app using phone number <strong>{formPhone}</strong> and their password.
+                      </p>
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
             )}
@@ -2295,7 +2298,7 @@ export function StaffPage() {
                 }}
                 rightIcon={<ArrowRight className="h-4 w-4" />}
               >
-                Next: Branches
+                Next: Role & Counter
               </Button>
             )}
 
@@ -2307,7 +2310,7 @@ export function StaffPage() {
                   onClick={() => setAddTab('basic')}
                   leftIcon={<ArrowLeft className="h-4 w-4" />}
                 >
-                  Back: Basic Info
+                  Back: Account Details
                 </Button>
                 <Button
                   type="button"
@@ -2315,7 +2318,7 @@ export function StaffPage() {
                   onClick={() => setAddTab('permissions')}
                   rightIcon={<ArrowRight className="h-4 w-4" />}
                 >
-                  Next: Permissions
+                  Next: Review & Create
                 </Button>
               </div>
             )}
@@ -2328,7 +2331,7 @@ export function StaffPage() {
                   onClick={() => setAddTab('branches')}
                   leftIcon={<ArrowLeft className="h-4 w-4" />}
                 >
-                  Back: Branches
+                  Back: Role & Counter
                 </Button>
                 <Button
                   type="button"
@@ -2359,85 +2362,71 @@ export function StaffPage() {
             </div>
           )}
 
-          {selectedStaff?.status === 'PENDING_ACTIVATION' ? (
-            <div className="space-y-3">
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-800 space-y-2">
-                <p className="font-semibold text-amber-900 flex items-center gap-1.5">
-                  <Clock className="h-4 w-4 text-amber-600" />
-                  Account Pending Email Activation
-                </p>
-                <p>
-                  This account has not been activated yet. The staff member needs to set their own password via the activation link sent to <strong>{selectedStaff.email}</strong>.
-                </p>
-              </div>
-              <p className="text-xs text-slate-500">
-                You can resend the activation invitation email if the link has expired or the staff member cannot find the email.
-              </p>
-            </div>
-          ) : (
-            <p className="text-sm text-slate-700">
-              Are you sure you want to{' '}
-              <strong className="text-slate-900">
-                {selectedStaff?.status === 'ACTIVE' ? 'deactivate' : 'activate'}
-              </strong>{' '}
-              the staff member <span className="text-emerald-700 font-semibold">{selectedStaff?.name}</span>?
-            </p>
-          )}
+          <p className="text-sm text-slate-700">
+            Are you sure you want to{' '}
+            <strong className="text-slate-900">
+              {selectedStaff?.status === 'ACTIVE' ? 'deactivate' : 'activate'}
+            </strong>{' '}
+            the staff member <span className="text-emerald-700 font-semibold">{selectedStaff?.name}</span>?
+          </p>
 
           <ModalFooter>
             <Button variant="outline" onClick={() => setShowStatusModal(false)} disabled={isSubmitting}>
               Close
             </Button>
-            {selectedStaff?.status === 'PENDING_ACTIVATION' ? (
-              <Button
-                variant="primary"
-                onClick={async () => {
-                  if (!selectedStaff?.id) return;
-                  await handleResendInvite(selectedStaff.id);
-                  setShowStatusModal(false);
-                }}
-                isLoading={resendingId === selectedStaff?.id}
-                disabled={resendingId === selectedStaff?.id}
-                leftIcon={<Send className="h-4 w-4" />}
-              >
-                Resend Activation Invite
-              </Button>
-            ) : (
-              <Button
-                variant={selectedStaff?.status === 'ACTIVE' ? 'danger' : 'primary'}
-                onClick={handleStatusSubmit}
-                isLoading={isSubmitting}
-                disabled={isSubmitting}
-              >
-                Confirm {selectedStaff?.status === 'ACTIVE' ? 'Deactivation' : 'Activation'}
-              </Button>
-            )}
+            <Button
+              variant={selectedStaff?.status === 'ACTIVE' ? 'danger' : 'primary'}
+              onClick={handleStatusSubmit}
+              isLoading={isSubmitting}
+              disabled={isSubmitting}
+            >
+              Confirm {selectedStaff?.status === 'ACTIVE' ? 'Deactivation' : 'Activation'}
+            </Button>
           </ModalFooter>
         </div>
       </Modal>
 
-      {/* ── Pending Activation Confirmation Modal (Opens right after creating staff member) ── */}
+      {/* ── WhatsApp & Staff Credentials Popup Modal (Opens right after creating staff member) ── */}
       <Modal
-        isOpen={showPendingStaffSuccessModal}
-        onClose={() => setShowPendingStaffSuccessModal(false)}
-        title="Staff Member Created — Pending Activation"
+        isOpen={showStaffCreatedModal}
+        onClose={() => setShowStaffCreatedModal(false)}
+        title="Staff Account Created"
+        size="md"
       >
         <div className="py-2 space-y-4">
-          <div className="flex flex-col items-center text-center p-4 rounded-xl border border-amber-500/20 bg-amber-50/60">
-            <div className="h-14 w-14 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 mb-3 ring-8 ring-amber-50">
-              <Mail className="h-7 w-7" />
+          <div className="flex flex-col items-center text-center p-4 rounded-xl border border-emerald-500/20 bg-emerald-50/60">
+            <div className="h-14 w-14 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 mb-3 ring-8 ring-emerald-50">
+              <Smartphone className="h-7 w-7" />
             </div>
-            <Badge variant="warning" className="mb-2">
-              Pending Activation via Email
+            <Badge variant="success" className="mb-2">
+              Ready for Mobile POS Login
             </Badge>
             <h3 className="text-lg font-bold text-slate-900">
-              {createdPendingStaff?.name}
+              {createdStaffCredentials?.name}
             </h3>
-            <p className="text-xs font-mono text-slate-600 mt-1">
-              {createdPendingStaff?.email}
+            <p className="text-xs text-slate-600 mt-1">
+              Account activated immediately. Share these login credentials with the staff member to log in to the POS app.
             </p>
-            <p className="text-xs text-slate-600 mt-3">
-              An invitation email has been dispatched to <strong>{createdPendingStaff?.email}</strong> with a secure link to activate their account and choose their POS password.
+          </div>
+
+          <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-500 font-medium">Login Phone Number:</span>
+              <span className="font-mono font-bold text-slate-900 text-sm">{createdStaffCredentials?.phone}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs border-t border-slate-200/80 pt-2.5">
+              <span className="text-slate-500 font-medium">POS Password:</span>
+              <span className="font-mono font-bold text-emerald-700 text-sm">{createdStaffCredentials?.password}</span>
+            </div>
+          </div>
+
+          <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs text-blue-800 space-y-1">
+            <p className="font-semibold flex items-center gap-1.5 text-blue-900">
+              <Share2 className="h-4 w-4 text-blue-600" />
+              Direct WhatsApp Dispatch
+            </p>
+            <p>
+              Clicking below opens WhatsApp (Desktop or Mobile) directly to this staff member's phone number with their login credentials.
             </p>
           </div>
 
@@ -2445,21 +2434,38 @@ export function StaffPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={async () => {
-                if (!createdPendingStaff?.id) return;
-                handleResendInvite(createdPendingStaff.id);
+              onClick={() => {
+                if (!createdStaffCredentials) return;
+                const text = `Staff Login Credentials:\nName: ${createdStaffCredentials.name}\nPhone: ${createdStaffCredentials.phone}\nPassword: ${createdStaffCredentials.password}`;
+                navigator.clipboard.writeText(text);
+                notify.success('Credentials copied to clipboard!');
               }}
-              leftIcon={<Send className="h-4 w-4 text-amber-600" />}
-              disabled={resendingId === createdPendingStaff?.id}
+              leftIcon={<Copy className="h-4 w-4 text-slate-600" />}
             >
-              {resendingId === createdPendingStaff?.id ? 'Resending...' : 'Resend Email Invite'}
+              Copy Credentials
             </Button>
             <Button
               variant="primary"
               size="sm"
-              onClick={() => setShowPendingStaffSuccessModal(false)}
+              onClick={() => {
+                if (!createdStaffCredentials) return;
+                const cleanPhone = createdStaffCredentials.phone.replace(/\D/g, '');
+                const targetPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+                const message = `Hello ${createdStaffCredentials.name},\n\nYour staff account for Money Card POS has been created!\n\nLogin Phone: ${createdStaffCredentials.phone}\nPassword: ${createdStaffCredentials.password}\n\nPlease open the Money Card POS App on your phone and log in with your phone number and password.`;
+                const waUrl = `https://wa.me/${targetPhone}?text=${encodeURIComponent(message)}`;
+                window.open(waUrl, '_blank');
+              }}
+              leftIcon={<ExternalLink className="h-4 w-4" />}
+              className="bg-[#25D366] hover:bg-[#20bd5a] text-white border-none"
             >
-              Got it, View Staff List
+              Send via WhatsApp
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowStaffCreatedModal(false)}
+            >
+              Done
             </Button>
           </ModalFooter>
         </div>
@@ -2468,8 +2474,8 @@ export function StaffPage() {
       <Modal
         isOpen={showDeleteStaffModal}
         onClose={() => !isSubmitting && setShowDeleteStaffModal(false)}
-        title="Delete Staff Member"
-        description="Permanently remove staff account or safely deactivate"
+        title="Delete Staff Account"
+        description="Safely remove staff access while preserving 100% of historical records"
         size="md"
       >
         <div className="space-y-4">
@@ -2483,12 +2489,23 @@ export function StaffPage() {
             </div>
           )}
 
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-2">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
             <p className="text-sm text-slate-800 font-medium">
-              Are you sure you want to remove <span className="text-emerald-700 font-bold font-mono">{selectedStaff?.name}</span> ({selectedStaff?.email})?
+              Are you sure you want to delete staff account <span className="text-emerald-700 font-bold font-mono">{selectedStaff?.name}</span> ({selectedStaff?.phone || selectedStaff?.email})?
             </p>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              If this staff member has never processed sessions or transactions, their account will be permanently removed. If historical transaction records exist, their access will be safely deactivated and tokens revoked, preserving all "Performed By" audit history.
+
+            <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800 space-y-1">
+              <p className="font-semibold flex items-center gap-1.5 text-emerald-900">
+                <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+                100% Data Preservation Guarantee
+              </p>
+              <p className="leading-relaxed">
+                All historical sales transactions, card issuances, refunds, and audit trail records will remain intact with <strong>{selectedStaff?.name}</strong> attributed permanently.
+              </p>
+            </div>
+
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Login access will be immediately terminated, security tokens revoked, and their seat in your subscription plan will be freed for new staff members.
             </p>
           </div>
 

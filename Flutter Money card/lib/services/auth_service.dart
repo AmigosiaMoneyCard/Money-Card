@@ -7,17 +7,24 @@ class AuthService {
 
   AuthService(this._apiService);
 
-  /// Authenticate Staff using email and password (POST /api/v1/auth/login)
+  /// Authenticate Staff using phone/email and password (POST /api/v1/auth/login)
   Future<AuthResponseData> login({
-    required String email,
+    String? email,
+    String? phone,
     required String password,
   }) async {
+    final payload = <String, dynamic>{
+      'password': password,
+    };
+    if (phone != null && phone.isNotEmpty) {
+      payload['phone'] = phone;
+    } else if (email != null && email.isNotEmpty) {
+      payload['email'] = email;
+    }
+
     return _apiService.post<AuthResponseData>(
       ApiEndpoints.login,
-      data: {
-        'email': email,
-        'password': password,
-      },
+      data: payload,
       fromJson: (data) => AuthResponseData.fromJson(data as Map<String, dynamic>),
     );
   }

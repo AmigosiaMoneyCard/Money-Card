@@ -3,6 +3,67 @@ import { prisma } from '../config/database.js';
 import { sendError, sendSuccess } from '../utils/response.js';
 import { Role } from '@prisma/client';
 
+function normalizeTimezone(tz?: string): string {
+  if (!tz || typeof tz !== 'string' || tz.trim() === '') return 'Asia/Kolkata';
+  const clean = tz.trim();
+  if (clean.toUpperCase() === 'IST' || clean === '+05:30' || clean === 'UTC+5:30' || clean === 'GMT+5:30') {
+    return 'Asia/Kolkata';
+  }
+  return clean;
+}
+
+function getLocalHourInTimezone(date: Date, timeZone: string = 'Asia/Kolkata'): number {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hour: 'numeric',
+      hour12: false,
+    });
+    const hourStr = formatter.format(date);
+    const h = parseInt(hourStr, 10);
+    return h === 24 ? 0 : h;
+  } catch {
+    const utcMs = date.getTime() + (date.getTimezoneOffset() * 60000);
+    const istDate = new Date(utcMs + (5.5 * 3600000));
+    return istDate.getHours();
+  }
+}
+
+function getStartAndEndOfDayInTimezone(timeZone: string = 'Asia/Kolkata', dayOffset: number = 0): { start: Date; end: Date } {
+  try {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const dateStr = formatter.format(now);
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const testDate = new Date(Date.UTC(year, month - 1, day + dayOffset, 12, 0, 0));
+    const tzStr = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'shortOffset' }).format(testDate);
+    let offsetMinutes = 330;
+    const match = tzStr.match(/GMT([+-]\d+)(?::(\d+))?/);
+    if (match) {
+      const hours = parseInt(match[1], 10);
+      const mins = match[2] ? parseInt(match[2], 10) : 0;
+      offsetMinutes = (hours * 60) + (hours >= 0 ? mins : -mins);
+    }
+    const startUtcMs = Date.UTC(year, month - 1, day + dayOffset, 0, 0, 0, 0) - (offsetMinutes * 60000);
+    const endUtcMs = Date.UTC(year, month - 1, day + dayOffset, 23, 59, 59, 999) - (offsetMinutes * 60000);
+    return { start: new Date(startUtcMs), end: new Date(endUtcMs) };
+  } catch {
+    const now = new Date();
+    const istNow = new Date(now.getTime() + (5.5 * 3600000));
+    const year = istNow.getUTCFullYear();
+    const month = istNow.getUTCMonth();
+    const day = istNow.getUTCDate() + dayOffset;
+    const start = new Date(Date.UTC(year, month, day, 0, 0, 0, 0) - (5.5 * 3600000));
+    const end = new Date(Date.UTC(year, month, day, 23, 59, 59, 999) - (5.5 * 3600000));
+    return { start, end };
+  }
+}
+
 export async function getOrgAnalytics(req: Request, res: Response) {
   const isSuperAdmin = req.user?.role === Role.SUPER_ADMIN;
   const orgId = isSuperAdmin
@@ -13,7 +74,8 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'User has no associated organization');
   }
 
-  const { branchId, startDate, endDate, range } = req.query as Record<string, string>;
+  const { branchId, startDate, endDate, range, timezone } = req.query as Record<string, string>;
+  const clientTimezone = normalizeTimezone(timezone || (req.headers['x-timezone'] as string) || process.env.APP_TIMEZONE);
 
   let fromDate: Date | undefined;
   let toDate: Date | undefined;
@@ -29,13 +91,13 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     const now = new Date();
     const rangeLower = range.toLowerCase();
     if (rangeLower.includes('today')) {
-      fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      toDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      const bounds = getStartAndEndOfDayInTimezone(clientTimezone, 0);
+      fromDate = bounds.start;
+      toDate = bounds.end;
     } else if (rangeLower.includes('yesterday')) {
-      const yest = new Date(now);
-      yest.setDate(yest.getDate() - 1);
-      fromDate = new Date(yest.getFullYear(), yest.getMonth(), yest.getDate());
-      toDate = new Date(yest.getFullYear(), yest.getMonth(), yest.getDate(), 23, 59, 59, 999);
+      const bounds = getStartAndEndOfDayInTimezone(clientTimezone, -1);
+      fromDate = bounds.start;
+      toDate = bounds.end;
     } else if (rangeLower.includes('week') || rangeLower.includes('last7') || rangeLower.includes('7')) {
       fromDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       toDate = new Date();
@@ -262,36 +324,34 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       inventoryItemCount: b.inventoryItems.length,
       lowStockItemCount: lowStock,
       productDemand: bProductDemand,
-      peakPeriods: [
-        {
-          timeSlot: '12:00 PM - 02:30 PM (Lunch Peak)',
-          activityLevel: 'Highest',
-          transactionCount: 0,
-          purchaseVolume: 0,
-        },
-        {
-          timeSlot: '04:30 PM - 06:30 PM (Evening Refreshment)',
-          activityLevel: 'Moderate',
-          transactionCount: 0,
-          purchaseVolume: 0,
-        },
-        {
-          timeSlot: '07:30 PM - 09:30 PM (Dinner)',
-          activityLevel: 'High',
-          transactionCount: 0,
-          purchaseVolume: 0,
-        },
-      ],
+      peakPeriods: [],
     });
   });
 
   let cashRechargeVolume = 0;
   let upiRechargeVolume = 0;
+  const branchHourlyBuckets = new Map<string, Map<number, { count: number; volume: number }>>();
 
   transactions.forEach((tx) => {
     const bm = branchMetricsMap.get(tx.branchId);
     const txType = String(tx.type || '');
     const paymentMethod = String((tx as any).paymentMethod || '').toUpperCase();
+
+    // Track hourly activity for live peak calculation
+    if (tx.branchId) {
+      let bBuckets = branchHourlyBuckets.get(tx.branchId);
+      if (!bBuckets) {
+        bBuckets = new Map<number, { count: number; volume: number }>();
+        branchHourlyBuckets.set(tx.branchId, bBuckets);
+      }
+      const txHour = getLocalHourInTimezone(new Date(tx.createdAt), clientTimezone);
+      const current = bBuckets.get(txHour) || { count: 0, volume: 0 };
+      current.count++;
+      if (txType === 'PURCHASE') {
+        current.volume += tx.amount;
+      }
+      bBuckets.set(txHour, current);
+    }
 
     if (txType === 'PURCHASE') {
       totalPurchaseVolume += tx.amount;
@@ -301,18 +361,6 @@ export async function getOrgAnalytics(req: Request, res: Response) {
         bm.purchaseVolume += tx.amount;
         bm.totalRevenue += tx.amount;
         bm.productsSoldCount++;
-
-        const txHour = new Date(tx.createdAt).getHours();
-        if (txHour >= 12 && txHour <= 14) {
-          bm.peakPeriods[0].transactionCount++;
-          bm.peakPeriods[0].purchaseVolume += tx.amount;
-        } else if (txHour >= 16 && txHour <= 18) {
-          bm.peakPeriods[1].transactionCount++;
-          bm.peakPeriods[1].purchaseVolume += tx.amount;
-        } else if (txHour >= 19 && txHour <= 21) {
-          bm.peakPeriods[2].transactionCount++;
-          bm.peakPeriods[2].purchaseVolume += tx.amount;
-        }
       }
     } else if (txType === 'RECHARGE_CASH' || paymentMethod === 'CASH' || paymentMethod === 'CARD' || txType === 'CASH') {
       totalRechargeVolume += tx.amount;
@@ -369,6 +417,12 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     }
   });
 
+  const formatHour12 = (h: number): string => {
+    const period = h >= 12 ? 'PM' : 'AM';
+    const displayHour = h % 12 === 0 ? 12 : h % 12;
+    return `${String(displayHour).padStart(2, '0')}:00 ${period}`;
+  };
+
   branchMetricsMap.forEach((bm) => {
     bm.avgTransactionValue = bm.transactionCount > 0 ? Number((bm.purchaseVolume / bm.transactionCount).toFixed(2)) : 0;
     bm.avgPurchaseValue = bm.purchaseCount > 0 ? Number((bm.purchaseVolume / bm.purchaseCount).toFixed(2)) : 0;
@@ -379,6 +433,28 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     bm.upiRechargeVolume = Number((bm.upiRechargeVolume || 0).toFixed(2));
     bm.refundVolume = Number(bm.refundVolume.toFixed(2));
     bm.totalRevenue = Number(bm.totalRevenue.toFixed(2));
+
+    // Calculate real live peak activity periods from actual transactions
+    const bBuckets = branchHourlyBuckets.get(bm.branchId);
+    if (bBuckets && bBuckets.size > 0) {
+      const activeHours = Array.from(bBuckets.entries())
+        .filter(([_, data]) => data.count > 0)
+        .sort((a, b) => b[1].count - a[1].count || b[1].volume - a[1].volume)
+        .slice(0, 3);
+
+      const levels = ['Highest', 'High', 'Moderate'];
+      bm.peakPeriods = activeHours.map(([hour, data], idx) => {
+        const nextHour = (hour + 1) % 24;
+        return {
+          timeSlot: `${formatHour12(hour)} - ${formatHour12(nextHour)}`,
+          activityLevel: levels[idx] || 'Moderate',
+          transactionCount: data.count,
+          purchaseVolume: Number(data.volume.toFixed(2)),
+        };
+      });
+    } else {
+      bm.peakPeriods = [];
+    }
   });
 
   const zeroBalanceActiveCardsCount = activeSessionsList.filter((s) => s.balance === 0).length;
@@ -586,7 +662,8 @@ export async function getPeakAnalytics(req: Request, res: Response) {
     ? (req.query.organizationId as string) || undefined
     : req.user?.organizationId;
 
-  const { branchId, startDate, endDate, category, categoryId } = req.query as Record<string, string>;
+  const { branchId, startDate, endDate, category, categoryId, timezone } = req.query as Record<string, string>;
+  const clientTimezone = normalizeTimezone(timezone || (req.headers['x-timezone'] as string) || process.env.APP_TIMEZONE);
 
   const dateFilter: any = {};
   if (startDate) dateFilter.gte = new Date(startDate.includes('T') ? startDate : `${startDate}T00:00:00.000Z`);
@@ -649,7 +726,7 @@ export async function getPeakAnalytics(req: Request, res: Response) {
   const branchVolMap = new Map<string, number>();
 
   transactions.forEach((tx) => {
-    const txHour = new Date(tx.createdAt).getHours();
+    const txHour = getLocalHourInTimezone(new Date(tx.createdAt), clientTimezone);
     const bucket = hourlyBuckets[txHour];
 
     if (bucket) {

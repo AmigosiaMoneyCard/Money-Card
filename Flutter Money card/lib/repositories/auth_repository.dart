@@ -13,10 +13,15 @@ class AuthRepository {
 
   /// Perform login and securely persist tokens
   Future<AuthUser> login({
-    required String email,
+    String? email,
+    String? phone,
     required String password,
   }) async {
-    final response = await authService.login(email: email, password: password);
+    final response = await authService.login(
+      email: email,
+      phone: phone,
+      password: password,
+    );
     await tokenStorage.saveTokens(
       accessToken: response.accessToken,
       refreshToken: response.refreshToken,

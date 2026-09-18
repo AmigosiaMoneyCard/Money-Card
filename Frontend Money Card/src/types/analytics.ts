@@ -94,6 +94,31 @@ export interface AnalyticsOverview {
   zeroBalanceActiveCardsCount?: number;
   activeStaffCount?: number;
   totalStaffCount?: number;
+  cardFleetAnalytics?: CardFleetAnalytics;
+}
+
+export interface CardFleetTrackItem {
+  id: string;
+  cardNumber: string;
+  status: 'ACTIVE' | 'BLOCKED' | 'AVAILABLE';
+  balance: number;
+  totalRecharged: number;
+  totalSpent: number;
+  totalRefunded: number;
+  transactionCount: number;
+  favoriteBranchName: string;
+  lastUsedAt?: string;
+  isDormant: boolean;
+}
+
+export interface CardFleetAnalytics {
+  totalCardsInCirculation: number;
+  totalFloatBalance: number;
+  dormantCardsCount: number;
+  blockedCardsCount: number;
+  availableCardsCount: number;
+  topActiveCards: CardFleetTrackItem[];
+  dormantCards: CardFleetTrackItem[];
 }
 
 export interface AnalyticsFilter {

@@ -78,7 +78,7 @@ export async function getOrganizations(req: Request, res: Response) {
       _count: {
         select: {
           branches: true,
-          users: { where: { role: Role.STAFF } },
+          users: { where: { role: Role.STAFF, status: { not: UserStatus.DEACTIVATED } } },
           cards: true,
         },
       },
@@ -992,6 +992,10 @@ export async function resendOrgAdminInvite(req: Request, res: Response) {
     : 'https://money-card-frontend-staging.vercel.app';
   const clientOrigin = req.headers.origin || process.env.FRONTEND_URL || defaultFrontend;
   const activationLink = `${clientOrigin}/activate?token=${rawToken}`;
+
+  if (!orgAdmin.email) {
+    return sendError(res, 400, 'NO_EMAIL', 'Org admin has no email associated.');
+  }
 
   sendAccountActivationEmail(
     orgAdmin.email,

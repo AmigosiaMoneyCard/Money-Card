@@ -44,7 +44,7 @@ class AppFormatters {
   static String formatIsoDate(String? isoString) {
     if (isoString == null || isoString.isEmpty) return '-';
     try {
-      final dt = DateTime.parse(isoString);
+      final dt = DateTime.parse(isoString).toLocal();
       return formatDateTime(dt);
     } catch (_) {
       return isoString;

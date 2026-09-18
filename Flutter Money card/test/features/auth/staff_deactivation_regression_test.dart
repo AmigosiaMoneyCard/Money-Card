@@ -15,7 +15,7 @@ class FakeFailingAuthService extends AuthService {
   FakeFailingAuthService(this.errorToThrow) : super(ApiService(Dio()));
 
   @override
-  Future<AuthResponseData> login({required String email, required String password}) async {
+  Future<AuthResponseData> login({String? email, String? phone, required String password}) async {
     throw errorToThrow;
   }
 

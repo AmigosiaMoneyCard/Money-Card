@@ -18,6 +18,7 @@ import '../../widgets/common/app_dialog.dart';
 import '../../widgets/common/section_header.dart';
 import '../../widgets/guards/permission_guard.dart';
 import '../../widgets/states/app_loading_view.dart';
+import '../../core/utils/formatters.dart';
 
 class CardDetailsScreen extends ConsumerStatefulWidget {
   final String cardId;
@@ -57,6 +58,12 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
   void dispose() {
     _reasonController.dispose();
     super.dispose();
+  }
+
+  String _formatDateTime(String? raw) {
+    if (raw == null || raw.isEmpty) return '—';
+    final formatted = AppFormatters.formatIsoDate(raw);
+    return formatted == '-' ? '—' : formatted;
   }
 
   AppBadgeVariant _getCardStatusVariant(CardStatus status) {
@@ -668,7 +675,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                       const Icon(Icons.access_time, size: 16, color: AppColors.textSecondaryLight),
                       const SizedBox(width: AppSpacing.xs),
                       Text(
-                        'Started: ${activeSession.startedAt}',
+                        'Started: ${_formatDateTime(activeSession.startedAt)}',
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondaryLight,

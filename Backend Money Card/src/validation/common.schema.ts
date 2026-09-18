@@ -69,6 +69,18 @@ export const safeGmail = safeEmail.refine(
 );
 
 /**
+ * Safe phone schema (10-15 digits)
+ */
+export const safePhone = z
+  .string({ required_error: 'Phone number is required' })
+  .trim()
+  .transform((val) => val.replace(/\D/g, ''))
+  .refine((val) => val.length >= 10 && val.length <= 15, {
+    message: 'Please provide a valid 10-digit phone number',
+  });
+
+
+/**
  * Strong password schema for signup, password change, and password reset:
  * - Enforces minimum 8 characters, maximum 128 characters
  * - Requires at least one uppercase letter [A-Z]

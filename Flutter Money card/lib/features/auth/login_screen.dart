@@ -15,13 +15,14 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
   static final RegExp _emailRegExp = RegExp(
     r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
   );
+  static final RegExp _phoneRegExp = RegExp(r'^\d{10}$');
 
   @override
   void initState() {
@@ -33,7 +34,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -42,155 +43,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) return;
 
-    final email = _emailController.text.trim();
+    final input = _phoneController.text.trim();
     final password = _passwordController.text;
 
+    final isEmail = input.contains('@');
     await ref.read(authNotifierProvider.notifier).login(
-          email: email,
+          email: isEmail ? input : null,
+          phone: isEmail ? null : input,
           password: password,
         );
   }
 
-  void _showForgotPasswordDialog() {
-    final emailController = TextEditingController(text: _emailController.text.trim());
-    final dialogFormKey = GlobalKey<FormState>();
-    bool isSubmitting = false;
-
-    showDialog(
-      context: context,
-      barrierDismissible: !isSubmitting,
-      builder: (dialogCtx) => StatefulBuilder(
-        builder: (ctx, setModalState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Row(
-            children: [
-              Icon(Icons.lock_reset, color: AppColors.primary),
-              SizedBox(width: 8),
-              Text(
-                'Reset Password',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          content: Form(
-            key: dialogFormKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Enter your registered Gmail address to receive a secure password reset link.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondaryLight,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                TextFormField(
-                  controller: emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  autofocus: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Gmail Address',
-                    hintText: 'staff@gmail.com',
-                    prefixIcon: Icon(Icons.email_outlined, size: 20),
-                  ),
-                  validator: (val) {
-                    if (val == null || val.trim().isEmpty) {
-                      return 'Email is required';
-                    }
-                    final trimmed = val.trim().toLowerCase();
-                    if (!RegExp(r'^[a-zA-Z0-9._%+-]+@(gmail|googlemail)\.com$').hasMatch(trimmed)) {
-                      return 'Please enter a valid Gmail (@gmail.com)';
-                    }
-                    return null;
-                  },
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: isSubmitting ? null : () => Navigator.of(dialogCtx).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: isSubmitting
-                  ? null
-                  : () async {
-                      if (!dialogFormKey.currentState!.validate()) return;
-                      setModalState(() => isSubmitting = true);
-                      final email = emailController.text.trim().toLowerCase();
-
-                      final success = await ref
-                          .read(authNotifierProvider.notifier)
-                          .forgotPassword(email);
-
-                      if (dialogCtx.mounted) {
-                        Navigator.of(dialogCtx).pop();
-                      }
-
-                      if (!mounted) return;
-                      if (success) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            backgroundColor: AppColors.success,
-                            content: Row(
-                              children: [
-                                const Icon(Icons.check_circle, color: Colors.white, size: 20),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text('Reset link sent to $email. Please check your inbox!'),
-                                ),
-                              ],
-                            ),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      } else {
-                        final authErr = ref.read(authNotifierProvider).errorMessage ??
-                            'Failed to send reset email. Please try again.';
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            backgroundColor: AppColors.error,
-                            content: Row(
-                              children: [
-                                const Icon(Icons.error_outline, color: Colors.white, size: 20),
-                                const SizedBox(width: 8),
-                                Expanded(child: Text(authErr)),
-                              ],
-                            ),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      }
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: isSubmitting
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text('Send Reset Link'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -314,9 +177,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         const SizedBox(height: AppSpacing.md),
                       ],
 
-                      // Email Field
+                      // Phone Number Field
                       const Text(
-                        'Email',
+                        'Phone Number',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -325,19 +188,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       const SizedBox(height: AppSpacing.xs),
                       TextFormField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
                         textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(
-                          hintText: 'staff@example.com',
-                          prefixIcon: Icon(Icons.email_outlined, size: 20),
+                          hintText: '10-digit mobile number',
+                          prefixIcon: Icon(Icons.phone_android_outlined, size: 20),
                         ),
                         validator: (val) {
                           if (val == null || val.trim().isEmpty) {
-                            return 'Email is required';
+                            return 'Phone number is required';
                           }
-                          if (!_emailRegExp.hasMatch(val.trim())) {
-                            return 'Enter a valid email address';
+                          final trimmed = val.trim();
+                          if (trimmed.contains('@')) {
+                            if (!_emailRegExp.hasMatch(trimmed)) {
+                              return 'Enter a valid email address';
+                            }
+                            return null;
+                          }
+                          if (!_phoneRegExp.hasMatch(trimmed)) {
+                            return 'Enter a valid 10-digit mobile number';
                           }
                           return null;
                         },
@@ -381,29 +251,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: AppSpacing.xs),
-
-                      // Forgot Password Link
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: authState.isAuthenticating ? null : _showForgotPasswordDialog,
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: const Size(50, 28),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: const Text(
-                            'Forgot Password?',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primaryDark,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
+                      const SizedBox(height: AppSpacing.lg),
 
                       // Login Button
                       AppButton(

@@ -20,6 +20,7 @@ import '../../widgets/common/app_dialog.dart';
 import '../../widgets/common/section_header.dart';
 import '../../widgets/scanner/qr_scanner_view.dart';
 import '../../widgets/states/app_loading_view.dart';
+import '../../core/utils/formatters.dart';
 
 class PosScanPurchaseScreen extends ConsumerStatefulWidget {
   const PosScanPurchaseScreen({super.key});
@@ -73,6 +74,9 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       final result = await cardRepo.resolveCardByQr(qrToken);
 
       if (!mounted) return;
+
+      // Tactile haptic feedback on successful card scan
+      HapticFeedback.mediumImpact();
 
       // ─── Available Card Detected: Prompt for Customer Details Before Issuing ───
       if (result.card.status == CardStatus.available ||
@@ -323,7 +327,11 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     }
   }
 
-
+  String _formatDateTime(String? raw) {
+    if (raw == null || raw.isEmpty) return '—';
+    final formatted = AppFormatters.formatIsoDate(raw);
+    return formatted == '-' ? '—' : formatted;
+  }
 
   // ==========================================
   // ACTION HANDLERS
@@ -577,7 +585,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 const Text(
-                  'This QR card is not registered in your cafeteria.',
+                  'This QR card is not registered in your counter. Try scanning a different card.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
@@ -646,7 +654,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
               const Text(
-                'Card is BLOCKED. Cannot perform operations on a blocked card.',
+                                'This card is blocked and cannot be used. Please contact your manager.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppColors.error,
@@ -872,21 +880,58 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
-                        child: Text(
-                          card.displayCardNumber,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                            color: AppColors.textPrimaryLight,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              card.displayCardNumber,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                                color: AppColors.textPrimaryLight,
+                              ),
+                            ),
+                            if (session.customerName != null && session.customerName!.trim().isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Row(
+                                children: [
+                                  const Icon(Icons.person, size: 14, color: AppColors.primary),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      session.customerName!.trim(),
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textPrimaryLight,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                       const SizedBox(width: AppSpacing.xs),
-                      const AppBadge(
-                        label: 'ACTIVE',
-                        variant: AppBadgeVariant.success,
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (session.balance < 100) ...[
+                            const AppBadge(
+                              label: 'LOW BAL',
+                              variant: AppBadgeVariant.warning,
+                            ),
+                            const SizedBox(width: AppSpacing.xs),
+                          ],
+                          const AppBadge(
+                            label: 'ACTIVE',
+                            variant: AppBadgeVariant.success,
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -943,6 +988,24 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                             ),
                           ),
                         ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(Icons.access_time, size: 14, color: AppColors.textSecondaryLight),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          'Started: ${_formatDateTime(session.startedAt)}',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondaryLight,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ),
                     ],
                   ),

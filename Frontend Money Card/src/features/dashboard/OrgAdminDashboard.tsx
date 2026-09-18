@@ -36,7 +36,6 @@ import {
   RefreshCw,
   Zap,
   ArrowRight,
-  AlertTriangle,
   BarChart3,
   CheckCircle2,
   Sparkles,
@@ -257,11 +256,6 @@ export function OrgAdminDashboard() {
     }).length;
   }, [cardsList, startDate, endDate]);
 
-  // Low Stock Items (Threshold <= 10)
-  const lowStockCount = useMemo(() => {
-    return inventory.filter((i) => i.quantity <= 10).length;
-  }, [inventory]);
-
   // Getting Started Checklist Calculations
   const hasBranches = branches.length > 0 || !!currentBranch;
   const hasStaff = staffList.length > 0;
@@ -271,27 +265,27 @@ export function OrgAdminDashboard() {
   const setupSteps = useMemo(() => [
     {
       id: 'branches',
-      title: '1. Create counter location',
-      description: 'Define your cafeteria counter or store location.',
+      title: '1. Create cafeteria location',
+      description: 'Define your cafeteria location.',
       completed: hasBranches,
       path: '/branches',
-      actionLabel: 'Add Counter',
+      actionLabel: 'Add Cafeteria',
     },
     {
       id: 'staff',
       title: '2. Add team members & cashiers',
-      description: 'Grant counter staff access to scan cards and take orders.',
+      description: 'Grant staff access to scan cards and take orders.',
       completed: hasStaff,
       path: '/staff',
       actionLabel: 'Add Staff',
     },
     {
       id: 'cards',
-      title: '3. Register smart cards',
-      description: 'Scan or import physical cards for your customers.',
+      title: '3. Smart cards directory',
+      description: 'Cards auto-register immediately when scanned by staff.',
       completed: hasCards,
       path: '/cards',
-      actionLabel: 'Register Cards',
+      actionLabel: 'View Cards',
     },
     {
       id: 'products',
@@ -328,7 +322,8 @@ export function OrgAdminDashboard() {
       {/* Header Bar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Cafeteria Dashboard</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Organization Dashboard</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Real-time overview of counter operations and sales.</p>
         </div>
       </div>
 
@@ -350,10 +345,10 @@ export function OrgAdminDashboard() {
             </div>
             <div>
               <h3 className="font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
-                Issue & Register Cards
+                Smart Cards Directory
               </h3>
               <p className="mt-1 text-xs text-slate-500">
-                Scan or assign new smart cards to customers
+                View auto-registered and active customer cards
               </p>
             </div>
           </button>
@@ -443,7 +438,7 @@ export function OrgAdminDashboard() {
             onClick={() => navigate('/branches')}
             leftIcon={<Building2 className="h-3.5 w-3.5" />}
           >
-            Counters
+            Cafeterias
           </Button>
         )}
         {hasPermission('VIEW_ANALYTICS') && (
@@ -669,7 +664,7 @@ export function OrgAdminDashboard() {
                 <div className="flex flex-wrap items-center gap-3">
                   {/* Branch Scope Filter */}
                   <div className="w-full sm:w-52">
-                    <label className="mb-1 block text-[11px] font-medium text-slate-600">Counter Scope</label>
+                    <label className="mb-1 block text-[11px] font-medium text-slate-600">Cafeteria Scope</label>
                     <Select
                       id="dashboard-branch-filter"
                       value={currentBranch?.id || ''}
@@ -683,7 +678,7 @@ export function OrgAdminDashboard() {
                         }
                       }}
                       options={[
-                        { value: '', label: 'All Counters' },
+                        { value: '', label: 'All Cafeterias' },
                         ...branches.map((b) => ({ value: b.id, label: b.name })),
                       ]}
                     />
@@ -768,9 +763,9 @@ export function OrgAdminDashboard() {
                 />
 
                 <StatCard
-                  label="Low Stock Alert Items"
-                  value={lowStockCount}
-                  icon={<AlertTriangle className="h-5 w-5 text-amber-600" />}
+                  label="Active Staff Members"
+                  value={staffList.filter((s) => s.status === 'ACTIVE').length}
+                  icon={<Users className="h-5 w-5 text-indigo-600" />}
                 />
               </div>
             </CardContent>

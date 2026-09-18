@@ -102,13 +102,17 @@ export const realClient: typeof mockClient = {
       );
       if (res.success && res.data?.accessToken) {
         apiClient.setAccessToken(res.data.accessToken);
+        if (res.data.refreshToken) {
+          apiClient.setRefreshToken(res.data.refreshToken);
+        }
       }
       return res;
     },
 
     async refresh(refreshToken?: string): Promise<ApiResult<{ accessToken: string }>> {
+      const tokenToUse = refreshToken || apiClient.getRefreshToken() || undefined;
       return handleApiCall(() =>
-        apiClient.post<{ accessToken: string }>('/v1/auth/refresh', refreshToken ? { refreshToken } : {}),
+        apiClient.post<{ accessToken: string }>('/v1/auth/refresh', tokenToUse ? { refreshToken: tokenToUse } : {}),
       );
     },
 
@@ -117,6 +121,7 @@ export const realClient: typeof mockClient = {
         apiClient.post<{ message: string }>('/v1/auth/logout'),
       );
       apiClient.setAccessToken(null);
+      apiClient.setRefreshToken(null);
       return res;
     },
 

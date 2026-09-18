@@ -430,6 +430,21 @@ export function SessionsPage() {
         </span>
       ),
     },
+    {
+      key: 'action',
+      header: '',
+      className: 'text-right',
+      render: (item: CustomerHistoryItem) => (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => handleOpenDetails(item)}
+          leftIcon={<Eye className="h-3.5 w-3.5" />}
+        >
+          View
+        </Button>
+      ),
+    },
   ];
 
   return (
@@ -440,9 +455,6 @@ export function SessionsPage() {
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Customer History & Audit Trail
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Historical customer card sessions, purchases, and recharge audits
-          </p>
         </div>
         <div className="flex items-center gap-3">
           <Button

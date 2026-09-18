@@ -217,7 +217,6 @@ void main() {
       // Verify Screen Title & Active Segment
       expect(find.text('Card Sessions'), findsOneWidget);
       expect(find.text('Active'), findsOneWidget);
-      expect(find.text('Counter: Main Cafeteria'), findsOneWidget);
 
       // Verify Active Sessions Rendered with Card Identifier & Balance
       expect(find.text('Card MC-101'), findsOneWidget);
@@ -293,7 +292,7 @@ void main() {
       expect(find.text('Retry'), findsOneWidget);
     });
 
-    testWidgets('SessionDetailsScreen renders only session details and timeline without session operations', (tester) async {
+    testWidgets('SessionDetailsScreen renders balance and operation actions', (tester) async {
       const mockUser = AuthUser(
         id: 'staff-1',
         email: 'staff@moneycard.io',
@@ -330,12 +329,9 @@ void main() {
 
       expect(find.text('₹350.00'), findsOneWidget);
       expect(find.text('ACTIVE'), findsOneWidget);
-      expect(find.text('Session Operations'), findsNothing);
-      expect(find.text('New POS Purchase'), findsNothing);
-      expect(find.text('Return & Settle Card'), findsNothing);
-      expect(find.text('Recharge Card (Cash / UPI)'), findsNothing);
+      expect(find.text('Card Issued'), findsOneWidget);
     });
-    testWidgets('SessionDetailsScreen renders transactions timeline with transaction amount without itemized purchased products', (tester) async {
+    testWidgets('SessionDetailsScreen renders transactions with itemized purchased products', (tester) async {
       const mockUser = AuthUser(
         id: 'staff-1',
         email: 'staff@moneycard.io',
@@ -414,14 +410,132 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Transaction History'), findsOneWidget);
-      expect(find.text('POS Purchase'), findsOneWidget);
+      expect(find.text('Chicken Sandwich'), findsOneWidget);
+      expect(find.text('× 2'), findsOneWidget);
       expect(find.text('-₹180.00'), findsOneWidget);
-      expect(find.text('Chicken Sandwich'), findsNothing);
+      expect(find.text('POS Purchase'), findsNothing);
       expect(find.text('Purchased Products (1)'), findsNothing);
 
       await tester.scrollUntilVisible(find.text('Wallet Recharge (UPI)'), 200);
       expect(find.text('Wallet Recharge (UPI)'), findsOneWidget);
       expect(find.text('+₹680.00'), findsOneWidget);
+    });
+
+    testWidgets('SessionDetailsScreen filters transactions by type and date in unified box', (tester) async {
+      final now = DateTime.now();
+      final todayIso = now.toIso8601String();
+      final yesterdayIso = now.subtract(const Duration(days: 1)).toIso8601String();
+
+      const mockUser = AuthUser(
+        id: 'staff-1',
+        email: 'staff@moneycard.io',
+        name: 'Alex Morgan',
+        role: 'STAFF',
+        organizationId: 'org-demo-001',
+        permissions: [AppPermission.purchase, AppPermission.recharge],
+        assignedBranchIds: ['branch-001'],
+      );
+
+      const mockBranch = Branch(
+        id: 'branch-001',
+        organizationId: 'org-demo-001',
+        name: 'Main Cafeteria',
+      );
+
+      final sessionWithTxns = CardSession(
+        id: 'session-filter-test',
+        cardId: 'card-filter-1',
+        physicalCardNumber: 'MC-FILTER',
+        branchId: 'branch-001',
+        status: SessionStatus.active,
+        balance: 500.0,
+        startedAt: todayIso,
+        transactions: [
+          Transaction(
+            id: 'tx-today-purchase',
+            sessionId: 'session-filter-test',
+            branchId: 'branch-001',
+            type: TransactionType.purchase,
+            amount: 120.0,
+            balanceAfter: 380.0,
+            status: TransactionStatus.success,
+            createdAt: todayIso,
+            items: const [
+              PurchaseItem(
+                productId: 'prod-001',
+                itemName: 'Veg Burger',
+                quantity: 1,
+                unitPrice: 120.0,
+                totalAmount: 120.0,
+              ),
+            ],
+          ),
+          Transaction(
+            id: 'tx-yesterday-recharge',
+            sessionId: 'session-filter-test',
+            branchId: 'branch-001',
+            type: TransactionType.recharge,
+            amount: 500.0,
+            balanceAfter: 500.0,
+            status: TransactionStatus.success,
+            paymentMethod: PaymentMethod.cash,
+            createdAt: yesterdayIso,
+          ),
+        ],
+      );
+
+      fakeRepo.sessions.add(sessionWithTxns);
+      final sessionNotifier = SessionDetailsNotifier(fakeRepo);
+      await sessionNotifier.loadSessionById('session-filter-test');
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            currentUserProvider.overrideWithValue(mockUser),
+            currentBranchProvider.overrideWithValue(mockBranch),
+            sessionDetailsNotifierProvider.overrideWith((ref) => sessionNotifier),
+          ],
+          child: const MaterialApp(
+            home: SessionDetailsScreen(sessionId: 'session-filter-test'),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // By default: 'All Time' and 'All Types'
+      expect(find.text('Veg Burger'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Wallet Recharge (Cash)'), 200);
+      expect(find.text('Wallet Recharge (Cash)'), findsOneWidget);
+
+      // Verify both filter dropdowns exist in the unified box
+      expect(find.text('All Time'), findsOneWidget);
+      expect(find.text('All Types'), findsOneWidget);
+
+      // Select 'Today' in date dropdown
+      await tester.tap(find.text('All Time'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Today').last);
+      await tester.pumpAndSettle();
+
+      // Today purchase should remain, yesterday recharge should be filtered out
+      expect(find.text('Veg Burger'), findsOneWidget);
+      expect(find.text('Wallet Recharge (Cash)'), findsNothing);
+
+      // Reset date to 'All Time' and filter by 'Recharges' in type dropdown
+      await tester.tap(find.text('Today'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('All Time').last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('All Types'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Recharges').last);
+      await tester.pumpAndSettle();
+
+      // Veg Burger (Purchase) should be hidden, Recharge should be visible
+      expect(find.text('Veg Burger'), findsNothing);
+      expect(find.text('Wallet Recharge (Cash)'), findsOneWidget);
     });
   });
 }

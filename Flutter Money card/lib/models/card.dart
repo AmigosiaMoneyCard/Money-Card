@@ -171,6 +171,7 @@ class ResolveQrResponseData {
 
     final activeSessionId = json['activeSessionId'] as String?;
     final activeBalance = (json['activeBalance'] as num?)?.toDouble() ?? 0.0;
+    final activeSessionStartedAt = json['activeSessionStartedAt'] as String? ?? json['activeSessionIssuedAt'] as String? ?? json['startedAt'] as String?;
     final session = activeSessionId != null
         ? CardSession(
             id: activeSessionId,
@@ -178,7 +179,7 @@ class ResolveQrResponseData {
             branchId: branchId ?? '',
             status: SessionStatus.active,
             balance: activeBalance,
-            startedAt: DateTime.now().toIso8601String(),
+            startedAt: activeSessionStartedAt ?? DateTime.now().toIso8601String(),
           )
         : null;
 

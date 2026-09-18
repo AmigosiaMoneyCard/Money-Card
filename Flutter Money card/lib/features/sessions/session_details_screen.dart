@@ -10,6 +10,7 @@ import '../../widgets/common/app_card.dart';
 import '../../widgets/common/section_header.dart';
 import '../../widgets/states/app_error_state.dart';
 import '../../widgets/states/app_loading_view.dart';
+import '../../core/utils/formatters.dart';
 
 /// Authoritative Session Details & Activity Timeline Screen.
 /// Displays live balance, customer profile, operational action buttons,
@@ -28,6 +29,24 @@ class SessionDetailsScreen extends ConsumerStatefulWidget {
 }
 
 class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
+  final List<String> _ranges = [
+    'All Time',
+    'Today',
+    'Yesterday',
+    'This Week',
+    'This Month',
+    'Last 30 Days',
+  ];
+  String _selectedRange = 'All Time';
+
+  final List<String> _types = [
+    'All Types',
+    'Purchases',
+    'Recharges',
+    'Refunds',
+  ];
+  String _selectedType = 'All Types';
+
   @override
   void initState() {
     super.initState();
@@ -39,17 +58,61 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
     });
   }
 
+  DateTime? _parseDateTime(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    try {
+      final parsed = DateTime.tryParse(raw.trim());
+      if (parsed == null) return null;
+      return parsed.toLocal();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool _isWithinRange(DateTime dt, String range) {
+    final localDt = dt.toLocal();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final targetDate = DateTime(localDt.year, localDt.month, localDt.day);
+
+    switch (range.toLowerCase()) {
+      case 'today':
+        return targetDate.isAtSameMomentAs(today) || targetDate.isAfter(today);
+      case 'yesterday':
+        final yesterday = DateTime(today.year, today.month, today.day - 1);
+        return targetDate.isAtSameMomentAs(yesterday);
+      case 'this week':
+        final startOfWeek = DateTime(today.year, today.month, today.day - (today.weekday - 1));
+        return !targetDate.isBefore(startOfWeek);
+      case 'this month':
+        return (localDt.year == now.year && localDt.month == now.month) || targetDate.isAfter(today);
+      case 'last 30 days':
+        final thirtyDaysAgo = DateTime(today.year, today.month, today.day - 30);
+        return !targetDate.isBefore(thirtyDaysAgo);
+      case 'all time':
+      default:
+        return true;
+    }
+  }
+
+  bool _matchesType(Transaction txn, String selectedType) {
+    switch (selectedType.toLowerCase()) {
+      case 'purchases':
+        return txn.type == TransactionType.purchase;
+      case 'recharges':
+        return txn.type == TransactionType.recharge;
+      case 'refunds':
+        return txn.type == TransactionType.refund;
+      case 'all types':
+      default:
+        return true;
+    }
+  }
+
   String _formatDateTime(String? raw) {
     if (raw == null || raw.isEmpty) return '—';
-    try {
-      final dt = DateTime.parse(raw).toLocal();
-      final date = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
-      final hour = dt.hour.toString().padLeft(2, '0');
-      final min = dt.minute.toString().padLeft(2, '0');
-      return '$date $hour:$min';
-    } catch (_) {
-      return raw;
-    }
+    final formatted = AppFormatters.formatIsoDate(raw);
+    return formatted == '-' ? '—' : formatted;
   }
 
   @override
@@ -81,7 +144,18 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
     }
 
     final isActive = session.status == SessionStatus.active;
-    final transactions = session.transactions ?? [];
+    final allTransactions = session.transactions ?? [];
+    final filteredTransactions = allTransactions.where((txn) {
+      if (!_matchesType(txn, _selectedType)) return false;
+      if (_selectedRange == 'All Time') return true;
+      final dt = _parseDateTime(txn.createdAt);
+      if (dt == null) return true;
+      return _isWithinRange(dt, _selectedRange);
+    }).toList();
+
+    final startedDt = _parseDateTime(session.startedAt);
+    final showCardIssued = (_selectedType == 'All Types' || _selectedType == 'Recharges') &&
+        (_selectedRange == 'All Time' || (startedDt != null && _isWithinRange(startedDt, _selectedRange)));
 
     return Scaffold(
       appBar: AppBar(
@@ -192,15 +266,108 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
           const SectionHeader(title: 'Transaction History'),
           const SizedBox(height: AppSpacing.xs),
 
+          // Unified Filter Box: Date Range + Transaction Type in ONE single container box
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: AppSpacing.roundedSm,
+              border: Border.all(color: AppColors.borderLight),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 3,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                // Date Range Filter
+                const Icon(Icons.calendar_today_outlined, size: 14, color: AppColors.primary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _ranges.contains(_selectedRange) ? _selectedRange : _ranges.first,
+                      isDense: true,
+                      isExpanded: true,
+                      icon: const Icon(Icons.arrow_drop_down, size: 18, color: AppColors.primary),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimaryLight,
+                      ),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            _selectedRange = value;
+                          });
+                        }
+                      },
+                      items: _ranges.map((range) {
+                        return DropdownMenuItem<String>(
+                          value: range,
+                          child: Text(range, overflow: TextOverflow.ellipsis),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+
+                // Vertical Divider separating Date and Type within the box
+                Container(
+                  width: 1,
+                  height: 20,
+                  color: AppColors.borderLight,
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+
+                // Transaction Type Filter
+                const Icon(Icons.tune, size: 14, color: AppColors.primary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _types.contains(_selectedType) ? _selectedType : _types.first,
+                      isDense: true,
+                      isExpanded: true,
+                      icon: const Icon(Icons.arrow_drop_down, size: 18, color: AppColors.primary),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimaryLight,
+                      ),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            _selectedType = value;
+                          });
+                        }
+                      },
+                      items: _types.map((type) {
+                        return DropdownMenuItem<String>(
+                          value: type,
+                          child: Text(type, overflow: TextOverflow.ellipsis),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+
           // Render Transactions (Purchases, Recharges, Settlement)
-          if (transactions.isNotEmpty)
-            ...transactions.map((txn) => _buildTransactionCard(txn)),
+          if (filteredTransactions.isNotEmpty)
+            ...filteredTransactions.map((txn) => _buildTransactionCard(txn)),
 
           // Render Card Issuance Base Timeline Event
-          _buildCardIssuedTimelineCard(session),
+          if (showCardIssued)
+            _buildCardIssuedTimelineCard(session),
 
-          if (transactions.isEmpty) ...[
-            const SizedBox(height: AppSpacing.sm),
+          if (filteredTransactions.isEmpty && !showCardIssued) ...[
             Container(
               padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
@@ -212,10 +379,12 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                 children: [
                   Icon(Icons.info_outline, size: 18, color: Colors.grey.shade500),
                   const SizedBox(width: AppSpacing.sm),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'No additional transactions in this card session yet.',
-                      style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
+                      _selectedRange == 'All Time' && _selectedType == 'All Types'
+                          ? 'No transactions in this card session yet.'
+                          : 'No transactions found for $_selectedRange ($_selectedType).',
+                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
                     ),
                   ),
                 ],
@@ -249,13 +418,15 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
       badgeBg = AppColors.primaryLight;
       badgeFg = AppColors.primary;
       icon = Icons.shopping_bag_outlined;
-      typeLabel = 'POS Purchase';
+      typeLabel = 'Purchase';
     } else {
       badgeBg = AppColors.warningLight;
       badgeFg = AppColors.warning;
       icon = Icons.assignment_return_outlined;
       typeLabel = 'Settlement Refund';
     }
+
+    final hasItems = isPurchase && txn.items != null && txn.items!.isNotEmpty;
 
     return Container(
       key: ValueKey('txn-${txn.id}'),
@@ -294,14 +465,46 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        typeLabel,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimaryLight,
+                      if (hasItems) ...[
+                        for (final item in txn.items!)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 2),
+                            child: Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    item.itemName ?? 'Item',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.textPrimaryLight,
+                                    ),
+                                  ),
+                                ),
+                                if (item.quantity > 1) ...[
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '× ${item.quantity}',
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textSecondaryLight,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                      ] else ...[
+                        Text(
+                          typeLabel,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimaryLight,
+                          ),
                         ),
-                      ),
+                      ],
                       const SizedBox(height: 2),
                       Text(
                         _formatDateTime(txn.createdAt),
@@ -313,66 +516,37 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                     ],
                   ),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '${isRecharge ? "+" : isPurchase ? "-" : ""}₹${txn.amount.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: isRecharge
-                            ? AppColors.success
-                            : isPurchase
-                                ? AppColors.error
-                                : AppColors.textPrimaryLight,
-                      ),
-                    ),
-                    if (txn.balanceAfter != null)
-                      Text(
-                        'Bal: ₹${txn.balanceAfter!.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.textSecondaryLight,
-                        ),
-                      ),
-                  ],
+                Text(
+                  '${isRecharge ? "+" : isPurchase ? "-" : ""}₹${txn.amount.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: isRecharge
+                        ? AppColors.success
+                        : isPurchase
+                            ? AppColors.error
+                            : AppColors.textPrimaryLight,
+                  ),
                 ),
               ],
             ),
           ),
 
-          // Footer details (Payment method & Balance after line)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.sm),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  isPurchase
-                      ? 'Paid via: Money Card Balance'
-                      : isRecharge
-                          ? 'Payment: ${txn.paymentMethod == PaymentMethod.upi ? "UPI" : "Cash"}'
-                          : 'Refund via: Cash Return',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondaryLight,
-                    fontWeight: FontWeight.w500,
-                  ),
+          // Footer details ONLY for recharge or refund (no "paid via" for purchase, no "balance after")
+          if (!isPurchase)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.sm),
+              child: Text(
+                isRecharge
+                    ? 'Payment: ${txn.paymentMethod == PaymentMethod.upi ? "UPI" : "Cash"}'
+                    : 'Refund via: Cash Return',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textSecondaryLight,
+                  fontWeight: FontWeight.w500,
                 ),
-                if (txn.balanceAfter != null)
-                  Text(
-                    'Balance after: ₹${txn.balanceAfter!.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimaryLight,
-                    ),
-                  ),
-              ],
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -433,7 +607,7 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Card: ${session.displayCardNumber}',
+                    'Issued Card: ${session.displayCardNumber}',
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -442,7 +616,7 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                   ),
                   if (session.customerName != null && session.customerName!.isNotEmpty)
                     Text(
-                      'Customer: ${session.customerName}${session.customerPhone != null && session.customerPhone!.isNotEmpty ? " (${session.customerPhone})" : ""}',
+                      'Issued to: ${session.customerName}${session.customerPhone != null && session.customerPhone!.isNotEmpty ? " (${session.customerPhone})" : ""}',
                       style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondaryLight,

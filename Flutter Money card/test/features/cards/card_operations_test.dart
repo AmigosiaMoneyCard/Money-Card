@@ -287,7 +287,7 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('Branch Cards'), findsOneWidget);
+      expect(find.text('Counter Cards'), findsOneWidget);
       expect(find.text('MC-001'), findsOneWidget);
       expect(find.text('MC-002'), findsOneWidget);
       expect(find.text('MC-003'), findsOneWidget);
@@ -344,7 +344,6 @@ void main() {
       // Confirm dialog appears
       expect(find.text('Confirm Card Issuance'), findsOneWidget);
       expect(find.text('Main Cafeteria'), findsOneWidget);
-      expect(find.text('Branch: Main Cafeteria'), findsOneWidget);
       expect(find.text('₹0.00'), findsOneWidget);
 
       // Enter required customer details

@@ -59,7 +59,7 @@ class MoreScreen extends ConsumerWidget {
                         ),
                       ),
                     Text(
-                      '${user?.email ?? ''} • ${user?.role ?? 'STAFF'}',
+                      '${(user?.phone != null && user!.phone!.isNotEmpty) ? user.phone : (user?.email ?? '')} • ${user?.role ?? 'STAFF'}',
                       style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondaryLight,
@@ -90,10 +90,9 @@ class MoreScreen extends ConsumerWidget {
           mode: PermissionGuardMode.any,
           permissions: const [AppPermission.inventoryView, AppPermission.productView],
           child: _buildMenuTile(
-            icon: Icons.inventory_2_outlined,
-            title: 'Menu & Inventory',
-            subtitle: 'Check menu prices, live stock, and restock items',
-            onTap: () => context.push('/app/inventory'),
+            icon: Icons.restaurant_menu,
+            title: 'Menu Catalog',
+            onTap: () => context.push('/app/products'),
           ),
         ),
 
@@ -102,7 +101,6 @@ class MoreScreen extends ConsumerWidget {
           child: _buildMenuTile(
             icon: Icons.bar_chart_outlined,
             title: 'Analytics & Reports',
-            subtitle: 'Counter sales and performance metrics',
             onTap: () => context.push('/app/analytics'),
           ),
         ),
@@ -117,14 +115,12 @@ class MoreScreen extends ConsumerWidget {
         _buildMenuTile(
           icon: Icons.lock_outline,
           title: 'Change Password',
-          subtitle: 'Update your account password',
           onTap: () => context.push('/change-password'),
         ),
         const SizedBox(height: AppSpacing.sm),
         _buildMenuTile(
           icon: Icons.logout,
           title: 'Sign Out',
-          subtitle: 'End current staff session',
           iconColor: AppColors.error,
           titleColor: AppColors.error,
           onTap: () => ref.read(authNotifierProvider.notifier).logout(),
@@ -226,7 +222,7 @@ class MoreScreen extends ConsumerWidget {
   Widget _buildMenuTile({
     required IconData icon,
     required String title,
-    required String subtitle,
+    String? subtitle,
     required VoidCallback onTap,
     Widget? trailing,
     Color? iconColor,
@@ -256,26 +252,35 @@ class MoreScreen extends ConsumerWidget {
             ),
             const SizedBox(width: AppSpacing.md),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: titleColor ?? AppColors.textPrimaryLight,
+              child: subtitle != null && subtitle.isNotEmpty
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: titleColor ?? AppColors.textPrimaryLight,
+                          ),
+                        ),
+                        Text(
+                          subtitle,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondaryLight,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: titleColor ?? AppColors.textPrimaryLight,
+                      ),
                     ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondaryLight,
-                    ),
-                  ),
-                ],
-              ),
             ),
             if (trailing != null)
               trailing

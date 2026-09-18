@@ -29,7 +29,7 @@ class PosCatalogState {
   });
 
   List<Product> get filteredProducts {
-    var list = products;
+    var list = products.where((p) => p.status.toUpperCase() == 'ACTIVE').toList();
     if (selectedCategory != 'All') {
       final filter = selectedCategory.toLowerCase();
       list = list.where((p) {
@@ -170,19 +170,13 @@ class PosCartNotifier extends StateNotifier<PosCartState> {
   PosCartNotifier(this._sessionRepository, [this._onPurchaseSuccess]) : super(const PosCartState());
 
   void addToCart(Product product) {
-    if (product.currentStock <= 0) {
-      state = state.copyWith(errorMessage: "'${product.itemName}' is out of stock.");
+    if (product.status.toUpperCase() != 'ACTIVE') {
+      state = state.copyWith(errorMessage: "'${product.itemName}' is currently inactive.");
       return;
     }
     final updated = Map<String, CartItem>.from(state.items);
     if (updated.containsKey(product.id)) {
       final existing = updated[product.id]!;
-      if (existing.quantity >= product.currentStock) {
-        state = state.copyWith(
-          errorMessage: "Cannot add more. Only ${product.currentStock} in stock for '${product.itemName}'.",
-        );
-        return;
-      }
       updated[product.id] = existing.copyWith(quantity: existing.quantity + 1);
     } else {
       updated[product.id] = CartItem(product: product, quantity: 1);
@@ -194,12 +188,6 @@ class PosCartNotifier extends StateNotifier<PosCartState> {
     if (!state.items.containsKey(productId)) return;
     final updated = Map<String, CartItem>.from(state.items);
     final item = updated[productId]!;
-    if (item.quantity >= item.product.currentStock) {
-      state = state.copyWith(
-        errorMessage: "Cannot add more. Only ${item.product.currentStock} in stock for '${item.product.itemName}'.",
-      );
-      return;
-    }
     updated[productId] = item.copyWith(quantity: item.quantity + 1);
     state = state.copyWith(items: updated, errorMessage: null);
   }
@@ -226,21 +214,15 @@ class PosCartNotifier extends StateNotifier<PosCartState> {
     state = const PosCartState();
   }
 
-  /// Execute purchase transaction with strict out-of-stock validation
+  /// Execute purchase transaction
   Future<PurchaseResult?> executePurchase(String sessionId) async {
     if (state.isEmpty || state.isSubmitting) return null;
 
-    // Validate that no out-of-stock or exceeding-stock items are purchased
+    // For cafeteria POS, menu items are prepared dynamically on order, so pre-fixed stock is not required.
     for (final item in state.items.values) {
-      if (item.product.currentStock <= 0) {
+      if (item.product.status.toUpperCase() != 'ACTIVE') {
         state = state.copyWith(
-          errorMessage: "'${item.product.itemName}' is out of stock and cannot be purchased.",
-        );
-        return null;
-      }
-      if (item.quantity > item.product.currentStock) {
-        state = state.copyWith(
-          errorMessage: "Cannot purchase ${item.quantity}x '${item.product.itemName}'. Only ${item.product.currentStock} available in stock.",
+          errorMessage: "'${item.product.itemName}' is currently inactive and cannot be purchased.",
         );
         return null;
       }

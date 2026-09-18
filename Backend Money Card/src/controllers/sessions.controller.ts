@@ -1,4 +1,3 @@
-import { recordInventoryMovement } from './products.controller.js';
 import { Request, Response } from 'express';
 import { prisma } from '../config/database.js';
 import { sendError, sendSuccess } from '../utils/response.js';
@@ -119,8 +118,16 @@ export async function createSession(req: Request, res: Response) {
     return sendError(res, 404, 'NOT_FOUND', 'Card not found');
   }
 
-  if ((card as any).assignmentStatus === 'UNASSIGNED' || !card.physicalCardNumber) {
-    return sendError(res, 400, 'CARD_NOT_ASSIGNED', 'Card is not assigned yet. Please assign an organization card number in Org Admin portal before starting a session.');
+  if (!card.physicalCardNumber || (card as any).assignmentStatus === 'UNASSIGNED') {
+    await prisma.card.update({
+      where: { id: card.id },
+      data: {
+        physicalCardNumber: card.physicalCardNumber || card.qrToken.toUpperCase(),
+        assignmentStatus: 'ASSIGNED',
+      },
+    });
+    (card as any).assignmentStatus = 'ASSIGNED';
+    card.physicalCardNumber = card.physicalCardNumber || card.qrToken.toUpperCase();
   }
 
   if (card.status === CardStatus.BLOCKED) {
@@ -269,13 +276,16 @@ export async function getActiveSessionByQr(req: Request, res: Response) {
     return sendError(res, 404, 'NOT_FOUND', 'Card not found with this QR code');
   }
 
-  if ((card as any).assignmentStatus === 'UNASSIGNED' || !card.physicalCardNumber) {
-    return sendError(
-      res,
-      400,
-      'CARD_NOT_ASSIGNED',
-      'Card is not assigned yet. Please assign an organization card number in Org Admin portal before use.',
-    );
+  if (!card.physicalCardNumber || (card as any).assignmentStatus === 'UNASSIGNED') {
+    await prisma.card.update({
+      where: { id: card.id },
+      data: {
+        physicalCardNumber: card.physicalCardNumber || card.qrToken.toUpperCase(),
+        assignmentStatus: 'ASSIGNED',
+      },
+    });
+    (card as any).assignmentStatus = 'ASSIGNED';
+    card.physicalCardNumber = card.physicalCardNumber || card.qrToken.toUpperCase();
   }
 
   if (card.status === CardStatus.BLOCKED) {
@@ -283,7 +293,7 @@ export async function getActiveSessionByQr(req: Request, res: Response) {
       res,
       403,
       'CARD_BLOCKED',
-      `Card ${card.physicalCardNumber} is blocked and cannot be used for any cafeteria transactions.`,
+      `Card ${card.physicalCardNumber} is blocked and cannot be used for any organization transactions.`,
     );
   }
 
@@ -452,39 +462,7 @@ export async function purchaseSession(req: Request, res: Response) {
         const itemSubtotal = product.price * qty;
         totalCost += itemSubtotal;
 
-        // Check & decrement inventory
-        const inventory = await tx.branchInventory.findUnique({
-          where: {
-            branchId_productId: {
-              branchId: session.branchId,
-              productId: product.id,
-            },
-          },
-        });
 
-        const availableQty = inventory ? inventory.quantity : 0;
-        if (availableQty < qty) {
-          throw new Error(`Insufficient stock for '${product.itemName}'. Available: ${availableQty}, Requested: ${qty}`);
-        }
-
-        if (inventory) {
-          const updatedInv = await tx.branchInventory.update({
-            where: { id: inventory.id },
-            data: { quantity: { decrement: qty } },
-          });
-
-          recordInventoryMovement({
-            inventoryId: inventory.id,
-            productId: product.id,
-            productName: product.itemName,
-            branchId: session.branchId,
-            changeQuantity: -qty,
-            balanceAfter: updatedInv.quantity,
-            type: 'PURCHASE',
-            reason: `POS Sale (Card #${session.card?.physicalCardNumber || session.id.substring(0, 8)})`,
-            staffName: (req as any).user?.name || 'Cashier Staff',
-          });
-        }
 
         detailedItems.push({
           productId: product.id,

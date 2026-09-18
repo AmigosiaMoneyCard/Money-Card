@@ -54,7 +54,7 @@ export interface CsvImportPreview {
 }
 
 export interface CreateProductRequest {
-  branchId: string;
+  branchId?: string;
   itemName: string;
   category: string[];
   price: number;
@@ -67,6 +67,7 @@ export interface UpdateProductRequest {
   category?: string[];
   price?: number;
   status?: 'ACTIVE' | 'INACTIVE';
+  branchId?: string;
 }
 
 export interface UpdateInventoryRequest {

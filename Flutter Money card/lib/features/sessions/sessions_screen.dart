@@ -13,6 +13,7 @@ import '../../widgets/common/app_badge.dart';
 import '../../widgets/common/app_card.dart';
 import '../../widgets/states/app_empty_state.dart';
 import '../../widgets/states/app_loading_view.dart';
+import '../../core/utils/formatters.dart';
 
 class SessionsScreen extends ConsumerStatefulWidget {
   const SessionsScreen({super.key});
@@ -23,6 +24,15 @@ class SessionsScreen extends ConsumerStatefulWidget {
 
 class _SessionsScreenState extends ConsumerState<SessionsScreen> {
   final _searchController = TextEditingController();
+  final List<String> _ranges = [
+    'All Time',
+    'Today',
+    'Yesterday',
+    'This Week',
+    'This Month',
+    'Last 30 Days',
+  ];
+  String _selectedRange = 'All Time';
 
   @override
   void initState() {
@@ -38,6 +48,48 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
     super.dispose();
   }
 
+  DateTime? _parseDateTime(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    try {
+      final parsed = DateTime.tryParse(raw.trim());
+      if (parsed == null) return null;
+      return parsed.toLocal();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool _isWithinRange(DateTime dt, String range) {
+    final localDt = dt.toLocal();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final targetDate = DateTime(localDt.year, localDt.month, localDt.day);
+
+    switch (range.toLowerCase()) {
+      case 'today':
+        return targetDate.isAtSameMomentAs(today) || targetDate.isAfter(today);
+      case 'yesterday':
+        final yesterday = DateTime(today.year, today.month, today.day - 1);
+        return targetDate.isAtSameMomentAs(yesterday);
+      case 'this week':
+        final startOfWeek = DateTime(today.year, today.month, today.day - (today.weekday - 1));
+        return !targetDate.isBefore(startOfWeek);
+      case 'this month':
+        return (localDt.year == now.year && localDt.month == now.month) || targetDate.isAfter(today);
+      case 'last 30 days':
+        final thirtyDaysAgo = DateTime(today.year, today.month, today.day - 30);
+        return !targetDate.isBefore(thirtyDaysAgo);
+      case 'all time':
+      default:
+        return true;
+    }
+  }
+
+  String _formatDateTime(String? raw) {
+    if (raw == null || raw.isEmpty) return '—';
+    final formatted = AppFormatters.formatIsoDate(raw);
+    return formatted == '-' ? '—' : formatted;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -162,6 +214,62 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
                 ),
               ),
             ),
+
+            // Date Range Dropdown from Analytics & Reports
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.xs,
+              ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: AppSpacing.roundedSm,
+                  border: Border.all(color: AppColors.borderLight),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.03),
+                      blurRadius: 3,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.schedule, size: 16, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _ranges.contains(_selectedRange)
+                              ? _selectedRange
+                              : _ranges.first,
+                          isExpanded: true,
+                          icon: const Icon(Icons.arrow_drop_down, color: AppColors.primary),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimaryLight,
+                          ),
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => _selectedRange = value);
+                            }
+                          },
+                          items: _ranges.map((range) {
+                            return DropdownMenuItem<String>(
+                              value: range,
+                              child: Text(range),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const Divider(height: 1),
 
             // Sessions List Content
@@ -236,7 +344,12 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
       );
     }
 
-    final sessions = state.filteredSessions;
+    final sessions = state.filteredSessions.where((s) {
+      if (_selectedRange == 'All Time') return true;
+      final dt = _parseDateTime(s.startedAt);
+      if (dt == null) return true;
+      return _isWithinRange(dt, _selectedRange);
+    }).toList();
 
     if (sessions.isEmpty) {
       return RefreshIndicator(
@@ -251,13 +364,19 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
                     description: 'No sessions match "${state.searchQuery}".',
                     icon: Icons.search_off,
                   )
-                : AppEmptyState(
-                    title: state.statusFilter == 'ACTIVE' ? 'No Active Sessions' : 'No Sessions Found',
-                    description: state.statusFilter == 'ACTIVE'
-                        ? 'There are currently no active cafeteria card sessions in ${branchName ?? "this counter"}.'
-                        : 'No card sessions found for the selected filter in ${branchName ?? "this counter"}.',
-                    icon: Icons.account_balance_wallet_outlined,
-                  ),
+                : _selectedRange != 'All Time'
+                    ? AppEmptyState(
+                        title: 'No Sessions Found',
+                        description: 'No ${state.statusFilter == "ALL" ? "" : state.statusFilter.toLowerCase()} sessions found for $_selectedRange in ${branchName ?? "this counter"}.',
+                        icon: Icons.calendar_today_outlined,
+                      )
+                    : AppEmptyState(
+                        title: state.statusFilter == 'ACTIVE' ? 'No Active Sessions' : 'No Sessions Found',
+                        description: state.statusFilter == 'ACTIVE'
+                            ? 'There are currently no active cafeteria card sessions in ${branchName ?? "this counter"}.'
+                            : 'No card sessions found for the selected filter in ${branchName ?? "this counter"}.',
+                        icon: Icons.account_balance_wallet_outlined,
+                      ),
           ],
         ),
       );
@@ -380,6 +499,25 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
                 ),
               ],
 
+              // Started Date & Time
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(Icons.access_time, size: 14, color: AppColors.textSecondaryLight),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      'Started: ${_formatDateTime(session.startedAt)}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondaryLight,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
 
               // Contextual Action Buttons (Allowed by Staff Permissions)
               if (isActive) ...[

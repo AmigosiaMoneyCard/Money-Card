@@ -22,7 +22,6 @@ import { SessionsPage } from '@/features/sessions';
 import { ProductsPage } from '@/features/products';
 import { InventoryPage } from '@/features/inventory';
 import { AnalyticsPage } from '@/features/analytics';
-import { PeakPage } from '@/features/peak';
 import { SubscriptionsPage } from '@/features/subscriptions';
 import { SettingsPage } from '@/features/settings';
 
@@ -128,11 +127,7 @@ export function AppRoutes() {
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route
           path="/peak"
-          element={
-            <PermissionGuard roles={['ORG_ADMIN']}>
-              <PeakPage />
-            </PermissionGuard>
-          }
+          element={<Navigate to="/analytics?tab=demand" replace />}
         />
         <Route path="/subscriptions" element={<SubscriptionsPage />} />
         <Route path="/settings" element={<SettingsPage />} />

@@ -1,7 +1,7 @@
 // ─── Products & Inventory Unified Hub (Org Admin) ──────────────────────────
 // Merged single view: Product catalog, live branch stock, pricing, and adjustments.
 
-import { useState, useEffect, useCallback, useMemo, type FormEvent } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, type FormEvent } from 'react';
 import { apiService } from '@/services/api';
 import { useBranch, usePermissions } from '@/hooks';
 import type { ProductWithInventory, Branch, InventoryItem } from '@/types';
@@ -20,18 +20,15 @@ import {
 import { notify, formatCurrency } from '@/utils';
 import { UnauthorizedPage } from '@/features/auth';
 import { DataTable, type Column } from '@/components/tables';
-import { CategorySelector } from './CategorySelector';
 import {
   Package,
-  Plus,
   AlertCircle,
   Power,
-  Sliders,
-  TrendingUp,
-  AlertTriangle,
   Layers,
   Trash2,
   Search,
+  Building2,
+  Copy,
 } from 'lucide-react';
 
 export interface InventoryItemWithDetails extends InventoryItem {
@@ -103,14 +100,14 @@ function matchesProductFilter(
 
 function ProductsMetricsCards({ metrics }: { metrics: ProductsMetrics }) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
       <Card padding="md" className="space-y-1">
         <div className="flex items-center justify-between text-slate-500">
           <span className="text-xs font-semibold uppercase tracking-wider">Catalog Items</span>
           <Package className="h-4 w-4 text-emerald-600" />
         </div>
         <p className="text-xl font-bold text-slate-900">{metrics.totalProducts}</p>
-        <p className="text-[11px] text-slate-500">Master products</p>
+        <p className="text-[11px] text-slate-500">Menu products in catalog</p>
       </Card>
 
       <Card padding="md" className="space-y-1">
@@ -119,245 +116,398 @@ function ProductsMetricsCards({ metrics }: { metrics: ProductsMetrics }) {
           <Layers className="h-4 w-4 text-indigo-600" />
         </div>
         <p className="text-xl font-bold text-emerald-700">{metrics.activeProducts}</p>
-        <p className="text-[11px] text-slate-500">Available at counter</p>
+        <p className="text-[11px] text-slate-500">Available at POS terminals</p>
       </Card>
 
       <Card padding="md" className="space-y-1">
         <div className="flex items-center justify-between text-slate-500">
-          <span className="text-xs font-semibold uppercase tracking-wider">Stock Units</span>
-          <Package className="h-4 w-4 text-sky-600" />
+          <span className="text-xs font-semibold uppercase tracking-wider">Inactive / Hidden</span>
+          <Power className="h-4 w-4 text-slate-400" />
         </div>
-        <p className="text-xl font-bold text-sky-700">{metrics.totalUnits}</p>
-        <p className="text-[11px] text-slate-500">Units in inventory</p>
-      </Card>
-
-      <Card padding="md" className="space-y-1">
-        <div className="flex items-center justify-between text-slate-500">
-          <span className="text-xs font-semibold uppercase tracking-wider">Stock Valuation</span>
-          <TrendingUp className="h-4 w-4 text-teal-600" />
-        </div>
-        <p className="text-xl font-bold text-teal-700 font-mono">
-          {formatCurrency(metrics.totalValuation)}
-        </p>
-        <p className="text-[11px] text-slate-500">Inventory worth</p>
-      </Card>
-
-      <Card padding="md" className="space-y-1">
-        <div className="flex items-center justify-between text-slate-500">
-          <span className="text-xs font-semibold uppercase tracking-wider">Low Stock (&lt; 10)</span>
-          <AlertTriangle className="h-4 w-4 text-amber-500" />
-        </div>
-        <p className="text-xl font-bold text-amber-600">{metrics.lowStock}</p>
-        <p className="text-[11px] text-slate-500">Needs restock</p>
-      </Card>
-
-      <Card padding="md" className="space-y-1">
-        <div className="flex items-center justify-between text-slate-500">
-          <span className="text-xs font-semibold uppercase tracking-wider">Out of Stock</span>
-          <AlertCircle className="h-4 w-4 text-rose-500" />
-        </div>
-        <p className="text-xl font-bold text-rose-600">{metrics.outOfStock}</p>
-        <p className="text-[11px] text-slate-500">Unavailable for POS</p>
+        <p className="text-xl font-bold text-slate-700">{metrics.totalProducts - metrics.activeProducts}</p>
+        <p className="text-[11px] text-slate-500">Hidden from POS sale</p>
       </Card>
     </div>
   );
 }
 
-function ProductsCreateModal({
-  isOpen,
-  onClose,
-  branches,
-  currentBranch,
-  onCreated,
-}: {
+interface ProductCopyCounterModalProps {
   isOpen: boolean;
   onClose: () => void;
+  product: UnifiedProductItem | null;
   branches: Branch[];
-  currentBranch: Branch | null;
-  onCreated: () => void;
-}) {
-  const [formItemName, setFormItemName] = useState('');
-  const [formCategories, setFormCategories] = useState<string[]>([]);
-  const [formPrice, setFormPrice] = useState('');
-  const [formBranchId, setFormBranchId] = useState('');
-  const [formStockQty, setFormStockQty] = useState('0');
-  const [formStatus, setFormStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [modalApiError, setModalApiError] = useState<string | null>(null);
+  onUpdated: () => void;
+}
+
+function ProductCopyCounterModal({
+  isOpen,
+  onClose,
+  product,
+  branches,
+  onUpdated,
+}: ProductCopyCounterModalProps) {
+  const [selectedBranchIds, setSelectedBranchIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  // Exclude current counter from target choices
+  const availableTargetCounters = useMemo(() => {
+    if (!product) return [];
+    return branches.filter((b) => b.id !== product.branchId);
+  }, [branches, product]);
 
   useEffect(() => {
     if (isOpen) {
-      setFormItemName('');
-      setFormCategories([]);
-      setFormPrice('');
-      setFormBranchId(currentBranch?.id || branches[0]?.id || '');
-      setFormStockQty('0');
-      setFormStatus('ACTIVE');
-      setFormErrors({});
-      setModalApiError(null);
+      setSelectedBranchIds([]);
+      setApiError(null);
     }
-  }, [isOpen, currentBranch, branches]);
+  }, [isOpen]);
 
-  const validateProductForm = () => {
-    const errs: Record<string, string> = {};
-    if (!formItemName.trim()) errs.itemName = 'Product name is required';
-    if (formItemName.trim().length > 40) errs.itemName = 'Product name must be 40 characters or less';
-    if (!formCategories || formCategories.length === 0) errs.categories = 'Select at least one category';
+  if (!product) return null;
 
-    const priceNum = parseFloat(formPrice);
-    if (isNaN(priceNum) || priceNum <= 0) errs.price = 'Price must be greater than 0';
+  const currentCounterName =
+    branches.find((b) => b.id === product.branchId)?.name ||
+    product.branchName ||
+    'All Counters (Global Menu)';
 
-    if (!formBranchId) errs.branchId = 'Select a branch';
+  const handleToggleBranch = (id: string) => {
+    setSelectedBranchIds((prev) =>
+      prev.includes(id) ? prev.filter((bId) => bId !== id) : [...prev, id],
+    );
+  };
 
-    const qtyNum = parseInt(formStockQty, 10);
-    if (isNaN(qtyNum) || qtyNum < 0) errs.stockQty = 'Stock quantity must be 0 or greater';
-
-    setFormErrors(errs);
-    return Object.keys(errs).length === 0;
+  const handleToggleAll = () => {
+    if (selectedBranchIds.length === availableTargetCounters.length) {
+      setSelectedBranchIds([]);
+    } else {
+      setSelectedBranchIds(availableTargetCounters.map((b) => b.id));
+    }
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!validateProductForm()) return;
-
-    setModalApiError(null);
+    if (selectedBranchIds.length === 0) return;
+    setApiError(null);
     setIsSubmitting(true);
 
     try {
-      const res = await apiService.products.createProduct({
-        itemName: formItemName.trim(),
-        category: formCategories,
-        price: Math.round(parseFloat(formPrice)),
-        branchId: formBranchId,
-        initialQuantity: parseInt(formStockQty, 10),
-        status: formStatus,
-      });
+      const results = await Promise.allSettled(
+        selectedBranchIds.map((targetBranchId) =>
+          apiService.products.createProduct({
+            itemName: product.itemName,
+            price: product.price,
+            category: product.category,
+            branchId: targetBranchId,
+            status: 'ACTIVE',
+          }),
+        ),
+      );
 
-      if (!res.success) {
-        setModalApiError(res.error.message || 'Failed to create product');
+      const successCount = results.filter(
+        (r) => r.status === 'fulfilled' && r.value.success,
+      ).length;
+
+      if (successCount === 0) {
+        setApiError('Failed to copy item to selected counter(s). Please try again.');
         return;
       }
 
-      notify.success(`Product "${res.data.itemName}" created successfully`);
+      notify.success(
+        `Copied "${product.itemName}" to ${successCount} counter${successCount > 1 ? 's' : ''}`,
+      );
       onClose();
-      onCreated();
+      onUpdated();
     } catch {
-      setModalApiError('An unexpected error occurred. Please try again.');
+      setApiError('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const allSelected =
+    availableTargetCounters.length > 0 &&
+    selectedBranchIds.length === availableTargetCounters.length;
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={() => !isSubmitting && onClose()}
+      title="Copy Item to Other Counters"
+      size="md"
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {apiError && (
+          <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-700">
+            <AlertCircle className="h-4 w-4 shrink-0 text-rose-500 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-semibold">Action Failed</p>
+              <p>{apiError}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Item Summary Card */}
+        <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3.5 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <h4 className="font-bold text-slate-900 text-sm">{product.itemName}</h4>
+            <span className="font-mono text-emerald-700 font-bold text-sm">
+              {formatCurrency(product.price)}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <span>Currently assigned to:</span>
+            <span className="font-semibold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200">
+              Counter: {currentCounterName}
+            </span>
+          </div>
+        </div>
+
+        {/* Available Counters Section */}
+        {availableTargetCounters.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-xs text-slate-500">
+            <p>No other counters available in this organization to copy to.</p>
+            <p className="mt-1 text-slate-400">
+              Create additional counters in <strong>Branches</strong> to enable multi-counter sharing.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-slate-700">
+                Select target counter(s) to copy to:
+              </label>
+              <button
+                type="button"
+                onClick={handleToggleAll}
+                disabled={isSubmitting}
+                className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 cursor-pointer transition-colors"
+              >
+                {allSelected ? 'Deselect All' : `Select All (${availableTargetCounters.length})`}
+              </button>
+            </div>
+
+            <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+              {availableTargetCounters.map((b) => {
+                const isSelected = selectedBranchIds.includes(b.id);
+                return (
+                  <label
+                    key={b.id}
+                    className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
+                      isSelected
+                        ? 'border-emerald-500 bg-emerald-50/50 shadow-2xs'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleBranch(b.id)}
+                        disabled={isSubmitting}
+                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                      />
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-3.5 w-3.5 text-slate-400" />
+                        <span className="text-xs font-bold text-slate-800">{b.name}</span>
+                      </div>
+                    </div>
+                    <span
+                      className={`text-[11px] font-medium ${
+                        isSelected ? 'text-emerald-600 font-semibold' : 'text-slate-400'
+                      }`}
+                    >
+                      {isSelected ? '✓ Selected' : '+ Add'}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              💡 Replicating this item will make it available on the selected counters with its own independent stock tracking.
+            </p>
+          </div>
+        )}
+
+        <ModalFooter>
+          <Button variant="ghost" type="button" onClick={onClose} disabled={isSubmitting}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            type="submit"
+            disabled={selectedBranchIds.length === 0 || isSubmitting}
+            isLoading={isSubmitting}
+            leftIcon={<Copy className="h-3.5 w-3.5" />}
+          >
+            {selectedBranchIds.length > 0
+              ? `Copy to ${selectedBranchIds.length} Counter${selectedBranchIds.length > 1 ? 's' : ''}`
+              : 'Select Counters to Copy'}
+          </Button>
+        </ModalFooter>
+      </form>
+    </Modal>
+  );
+}
+
+// ─── ⚡ Rapid Quick-Add Bar Component ────────────────────────────────────────
+interface QuickAddProductBarProps {
+  branches: Branch[];
+  currentBranchId: string;
+  onSuccess: () => void;
+}
+
+function QuickAddProductBar({
+  branches,
+  currentBranchId,
+  onSuccess,
+}: QuickAddProductBarProps) {
+  const [itemName, setItemName] = useState('');
+  const [price, setPrice] = useState('');
+  const [isVeg, setIsVeg] = useState(true);
+  const [selectedBranchId, setSelectedBranchId] = useState(currentBranchId || '');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const itemNameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setSelectedBranchId(currentBranchId || '');
+  }, [currentBranchId]);
+
+  const handleQuickAdd = async (e?: FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmedName = itemName.trim();
+    if (!trimmedName) {
+      notify.error('Please enter an item name');
+      itemNameInputRef.current?.focus();
+      return;
+    }
+    const numPrice = parseFloat(price);
+    if (isNaN(numPrice) || numPrice <= 0) {
+      notify.error('Please enter a valid price greater than 0');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await apiService.products.createProduct({
+        itemName: trimmedName,
+        price: Math.round(numPrice),
+        category: [isVeg ? 'Veg' : 'Non-Veg'],
+        branchId: selectedBranchId || undefined,
+        status: 'ACTIVE',
+      });
+
+      if (!res.success) {
+        notify.error(res.error.message || 'Failed to add product');
+        return;
+      }
+
+      notify.success(`"${trimmedName}" (₹${Math.round(numPrice)}) added to menu!`);
+      setItemName('');
+      setPrice('');
+      itemNameInputRef.current?.focus();
+      onSuccess();
+    } catch {
+      notify.error('Failed to add product. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Create New Master Product"
-      description="Add a new item to catalog and set initial inventory stock"
-      size="lg"
-    >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {modalApiError && (
-          <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-700">
-            <AlertCircle className="h-4 w-4 shrink-0 text-rose-500 mt-0.5" />
-            <div className="space-y-1">
-              <p className="font-semibold">Creation Failed</p>
-              <p>{modalApiError}</p>
-            </div>
-          </div>
-        )}
+    <div className="rounded-2xl border border-emerald-200/90 bg-gradient-to-r from-emerald-50/70 via-white to-emerald-50/40 p-4 shadow-xs">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white text-xs font-bold shadow-xs">
+            ⚡
+          </span>
+          <h3 className="text-sm font-bold text-slate-900">
+            Quick Add Menu Item
+          </h3>
+          <span className="text-xs text-slate-500 hidden sm:inline">
+            Type name & price, hit Enter to add items continuously
+          </span>
+        </div>
+      </div>
 
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Product Name <span className="text-rose-500">*</span>
-          </label>
-          <Input
-            placeholder="e.g. Masala Chai, Veg Burger, Cold Coffee"
-            value={formItemName}
+      <form onSubmit={handleQuickAdd} className="grid grid-cols-1 gap-2.5 sm:grid-cols-12 sm:items-center">
+        {/* Item Name (5 cols) */}
+        <div className="sm:col-span-5">
+          <input
+            ref={itemNameInputRef}
+            type="text"
+            placeholder="Item name (e.g. Samosa, Masala Chai, Cold Coffee)"
+            value={itemName}
+            onChange={(e) => setItemName(e.target.value.slice(0, 40))}
             maxLength={40}
-            onChange={(e) => setFormItemName(e.target.value.slice(0, 40))}
-            error={formErrors.itemName}
-            autoFocus
+            disabled={isSubmitting}
+            className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
           />
         </div>
 
-        <div>
-          <CategorySelector
-            selectedCategories={formCategories}
-            onChange={(cats) => setFormCategories(cats)}
-            error={formErrors.categories}
+        {/* Price (2 cols) */}
+        <div className="sm:col-span-2 relative">
+          <span className="absolute left-3 top-2 text-xs font-bold text-slate-400">₹</span>
+          <input
+            type="number"
+            step="1"
+            min="1"
+            placeholder="Price"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            disabled={isSubmitting}
+            className="w-full rounded-xl border border-slate-300 bg-white pl-7 pr-3 py-2 text-xs font-bold text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Selling Price (₹) <span className="text-rose-500">*</span>
-            </label>
-            <Input
-              type="number"
-              step="1"
-              min="0"
-              placeholder="e.g. ₹120.00"
-              value={formPrice}
-              onChange={(e) => setFormPrice(e.target.value)}
-              error={formErrors.price}
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Initial Counter <span className="text-rose-500">*</span>
-            </label>
-            <Select
-              value={formBranchId}
-              onChange={(e) => setFormBranchId(e.target.value)}
-              options={branches.map((b) => ({ value: b.id, label: b.name }))}
-              error={formErrors.branchId}
-            />
-          </div>
+        {/* Veg / Non-Veg Toggle (2 cols) */}
+        <div className="sm:col-span-2">
+          <button
+            type="button"
+            onClick={() => setIsVeg(!isVeg)}
+            disabled={isSubmitting}
+            className={`w-full flex items-center justify-center gap-1.5 rounded-xl border py-2 px-3 text-xs font-bold transition-all cursor-pointer ${
+              isVeg
+                ? 'border-emerald-300 bg-emerald-100/70 text-emerald-800 hover:bg-emerald-100'
+                : 'border-rose-300 bg-rose-100/70 text-rose-800 hover:bg-rose-100'
+            }`}
+            title="Click to toggle Veg / Non-Veg"
+          >
+            <span>{isVeg ? '🟢 Veg' : '🔴 Non-Veg'}</span>
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Initial Stock Quantity (Units)
-            </label>
-            <Input
-              type="number"
-              min="0"
-              placeholder="e.g. 50"
-              value={formStockQty}
-              onChange={(e) => setFormStockQty(e.target.value)}
-              error={formErrors.stockQty}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="create-product-status" className="block text-xs font-semibold text-slate-700 mb-1">Status</label>
-            <Select
-              id="create-product-status"
-              value={formStatus}
-              onChange={(e) => setFormStatus(e.target.value as 'ACTIVE' | 'INACTIVE')}
-              options={[
-                { value: 'ACTIVE', label: 'Active' },
-                { value: 'INACTIVE', label: 'Inactive' },
-              ]}
-            />
-          </div>
+        {/* Canteen / Counter Selector (2 cols) */}
+        <div className="sm:col-span-2">
+          <select
+            value={selectedBranchId}
+            onChange={(e) => setSelectedBranchId(e.target.value)}
+            disabled={isSubmitting}
+            className="w-full rounded-xl border border-slate-300 bg-white px-2.5 py-2 text-xs font-medium text-slate-800 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden cursor-pointer"
+          >
+            <option value="">All Counters</option>
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
         </div>
 
-        <ModalFooter>
-          <Button variant="ghost" type="button" onClick={onClose}>
-            Cancel
+        {/* Submit Button (1 col) */}
+        <div className="sm:col-span-1">
+          <Button
+            type="submit"
+            variant="primary"
+            size="sm"
+            isLoading={isSubmitting}
+            className="w-full h-8.5 rounded-xl text-xs font-bold shadow-xs flex items-center justify-center"
+          >
+            + Add
           </Button>
-          <Button variant="primary" type="submit" isLoading={isSubmitting}>
-            Create Product
-          </Button>
-        </ModalFooter>
+        </div>
       </form>
-    </Modal>
+    </div>
   );
 }
 
@@ -597,16 +747,22 @@ function useProductsPageData({ currentBranch }: UseProductsPageDataProps) {
   const [statusStockFilter, setStatusStockFilter] = useState('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
 
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCounterModal, setShowCounterModal] = useState(false);
+  const [selectedProductForCounter, setSelectedProductForCounter] = useState<UnifiedProductItem | null>(null);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedProductToDelete, setSelectedProductToDelete] = useState<UnifiedProductItem | null>(null);
   const [selectedInventory, setSelectedInventory] = useState<InventoryItemWithDetails | null>(null);
 
+  const handleOpenCounter = (product: UnifiedProductItem) => {
+    setSelectedProductForCounter(product);
+    setShowCounterModal(true);
+  };
+
   const fetchUnifiedData = useCallback(async () => {
     setLoadError(null);
     try {
-      const targetBranch = branchFilter !== 'ALL' ? branchFilter : currentBranch?.id;
+      const targetBranch = branchFilter !== 'ALL' ? branchFilter : undefined;
       const [prodRes, invRes, branchRes] = await Promise.all([
         apiService.products.getProducts({
           branchId: targetBranch,
@@ -666,6 +822,9 @@ function useProductsPageData({ currentBranch }: UseProductsPageDataProps) {
   }, [fetchUnifiedData]);
 
   const unifiedProducts = useMemo<UnifiedProductItem[]>(() => {
+    const branchMap = new Map<string, string>();
+    branches.forEach((b) => branchMap.set(b.id, b.name));
+
     return products.map((product) => {
       const matchingInv = inventoryList.filter((i) => i.productId === product.id);
       const totalQty =
@@ -673,17 +832,21 @@ function useProductsPageData({ currentBranch }: UseProductsPageDataProps) {
           ? matchingInv.reduce((sum, i) => sum + i.quantity, 0)
           : product.quantity || 0;
 
-      const branchName = product.branchName || matchingInv[0]?.branchName || undefined;
+      const resolvedBranchName =
+        (product.branchId ? branchMap.get(product.branchId) : null) ||
+        product.branchName ||
+        matchingInv[0]?.branchName ||
+        'All Counters';
       const inventoryId = matchingInv[0]?.id;
 
       return {
         ...product,
         quantity: totalQty,
-        branchName,
+        branchName: resolvedBranchName,
         inventoryId,
       };
     });
-  }, [products, inventoryList]);
+  }, [products, inventoryList, branches]);
 
   const filteredProducts = useMemo(() => {
     return unifiedProducts.filter((product) =>
@@ -760,8 +923,10 @@ function useProductsPageData({ currentBranch }: UseProductsPageDataProps) {
     setStatusStockFilter,
     categoryFilter,
     setCategoryFilter,
-    showCreateModal,
-    setShowCreateModal,
+    showCounterModal,
+    setShowCounterModal,
+    selectedProductForCounter,
+    handleOpenCounter,
     showAdjustModal,
     setShowAdjustModal,
     showDeleteModal,
@@ -821,33 +986,10 @@ function renderProductItemCategoryBadges(category: string | string[] | undefined
   );
 }
 
-function renderProductItemStockBadge(quantity: number) {
-  if (quantity === 0) {
-    return (
-      <span className="inline-flex items-center font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200 text-xs">
-        Out of stock (0)
-      </span>
-    );
-  }
-  if (quantity < 10) {
-    return (
-      <span className="inline-flex items-center font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 text-xs">
-        Low: {quantity} units
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 text-xs">
-      {quantity} in stock
-    </span>
-  );
-}
-
 function useProductsPageColumns(
-  canManageInventory: boolean,
   canManageProducts: boolean,
-  onAdjust: (p: UnifiedProductItem) => void,
   onToggle: (p: UnifiedProductItem) => void,
+  onOpenCounter: (p: UnifiedProductItem) => void,
   onDelete: (p: UnifiedProductItem) => void,
 ): Column<UnifiedProductItem>[] {
   return useMemo(
@@ -857,10 +999,12 @@ function useProductsPageColumns(
         header: 'Item Name',
         className: 'min-w-[180px]',
         render: (p: UnifiedProductItem) => (
-          <div className="flex flex-col">
+          <div className="flex flex-col gap-1">
             <span className="font-semibold text-slate-900 text-sm">{p.itemName}</span>
             {p.branchName && (
-              <span className="text-[11px] text-slate-500 mt-0.5">🏪 {p.branchName}</span>
+              <span className="inline-flex items-center gap-1 w-fit px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                Counter: {p.branchName}
+              </span>
             )}
           </div>
         ),
@@ -882,12 +1026,6 @@ function useProductsPageColumns(
         ),
       },
       {
-        key: 'quantity',
-        header: 'Counter Stock',
-        className: 'whitespace-nowrap',
-        render: (p: UnifiedProductItem) => renderProductItemStockBadge(p.quantity),
-      },
-      {
         key: 'status',
         header: 'Status',
         className: 'whitespace-nowrap',
@@ -903,15 +1041,16 @@ function useProductsPageColumns(
         className: 'text-right whitespace-nowrap',
         render: (p: UnifiedProductItem) => (
           <div className="flex items-center justify-end gap-1.5">
-            {canManageInventory && (
+            {canManageProducts && (
               <Button
                 variant="outline"
                 size="sm"
-                className="text-xs h-7 px-2.5 border-slate-200 text-slate-700 hover:border-emerald-500 hover:text-emerald-700"
-                onClick={() => onAdjust(p)}
-                leftIcon={<Sliders className="h-3 w-3" />}
+                className="text-xs h-7 px-2 text-slate-700 hover:text-emerald-700 hover:border-emerald-300"
+                onClick={() => onOpenCounter(p)}
+                leftIcon={<Copy className="h-3 w-3 text-emerald-600" />}
+                title="Copy this menu item to other counters"
               >
-                Adjust Stock
+                Copy to Counter
               </Button>
             )}
 
@@ -942,7 +1081,7 @@ function useProductsPageColumns(
         ),
       },
     ],
-    [canManageInventory, canManageProducts, onAdjust, onToggle, onDelete],
+    [canManageProducts, onToggle, onOpenCounter, onDelete],
   );
 }
 
@@ -955,10 +1094,8 @@ interface ProductsPageTableContentProps {
   categoryFilter: string;
   statusStockFilter: string;
   canManageProducts: boolean;
-  canManageInventory: boolean;
   onRetry: () => void;
-  onOpenCreate: () => void;
-  onAdjust: (p: UnifiedProductItem) => void;
+  onOpenCounter: (p: UnifiedProductItem) => void;
   onToggle: (p: UnifiedProductItem) => void;
   onDelete: (p: UnifiedProductItem) => void;
 }
@@ -972,47 +1109,36 @@ function ProductsPageTableContent({
   categoryFilter,
   statusStockFilter,
   canManageProducts,
-  canManageInventory,
   onRetry,
-  onOpenCreate,
-  onAdjust,
+  onOpenCounter,
   onToggle,
   onDelete,
 }: ProductsPageTableContentProps) {
   if (isLoading) {
     return (
-      <div className="py-12">
-        <LoadingState message="Loading master products and counter stock..." />
+      <div className="py-8">
+        <LoadingState message="Loading master products..." />
       </div>
     );
   }
 
   if (loadError) {
     return (
-      <div className="p-6">
+      <div className="py-8">
         <ErrorState message={loadError} onRetry={onRetry} />
       </div>
     );
   }
 
-  const hasFilters = Boolean(searchQuery || categoryFilter !== 'ALL' || statusStockFilter !== 'ALL');
-
   if (filteredProducts.length === 0) {
     return (
-      <div className="py-12">
+      <div className="py-8">
         <EmptyState
-          title={hasFilters ? 'No matching products found' : 'No products in catalog yet'}
+          title="No Menu Items Found"
           description={
-            hasFilters
-              ? 'Try broadening your search query or reset filter dropdowns.'
-              : 'Create your first product to configure cafeteria menus, counter pricing, and stock.'
-          }
-          action={
-            canManageProducts ? (
-              <Button variant="primary" onClick={onOpenCreate}>
-                Create First Product
-              </Button>
-            ) : undefined
+            searchQuery || statusStockFilter !== 'ALL' || categoryFilter !== 'ALL'
+              ? 'No products matched your search or filters. Try adjusting them.'
+              : 'Add your first menu item using the Quick Add Menu Item bar above.'
           }
         />
       </div>
@@ -1044,7 +1170,9 @@ function ProductsPageTableContent({
               <div className="min-w-0">
                 <h4 className="font-bold text-slate-900 text-sm">{p.itemName}</h4>
                 {p.branchName && (
-                  <span className="text-[11px] text-slate-500 block mt-0.5">🏪 {p.branchName}</span>
+                  <span className="inline-flex items-center gap-1 w-fit px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 mt-1">
+                    Counter: {p.branchName}
+                  </span>
                 )}
                 <div className="mt-1.5">{renderProductItemCategoryBadges(p.category)}</div>
               </div>
@@ -1059,21 +1187,16 @@ function ProductsPageTableContent({
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-              <span className="text-slate-500 font-medium">Counter Stock:</span>
-              {renderProductItemStockBadge(p.quantity)}
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 pt-1">
-              {canManageInventory && (
+            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100">
+              {canManageProducts && (
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full text-xs py-1.5 justify-center border-slate-200 text-slate-700 hover:border-emerald-500 hover:text-emerald-700"
-                  onClick={() => onAdjust(p)}
-                  leftIcon={<Sliders className="h-3.5 w-3.5" />}
+                  className="w-full text-xs py-1.5 justify-center text-slate-700"
+                  onClick={() => onOpenCounter(p)}
+                  leftIcon={<Copy className="h-3.5 w-3.5 text-emerald-600" />}
                 >
-                  Stock
+                  Copy to Counter
                 </Button>
               )}
 
@@ -1114,19 +1237,16 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
 
   const canViewProducts = hasPermission('PRODUCT_VIEW');
   const canManageProducts = hasPermission('PRODUCT_MANAGE');
-  const canViewInventory = hasPermission('INVENTORY_VIEW');
-  const canManageInventory = hasPermission('INVENTORY_MANAGE');
 
   const pageData = useProductsPageData({ currentBranch });
   const productColumns = useProductsPageColumns(
-    canManageInventory,
     canManageProducts,
-    pageData.handleOpenAdjust,
     pageData.handleToggleStatus,
+    pageData.handleOpenCounter,
     pageData.handleOpenDelete,
   );
 
-  if (!canViewProducts && !canViewInventory) {
+  if (!canViewProducts) {
     return <UnauthorizedPage />;
   }
 
@@ -1135,24 +1255,23 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
       {/* ─── Page Header ─── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Products & Inventory Hub</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Menu</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Master food catalog, real-time counter stock levels, and instant price management.
+            Cafeteria menus, rapid item creation, and counter assignments.
           </p>
         </div>
-
-        {canManageProducts && (
-          <Button
-            variant="primary"
-            onClick={() => pageData.setShowCreateModal(true)}
-            leftIcon={<Plus className="h-4 w-4" />}
-          >
-            Add New Product
-          </Button>
-        )}
       </div>
 
       <ProductsMetricsCards metrics={pageData.metrics} />
+
+      {/* ─── ⚡ Rapid Quick-Add Bar ─── */}
+      {canManageProducts && (
+        <QuickAddProductBar
+          branches={pageData.branches}
+          currentBranchId={pageData.branchFilter !== 'ALL' ? pageData.branchFilter : ''}
+          onSuccess={pageData.fetchUnifiedData}
+        />
+      )}
 
       {/* ─── Filter & Search Bar ─── */}
       <Card padding="md">
@@ -1176,7 +1295,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
                 selectBranch(e.target.value);
               }}
               options={[
-                { value: 'ALL', label: 'All Counters' },
+                { value: 'ALL', label: 'All Cafeterias' },
                 ...pageData.branches.map((b) => ({ value: b.id, label: b.name })),
               ]}
             />
@@ -1185,14 +1304,9 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
               value={pageData.categoryFilter}
               onChange={(e) => pageData.setCategoryFilter(e.target.value)}
               options={[
-                { value: 'ALL', label: 'All Categories' },
-                { value: 'Veg', label: 'Veg' },
-                { value: 'Non-Veg', label: 'Non-Veg' },
-                { value: 'Beverage', label: 'Beverage' },
-                { value: 'Snack', label: 'Snack' },
-                { value: 'Breakfast', label: 'Breakfast' },
-                { value: 'Lunch', label: 'Lunch' },
-                { value: 'Dinner', label: 'Dinner' },
+                { value: 'ALL', label: 'All (Veg & Non-Veg)' },
+                { value: 'Veg', label: '🟢 Veg' },
+                { value: 'Non-Veg', label: '🔴 Non-Veg' },
               ]}
             />
 
@@ -1200,12 +1314,9 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
               value={pageData.statusStockFilter}
               onChange={(e) => pageData.setStatusStockFilter(e.target.value)}
               options={[
-                { value: 'ALL', label: 'All Stock & Status' },
+                { value: 'ALL', label: 'All Statuses' },
                 { value: 'ACTIVE', label: 'Active Items Only' },
                 { value: 'INACTIVE', label: 'Inactive / Hidden Items' },
-                { value: 'IN_STOCK', label: 'In Stock (10+)' },
-                { value: 'LOW_STOCK', label: 'Low Stock (< 10)' },
-                { value: 'OUT_OF_STOCK', label: 'Out of Stock (0)' },
               ]}
             />
           </div>
@@ -1234,21 +1345,19 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
           categoryFilter={pageData.categoryFilter}
           statusStockFilter={pageData.statusStockFilter}
           canManageProducts={canManageProducts}
-          canManageInventory={canManageInventory}
           onRetry={pageData.fetchUnifiedData}
-          onOpenCreate={() => pageData.setShowCreateModal(true)}
-          onAdjust={pageData.handleOpenAdjust}
+          onOpenCounter={pageData.handleOpenCounter}
           onToggle={pageData.handleToggleStatus}
           onDelete={pageData.handleOpenDelete}
         />
       </Card>
 
-      <ProductsCreateModal
-        isOpen={pageData.showCreateModal}
-        onClose={() => pageData.setShowCreateModal(false)}
+      <ProductCopyCounterModal
+        isOpen={pageData.showCounterModal}
+        onClose={() => pageData.setShowCounterModal(false)}
+        product={pageData.selectedProductForCounter}
         branches={pageData.branches}
-        currentBranch={currentBranch}
-        onCreated={pageData.fetchUnifiedData}
+        onUpdated={pageData.fetchUnifiedData}
       />
 
       <ProductsAdjustModal
