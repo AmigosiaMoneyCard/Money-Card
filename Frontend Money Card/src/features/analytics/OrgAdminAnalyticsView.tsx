@@ -1,20 +1,11 @@
-import { Eye, RefreshCw, BarChart3, Flame, CreditCard } from 'lucide-react';
-import { Badge, Button, Select, LoadingState, ErrorState } from '@/components/ui';
+import { Eye, RefreshCw, BarChart3, CreditCard } from 'lucide-react';
+import { Button, Select, LoadingState, ErrorState } from '@/components/ui';
 import {
   OrgAdminKpiCards,
-  OrgAdminLifecycleCards,
   OrgAdminPaymentRefundCards,
-  OrgAdminBranchComparison,
-  OrgAdminStaffSummary,
   OrgAdminPdfModal,
-  OrgAdminBranchDetailModal,
 } from './OrgAdminAnalyticsComponents';
 import { OrgAdminCardTracker } from './OrgAdminCardTracker';
-import {
-  PeakKpiGrid,
-  PeakHourlyTrafficChart,
-  PeakFoodDemandSection,
-} from '@/features/peak';
 import type { SortMetric } from './OrgAdminAnalyticsComponents';
 import {
   useOrgAdminAnalytics,
@@ -37,12 +28,8 @@ export function OrgAdminAnalyticsView() {
   const {
     branches,
     analytics,
-    peakData,
     activeTab,
     handleTabChange,
-    demandSortBy,
-    setDemandSortBy,
-    filteredProducts,
     isLoading,
     error,
     isExportingPdf,
@@ -50,12 +37,6 @@ export function OrgAdminAnalyticsView() {
     setShowPdfModal,
     pdfPreviewUrl,
     setPdfPreviewUrl,
-    pdfSections,
-    activeSectionsCount,
-    sortBy,
-    setSortBy,
-    selectedBranchDetail,
-    setSelectedBranchDetail,
     branchFilter,
     datePreset,
     startDate,
@@ -66,53 +47,27 @@ export function OrgAdminAnalyticsView() {
     handleBranchChange,
     handlePresetChange,
     handleCustomDateApply,
-    handleToggleSection,
-    handleSetAllSections,
     handleViewPdf,
     handleDownloadPdf,
     cashRechargeAmount,
     upiRechargeAmount,
-    sortedBranchComparison,
-    activeStaffList,
-    totalCardsActivatedByStaff,
-    totalCardsSettledByStaff,
-    totalStaffVolume,
   } = useOrgAdminAnalytics();
 
   return (
-    <div className="space-y-8">
-      {/* Header Bar */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-6">
+      {/* ─── Header Bar: Title on Left, Filter Options & Actions on Right ─── */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-200 pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-900">Cafeteria Analytics</h1>
-            <Badge variant="outline" className="border-emerald-200 text-emerald-700 bg-emerald-50/50">
-              Organization Scope
-            </Badge>
-          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">Analytics</h1>
+          <p className="mt-1 text-xs text-slate-500">
+            Real-time financial performance, revenue streams, and card operations
+          </p>
         </div>
 
+        {/* Filter Controls Directly Beside Headline */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleViewPdf}
-            disabled={isExportingPdf || isLoading || !analytics}
-            leftIcon={<Eye className="h-4 w-4" />}
-          >
-            View PDF
-          </Button>
-        </div>
-      </div>
-
-      {/* Filter Toolbar */}
-      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Branch Scope Filter */}
-          <div className="w-full sm:w-52">
-            <label htmlFor="analytics-branch-filter" className="mb-1 block text-[11px] font-medium text-slate-600">
-              Counter Scope
-            </label>
+          {/* Counter Scope Selector */}
+          <div className="w-36 sm:w-44">
             <Select
               id="analytics-branch-filter"
               value={branchFilter}
@@ -124,11 +79,8 @@ export function OrgAdminAnalyticsView() {
             />
           </div>
 
-          {/* Date Preset Filter */}
-          <div className="w-full sm:w-44">
-            <label htmlFor="analytics-preset-filter" className="mb-1 block text-[11px] font-medium text-slate-600">
-              Time Window
-            </label>
+          {/* Time Window Selector */}
+          <div className="w-36 sm:w-40">
             <Select
               id="analytics-preset-filter"
               value={datePreset}
@@ -144,57 +96,60 @@ export function OrgAdminAnalyticsView() {
             />
           </div>
 
-          {/* Custom Date Inputs */}
+          {/* Custom Date Pickers (Shown when custom is selected) */}
           {datePreset === 'custom' && (
-            <div className="flex items-end gap-2">
-              <div>
-                <label htmlFor="org-analytics-start-date" className="mb-1 block text-[11px] font-medium text-slate-600">
-                  Start Date
-                </label>
-                <input
-                  id="org-analytics-start-date"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none shadow-sm"
-                />
-              </div>
-              <div>
-                <label htmlFor="org-analytics-end-date" className="mb-1 block text-[11px] font-medium text-slate-600">
-                  End Date
-                </label>
-                <input
-                  id="org-analytics-end-date"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none shadow-sm"
-                />
-              </div>
+            <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-lg border border-slate-200">
+              <input
+                id="org-analytics-start-date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 focus:border-emerald-500 focus:outline-none"
+              />
+              <span className="text-xs text-slate-400">to</span>
+              <input
+                id="org-analytics-end-date"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 focus:border-emerald-500 focus:outline-none"
+              />
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => handleCustomDateApply(startDate, endDate)}
-                className="h-8"
+                className="h-7 px-2.5 text-xs font-semibold"
               >
                 Apply
               </Button>
             </div>
           )}
-        </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => fetchAnalytics()}
-          leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
-          className="self-end lg:self-center"
-        >
-          Refresh Data
-        </Button>
+          {/* Refresh Data */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fetchAnalytics()}
+            leftIcon={<RefreshCw className="h-3.5 w-3.5 text-slate-600" />}
+            title="Refresh analytics data"
+          >
+            Refresh
+          </Button>
+
+          {/* View PDF */}
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleViewPdf}
+            disabled={isExportingPdf || isLoading || !analytics}
+            leftIcon={<Eye className="h-4 w-4" />}
+          >
+            View PDF
+          </Button>
+        </div>
       </div>
 
-      {/* ── Tab Navigation Bar ── */}
+      {/* ─── Tab Navigation: Strictly Financial Overview & Card Analytics ─── */}
       <div className="flex items-center gap-2 border-b border-slate-200">
         <button
           type="button"
@@ -211,19 +166,6 @@ export function OrgAdminAnalyticsView() {
 
         <button
           type="button"
-          onClick={() => handleTabChange('demand')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer ${
-            activeTab === 'demand'
-              ? 'border-emerald-600 text-emerald-700 bg-emerald-50/50 rounded-t-lg'
-              : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
-          }`}
-        >
-          <Flame className="h-4 w-4 text-rose-500" />
-          <span>Rush Hours & Food Demand</span>
-        </button>
-
-        <button
-          type="button"
           onClick={() => handleTabChange('cards')}
           className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer ${
             activeTab === 'cards'
@@ -232,62 +174,34 @@ export function OrgAdminAnalyticsView() {
           }`}
         >
           <CreditCard className="h-4 w-4 text-indigo-600" />
-          <span>Card Fleet & Tracker</span>
+          <span>Card Analytics</span>
         </button>
       </div>
 
+      {/* ─── Main Content ─── */}
       {isLoading ? (
-        <LoadingState message="Calculating cafeteria metrics & peak demand analytics..." />
+        <LoadingState message="Calculating analytics metrics..." />
       ) : error ? (
         <ErrorState title="Failed to load analytics" message={error} onRetry={fetchAnalytics} />
       ) : activeTab === 'overview' ? (
         analytics ? (
-          <div className="space-y-8">
+          <div className="space-y-6">
             <OrgAdminKpiCards analytics={analytics} />
-            <OrgAdminLifecycleCards analytics={analytics} />
             <OrgAdminPaymentRefundCards
               cashRecharge={cashRechargeAmount}
               upiRecharge={upiRechargeAmount}
               totalRefund={analytics.totalRefundVolume ?? 0}
             />
-            <OrgAdminBranchComparison
-              sortedBranches={sortedBranchComparison}
-              sortBy={sortBy}
-              onSortChange={setSortBy}
-              onSelectDetail={setSelectedBranchDetail}
-            />
-
-            {/* Staff Operational Performance Summary */}
-            {analytics?.staffPerformance && analytics.staffPerformance.length > 0 && (
-              <OrgAdminStaffSummary
-                activeCount={activeStaffList.length}
-                cardsActivated={totalCardsActivatedByStaff}
-                cardsSettled={totalCardsSettledByStaff}
-                totalVolume={totalStaffVolume}
-              />
-            )}
           </div>
         ) : null
-      ) : activeTab === 'demand' ? (
-        peakData ? (
-          <div className="space-y-8">
-            <PeakKpiGrid comparison={peakData.comparison} />
-            <PeakHourlyTrafficChart
-              hourlyDistribution={peakData.hourlyDistribution}
-              busiestHour={peakData.comparison.busiestHour}
-              busiestDay={peakData.busiestDay}
-            />
-            <PeakFoodDemandSection
-              filteredProducts={filteredProducts}
-              demandSortBy={demandSortBy}
-              setDemandSortBy={setDemandSortBy}
-            />
-          </div>
-        ) : (
-          <LoadingState message="Calculating hour-by-hour peak and food demand..." />
-        )
       ) : (
-        <OrgAdminCardTracker cardFleet={analytics?.cardFleetAnalytics} />
+        <OrgAdminCardTracker
+          cardFleet={analytics?.cardFleetAnalytics}
+          closedCardsCount={analytics?.closedCardsCount}
+          zeroBalanceActiveCardsCount={analytics?.zeroBalanceActiveCardsCount}
+          activeCardsRechargeCount={analytics?.activeCardsRechargeCount}
+          reRechargedCardsCount={analytics?.reRechargedCardsCount}
+        />
       )}
 
       {/* PDF Viewer Modal */}
@@ -301,17 +215,7 @@ export function OrgAdminAnalyticsView() {
           }
         }}
         pdfPreviewUrl={pdfPreviewUrl}
-        pdfSections={pdfSections}
-        activeSectionsCount={activeSectionsCount}
-        onToggleSection={handleToggleSection}
-        onSetAllSections={handleSetAllSections}
         onDownloadPdf={handleDownloadPdf}
-      />
-
-      {/* Branch Metric Detail Modal */}
-      <OrgAdminBranchDetailModal
-        branch={selectedBranchDetail}
-        onClose={() => setSelectedBranchDetail(null)}
       />
     </div>
   );

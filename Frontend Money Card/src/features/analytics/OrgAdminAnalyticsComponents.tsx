@@ -3,7 +3,6 @@ import {
   TrendingUp,
   CreditCard,
   BarChart3,
-  Layers,
   RefreshCw,
   CheckCircle2,
   AlertCircle,
@@ -14,9 +13,8 @@ import {
   Users,
   UserCheck,
   ArrowRight,
-  SlidersHorizontal,
-  Check,
   Download,
+  Wallet,
 } from 'lucide-react';
 import { Card, StatCard, Badge, Button, Select, Modal, ModalFooter } from '@/components/ui';
 import { formatCurrency } from '@/utils/formatters';
@@ -38,6 +36,8 @@ interface KpiCardsProps {
 }
 
 export function OrgAdminKpiCards({ analytics }: KpiCardsProps) {
+  const floatBalance = analytics.cardFleetAnalytics?.totalFloatBalance ?? 0;
+
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <StatCard
@@ -48,17 +48,17 @@ export function OrgAdminKpiCards({ analytics }: KpiCardsProps) {
       <StatCard
         label="Wallet Recharges"
         value={formatCurrency(analytics.totalRechargeVolume)}
-        icon={<CreditCard className="h-5 w-5 text-emerald-600" />}
+        icon={<CreditCard className="h-5 w-5 text-blue-600" />}
+      />
+      <StatCard
+        label="Customer Float Balance"
+        value={formatCurrency(floatBalance)}
+        icon={<Wallet className="h-5 w-5 text-amber-600" />}
       />
       <StatCard
         label="Total Transactions"
         value={analytics.totalTransactions.toLocaleString()}
-        icon={<BarChart3 className="h-5 w-5 text-emerald-600" />}
-      />
-      <StatCard
-        label="Active Card Sessions"
-        value={analytics.activeSessionsCount.toLocaleString()}
-        icon={<Layers className="h-5 w-5 text-emerald-600" />}
+        icon={<BarChart3 className="h-5 w-5 text-violet-600" />}
       />
     </div>
   );
@@ -149,8 +149,12 @@ interface PaymentRefundCardsProps {
 }
 
 export function OrgAdminPaymentRefundCards({ cashRecharge, upiRecharge, totalRefund }: PaymentRefundCardsProps) {
+  const totalRecharge = cashRecharge + upiRecharge;
+  const cashPct = totalRecharge > 0 ? Math.round((cashRecharge / totalRecharge) * 100) : 0;
+  const upiPct = totalRecharge > 0 ? 100 - cashPct : 0;
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <h2 className="text-base font-bold text-slate-900">Payment & Refund Breakdown</h2>
       <div className="grid gap-4 sm:grid-cols-3">
         <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
@@ -166,6 +170,9 @@ export function OrgAdminPaymentRefundCards({ cashRecharge, upiRecharge, totalRef
             <p className="font-mono text-2xl font-bold text-slate-900">
               {formatCurrency(cashRecharge)}
             </p>
+            {totalRecharge > 0 && (
+              <p className="mt-1 text-xs text-slate-500">{cashPct}% of total recharge volume</p>
+            )}
           </div>
         </Card>
 
@@ -182,6 +189,9 @@ export function OrgAdminPaymentRefundCards({ cashRecharge, upiRecharge, totalRef
             <p className="font-mono text-2xl font-bold text-slate-900">
               {formatCurrency(upiRecharge)}
             </p>
+            {totalRecharge > 0 && (
+              <p className="mt-1 text-xs text-slate-500">{upiPct}% of total recharge volume</p>
+            )}
           </div>
         </Card>
 
@@ -198,9 +208,43 @@ export function OrgAdminPaymentRefundCards({ cashRecharge, upiRecharge, totalRef
             <p className="font-mono text-2xl font-bold text-slate-900">
               {formatCurrency(totalRefund)}
             </p>
+            <p className="mt-1 text-xs text-slate-500">Total refunded / returned amount</p>
           </div>
         </Card>
       </div>
+
+      {totalRecharge > 0 && (
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+          <div className="flex items-center justify-between text-xs mb-2">
+            <span className="font-semibold text-slate-700">Recharge Payment Distribution</span>
+            <span className="font-mono text-slate-500">
+              Cash: {cashPct}% | UPI: {upiPct}%
+            </span>
+          </div>
+          <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+            <div
+              style={{ width: `${cashPct}%` }}
+              className="bg-emerald-500 transition-all duration-500"
+              title={`Cash: ${cashPct}%`}
+            />
+            <div
+              style={{ width: `${upiPct}%` }}
+              className="bg-sky-500 transition-all duration-500"
+              title={`UPI: ${upiPct}%`}
+            />
+          </div>
+          <div className="flex items-center gap-4 mt-2.5 text-xs text-slate-500">
+            <div className="flex items-center gap-1.5">
+              <div className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              <span>Cash Recharges ({cashPct}%)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="h-2.5 w-2.5 rounded-full bg-sky-500" />
+              <span>UPI Recharges ({upiPct}%)</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -434,10 +478,10 @@ interface PdfModalProps {
   isOpen: boolean;
   onClose: () => void;
   pdfPreviewUrl: string | null;
-  pdfSections: OrgPdfSectionOptions;
-  activeSectionsCount: number;
-  onToggleSection: (sectionKey: keyof OrgPdfSectionOptions) => void;
-  onSetAllSections: (enable: boolean) => void;
+  pdfSections?: OrgPdfSectionOptions;
+  activeSectionsCount?: number;
+  onToggleSection?: (sectionKey: keyof OrgPdfSectionOptions) => void;
+  onSetAllSections?: (enable: boolean) => void;
   onDownloadPdf: () => void;
 }
 
@@ -445,229 +489,17 @@ export function OrgAdminPdfModal({
   isOpen,
   onClose,
   pdfPreviewUrl,
-  pdfSections,
-  activeSectionsCount,
-  onToggleSection,
-  onSetAllSections,
   onDownloadPdf,
 }: PdfModalProps) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Cafeteria Analytics Report — PDF Preview" size="xl">
+    <Modal isOpen={isOpen} onClose={onClose} title="Analytics Report — PDF Preview" size="xl">
       <div className="space-y-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-2xs">
-          <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
-                <SlidersHorizontal className="h-4 w-4" />
-              </div>
-              <h4 className="text-xs font-bold text-slate-900">Customize Report Sections</h4>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                id="pdf-opt-select-all"
-                onClick={() => onSetAllSections(true)}
-                className="rounded-md px-2 py-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors cursor-pointer"
-              >
-                Select All
-              </button>
-              <span className="text-slate-300">|</span>
-              <button
-                type="button"
-                id="pdf-opt-clear-all"
-                onClick={() => onSetAllSections(false)}
-                className="rounded-md px-2 py-1 text-[11px] font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
-              >
-                Clear All
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-2.5">
-            <button
-              type="button"
-              id="pdf-toggle-executive-kpis"
-              onClick={() => onToggleSection('includeExecutiveKpis')}
-              className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-all cursor-pointer ${
-                pdfSections.includeExecutiveKpis
-                  ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
-                  : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
-              }`}
-            >
-              <div
-                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
-                  pdfSections.includeExecutiveKpis
-                    ? 'border-emerald-600 bg-emerald-600 text-white'
-                    : 'border-slate-300 bg-white'
-                }`}
-              >
-                {pdfSections.includeExecutiveKpis && <Check className="h-3 w-3 stroke-[3]" />}
-              </div>
-              <span className="text-xs font-semibold leading-tight">1. Executive KPIs</span>
-            </button>
-
-            <button
-              type="button"
-              id="pdf-toggle-card-lifecycle"
-              onClick={() => onToggleSection('includeCardLifecycle')}
-              className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-all cursor-pointer ${
-                pdfSections.includeCardLifecycle
-                  ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
-                  : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
-              }`}
-            >
-              <div
-                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
-                  pdfSections.includeCardLifecycle
-                    ? 'border-emerald-600 bg-emerald-600 text-white'
-                    : 'border-slate-300 bg-white'
-                }`}
-              >
-                {pdfSections.includeCardLifecycle && <Check className="h-3 w-3 stroke-[3]" />}
-              </div>
-              <span className="text-xs font-semibold leading-tight">2. Card Lifecycle</span>
-            </button>
-
-            <button
-              type="button"
-              id="pdf-toggle-payment-breakdown"
-              onClick={() => onToggleSection('includePaymentBreakdown')}
-              className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-all cursor-pointer ${
-                pdfSections.includePaymentBreakdown
-                  ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
-                  : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
-              }`}
-            >
-              <div
-                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
-                  pdfSections.includePaymentBreakdown
-                    ? 'border-emerald-600 bg-emerald-600 text-white'
-                    : 'border-slate-300 bg-white'
-                }`}
-              >
-                {pdfSections.includePaymentBreakdown && <Check className="h-3 w-3 stroke-[3]" />}
-              </div>
-              <span className="text-xs font-semibold leading-tight">3. Payment Breakdown</span>
-            </button>
-
-            <button
-              type="button"
-              id="pdf-toggle-rush-kpis"
-              onClick={() => onToggleSection('includeRushKpis')}
-              className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-all cursor-pointer ${
-                pdfSections.includeRushKpis
-                  ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
-                  : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
-              }`}
-            >
-              <div
-                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
-                  pdfSections.includeRushKpis
-                    ? 'border-emerald-600 bg-emerald-600 text-white'
-                    : 'border-slate-300 bg-white'
-                }`}
-              >
-                {pdfSections.includeRushKpis && <Check className="h-3 w-3 stroke-[3]" />}
-              </div>
-              <span className="text-xs font-semibold leading-tight">4. Peak Hour Metrics</span>
-            </button>
-
-            <button
-              type="button"
-              id="pdf-toggle-traffic-distribution"
-              onClick={() => onToggleSection('includeTrafficDistribution')}
-              className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-all cursor-pointer ${
-                pdfSections.includeTrafficDistribution
-                  ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
-                  : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
-              }`}
-            >
-              <div
-                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
-                  pdfSections.includeTrafficDistribution
-                    ? 'border-emerald-600 bg-emerald-600 text-white'
-                    : 'border-slate-300 bg-white'
-                }`}
-              >
-                {pdfSections.includeTrafficDistribution && <Check className="h-3 w-3 stroke-[3]" />}
-              </div>
-              <span className="text-xs font-semibold leading-tight">5. 24-Hour Traffic</span>
-            </button>
-
-            <button
-              type="button"
-              id="pdf-toggle-food-demand"
-              onClick={() => onToggleSection('includeFoodDemand')}
-              className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-all cursor-pointer ${
-                pdfSections.includeFoodDemand
-                  ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
-                  : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
-              }`}
-            >
-              <div
-                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
-                  pdfSections.includeFoodDemand
-                    ? 'border-emerald-600 bg-emerald-600 text-white'
-                    : 'border-slate-300 bg-white'
-                }`}
-              >
-                {pdfSections.includeFoodDemand && <Check className="h-3 w-3 stroke-[3]" />}
-              </div>
-              <span className="text-xs font-semibold leading-tight">6. Food Demand</span>
-            </button>
-
-            <button
-              type="button"
-              id="pdf-toggle-branch-comparison"
-              onClick={() => onToggleSection('includeBranchComparison')}
-              className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-all cursor-pointer ${
-                pdfSections.includeBranchComparison
-                  ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
-                  : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
-              }`}
-            >
-              <div
-                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
-                  pdfSections.includeBranchComparison
-                    ? 'border-emerald-600 bg-emerald-600 text-white'
-                    : 'border-slate-300 bg-white'
-                }`}
-              >
-                {pdfSections.includeBranchComparison && <Check className="h-3 w-3 stroke-[3]" />}
-              </div>
-              <span className="text-xs font-semibold leading-tight">7. Counter Comparison</span>
-            </button>
-
-            <button
-              type="button"
-              id="pdf-toggle-staff-performance"
-              onClick={() => onToggleSection('includeStaffPerformance')}
-              className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-all cursor-pointer ${
-                pdfSections.includeStaffPerformance
-                  ? 'border-emerald-300 bg-emerald-50/60 text-emerald-950 shadow-2xs ring-1 ring-emerald-400/30'
-                  : 'border-slate-200 bg-slate-50/60 text-slate-500 hover:border-slate-300 hover:bg-slate-100/50 opacity-70'
-              }`}
-            >
-              <div
-                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
-                  pdfSections.includeStaffPerformance
-                    ? 'border-emerald-600 bg-emerald-600 text-white'
-                    : 'border-slate-300 bg-white'
-                }`}
-              >
-                {pdfSections.includeStaffPerformance && <Check className="h-3 w-3 stroke-[3]" />}
-              </div>
-              <span className="text-xs font-semibold leading-tight">8. Staff Performance</span>
-            </button>
-          </div>
-        </div>
-
         {pdfPreviewUrl && (
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-lg">
             <iframe
               src={`${pdfPreviewUrl}#toolbar=0`}
-              className="w-full h-[70vh] rounded-lg"
-              title="Cafeteria Analytics Report PDF Preview"
+              className="w-full h-[75vh] rounded-lg"
+              title="Analytics Report PDF Preview"
             />
           </div>
         )}
@@ -683,9 +515,7 @@ export function OrgAdminPdfModal({
             leftIcon={<Download className="h-4 w-4" />}
             id="download-customized-pdf-btn"
           >
-            {activeSectionsCount === 0
-              ? 'Download PDF (Empty)'
-              : `Download PDF (${activeSectionsCount} Section${activeSectionsCount > 1 ? 's' : ''})`}
+            Download PDF
           </Button>
         </ModalFooter>
       </div>
