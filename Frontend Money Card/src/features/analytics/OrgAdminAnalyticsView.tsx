@@ -1,5 +1,5 @@
 import { Eye, RefreshCw, BarChart3, CreditCard } from 'lucide-react';
-import { Button, LoadingState, ErrorState } from '@/components/ui';
+import { Button, Select, LoadingState, ErrorState } from '@/components/ui';
 import {
   OrgAdminFinancialSection,
   OrgAdminPdfModal,
@@ -25,7 +25,9 @@ export type StaffSortMetric =
 
 export function OrgAdminAnalyticsView() {
   const {
-    branches: _branches,
+    branches,
+    branchFilter,
+    handleBranchChange,
     analytics,
     activeTab,
     handleTabChange,
@@ -59,8 +61,22 @@ export function OrgAdminAnalyticsView() {
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">Analytics</h1>
         </div>
 
-        {/* Filter Controls: Custom Date Range + Actions */}
+        {/* Filter Controls: Cafeteria Filter + Custom Date Range + Actions */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Cafeteria Filter */}
+          <div className="w-36 sm:w-44">
+            <Select
+              id="analytics-cafeteria-filter"
+              value={branchFilter}
+              onChange={(e) => handleBranchChange(e.target.value)}
+              options={[
+                { value: 'ALL', label: 'All Cafeterias' },
+                ...branches.map((b) => ({ value: b.id, label: b.name })),
+              ]}
+              className="h-8 text-xs py-1 px-2"
+            />
+          </div>
+
           {/* Custom Date Pickers — always visible */}
           <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-lg border border-slate-200">
             <input

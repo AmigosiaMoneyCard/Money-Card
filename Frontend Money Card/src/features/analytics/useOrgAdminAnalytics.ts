@@ -324,7 +324,7 @@ export function useOrgAdminAnalytics() {
     [branches, branchFilter],
   );
   const selectedBranchName =
-    branchFilter === 'ALL' ? 'All Counters' : selectedBranchObj?.name || branchFilter;
+    branchFilter === 'ALL' ? 'All Cafeterias' : selectedBranchObj?.name || branchFilter;
 
   const dateRangeLabel = useMemo(
     () => formatDateRangeLabel(datePreset, startDate, endDate),
