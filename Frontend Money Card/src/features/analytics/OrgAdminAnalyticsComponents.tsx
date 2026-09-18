@@ -31,8 +31,114 @@ export type SortMetric =
   | 'sessions'
   | 'products';
 
-interface KpiCardsProps {
+interface FinancialSectionProps {
   analytics: AnalyticsOverview;
+  cashRecharge: number;
+  upiRecharge: number;
+  totalRefund: number;
+}
+
+export interface KpiCardsProps {
+  analytics: AnalyticsOverview;
+}
+
+
+export function OrgAdminFinancialSection({
+  analytics,
+  cashRecharge,
+  upiRecharge,
+  totalRefund,
+}: FinancialSectionProps) {
+  const floatBalance = analytics.cardFleetAnalytics?.totalFloatBalance ?? 0;
+  const totalRecharge = cashRecharge + upiRecharge;
+  const cashPct = totalRecharge > 0 ? Math.round((cashRecharge / totalRecharge) * 100) : 0;
+  const upiPct = totalRecharge > 0 ? 100 - cashPct : 0;
+
+  return (
+    <div className="space-y-4">
+      {/* ─── Top 4 Core Financial Cards ─── */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Food Sales (POS)"
+          value={formatCurrency(analytics.totalPurchaseVolume)}
+          icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
+        />
+        <StatCard
+          label="Card Money Loaded"
+          value={formatCurrency(analytics.totalRechargeVolume)}
+          icon={<CreditCard className="h-5 w-5 text-blue-600" />}
+        />
+        <StatCard
+          label="Current Balance in Cards"
+          value={formatCurrency(floatBalance)}
+          icon={<Wallet className="h-5 w-5 text-amber-600" />}
+        />
+        <StatCard
+          label="Total Activity Count"
+          value={analytics.totalTransactions.toLocaleString()}
+          icon={<BarChart3 className="h-5 w-5 text-violet-600" />}
+        />
+      </div>
+
+      {/* ─── Bottom 3 Payment & Refund Cards (in same single section) ─── */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Cash Card Deposits
+            </span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+              <DollarSign className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <p className="font-mono text-2xl font-bold text-slate-900">
+              {formatCurrency(cashRecharge)}
+            </p>
+            {totalRecharge > 0 && (
+              <p className="mt-1 text-xs text-slate-500">{cashPct}% of total money loaded</p>
+            )}
+          </div>
+        </Card>
+
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              UPI / Online Card Deposits
+            </span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
+              <CreditCard className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <p className="font-mono text-2xl font-bold text-slate-900">
+              {formatCurrency(upiRecharge)}
+            </p>
+            {totalRecharge > 0 && (
+              <p className="mt-1 text-xs text-slate-500">{upiPct}% of total money loaded</p>
+            )}
+          </div>
+        </Card>
+
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Refunds & Card Returns
+            </span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+              <ArrowUpDown className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <p className="font-mono text-2xl font-bold text-slate-900">
+              {formatCurrency(totalRefund)}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">Total refunded / returned to customers</p>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
 }
 
 export function OrgAdminKpiCards({ analytics }: KpiCardsProps) {
@@ -212,39 +318,6 @@ export function OrgAdminPaymentRefundCards({ cashRecharge, upiRecharge, totalRef
           </div>
         </Card>
       </div>
-
-      {totalRecharge > 0 && (
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-          <div className="flex items-center justify-between text-xs mb-2">
-            <span className="font-semibold text-slate-700">Recharge Payment Distribution</span>
-            <span className="font-mono text-slate-500">
-              Cash: {cashPct}% | UPI: {upiPct}%
-            </span>
-          </div>
-          <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
-            <div
-              style={{ width: `${cashPct}%` }}
-              className="bg-emerald-500 transition-all duration-500"
-              title={`Cash: ${cashPct}%`}
-            />
-            <div
-              style={{ width: `${upiPct}%` }}
-              className="bg-sky-500 transition-all duration-500"
-              title={`UPI: ${upiPct}%`}
-            />
-          </div>
-          <div className="flex items-center gap-4 mt-2.5 text-xs text-slate-500">
-            <div className="flex items-center gap-1.5">
-              <div className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-              <span>Cash Recharges ({cashPct}%)</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="h-2.5 w-2.5 rounded-full bg-sky-500" />
-              <span>UPI Recharges ({upiPct}%)</span>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

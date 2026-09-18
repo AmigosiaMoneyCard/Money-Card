@@ -31,16 +31,22 @@ export function OrgAdminCardTracker({
   reRechargedCardsCount = 0,
 }: OrgAdminCardTrackerProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSubTab, setSelectedSubTab] = useState<'top' | 'dormant'>('top');
+  const [selectedSubTab, setSelectedSubTab] = useState<'top' | 'inactive'>('top');
+
+  const topCards = cardFleet?.topActiveCards ?? [];
+  const inactiveCards = cardFleet?.dormantCards ?? [];
+  const totalInCirculation = cardFleet?.totalCardsInCirculation ?? 0;
+  const blockedCount = cardFleet?.blockedCardsCount ?? 0;
+  const availableCount = cardFleet?.availableCardsCount ?? 0;
+  const inactiveCount = cardFleet?.dormantCardsCount ?? 0;
 
   const allCards = useMemo<CardFleetTrackItem[]>(() => {
-    if (!cardFleet) return [];
     const map = new Map<string, CardFleetTrackItem>();
-    [...cardFleet.topActiveCards, ...cardFleet.dormantCards].forEach((c) => {
+    [...topCards, ...inactiveCards].forEach((c) => {
       map.set(c.id, c);
     });
     return Array.from(map.values());
-  }, [cardFleet]);
+  }, [topCards, inactiveCards]);
 
   const searchedCard = useMemo<CardFleetTrackItem | null>(() => {
     if (!searchQuery.trim() || allCards.length === 0) return null;
@@ -54,16 +60,6 @@ export function OrgAdminCardTracker({
       ) || null
     );
   }, [searchQuery, allCards]);
-
-  if (!cardFleet) {
-    return (
-      <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500">
-        <CreditCard className="mx-auto h-8 w-8 text-slate-400 mb-2" />
-        <p className="font-semibold text-sm">No card fleet data available</p>
-        <p className="text-xs text-slate-400 mt-1">Issue cards or complete transactions to see fleet analytics.</p>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -92,7 +88,7 @@ export function OrgAdminCardTracker({
             </div>
             <div className="mt-2">
               <p className="font-mono text-2xl font-bold text-slate-900">
-                {cardFleet.totalCardsInCirculation.toLocaleString()}
+                {totalInCirculation.toLocaleString()}
               </p>
               <p className="mt-1 text-[11px] text-slate-500 leading-snug">
                 Active cards in customer hands
@@ -132,7 +128,7 @@ export function OrgAdminCardTracker({
             </div>
             <div className="mt-2">
               <p className="font-mono text-2xl font-bold text-rose-600">
-                {cardFleet.blockedCardsCount.toLocaleString()}
+                {blockedCount.toLocaleString()}
               </p>
               <p className="mt-1 text-[11px] text-slate-500 leading-snug">
                 Locked due to loss or security
@@ -172,7 +168,7 @@ export function OrgAdminCardTracker({
             </div>
             <div className="mt-2">
               <p className="font-mono text-2xl font-bold text-slate-900">
-                {cardFleet.availableCardsCount.toLocaleString()}
+                {availableCount.toLocaleString()}
               </p>
               <p className="mt-1 text-[11px] text-slate-500 leading-snug">
                 Ready to issue from card vault
@@ -180,11 +176,11 @@ export function OrgAdminCardTracker({
             </div>
           </Card>
 
-          {/* Card 6: Dormant Cards */}
+          {/* Card 6: Inactive Cards */}
           <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                Dormant (&gt; 14d)
+                Inactive Cards
               </span>
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
                 <Clock className="h-4 w-4" />
@@ -192,7 +188,7 @@ export function OrgAdminCardTracker({
             </div>
             <div className="mt-2">
               <p className="font-mono text-2xl font-bold text-orange-700">
-                {cardFleet.dormantCardsCount.toLocaleString()}
+                {inactiveCount.toLocaleString()}
               </p>
               <p className="mt-1 text-[11px] text-slate-500 leading-snug">
                 Unused balance &gt; 14 days
@@ -284,7 +280,7 @@ export function OrgAdminCardTracker({
                       </Badge>
                       {searchedCard.isDormant && (
                         <Badge variant="warning" className="text-xs">
-                          Dormant (&gt;14d)
+                          Inactive (&gt;14d)
                         </Badge>
                       )}
                     </div>
@@ -336,7 +332,7 @@ export function OrgAdminCardTracker({
         </div>
       </Card>
 
-      {/* ─── 3. Top Active Spenders vs Dormant Cards ─── */}
+      {/* ─── 3. Top Active Spenders vs Inactive Cards ─── */}
       <Card padding="md">
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
@@ -351,20 +347,20 @@ export function OrgAdminCardTracker({
                 }`}
               >
                 <TrendingUp className="h-3.5 w-3.5" />
-                <span>Top Spenders ({cardFleet.topActiveCards.length})</span>
+                <span>Top Spenders ({topCards.length})</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => setSelectedSubTab('dormant')}
+                onClick={() => setSelectedSubTab('inactive')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  selectedSubTab === 'dormant'
+                  selectedSubTab === 'inactive'
                     ? 'bg-amber-50 text-amber-700 shadow-2xs'
                     : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
                 <AlertTriangle className="h-3.5 w-3.5" />
-                <span>Dormant Cards ({cardFleet.dormantCards.length})</span>
+                <span>Inactive Cards ({inactiveCards.length})</span>
               </button>
             </div>
 
@@ -390,7 +386,7 @@ export function OrgAdminCardTracker({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {cardFleet.topActiveCards.map((c: CardFleetTrackItem) => (
+                  {topCards.map((c: CardFleetTrackItem) => (
                     <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-2.5 px-3 font-mono font-bold text-slate-900 flex items-center gap-2">
                         <CreditCard className="h-3.5 w-3.5 text-indigo-500" />
@@ -422,10 +418,10 @@ export function OrgAdminCardTracker({
             </div>
           ) : (
             <div className="overflow-x-auto">
-              {cardFleet.dormantCards.length === 0 ? (
+              {inactiveCards.length === 0 ? (
                 <div className="py-6 text-center text-xs text-slate-500">
                   <CheckCircle2 className="mx-auto h-6 w-6 text-emerald-500 mb-1.5" />
-                  <p className="font-semibold text-slate-800">No dormant cards detected</p>
+                  <p className="font-semibold text-slate-800">No inactive cards detected</p>
                   <p className="text-slate-400 mt-0.5">All active cards have regular transaction activity.</p>
                 </div>
               ) : (
@@ -440,7 +436,7 @@ export function OrgAdminCardTracker({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {cardFleet.dormantCards.map((c: CardFleetTrackItem) => (
+                    {inactiveCards.map((c: CardFleetTrackItem) => (
                       <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-2.5 px-3 font-mono font-bold text-slate-900 flex items-center gap-2">
                           <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
@@ -459,7 +455,7 @@ export function OrgAdminCardTracker({
                         </td>
                         <td className="py-2.5 px-3 text-center">
                           <Badge variant="warning" className="text-[10px]">
-                            Dormant
+                            Inactive
                           </Badge>
                         </td>
                       </tr>
@@ -474,3 +470,4 @@ export function OrgAdminCardTracker({
     </div>
   );
 }
+
