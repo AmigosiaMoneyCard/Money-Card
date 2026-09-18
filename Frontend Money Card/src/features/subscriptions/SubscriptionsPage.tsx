@@ -40,7 +40,6 @@ import {
   AlertCircle,
   Building2,
   Users,
-  MessageSquare,
   Send,
   Clock,
   ChevronDown,
@@ -416,22 +415,8 @@ function OrgAdminSubscriptionsView() {
           <h1 className="text-2xl font-bold text-slate-900">Subscription</h1>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            variant={pendingRequest ? 'outline' : 'primary'}
-            onClick={() => handleOpenContactSuperAdmin()}
-            disabled={!!pendingRequest}
-            title={
-              pendingRequest
-                ? 'A cafeteria can only make one plan change request at a time. Please wait until your pending request is approved or rejected.'
-                : 'Contact Super Admin'
-            }
-            leftIcon={<MessageSquare className="h-4 w-4" />}
-          >
-            {pendingRequest ? 'Plan Request Pending' : 'Contact Super Admin'}
-          </Button>
-
-          {subscription && (
+        {subscription && (
+          <div className="flex flex-wrap items-center gap-3">
             <Button
               variant="outline"
               onClick={() => setShowRenewModal(true)}
@@ -439,8 +424,8 @@ function OrgAdminSubscriptionsView() {
             >
               Renew Subscription
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Pending Plan Change / Renewal Request Banner */}
