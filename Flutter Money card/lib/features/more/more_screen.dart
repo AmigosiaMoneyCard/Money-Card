@@ -100,7 +100,7 @@ class MoreScreen extends ConsumerWidget {
           permission: AppPermission.viewAnalytics,
           child: _buildMenuTile(
             icon: Icons.bar_chart_outlined,
-            title: 'Analytics & Reports',
+            title: 'Analytics',
             onTap: () => context.push('/app/analytics'),
           ),
         ),

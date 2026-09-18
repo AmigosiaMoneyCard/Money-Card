@@ -133,6 +133,8 @@ export async function getOrgAnalytics(req: Request, res: Response) {
   const [
     transactions,
     totalCards,
+    blockedCardsCount,
+    availableCardsCount,
     activeSessionsCount,
     branches,
     lowStockCount,
@@ -150,6 +152,21 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     prisma.card.count({
       where: {
         ...(orgId ? { organizationId: orgId } : {}),
+      },
+    }),
+    prisma.card.count({
+      where: {
+        ...(orgId ? { organizationId: orgId } : {}),
+        status: 'BLOCKED',
+      },
+    }),
+    prisma.card.count({
+      where: {
+        ...(orgId ? { organizationId: orgId } : {}),
+        OR: [
+          { status: 'AVAILABLE' },
+          { assignmentStatus: 'UNASSIGNED' },
+        ],
       },
     }),
     prisma.cardSession.count({
@@ -182,11 +199,12 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       select: {
         id: true,
         balance: true,
+        sessionCardNumber: true,
+        issuedAt: true,
+        card: { select: { physicalCardNumber: true, status: true } },
+        branch: { select: { name: true } },
         transactions: {
-          where: {
-            type: { in: ['RECHARGE_CASH', 'RECHARGE_UPI'] },
-          },
-          select: { id: true },
+          select: { id: true, amount: true, type: true, createdAt: true },
         },
       },
     }),
@@ -461,12 +479,77 @@ export async function getOrgAnalytics(req: Request, res: Response) {
   let activeCardsRechargeCount = 0;
   let reRechargedCardsCount = 0;
   activeSessionsList.forEach((s) => {
-    const count = s.transactions.length;
+    const rechargeTxns = s.transactions.filter((t) => {
+      const type = String(t.type || '').toUpperCase();
+      return type.includes('RECHARGE') || type.includes('CASH') || type.includes('UPI');
+    });
+    const count = rechargeTxns.length;
     activeCardsRechargeCount += count;
     if (count > 1) {
       reRechargedCardsCount += (count - 1);
     }
   });
+
+  const totalFloatBalance = Number(
+    activeSessionsList.reduce((acc, s) => acc + (s.balance || 0), 0).toFixed(2),
+  );
+  const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+
+  const cardItems = activeSessionsList.map((s) => {
+    const cardNum =
+      s.card?.physicalCardNumber ||
+      s.sessionCardNumber ||
+      `MC-${s.id.slice(0, 6).toUpperCase()}`;
+    let totalRecharged = 0;
+    let totalSpent = 0;
+    let totalRefunded = 0;
+    let lastUsedAt = s.issuedAt ? s.issuedAt.toISOString() : undefined;
+
+    s.transactions.forEach((t) => {
+      const tType = String(t.type || '').toUpperCase();
+      if (tType.includes('RECHARGE') || tType === 'ISSUANCE') {
+        totalRecharged += t.amount;
+      } else if (tType === 'PURCHASE') {
+        totalSpent += t.amount;
+      } else if (tType.includes('REFUND')) {
+        totalRefunded += t.amount;
+      }
+      if (t.createdAt && (!lastUsedAt || new Date(t.createdAt) > new Date(lastUsedAt))) {
+        lastUsedAt = new Date(t.createdAt).toISOString();
+      }
+    });
+
+    const isDormant = s.balance > 0 && lastUsedAt && new Date(lastUsedAt) < fourteenDaysAgo;
+
+    return {
+      id: s.id,
+      cardNumber: cardNum,
+      status: (s.card?.status === 'BLOCKED' ? 'BLOCKED' : 'ACTIVE') as 'ACTIVE' | 'BLOCKED' | 'AVAILABLE',
+      balance: Number(s.balance.toFixed(2)),
+      totalRecharged: Number(totalRecharged.toFixed(2)),
+      totalSpent: Number(totalSpent.toFixed(2)),
+      totalRefunded: Number(totalRefunded.toFixed(2)),
+      transactionCount: s.transactions.length,
+      favoriteBranchName: s.branch?.name || 'Counter',
+      lastUsedAt,
+      isDormant: Boolean(isDormant),
+    };
+  });
+
+  const dormantCardsList = cardItems.filter((c) => c.isDormant);
+  const topActiveCardsList = [...cardItems]
+    .sort((a, b) => b.totalSpent - a.totalSpent || b.balance - a.balance)
+    .slice(0, 25);
+
+  const cardFleetAnalytics = {
+    totalCardsInCirculation: activeSessionsCount,
+    totalFloatBalance,
+    dormantCardsCount: dormantCardsList.length,
+    blockedCardsCount,
+    availableCardsCount,
+    topActiveCards: topActiveCardsList,
+    dormantCards: dormantCardsList,
+  };
 
   const staffPerformance = staffUsers.map((st) => {
     const staffSessions = allSessions.filter((s) => s.issuedByUserId === st.id);
@@ -649,6 +732,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     zeroBalanceActiveCardsCount,
     activeStaffCount: staffPerformance.filter((s) => s.status === 'ACTIVE').length,
     totalStaffCount: staffPerformance.length,
+    cardFleetAnalytics,
   });
 }
 

@@ -9,26 +9,44 @@ import {
   CheckCircle2,
   Clock,
   TrendingUp,
-  Wallet,
   ShieldAlert,
+  AlertCircle,
+  Layers,
+  RefreshCw,
 } from 'lucide-react';
 
 interface OrgAdminCardTrackerProps {
   cardFleet?: CardFleetAnalytics;
+  closedCardsCount?: number;
+  zeroBalanceActiveCardsCount?: number;
+  activeCardsRechargeCount?: number;
+  reRechargedCardsCount?: number;
 }
 
-export function OrgAdminCardTracker({ cardFleet }: OrgAdminCardTrackerProps) {
+export function OrgAdminCardTracker({
+  cardFleet,
+  closedCardsCount = 0,
+  zeroBalanceActiveCardsCount = 0,
+  activeCardsRechargeCount = 0,
+  reRechargedCardsCount = 0,
+}: OrgAdminCardTrackerProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSubTab, setSelectedSubTab] = useState<'top' | 'dormant'>('top');
+  const [selectedSubTab, setSelectedSubTab] = useState<'top' | 'inactive'>('top');
+
+  const topCards = cardFleet?.topActiveCards ?? [];
+  const inactiveCards = cardFleet?.dormantCards ?? [];
+  const totalInCirculation = cardFleet?.totalCardsInCirculation ?? 0;
+  const blockedCount = cardFleet?.blockedCardsCount ?? 0;
+  const availableCount = cardFleet?.availableCardsCount ?? 0;
+  const inactiveCount = cardFleet?.dormantCardsCount ?? 0;
 
   const allCards = useMemo<CardFleetTrackItem[]>(() => {
-    if (!cardFleet) return [];
     const map = new Map<string, CardFleetTrackItem>();
-    [...cardFleet.topActiveCards, ...cardFleet.dormantCards].forEach((c) => {
+    [...topCards, ...inactiveCards].forEach((c) => {
       map.set(c.id, c);
     });
     return Array.from(map.values());
-  }, [cardFleet]);
+  }, [topCards, inactiveCards]);
 
   const searchedCard = useMemo<CardFleetTrackItem | null>(() => {
     if (!searchQuery.trim() || allCards.length === 0) return null;
@@ -43,116 +61,159 @@ export function OrgAdminCardTracker({ cardFleet }: OrgAdminCardTrackerProps) {
     );
   }, [searchQuery, allCards]);
 
-  if (!cardFleet) {
-    return (
-      <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500">
-        <CreditCard className="mx-auto h-8 w-8 text-slate-400 mb-2" />
-        <p className="font-semibold text-sm">No card fleet data available</p>
-        <p className="text-xs text-slate-400 mt-1">Issue cards or complete transactions to see fleet analytics.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* ─── 1. Fleet Health Summary Cards ─── */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <CreditCard className="h-5 w-5 text-indigo-600" />
-          <h2 className="text-base font-bold text-slate-900">Card Fleet Overview</h2>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5 text-indigo-600" />
+            <h2 className="text-base font-bold text-slate-900">Card Fleet Overview</h2>
+          </div>
           <span className="text-xs text-slate-500 hidden sm:inline">
-            Real-time balance float, circulation, and card lifecycle metrics
+            Real-time circulation, settled cards, blocked cards, and stock availability
           </span>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Card 1: Total Float Balance */}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          {/* Card 1: Cards in Circulation */}
           <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Customer Float Balance
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                In Circulation
               </span>
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-                <Wallet className="h-4 w-4" />
-              </div>
-            </div>
-            <div className="mt-2">
-              <p className="font-mono text-2xl font-bold text-emerald-700">
-                {formatCurrency(cardFleet.totalFloatBalance)}
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                Unspent customer money held across all active cards
-              </p>
-            </div>
-          </Card>
-
-          {/* Card 2: Cards in Circulation */}
-          <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Cards In Circulation
-              </span>
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
                 <CreditCard className="h-4 w-4" />
               </div>
             </div>
             <div className="mt-2">
               <p className="font-mono text-2xl font-bold text-slate-900">
-                {cardFleet.totalCardsInCirculation.toLocaleString()}
+                {totalInCirculation.toLocaleString()}
               </p>
-              <p className="mt-1 text-xs text-slate-500">
-                Active cards currently assigned to cafeteria customers
+              <p className="mt-1 text-[11px] text-slate-500 leading-snug">
+                Active cards in customer hands
               </p>
             </div>
           </Card>
 
-          {/* Card 3: Dormant Cards */}
+          {/* Card 2: Returned / Settled Cards */}
           <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Dormant Cards (&gt; 14 Days)
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                Settled Cards
               </span>
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
-                <Clock className="h-4 w-4" />
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                <CheckCircle2 className="h-4 w-4" />
+              </div>
+            </div>
+            <div className="mt-2">
+              <p className="font-mono text-2xl font-bold text-slate-900">
+                {closedCardsCount.toLocaleString()}
+              </p>
+              <p className="mt-1 text-[11px] text-slate-500 leading-snug">
+                Completed & settled sessions
+              </p>
+            </div>
+          </Card>
+
+          {/* Card 3: Blocked Cards */}
+          <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                Blocked Cards
+              </span>
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+                <ShieldAlert className="h-4 w-4" />
+              </div>
+            </div>
+            <div className="mt-2">
+              <p className="font-mono text-2xl font-bold text-rose-600">
+                {blockedCount.toLocaleString()}
+              </p>
+              <p className="mt-1 text-[11px] text-slate-500 leading-snug">
+                Locked due to loss or security
+              </p>
+            </div>
+          </Card>
+
+          {/* Card 4: Active Cards (Zero Balance) */}
+          <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                Zero Balance
+              </span>
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                <AlertCircle className="h-4 w-4" />
               </div>
             </div>
             <div className="mt-2">
               <p className="font-mono text-2xl font-bold text-amber-700">
-                {cardFleet.dormantCardsCount.toLocaleString()}
+                {zeroBalanceActiveCardsCount.toLocaleString()}
               </p>
-              <p className="mt-1 text-xs text-slate-500">
-                Cards with positive balance inactive for over 14 days
+              <p className="mt-1 text-[11px] text-slate-500 leading-snug">
+                In use with ₹0 balance
               </p>
             </div>
           </Card>
 
-          {/* Card 4: Blocked & Vault Cards */}
+          {/* Card 5: Available In Stock */}
           <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Stock & Blocked Cards
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                Available Stock
               </span>
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-                <ShieldAlert className="h-4 w-4" />
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                <Layers className="h-4 w-4" />
               </div>
             </div>
-            <div className="mt-2 flex items-baseline gap-3">
-              <div>
-                <p className="font-mono text-2xl font-bold text-slate-900">
-                  {cardFleet.availableCardsCount}
-                </p>
-                <p className="text-[11px] text-slate-500">Available in stock</p>
+            <div className="mt-2">
+              <p className="font-mono text-2xl font-bold text-slate-900">
+                {availableCount.toLocaleString()}
+              </p>
+              <p className="mt-1 text-[11px] text-slate-500 leading-snug">
+                Ready to issue from card vault
+              </p>
+            </div>
+          </Card>
+
+          {/* Card 6: Inactive Cards */}
+          <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                Inactive Cards
+              </span>
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
+                <Clock className="h-4 w-4" />
               </div>
-              <div className="h-8 w-px bg-slate-200" />
-              <div>
-                <p className="font-mono text-2xl font-bold text-rose-600">
-                  {cardFleet.blockedCardsCount}
-                </p>
-                <p className="text-[11px] text-rose-600 font-medium">Blocked cards</p>
-              </div>
+            </div>
+            <div className="mt-2">
+              <p className="font-mono text-2xl font-bold text-orange-700">
+                {inactiveCount.toLocaleString()}
+              </p>
+              <p className="mt-1 text-[11px] text-slate-500 leading-snug">
+                Unused balance &gt; 14 days
+              </p>
             </div>
           </Card>
         </div>
+
+        {/* Optional Active Recharges Sub-bar */}
+        {activeCardsRechargeCount > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-indigo-100 bg-indigo-50/40 px-4 py-2.5 text-xs text-indigo-950">
+            <div className="flex items-center gap-2">
+              <RefreshCw className="h-4 w-4 text-indigo-600" />
+              <span className="font-semibold">Active Card Recharge Activity:</span>
+              <span>
+                {activeCardsRechargeCount.toLocaleString()} total recharge{activeCardsRechargeCount === 1 ? '' : 's'} recorded on active cards
+              </span>
+            </div>
+            {reRechargedCardsCount > 0 && (
+              <span className="font-medium text-indigo-700 bg-white px-2 py-0.5 rounded-md border border-indigo-200">
+                {reRechargedCardsCount} repeat top-up{reRechargedCardsCount === 1 ? '' : 's'}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ─── 2. Interactive Card Lookup & Audit Bar ─── */}
@@ -219,7 +280,7 @@ export function OrgAdminCardTracker({ cardFleet }: OrgAdminCardTrackerProps) {
                       </Badge>
                       {searchedCard.isDormant && (
                         <Badge variant="warning" className="text-xs">
-                          Dormant (&gt;14d)
+                          Inactive (&gt;14d)
                         </Badge>
                       )}
                     </div>
@@ -271,7 +332,7 @@ export function OrgAdminCardTracker({ cardFleet }: OrgAdminCardTrackerProps) {
         </div>
       </Card>
 
-      {/* ─── 3. Top Active Spenders vs Dormant Cards ─── */}
+      {/* ─── 3. Top Active Spenders vs Inactive Cards ─── */}
       <Card padding="md">
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
@@ -286,20 +347,20 @@ export function OrgAdminCardTracker({ cardFleet }: OrgAdminCardTrackerProps) {
                 }`}
               >
                 <TrendingUp className="h-3.5 w-3.5" />
-                <span>Top Spenders ({cardFleet.topActiveCards.length})</span>
+                <span>Top Spenders ({topCards.length})</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => setSelectedSubTab('dormant')}
+                onClick={() => setSelectedSubTab('inactive')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  selectedSubTab === 'dormant'
+                  selectedSubTab === 'inactive'
                     ? 'bg-amber-50 text-amber-700 shadow-2xs'
                     : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
                 <AlertTriangle className="h-3.5 w-3.5" />
-                <span>Dormant Cards ({cardFleet.dormantCards.length})</span>
+                <span>Inactive Cards ({inactiveCards.length})</span>
               </button>
             </div>
 
@@ -325,7 +386,7 @@ export function OrgAdminCardTracker({ cardFleet }: OrgAdminCardTrackerProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {cardFleet.topActiveCards.map((c: CardFleetTrackItem) => (
+                  {topCards.map((c: CardFleetTrackItem) => (
                     <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-2.5 px-3 font-mono font-bold text-slate-900 flex items-center gap-2">
                         <CreditCard className="h-3.5 w-3.5 text-indigo-500" />
@@ -357,10 +418,10 @@ export function OrgAdminCardTracker({ cardFleet }: OrgAdminCardTrackerProps) {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              {cardFleet.dormantCards.length === 0 ? (
+              {inactiveCards.length === 0 ? (
                 <div className="py-6 text-center text-xs text-slate-500">
                   <CheckCircle2 className="mx-auto h-6 w-6 text-emerald-500 mb-1.5" />
-                  <p className="font-semibold text-slate-800">No dormant cards detected</p>
+                  <p className="font-semibold text-slate-800">No inactive cards detected</p>
                   <p className="text-slate-400 mt-0.5">All active cards have regular transaction activity.</p>
                 </div>
               ) : (
@@ -375,7 +436,7 @@ export function OrgAdminCardTracker({ cardFleet }: OrgAdminCardTrackerProps) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {cardFleet.dormantCards.map((c: CardFleetTrackItem) => (
+                    {inactiveCards.map((c: CardFleetTrackItem) => (
                       <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-2.5 px-3 font-mono font-bold text-slate-900 flex items-center gap-2">
                           <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
@@ -394,7 +455,7 @@ export function OrgAdminCardTracker({ cardFleet }: OrgAdminCardTrackerProps) {
                         </td>
                         <td className="py-2.5 px-3 text-center">
                           <Badge variant="warning" className="text-[10px]">
-                            Dormant
+                            Inactive
                           </Badge>
                         </td>
                       </tr>
@@ -409,3 +470,4 @@ export function OrgAdminCardTracker({ cardFleet }: OrgAdminCardTrackerProps) {
     </div>
   );
 }
+

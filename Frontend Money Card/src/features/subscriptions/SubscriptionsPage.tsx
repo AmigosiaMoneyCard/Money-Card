@@ -10,7 +10,6 @@ import { useAuth } from '@/hooks';
 import type {
   Plan,
   Subscription,
-  SubscriptionPayment,
   Branch,
   Staff,
   Card as CardEntity,
@@ -41,13 +40,12 @@ import {
   AlertCircle,
   Building2,
   Users,
-  Receipt,
-  MessageSquare,
   Send,
   Clock,
   ChevronDown,
   ArrowUpRight,
   ArrowDownRight,
+  Layers,
 } from 'lucide-react';
 
 /**
@@ -94,7 +92,6 @@ export function SubscriptionsPage() {
 function OrgAdminSubscriptionsView() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [payments, setPayments] = useState<SubscriptionPayment[]>([]);
   const [planRequests, setPlanRequests] = useState<PlanChangeRequest[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [staffList, setStaffList] = useState<Staff[]>([]);
@@ -115,19 +112,18 @@ function OrgAdminSubscriptionsView() {
   const [modalApiError, setModalApiError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Collapsible Dropdown Sections for History & Ledger (collapsed by default to save dashboard space)
+  // Collapsible Dropdown Sections
+  const [isPlansOpen, setIsPlansOpen] = useState(false);
   const [isPlanRequestsOpen, setIsPlanRequestsOpen] = useState(false);
-  const [isLedgerOpen, setIsLedgerOpen] = useState(false);
 
   // ── Fetch Organization Subscription Data ───────────────────
   const fetchOrgSubscriptionData = useCallback(async () => {
     setError(null);
     try {
-      const [plansRes, subRes, payRes, reqsRes, branchRes, staffRes, cardRes] =
+      const [plansRes, subRes, reqsRes, branchRes, staffRes, cardRes] =
         await Promise.all([
           apiService.plans.getPlans(),
           apiService.subscriptions.getSubscription(),
-          apiService.subscriptions.getPayments(),
           apiService.subscriptions.getPlanRequests(),
           apiService.branches.getBranches(),
           apiService.staff.getStaff(),
@@ -141,7 +137,6 @@ function OrgAdminSubscriptionsView() {
 
       setPlans(plansRes.data);
       if (subRes.success) setSubscription(subRes.data);
-      if (payRes.success) setPayments(payRes.data);
       if (reqsRes.success) setPlanRequests(reqsRes.data);
       if (branchRes.success) setBranches(branchRes.data.items);
       if (staffRes.success) setStaffList(staffRes.data.items);
@@ -158,11 +153,10 @@ function OrgAdminSubscriptionsView() {
     const load = async () => {
       setError(null);
       try {
-        const [plansRes, subRes, payRes, reqsRes, branchRes, staffRes, cardRes] =
+        const [plansRes, subRes, reqsRes, branchRes, staffRes, cardRes] =
           await Promise.all([
             apiService.plans.getPlans(),
             apiService.subscriptions.getSubscription(),
-            apiService.subscriptions.getPayments(),
             apiService.subscriptions.getPlanRequests(),
             apiService.branches.getBranches(),
             apiService.staff.getStaff(),
@@ -177,7 +171,6 @@ function OrgAdminSubscriptionsView() {
 
         setPlans(plansRes.data);
         if (subRes.success) setSubscription(subRes.data);
-        if (payRes.success) setPayments(payRes.data);
         if (reqsRes.success) setPlanRequests(reqsRes.data);
         if (branchRes.success) setBranches(branchRes.data.items);
         if (staffRes.success) setStaffList(staffRes.data.items);
@@ -349,69 +342,6 @@ function OrgAdminSubscriptionsView() {
     }
   };
 
-  // ── Billing Columns ───────────────────────────────────────
-  const billingColumns = [
-    {
-      key: 'id',
-      header: 'Invoice ID',
-      render: (pay: SubscriptionPayment) => (
-        <span className="font-mono text-xs font-bold text-slate-900">PAY-#{pay.id.slice(0, 8).toUpperCase()}</span>
-      ),
-    },
-    {
-      key: 'amount',
-      header: 'Amount',
-      render: (pay: SubscriptionPayment) => (
-        <span className="font-mono text-sm font-bold text-emerald-700">
-          {formatCurrency(pay.amount)}
-        </span>
-      ),
-    },
-    {
-      key: 'paymentMethod',
-      header: 'Payment Method',
-      render: (pay: SubscriptionPayment) => (
-        <Badge variant="outline" className="text-slate-700 border-slate-300 bg-slate-50">
-          {pay.paymentMethod.replace(/_/g, ' ')}
-        </Badge>
-      ),
-    },
-    {
-      key: 'paymentReference',
-      header: 'Reference ID',
-      render: (pay: SubscriptionPayment) => (
-        <span className="font-mono text-xs font-semibold text-slate-700">
-          {pay.paymentReference || pay.externalReference || '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (pay: SubscriptionPayment) => (
-        <Badge variant={pay.status === 'SUCCESS' ? 'success' : 'danger'}>
-          {pay.status}
-        </Badge>
-      ),
-    },
-    {
-      key: 'verifiedBy',
-      header: 'Verification',
-      render: (pay: SubscriptionPayment) => (
-        <span className="text-xs text-emerald-700 font-medium">
-          {pay.verifiedBy ? `Verified (${pay.verifiedBy})` : 'Verified'}
-        </span>
-      ),
-    },
-    {
-      key: 'createdAt',
-      header: 'Date',
-      render: (pay: SubscriptionPayment) => (
-        <span className="text-xs text-slate-600">{formatDate(pay.createdAt)}</span>
-      ),
-    },
-  ];
-
   // ── Plan Requests Columns ─────────────────────────────────
   const requestColumns = [
     {
@@ -482,25 +412,11 @@ function OrgAdminSubscriptionsView() {
       {/* Header Bar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Subscription & Plan Details</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Subscription</h1>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            variant={pendingRequest ? 'outline' : 'primary'}
-            onClick={() => handleOpenContactSuperAdmin()}
-            disabled={!!pendingRequest}
-            title={
-              pendingRequest
-                ? 'A cafeteria can only make one plan change request at a time. Please wait until your pending request is approved or rejected.'
-                : 'Contact Super Admin'
-            }
-            leftIcon={<MessageSquare className="h-4 w-4" />}
-          >
-            {pendingRequest ? 'Plan Request Pending' : 'Contact Super Admin'}
-          </Button>
-
-          {subscription && (
+        {subscription && (
+          <div className="flex flex-wrap items-center gap-3">
             <Button
               variant="outline"
               onClick={() => setShowRenewModal(true)}
@@ -508,8 +424,8 @@ function OrgAdminSubscriptionsView() {
             >
               Renew Subscription
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Pending Plan Change / Renewal Request Banner */}
@@ -668,120 +584,147 @@ function OrgAdminSubscriptionsView() {
             </CardContent>
           </Card>
 
-          {/* Available Plans / Plan Comparison Grid */}
-          <div className="space-y-4">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">Plans</h2>
-            </div>
+          {/* Available Plans / Plan Comparison Section */}
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
+            <button
+              type="button"
+              id="toggle-plans-details-dropdown"
+              onClick={() => setIsPlansOpen((prev) => !prev)}
+              className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-slate-50 cursor-pointer"
+              aria-expanded={isPlansOpen}
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                  <Layers className="h-5 w-5" />
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <h3 className="text-base font-bold text-slate-900">Plans</h3>
+                  <Badge variant="outline" className="font-mono text-xs">
+                    {plans.length} Available
+                  </Badge>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600">
+                <span>{isPlansOpen ? 'Collapse' : 'View Plan Details'}</span>
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform duration-200 ${
+                    isPlansOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </div>
+            </button>
 
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {plans.map((plan) => {
-                const isCurrent = plan.id === currentPlan?.id;
+            {isPlansOpen && (
+              <div className="border-t border-slate-200 p-5 bg-slate-50/40">
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {plans.map((plan) => {
+                    const isCurrent = plan.id === currentPlan?.id;
 
-                return (
-                  <div
-                    key={plan.id}
-                    className={`relative flex flex-col justify-between rounded-xl border p-5 transition-all ${
-                      isCurrent
-                        ? 'border-emerald-500 bg-emerald-50/40 shadow-md shadow-emerald-500/10'
-                        : 'border-slate-200 bg-white hover:border-slate-300 shadow-xs'
-                    }`}
-                  >
-                    {isCurrent && (
-                      <Badge variant="success" className="absolute -top-3 right-4 text-[10px]">
-                        Active Plan
-                      </Badge>
-                    )}
+                    return (
+                      <div
+                        key={plan.id}
+                        className={`relative flex flex-col justify-between rounded-xl border p-5 transition-all ${
+                          isCurrent
+                            ? 'border-emerald-500 bg-emerald-50/40 shadow-md shadow-emerald-500/10'
+                            : 'border-slate-200 bg-white hover:border-slate-300 shadow-xs'
+                        }`}
+                      >
+                        {isCurrent && (
+                          <Badge variant="success" className="absolute -top-3 right-4 text-[10px]">
+                            Active Plan
+                          </Badge>
+                        )}
 
-                    <div className="space-y-4">
-                      <div>
-                        <h3 className="text-lg font-bold text-slate-900">{plan.name}</h3>
-                        <p className="mt-1 font-mono text-2xl font-bold text-emerald-700">
-                          {formatCurrency(plan.price)}{' '}
-                          <span className="text-xs font-normal text-slate-500">
-                            /{plan.billingInterval.toLowerCase()}
-                          </span>
-                        </p>
+                        <div className="space-y-4">
+                          <div>
+                            <h3 className="text-lg font-bold text-slate-900">{plan.name}</h3>
+                            <p className="mt-1 font-mono text-2xl font-bold text-emerald-700">
+                              {formatCurrency(plan.price)}{' '}
+                              <span className="text-xs font-normal text-slate-500">
+                                /{plan.billingInterval.toLowerCase()}
+                              </span>
+                            </p>
+                          </div>
+
+                          {/* Technical Limits List */}
+                          <div className="space-y-2 border-t border-b border-slate-200 py-3 text-xs">
+                            <div className="flex items-center justify-between text-slate-700">
+                              <span>Counters:</span>
+                              <strong className="font-mono text-slate-900 font-bold">{plan.branchLimit}</strong>
+                            </div>
+                            <div className="flex items-center justify-between text-slate-700">
+                              <span>Staff Accounts:</span>
+                              <strong className="font-mono text-slate-900 font-bold">{plan.staffLimit}</strong>
+                            </div>
+                            <div className="flex items-center justify-between text-slate-700">
+                              <span>Active Cards:</span>
+                              <strong className="font-mono text-slate-900 font-bold">{plan.cardLimit}</strong>
+                            </div>
+                          </div>
+
+                          {/* Entitlements */}
+                          <ul className="space-y-2 text-xs text-slate-700 font-medium">
+                            <li className="flex items-center gap-2">
+                              <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                              <span>{plan.inventoryLevel} Inventory</span>
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                              <span>{plan.analyticsLevel} Analytics</span>
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                              <span>{plan.supportLevel} Support</span>
+                            </li>
+                          </ul>
+                        </div>
+
+                        {/* Action CTA: [ Request Upgrade / Request Downgrade ] */}
+                        <div className="mt-6">
+                          {isCurrent ? (
+                            <Button variant="outline" size="sm" className="w-full" disabled>
+                              Current Plan
+                            </Button>
+                          ) : pendingRequest ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full text-slate-400 bg-slate-100 border-slate-200 cursor-not-allowed font-medium"
+                              disabled
+                              title="You already have a plan change request awaiting Super Admin review"
+                            >
+                              Request Pending
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              className="w-full"
+                              onClick={() => handleOpenContactSuperAdmin(plan)}
+                              leftIcon={
+                                detectPlanRequestType(plan, currentPlan) === 'UPGRADE' ? (
+                                  <ArrowUpRight className="h-3.5 w-3.5" />
+                                ) : (
+                                  <ArrowDownRight className="h-3.5 w-3.5" />
+                                )
+                              }
+                            >
+                              {detectPlanRequestType(plan, currentPlan) === 'UPGRADE'
+                                ? `Upgrade to ${plan.name}`
+                                : `Enquiry for ${plan.name}`}
+                            </Button>
+                          )}
+                        </div>
                       </div>
-
-                      {/* Technical Limits List */}
-                      <div className="space-y-2 border-t border-b border-slate-200 py-3 text-xs">
-                        <div className="flex items-center justify-between text-slate-700">
-                          <span>Counters:</span>
-                          <strong className="font-mono text-slate-900 font-bold">{plan.branchLimit}</strong>
-                        </div>
-                        <div className="flex items-center justify-between text-slate-700">
-                          <span>Staff Accounts:</span>
-                          <strong className="font-mono text-slate-900 font-bold">{plan.staffLimit}</strong>
-                        </div>
-                        <div className="flex items-center justify-between text-slate-700">
-                          <span>Active Cards:</span>
-                          <strong className="font-mono text-slate-900 font-bold">{plan.cardLimit}</strong>
-                        </div>
-                      </div>
-
-                      {/* Entitlements */}
-                      <ul className="space-y-2 text-xs text-slate-700 font-medium">
-                        <li className="flex items-center gap-2">
-                          <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                          <span>{plan.inventoryLevel} Inventory</span>
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                          <span>{plan.analyticsLevel} Analytics</span>
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                          <span>{plan.supportLevel} Support</span>
-                        </li>
-                      </ul>
-                    </div>
-
-                    {/* Action CTA: [ Request Upgrade / Request Downgrade ] */}
-                    <div className="mt-6">
-                      {isCurrent ? (
-                        <Button variant="outline" size="sm" className="w-full" disabled>
-                          Current Plan
-                        </Button>
-                      ) : pendingRequest ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full text-slate-400 bg-slate-100 border-slate-200 cursor-not-allowed font-medium"
-                          disabled
-                          title="You already have a plan change request awaiting Super Admin review"
-                        >
-                          Request Pending
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          className="w-full"
-                          onClick={() => handleOpenContactSuperAdmin(plan)}
-                          leftIcon={
-                            detectPlanRequestType(plan, currentPlan) === 'UPGRADE' ? (
-                              <ArrowUpRight className="h-3.5 w-3.5" />
-                            ) : (
-                              <ArrowDownRight className="h-3.5 w-3.5" />
-                            )
-                          }
-                        >
-                          {detectPlanRequestType(plan, currentPlan) === 'UPGRADE'
-                            ? `Upgrade to ${plan.name}`
-                            : `Enquiry for ${plan.name}`}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Collapsible Dropdown Sections: Plan Change Requests History & Direct Payment Ledger */}
+          {/* Collapsible Section: Plan Change Requests History */}
           <div className="space-y-4">
-            {/* 1. Plan Change Requests History Dropdown */}
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
               <button
                 type="button"
@@ -826,57 +769,6 @@ function OrgAdminSubscriptionsView() {
                       data={planRequests}
                       columns={requestColumns}
                       keyExtractor={(item: PlanChangeRequest) => item.id}
-                    />
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* 2. Direct Payment Ledger Dropdown */}
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
-              <button
-                type="button"
-                id="toggle-direct-ledger-dropdown"
-                onClick={() => setIsLedgerOpen((prev) => !prev)}
-                className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-slate-50 cursor-pointer"
-                aria-expanded={isLedgerOpen}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-                    <Receipt className="h-5 w-5" />
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <h3 className="text-base font-bold text-slate-900">Direct Payment Ledger</h3>
-                    <Badge variant="outline" className="font-mono text-xs">
-                      {payments.length} {payments.length === 1 ? 'Payment' : 'Payments'}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600">
-                  <span>{isLedgerOpen ? 'Collapse' : 'Drop down to view'}</span>
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform duration-200 ${
-                      isLedgerOpen ? 'rotate-180' : ''
-                    }`}
-                  />
-                </div>
-              </button>
-
-              {isLedgerOpen && (
-                <div className="border-t border-slate-200">
-                  {payments.length === 0 ? (
-                    <div className="p-4">
-                      <EmptyState
-                        icon={<Receipt className="h-8 w-8 text-slate-400" />}
-                        title="No billing history recorded"
-                        description="Verified subscription payments will appear here."
-                      />
-                    </div>
-                  ) : (
-                    <DataTable<SubscriptionPayment>
-                      data={payments}
-                      columns={billingColumns}
-                      keyExtractor={(item: SubscriptionPayment) => item.id}
                     />
                   )}
                 </div>
