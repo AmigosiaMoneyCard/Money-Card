@@ -276,9 +276,9 @@ function StaffActionMenu({
                   setIsOpen(false);
                   onDelete();
                 }}
-                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-colors cursor-pointer text-left"
+                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors cursor-pointer text-left"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-4 w-4 text-rose-600" />
                 <span>Delete Staff</span>
               </button>
             )}
@@ -1773,6 +1773,20 @@ export function StaffPage() {
           </div>
 
           <ModalFooter>
+            {canManage && (
+              <Button
+                type="button"
+                variant="danger"
+                className="mr-auto text-xs"
+                leftIcon={<Trash2 className="h-4 w-4" />}
+                onClick={() => {
+                  setShowStaffModal(false);
+                  if (selectedStaff) handleOpenDeleteStaff(selectedStaff);
+                }}
+              >
+                Delete Staff
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setShowStaffModal(false)} disabled={isSubmitting}>
               Close
             </Button>
@@ -2460,8 +2474,8 @@ export function StaffPage() {
       <Modal
         isOpen={showDeleteStaffModal}
         onClose={() => !isSubmitting && setShowDeleteStaffModal(false)}
-        title="Delete Staff Member"
-        description="Permanently remove staff account or safely deactivate"
+        title="Delete Staff Account"
+        description="Safely remove staff access while preserving 100% of historical records"
         size="md"
       >
         <div className="space-y-4">
@@ -2475,12 +2489,23 @@ export function StaffPage() {
             </div>
           )}
 
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-2">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
             <p className="text-sm text-slate-800 font-medium">
-              Are you sure you want to remove <span className="text-emerald-700 font-bold font-mono">{selectedStaff?.name}</span> ({selectedStaff?.email})?
+              Are you sure you want to delete staff account <span className="text-emerald-700 font-bold font-mono">{selectedStaff?.name}</span> ({selectedStaff?.phone || selectedStaff?.email})?
             </p>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              If this staff member has never processed sessions or transactions, their account will be permanently removed. If historical transaction records exist, their access will be safely deactivated and tokens revoked, preserving all "Performed By" audit history.
+
+            <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800 space-y-1">
+              <p className="font-semibold flex items-center gap-1.5 text-emerald-900">
+                <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+                100% Data Preservation Guarantee
+              </p>
+              <p className="leading-relaxed">
+                All historical sales transactions, card issuances, refunds, and audit trail records will remain intact with <strong>{selectedStaff?.name}</strong> attributed permanently.
+              </p>
+            </div>
+
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Login access will be immediately terminated, security tokens revoked, and their seat in your subscription plan will be freed for new staff members.
             </p>
           </div>
 

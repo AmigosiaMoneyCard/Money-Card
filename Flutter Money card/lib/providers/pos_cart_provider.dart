@@ -29,7 +29,7 @@ class PosCatalogState {
   });
 
   List<Product> get filteredProducts {
-    var list = products.where((p) => !p.isOutOfStock).toList();
+    var list = products.where((p) => p.status.toUpperCase() == 'ACTIVE').toList();
     if (selectedCategory != 'All') {
       final filter = selectedCategory.toLowerCase();
       list = list.where((p) {
@@ -214,21 +214,15 @@ class PosCartNotifier extends StateNotifier<PosCartState> {
     state = const PosCartState();
   }
 
-  /// Execute purchase transaction with strict out-of-stock validation
+  /// Execute purchase transaction
   Future<PurchaseResult?> executePurchase(String sessionId) async {
     if (state.isEmpty || state.isSubmitting) return null;
 
-    // Validate that no out-of-stock or exceeding-stock items are purchased
+    // For cafeteria POS, menu items are prepared dynamically on order, so pre-fixed stock is not required.
     for (final item in state.items.values) {
-      if (item.product.currentStock <= 0) {
+      if (item.product.status.toUpperCase() != 'ACTIVE') {
         state = state.copyWith(
-          errorMessage: "'${item.product.itemName}' is out of stock and cannot be purchased.",
-        );
-        return null;
-      }
-      if (item.quantity > item.product.currentStock) {
-        state = state.copyWith(
-          errorMessage: "Cannot purchase ${item.quantity}x '${item.product.itemName}'. Only ${item.product.currentStock} available in stock.",
+          errorMessage: "'${item.product.itemName}' is currently inactive and cannot be purchased.",
         );
         return null;
       }

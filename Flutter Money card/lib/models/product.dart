@@ -23,7 +23,8 @@ class Product {
     this.updatedAt,
   });
 
-  bool get isOutOfStock => currentStock <= 0 || status != 'ACTIVE';
+  // For cafeteria ordering, items are prepared dynamically; active items are sellable.
+  bool get isOutOfStock => status.toUpperCase() != 'ACTIVE';
 
   factory Product.fromJson(Map<String, dynamic> json) {
     List<String> parsedCategories = [];

@@ -137,8 +137,7 @@ export async function login(req: Request, res: Response) {
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 
-  const permissions = user.permissions.map((p) => p.permission);
-  const activeAssignedBranches = user.assignedBranches
+  let activeAssignedBranches = user.assignedBranches
     .filter((b) => user.role !== Role.STAFF || b.branch.status === 'ACTIVE')
     .map((b) => ({
       id: b.branch.id,
@@ -146,6 +145,24 @@ export async function login(req: Request, res: Response) {
       location: b.branch.location,
       status: b.branch.status,
     }));
+
+  if (user.organizationId) {
+    const orgBranches = await prisma.branch.findMany({
+      where: { organizationId: user.organizationId, status: 'ACTIVE' },
+      orderBy: { createdAt: 'asc' },
+    });
+    const existingIds = new Set(activeAssignedBranches.map((b) => b.id));
+    for (const b of orgBranches) {
+      if (!existingIds.has(b.id)) {
+        activeAssignedBranches.push({
+          id: b.id,
+          name: b.name,
+          location: b.location,
+          status: b.status,
+        });
+      }
+    }
+  }
   const assignedBranchIds = activeAssignedBranches.map((b) => b.id);
 
   return sendSuccess(res, {
@@ -162,7 +179,7 @@ export async function login(req: Request, res: Response) {
       organizationName: user.organization?.name || null,
       status: user.status,
       mustChangePassword: user.role === Role.STAFF ? false : user.mustChangePassword,
-      permissions,
+      permissions: user.permissions.map((p) => p.permission),
       assignedBranchIds,
       assignedBranches: activeAssignedBranches,
     },
@@ -223,28 +240,46 @@ export async function getMe(req: Request, res: Response) {
     return sendError(res, 404, 'NOT_FOUND', 'User not found');
   }
 
-  return sendSuccess(res, {
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    role: user.role,
-    organizationId: user.organizationId,
-    organizationName: user.organization?.name || null,
-    status: user.status,
-    mustChangePassword: user.role === Role.STAFF ? false : user.mustChangePassword,
-    permissions: user.permissions.map((p) => p.permission),
-    assignedBranchIds: user.assignedBranches
-      .filter((b) => user.role !== Role.STAFF || b.branch.status === 'ACTIVE')
-      .map((b) => b.branchId),
-    assignedBranches: user.assignedBranches
+    const activeAssignedBranches = user.assignedBranches
       .filter((b) => user.role !== Role.STAFF || b.branch.status === 'ACTIVE')
       .map((b) => ({
         id: b.branch.id,
         name: b.branch.name,
         location: b.branch.location,
         status: b.branch.status,
-      })),
-  });
+      }));
+
+    if (user.organizationId) {
+      const orgBranches = await prisma.branch.findMany({
+        where: { organizationId: user.organizationId, status: 'ACTIVE' },
+        orderBy: { createdAt: 'asc' },
+      });
+      const existingIds = new Set(activeAssignedBranches.map((b) => b.id));
+      for (const b of orgBranches) {
+        if (!existingIds.has(b.id)) {
+          activeAssignedBranches.push({
+            id: b.id,
+            name: b.name,
+            location: b.location,
+            status: b.status,
+          });
+        }
+      }
+    }
+
+    return sendSuccess(res, {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      organizationId: user.organizationId,
+      organizationName: user.organization?.name || null,
+      status: user.status,
+      mustChangePassword: user.role === Role.STAFF ? false : user.mustChangePassword,
+      permissions: user.permissions.map((p) => p.permission),
+      assignedBranchIds: activeAssignedBranches.map((b) => b.id),
+      assignedBranches: activeAssignedBranches,
+    });
 }
 
 export async function forgotPassword(req: Request, res: Response) {

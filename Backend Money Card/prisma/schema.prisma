@@ -219,6 +219,7 @@ model Branch {
   inventoryItems   BranchInventory[]
   cardSessions     CardSession[]
   transactions     Transaction[]
+  products         Product[]
 
   @@map("branches")
 }
@@ -392,6 +393,7 @@ model Transaction {
 model Product {
   id             String        @id @default(uuid())
   organizationId String
+  branchId       String?
   itemName       String
   price          Float
   category       String[]
@@ -402,6 +404,7 @@ model Product {
   updatedAt      DateTime      @updatedAt
 
   organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  branch         Branch?           @relation(fields: [branchId], references: [id], onDelete: SetNull)
   inventoryItems BranchInventory[]
 
   @@map("products")

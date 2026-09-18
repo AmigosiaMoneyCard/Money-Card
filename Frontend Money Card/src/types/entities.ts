@@ -58,7 +58,7 @@ export interface Staff {
   name: string;
   phone?: string;
   email?: string;
-  status: 'ACTIVE' | 'INACTIVE' | 'PENDING_ACTIVATION';
+  status: 'ACTIVE' | 'INACTIVE' | 'PENDING_ACTIVATION' | 'DEACTIVATED';
   permissions: Permission[];
   assignedBranchIds: string[];
   createdAt: string;
@@ -92,7 +92,7 @@ export interface UpdateStaffRequest {
   name?: string;
   phone?: string;
   email?: string;
-  status?: 'ACTIVE' | 'INACTIVE';
+  status?: 'ACTIVE' | 'INACTIVE' | 'DEACTIVATED';
   assignedBranchIds?: string[];
   permissions?: Permission[];
 }
