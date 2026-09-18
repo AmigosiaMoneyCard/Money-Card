@@ -1,8 +1,7 @@
 import { Eye, RefreshCw, BarChart3, CreditCard } from 'lucide-react';
 import { Button, Select, LoadingState, ErrorState } from '@/components/ui';
 import {
-  OrgAdminKpiCards,
-  OrgAdminPaymentRefundCards,
+  OrgAdminFinancialSection,
   OrgAdminPdfModal,
 } from './OrgAdminAnalyticsComponents';
 import { OrgAdminCardTracker } from './OrgAdminCardTracker';
@@ -59,9 +58,6 @@ export function OrgAdminAnalyticsView() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-200 pb-5">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">Analytics</h1>
-          <p className="mt-1 text-xs text-slate-500">
-            Real-time financial performance, revenue streams, and card operations
-          </p>
         </div>
 
         {/* Filter Controls Directly Beside Headline */}
@@ -185,14 +181,12 @@ export function OrgAdminAnalyticsView() {
         <ErrorState title="Failed to load analytics" message={error} onRetry={fetchAnalytics} />
       ) : activeTab === 'overview' ? (
         analytics ? (
-          <div className="space-y-6">
-            <OrgAdminKpiCards analytics={analytics} />
-            <OrgAdminPaymentRefundCards
-              cashRecharge={cashRechargeAmount}
-              upiRecharge={upiRechargeAmount}
-              totalRefund={analytics.totalRefundVolume ?? 0}
-            />
-          </div>
+          <OrgAdminFinancialSection
+            analytics={analytics}
+            cashRecharge={cashRechargeAmount}
+            upiRecharge={upiRechargeAmount}
+            totalRefund={analytics.totalRefundVolume ?? 0}
+          />
         ) : null
       ) : (
         <OrgAdminCardTracker
