@@ -263,6 +263,7 @@ export async function createBranch(req: Request, res: Response) {
         PermissionCode.VIEW_ANALYTICS,
         PermissionCode.VIEW_REPORTS,
         PermissionCode.STAFF_VIEW,
+        PermissionCode.STAFF_MANAGE,
       ];
 
       for (const perm of defaultPermissions) {

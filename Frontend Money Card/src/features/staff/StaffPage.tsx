@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { apiService } from '@/services/api';
-import { usePermissions, useBranch } from '@/hooks';
+import { usePermissions, useBranch, useAuth } from '@/hooks';
 import type {
   Staff,
   Branch,
@@ -64,6 +64,7 @@ import {
 interface StaffActionMenuProps {
   staff: Staff;
   canManage: boolean;
+  isCounterView?: boolean;
   onEditOrView: () => void;
   onViewAudit?: () => void;
   onPermissions: () => void;
@@ -76,6 +77,7 @@ interface StaffActionMenuProps {
 function StaffActionMenu({
   staff,
   canManage,
+  isCounterView,
   onEditOrView,
   onViewAudit,
   onPermissions,
@@ -220,17 +222,19 @@ function StaffActionMenu({
             </button>
 
             {/* Branch Assignments */}
-            <button
-              type="button"
-              onClick={() => {
-                setIsOpen(false);
-                onBranches();
-              }}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer text-left"
-            >
-              <Building2 className="h-4 w-4 text-sky-600" />
-              <span>Counter Access</span>
-            </button>
+            {!isCounterView && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  onBranches();
+                }}
+                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer text-left"
+              >
+                <Building2 className="h-4 w-4 text-sky-600" />
+                <span>Counter Access</span>
+              </button>
+            )}
 
             {/* Change Password */}
             {canManage && (
@@ -292,7 +296,9 @@ function StaffActionMenu({
 export function StaffPage() {
   const { hasPermission } = usePermissions();
   const { currentBranch } = useBranch();
+  const { user } = useAuth();
 
+  const isCounterView = user?.role === 'STAFF';
   const canView = hasPermission('STAFF_VIEW');
   const canManage = hasPermission('STAFF_MANAGE');
 
@@ -303,6 +309,18 @@ export function StaffPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // ── Scoped Branches for Counter Manager ─────────────────────
+  const scopedBranches = useMemo(() => {
+    if (!isCounterView) return branches;
+    if (currentBranch && currentBranch.id && currentBranch.id !== 'ALL') {
+      return branches.filter((b) => b.id === currentBranch.id);
+    }
+    if (user?.assignedBranchIds && user.assignedBranchIds.length > 0) {
+      return branches.filter((b) => user.assignedBranchIds.includes(b.id));
+    }
+    return branches;
+  }, [branches, isCounterView, currentBranch, user]);
 
   // ── Unified Staff Details/Edit Modal State ─────────────────
   const [showStaffModal, setShowStaffModal] = useState(false);
@@ -458,7 +476,10 @@ export function StaffPage() {
     setFormEmail('');
     setFormPassword('');
     setShowAddPassword(false);
-    setFormBranchIds(branches.map((b) => b.id)); // Default assign all active branches
+    const defaultBranchIds = isCounterView
+      ? scopedBranches.map((b) => b.id)
+      : branches.map((b) => b.id);
+    setFormBranchIds(defaultBranchIds);
     setFormPermissions([
       'CARD_VIEW',
       'CARD_ISSUE',
@@ -1202,6 +1223,7 @@ export function StaffPage() {
           <StaffActionMenu
             staff={staff}
             canManage={canManage}
+            isCounterView={isCounterView}
             onEditOrView={() => handleOpenStaffModal(staff, 'overview')}
             onViewAudit={() => handleOpenStaffAudit(staff)}
             onPermissions={() => handleOpenStaffModal(staff, 'permissions')}
@@ -1220,7 +1242,19 @@ export function StaffPage() {
       {/* Header Bar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Staff Management</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-slate-900">Staff Management</h1>
+            {isCounterView && (
+              <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold px-2.5 py-0.5">
+                Counter Scope
+              </Badge>
+            )}
+          </div>
+          {isCounterView && (
+            <p className="mt-1 text-xs text-slate-500">
+              Showing staff at your counter only. New staff are automatically assigned to your counter.
+            </p>
+          )}
         </div>
 
         {canManage && (
@@ -1375,21 +1409,23 @@ export function StaffPage() {
               </Badge>
             </button>
 
-            <button
-              type="button"
-              onClick={() => setStaffTab('branches')}
-              className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
-                staffTab === 'branches'
-                  ? 'border-emerald-600 text-emerald-700 font-semibold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <Building2 className="h-4 w-4" />
-              <span>Counters</span>
-              <Badge variant="outline" className="text-[10px] ml-1">
-                {formBranchIds.length}
-              </Badge>
-            </button>
+            {!isCounterView && (
+              <button
+                type="button"
+                onClick={() => setStaffTab('branches')}
+                className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
+                  staffTab === 'branches'
+                    ? 'border-emerald-600 text-emerald-700 font-semibold'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Building2 className="h-4 w-4" />
+                <span>Counters</span>
+                <Badge variant="outline" className="text-[10px] ml-1">
+                  {formBranchIds.length}
+                </Badge>
+              </button>
+            )}
 
             <button
               type="button"
@@ -1800,7 +1836,7 @@ export function StaffPage() {
                 Save Permissions
               </Button>
             )}
-            {canManage && staffTab === 'branches' && (
+            {canManage && !isCounterView && staffTab === 'branches' && (
               <Button type="button" variant="primary" onClick={handleSaveBranches} isLoading={isSubmitting} disabled={isSubmitting} leftIcon={<Building2 className="h-4 w-4" />}>
                 Save Branches
               </Button>
@@ -1979,35 +2015,40 @@ export function StaffPage() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between pb-2">
                   <p className="text-xs text-slate-500">
-                    Assign this staff member to one or more physical branches.
+                    {isCounterView
+                      ? 'Staff member will be automatically assigned to your counter terminal.'
+                      : 'Assign this staff member to one or more physical branches.'}
                   </p>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setFormBranchIds(branches.map((b) => b.id))}
-                      className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
-                    >
-                      Select All ({branches.length})
-                    </button>
-                    <span className="text-slate-300">•</span>
-                    <button
-                      type="button"
-                      onClick={() => setFormBranchIds([])}
-                      className="text-xs text-slate-500 hover:text-slate-700 font-medium"
-                    >
-                      Clear All
-                    </button>
-                  </div>
+                  {!isCounterView && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFormBranchIds(scopedBranches.map((b) => b.id))}
+                        className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
+                      >
+                        Select All ({scopedBranches.length})
+                      </button>
+                      <span className="text-slate-300">•</span>
+                      <button
+                        type="button"
+                        onClick={() => setFormBranchIds([])}
+                        className="text-xs text-slate-500 hover:text-slate-700 font-medium"
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid gap-2.5 sm:grid-cols-2">
-                  {branches.map((b) => {
+                  {scopedBranches.map((b) => {
                     const isAssigned = formBranchIds.includes(b.id);
                     return (
                       <button
                         type="button"
                         key={b.id}
                         onClick={() => {
+                          if (isCounterView) return;
                           if (isAssigned) {
                             setFormBranchIds(formBranchIds.filter((id) => id !== b.id));
                           } else {
@@ -2016,7 +2057,8 @@ export function StaffPage() {
                         }}
                         role="checkbox"
                         aria-checked={isAssigned}
-                        className={`flex w-full cursor-pointer items-center justify-between rounded-xl border p-3.5 text-xs text-left transition-all select-none ${
+                        disabled={isCounterView}
+                        className={`flex w-full ${isCounterView ? 'cursor-default' : 'cursor-pointer'} items-center justify-between rounded-xl border p-3.5 text-xs text-left transition-all select-none ${
                           isAssigned
                             ? 'border-emerald-500 bg-emerald-50 text-slate-900'
                             : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
