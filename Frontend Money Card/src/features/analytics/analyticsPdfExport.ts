@@ -768,6 +768,53 @@ export function downloadOrgAnalyticsPdf(options: GenerateOrgPdfOptions, filename
   doc.save(safeFilename);
 }
 
+// ─── Section-Specific PDF Downloads ───────────────────────────────────────
+
+/**
+ * Downloads a PDF containing ONLY the Financial Overview section
+ * (Food Sales, Total Recharges, Total Card Balance, Total Transactions,
+ *  Cash Recharges, UPI Recharges, Cash Returned).
+ */
+export function downloadFinancialOverviewPdf(options: GenerateOrgPdfOptions, filename: string): void {
+  const doc = buildOrgAnalyticsJsPdf({
+    ...options,
+    sections: {
+      includeExecutiveKpis: true,
+      includeCardLifecycle: false,
+      includePaymentBreakdown: true,
+      includeRushKpis: false,
+      includeTrafficDistribution: false,
+      includeFoodDemand: false,
+      includeBranchComparison: false,
+      includeStaffPerformance: false,
+    },
+  });
+  const safeFilename = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
+  doc.save(safeFilename);
+}
+
+/**
+ * Downloads a PDF containing ONLY the Card Analytics section
+ * (Active Cards, Settled Cards, Blocked Cards, Zero Balance, Inactive Cards).
+ */
+export function downloadCardAnalyticsPdf(options: GenerateOrgPdfOptions, filename: string): void {
+  const doc = buildOrgAnalyticsJsPdf({
+    ...options,
+    sections: {
+      includeExecutiveKpis: false,
+      includeCardLifecycle: true,
+      includePaymentBreakdown: false,
+      includeRushKpis: false,
+      includeTrafficDistribution: false,
+      includeFoodDemand: false,
+      includeBranchComparison: false,
+      includeStaffPerformance: false,
+    },
+  });
+  const safeFilename = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
+  doc.save(safeFilename);
+}
+
 // ─── 2. Super Admin Comprehensive Multi-Page PDF Generator ────────────────
 export interface PlatformPdfSectionOptions {
   includePlatformKpis: boolean;

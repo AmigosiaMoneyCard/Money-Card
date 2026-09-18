@@ -603,13 +603,16 @@ interface PdfModalProps {
   onToggleSection?: (sectionKey: keyof OrgPdfSectionOptions) => void;
   onSetAllSections?: (enable: boolean) => void;
   onDownloadPdf: () => void;
+  onDownloadFinancial?: () => void;
+  onDownloadCardAnalytics?: () => void;
 }
 
 export function OrgAdminPdfModal({
   isOpen,
   onClose,
   pdfPreviewUrl,
-  onDownloadPdf,
+  onDownloadFinancial,
+  onDownloadCardAnalytics,
 }: PdfModalProps) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Analytics Report — PDF Preview" size="xl">
@@ -628,15 +631,29 @@ export function OrgAdminPdfModal({
           <Button variant="outline" size="sm" onClick={onClose}>
             Close
           </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={onDownloadPdf}
-            leftIcon={<Download className="h-4 w-4" />}
-            id="download-customized-pdf-btn"
-          >
-            Download PDF
-          </Button>
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="text-xs text-slate-500 font-medium">Download by section:</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onDownloadFinancial}
+              disabled={!onDownloadFinancial}
+              leftIcon={<Download className="h-3.5 w-3.5" />}
+              id="download-financial-pdf-btn"
+            >
+              Financial Overview
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={onDownloadCardAnalytics}
+              disabled={!onDownloadCardAnalytics}
+              leftIcon={<Download className="h-3.5 w-3.5" />}
+              id="download-card-analytics-pdf-btn"
+            >
+              Card Analytics
+            </Button>
+          </div>
         </ModalFooter>
       </div>
     </Modal>
