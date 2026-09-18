@@ -406,7 +406,7 @@ export function OrgAdminDashboard() {
 
         <button
           type="button"
-          onClick={() => navigate('/sessions')}
+          onClick={() => navigate('/analytics')}
           className="group flex flex-col justify-between p-5 rounded-2xl border border-slate-200 bg-white hover:border-amber-500/50 hover:shadow-md transition-all text-left shadow-xs cursor-pointer"
         >
           <div className="flex items-center justify-between mb-4">

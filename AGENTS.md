@@ -142,12 +142,12 @@ Route guards:
 | `/branches` | ORG_ADMIN | `BranchesPage` |
 | `/staff` | ORG_ADMIN, STAFF | `StaffPage` |
 | `/cards` | ORG_ADMIN, STAFF | `CardsPage` |
-| `/sessions` | ORG_ADMIN, STAFF | `SessionsPage` |
+| `/sessions` | STAFF | `SessionsPage` |
 | `/products` | ORG_ADMIN, STAFF | `ProductsPage` |
 | `/inventory` | ORG_ADMIN, STAFF | `InventoryPage` |
 | `/analytics` | ALL | `AnalyticsPage` |
 | `/subscriptions` | ORG_ADMIN | `SubscriptionsPage` |
-| `/settings` | SUPER_ADMIN *(STAFF pending — active task)* | `SettingsPage` |
+| `/settings` | SUPER_ADMIN, STAFF | `SettingsPage` |
 | `/organizations` | SUPER_ADMIN | `OrganizationsPage` |
 | `/portal` | Public | Customer self-service portal |
 

@@ -103,7 +103,7 @@ export function AppRoutes() {
         <Route
           path="/sessions"
           element={
-            <PermissionGuard roles={['ORG_ADMIN', 'STAFF']}>
+            <PermissionGuard roles={['STAFF']}>
               <SessionsPage />
             </PermissionGuard>
           }
