@@ -113,13 +113,8 @@ export function buildOrgAnalyticsJsPdf({
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.setTextColor(51, 65, 85);
-  doc.text(`Counter Scope: ${selectedBranchName}`, margin + 4, 44.5);
-  doc.text(`Date Range: ${dateRangeLabel}`, margin + 68, 44.5);
-
-  const ledgerStatus = (analytics.activeSessionsCount ?? 0) > 0
-    ? 'Status: Live Operating & Reconciled'
-    : 'Status: Fully Settled & Audited';
-  doc.text(ledgerStatus, margin + 126, 44.5);
+  doc.text(`Cafeteria Scope: ${selectedBranchName}`, margin + 4, 44.5);
+  doc.text(`Date Range: ${dateRangeLabel}`, margin + 80, 44.5);
 
   let curY = 54;
   let hasAnySection = false;

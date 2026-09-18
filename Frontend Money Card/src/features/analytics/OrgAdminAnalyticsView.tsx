@@ -64,7 +64,7 @@ export function OrgAdminAnalyticsView() {
         {/* Filter Controls: Cafeteria Filter + Custom Date Range + Actions */}
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Cafeteria Filter */}
-          <div className="w-36 sm:w-44">
+          <div className="w-44 sm:w-52">
             <Select
               id="analytics-cafeteria-filter"
               value={branchFilter}
@@ -73,7 +73,7 @@ export function OrgAdminAnalyticsView() {
                 { value: 'ALL', label: 'All Cafeterias' },
                 ...branches.map((b) => ({ value: b.id, label: b.name })),
               ]}
-              className="h-8 text-xs py-1 px-2"
+              className="h-9 py-1.5 pl-3 pr-8 text-xs leading-normal font-medium"
             />
           </div>
 

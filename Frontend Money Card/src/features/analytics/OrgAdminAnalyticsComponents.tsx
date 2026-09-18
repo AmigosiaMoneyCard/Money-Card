@@ -666,62 +666,28 @@ export function OrgAdminPdfModal({
               }
             }}
             id="pdf-tile-financial"
-            className={`group relative flex items-center justify-between p-3.5 rounded-xl border-2 transition-all cursor-pointer select-none ${
+            className={`flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all cursor-pointer select-none ${
               selected.financial
-                ? 'border-emerald-500 bg-emerald-50/50 shadow-xs'
-                : 'border-slate-200 bg-slate-50/60 hover:border-slate-300 hover:bg-white text-slate-400'
+                ? 'border-emerald-500 bg-emerald-50/60 shadow-xs ring-1 ring-emerald-500/20'
+                : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'
             }`}
           >
-            <div className="flex items-center gap-3 min-w-0">
-              <div
-                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${
-                  selected.financial
-                    ? 'bg-emerald-600 border-emerald-600 text-white'
-                    : 'border-slate-300 bg-white'
-                }`}
-              >
-                {selected.financial && <Check className="h-3.5 w-3.5 stroke-[3]" />}
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`text-sm font-bold truncate ${
-                      selected.financial ? 'text-slate-900' : 'text-slate-500'
-                    }`}
-                  >
-                    Financial Overview
-                  </span>
-                  <span
-                    className={`text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0 ${
-                      selected.financial
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-slate-200 text-slate-500'
-                    }`}
-                  >
-                    7 Metrics
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 truncate mt-0.5">
-                  Food Sales, Recharges, Balances &amp; Payments
-                </p>
-              </div>
-            </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDownloadFinancial?.();
-              }}
-              disabled={!onDownloadFinancial}
-              leftIcon={<Download className="h-3.5 w-3.5" />}
-              className="shrink-0 ml-2 bg-white hover:bg-slate-50 text-xs py-1 px-2.5 shadow-2xs"
-              title="Download Financial Overview PDF directly"
-              id="tile-download-financial-btn"
+            <span
+              className={`text-sm font-bold ${
+                selected.financial ? 'text-emerald-950' : 'text-slate-600'
+              }`}
             >
-              Download
-            </Button>
+              Financial Overview
+            </span>
+            <div
+              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${
+                selected.financial
+                  ? 'bg-emerald-600 border-emerald-600 text-white'
+                  : 'border-slate-300 bg-white'
+              }`}
+            >
+              {selected.financial && <Check className="h-3.5 w-3.5 stroke-[3]" />}
+            </div>
           </div>
 
           {/* Tile 2: Card Analytics */}
@@ -736,62 +702,28 @@ export function OrgAdminPdfModal({
               }
             }}
             id="pdf-tile-cards"
-            className={`group relative flex items-center justify-between p-3.5 rounded-xl border-2 transition-all cursor-pointer select-none ${
+            className={`flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-all cursor-pointer select-none ${
               selected.cards
-                ? 'border-indigo-500 bg-indigo-50/50 shadow-xs'
-                : 'border-slate-200 bg-slate-50/60 hover:border-slate-300 hover:bg-white text-slate-400'
+                ? 'border-emerald-500 bg-emerald-50/60 shadow-xs ring-1 ring-emerald-500/20'
+                : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60'
             }`}
           >
-            <div className="flex items-center gap-3 min-w-0">
-              <div
-                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${
-                  selected.cards
-                    ? 'bg-indigo-600 border-indigo-600 text-white'
-                    : 'border-slate-300 bg-white'
-                }`}
-              >
-                {selected.cards && <Check className="h-3.5 w-3.5 stroke-[3]" />}
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`text-sm font-bold truncate ${
-                      selected.cards ? 'text-slate-900' : 'text-slate-500'
-                    }`}
-                  >
-                    Card Analytics
-                  </span>
-                  <span
-                    className={`text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0 ${
-                      selected.cards
-                        ? 'bg-indigo-100 text-indigo-800'
-                        : 'bg-slate-200 text-slate-500'
-                    }`}
-                  >
-                    5 Metrics
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 truncate mt-0.5">
-                  Active, Settled, Blocked, Zero Balance &amp; Inactive
-                </p>
-              </div>
-            </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDownloadCardAnalytics?.();
-              }}
-              disabled={!onDownloadCardAnalytics}
-              leftIcon={<Download className="h-3.5 w-3.5" />}
-              className="shrink-0 ml-2 bg-white hover:bg-slate-50 text-xs py-1 px-2.5 shadow-2xs"
-              title="Download Card Analytics PDF directly"
-              id="tile-download-cards-btn"
+            <span
+              className={`text-sm font-bold ${
+                selected.cards ? 'text-emerald-950' : 'text-slate-600'
+              }`}
             >
-              Download
-            </Button>
+              Card Analytics
+            </span>
+            <div
+              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${
+                selected.cards
+                  ? 'bg-emerald-600 border-emerald-600 text-white'
+                  : 'border-slate-300 bg-white'
+              }`}
+            >
+              {selected.cards && <Check className="h-3.5 w-3.5 stroke-[3]" />}
+            </div>
           </div>
         </div>
 
