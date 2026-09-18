@@ -8,6 +8,8 @@ import type { OrgPdfSectionOptions } from './analyticsPdfExport';
 import {
   generateAnalyticsPdfBlob,
   downloadOrgAnalyticsPdf,
+  downloadFinancialOverviewPdf,
+  downloadCardAnalyticsPdf,
 } from './analyticsPdfExport';
 import type { SortMetric } from './OrgAdminAnalyticsComponents';
 
@@ -174,7 +176,7 @@ export function useOrgAdminAnalytics() {
   }, [currentBranch]);
 
   const [datePreset, setDatePreset] = useState<DatePreset>(
-    (searchParams.get('preset') as DatePreset) || 'today',
+    (searchParams.get('preset') as DatePreset) || 'custom',
   );
   const [startDate, setStartDate] = useState<string>(() => {
     return searchParams.get('startDate') || getPresetDates('today').startDate;
@@ -462,6 +464,36 @@ export function useOrgAdminAnalytics() {
     }
   };
 
+  const handleDownloadFinancialPdf = () => {
+    try {
+      const options = getOrgReportOptions(pdfSections);
+      if (!options) {
+        notify.error('No analytics data available to download.');
+        return;
+      }
+      const dateStr = new Date().toISOString().split('T')[0];
+      downloadFinancialOverviewPdf(options, `MoneyCard_Financial_Overview_${dateStr}.pdf`);
+      notify.success('Financial Overview PDF downloaded.');
+    } catch {
+      notify.error('Failed to download Financial Overview PDF.');
+    }
+  };
+
+  const handleDownloadCardAnalyticsPdf = () => {
+    try {
+      const options = getOrgReportOptions(pdfSections);
+      if (!options) {
+        notify.error('No analytics data available to download.');
+        return;
+      }
+      const dateStr = new Date().toISOString().split('T')[0];
+      downloadCardAnalyticsPdf(options, `MoneyCard_Card_Analytics_${dateStr}.pdf`);
+      notify.success('Card Analytics PDF downloaded.');
+    } catch {
+      notify.error('Failed to download Card Analytics PDF.');
+    }
+  };
+
   const cashRechargeAmount = useMemo(
     () => (analytics?.cashRechargeVolume !== undefined ? analytics.cashRechargeVolume : 0),
     [analytics],
@@ -548,6 +580,8 @@ export function useOrgAdminAnalytics() {
     handleSetAllSections,
     handleViewPdf,
     handleDownloadPdf,
+    handleDownloadFinancialPdf,
+    handleDownloadCardAnalyticsPdf,
     cashRechargeAmount,
     upiRechargeAmount,
     sortedBranchComparison,

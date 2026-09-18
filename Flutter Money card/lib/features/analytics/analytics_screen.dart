@@ -24,18 +24,22 @@ class AnalyticsScreen extends ConsumerStatefulWidget {
 }
 
 class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
-  final List<String> _ranges = [
-    'Today',
-    'Yesterday',
-    'This Week',
-    'This Month',
-    'Last 30 Days',
-    'All Time',
-  ];
+  late String _startDate;
+  late String _endDate;
+
+  static String _todayStr() {
+    final now = DateTime.now();
+    final y = now.year.toString().padLeft(4, '0');
+    final m = now.month.toString().padLeft(2, '0');
+    final d = now.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
 
   @override
   void initState() {
     super.initState();
+    _startDate = _todayStr();
+    _endDate = _todayStr();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
     });
@@ -115,63 +119,142 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           ),
           body: Column(
             children: [
-              // Filter Toolbar: Time Window Dropdown & View PDF Action
-              Padding(
+              // Filter Toolbar: Custom Date Range & View PDF Action
+              Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.md,
                   vertical: AppSpacing.sm,
                 ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(bottom: BorderSide(color: AppColors.borderLight)),
+                ),
                 child: Row(
                   children: [
-                    // Time Window Dropdown
+                    // Date Range Pickers
                     Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: AppSpacing.roundedSm,
-                          border: Border.all(color: AppColors.borderLight),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.03),
-                              blurRadius: 3,
-                              offset: const Offset(0, 1),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.schedule, size: 16, color: AppColors.primary),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  value: _ranges.contains(analyticsState.selectedRange)
-                                      ? analyticsState.selectedRange
-                                      : _ranges.first,
-                                  isExpanded: true,
-                                  icon: const Icon(Icons.arrow_drop_down, color: AppColors.primary),
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimaryLight,
-                                  ),
-                                  onChanged: (value) {
-                                    if (value != null) {
-                                      notifier.setRange(value);
-                                    }
-                                  },
-                                  items: _ranges.map((range) {
-                                    return DropdownMenuItem<String>(
-                                      value: range,
-                                      child: Text(range),
-                                    );
-                                  }).toList(),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: DateTime.tryParse(_startDate) ?? DateTime.now(),
+                                  firstDate: DateTime(2020),
+                                  lastDate: DateTime.now(),
+                                  helpText: 'Select Start Date',
+                                );
+                                if (picked != null) {
+                                  setState(() {
+                                    final y = picked.year.toString().padLeft(4, '0');
+                                    final m = picked.month.toString().padLeft(2, '0');
+                                    final d = picked.day.toString().padLeft(2, '0');
+                                    _startDate = '$y-$m-$d';
+                                  });
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: AppSpacing.roundedSm,
+                                  border: Border.all(color: AppColors.borderLight),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.calendar_today, size: 13, color: AppColors.primary),
+                                    const SizedBox(width: 5),
+                                    Flexible(
+                                      child: Text(
+                                        _startDate,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: AppColors.textPrimaryLight,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 4),
+                            child: Text('to', style: TextStyle(fontSize: 11, color: AppColors.textSecondaryLight)),
+                          ),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: DateTime.tryParse(_endDate) ?? DateTime.now(),
+                                  firstDate: DateTime(2020),
+                                  lastDate: DateTime.now(),
+                                  helpText: 'Select End Date',
+                                );
+                                if (picked != null) {
+                                  setState(() {
+                                    final y = picked.year.toString().padLeft(4, '0');
+                                    final m = picked.month.toString().padLeft(2, '0');
+                                    final d = picked.day.toString().padLeft(2, '0');
+                                    _endDate = '$y-$m-$d';
+                                  });
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: AppSpacing.roundedSm,
+                                  border: Border.all(color: AppColors.borderLight),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.calendar_today, size: 13, color: AppColors.primary),
+                                    const SizedBox(width: 5),
+                                    Flexible(
+                                      child: Text(
+                                        _endDate,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: AppColors.textPrimaryLight,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          // Apply Button
+                          ElevatedButton(
+                            onPressed: () {
+                              notifier.setCustomRange(_startDate, _endDate);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: AppSpacing.roundedSm,
+                              ),
+                            ),
+                            child: const Text(
+                              'Apply',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),

@@ -11,10 +11,16 @@ class AnalyticsService {
   Future<BranchPerformanceMetric> getBranchAnalytics({
     required String branchId,
     String? range,
+    String? startDate,
+    String? endDate,
   }) async {
     final queryParameters = <String, dynamic>{
       'branchId': branchId,
-      if (range != null && range.isNotEmpty) 'range': range,
+      // Use explicit date range if provided; otherwise fall back to range preset
+      if (startDate != null && startDate.isNotEmpty) 'startDate': startDate,
+      if (endDate != null && endDate.isNotEmpty) 'endDate': endDate,
+      if ((startDate == null || startDate.isEmpty) && range != null && range.isNotEmpty)
+        'range': range,
       'timezone': 'Asia/Kolkata',
     };
 
