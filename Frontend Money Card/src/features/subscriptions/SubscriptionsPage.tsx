@@ -26,10 +26,8 @@ import {
   Modal,
   ModalFooter,
   LoadingState,
-  EmptyState,
   ErrorState,
 } from '@/components/ui';
-import { DataTable } from '@/components/tables';
 import { notify, formatDate, formatCurrency } from '@/utils';
 import { AdminPlansSubscriptionsView } from './AdminPlansSubscriptionsView';
 import { UnauthorizedPage } from '@/features/auth';
@@ -114,7 +112,6 @@ function OrgAdminSubscriptionsView() {
 
   // Collapsible Dropdown Sections
   const [isPlansOpen, setIsPlansOpen] = useState(false);
-  const [isPlanRequestsOpen, setIsPlanRequestsOpen] = useState(false);
 
   // ── Fetch Organization Subscription Data ───────────────────
   const fetchOrgSubscriptionData = useCallback(async () => {
@@ -341,71 +338,6 @@ function OrgAdminSubscriptionsView() {
       setIsSubmitting(false);
     }
   };
-
-  // ── Plan Requests Columns ─────────────────────────────────
-  const requestColumns = [
-    {
-      key: 'requestedPlanName',
-      header: 'Requested Plan',
-      render: (req: PlanChangeRequest) => (
-        <div>
-          <span className="font-bold text-slate-900">{req.requestedPlanName}</span>
-          <p className="text-[11px] text-slate-500">From {req.currentPlanName}</p>
-        </div>
-      ),
-    },
-    {
-      key: 'requestType',
-      header: 'Type',
-      render: (req: PlanChangeRequest) => {
-        if (req.requestType === 'RENEWAL') {
-          return (
-            <Badge variant="success" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold">
-              Subscription Renewal
-            </Badge>
-          );
-        }
-        return (
-          <Badge variant="outline" className="text-emerald-700 border-emerald-200 bg-emerald-50">
-            {req.requestType.replace('_', ' ')}
-          </Badge>
-        );
-      },
-    },
-    {
-      key: 'reason',
-      header: 'Notes / Reason',
-      render: (req: PlanChangeRequest) => (
-        <span className="text-xs text-slate-700 font-medium max-w-xs truncate block">
-          {req.reason || '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (req: PlanChangeRequest) => (
-        <Badge
-          variant={
-            req.status === 'APPROVED' || req.status === 'COMPLETED'
-              ? 'success'
-              : req.status === 'PENDING'
-                ? 'warning'
-                : 'danger'
-          }
-        >
-          {req.status}
-        </Badge>
-      ),
-    },
-    {
-      key: 'createdAt',
-      header: 'Submitted Date',
-      render: (req: PlanChangeRequest) => (
-        <span className="text-xs text-slate-600 font-medium">{formatDate(req.createdAt)}</span>
-      ),
-    },
-  ];
 
   return (
     <div className="space-y-8">
@@ -721,59 +653,6 @@ function OrgAdminSubscriptionsView() {
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Collapsible Section: Plan Change Requests History */}
-          <div className="space-y-4">
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
-              <button
-                type="button"
-                id="toggle-plan-requests-dropdown"
-                onClick={() => setIsPlanRequestsOpen((prev) => !prev)}
-                className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-slate-50 cursor-pointer"
-                aria-expanded={isPlanRequestsOpen}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-                    <Clock className="h-5 w-5" />
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <h3 className="text-base font-bold text-slate-900">Plan Change Requests History</h3>
-                    <Badge variant="outline" className="font-mono text-xs">
-                      {planRequests.length} {planRequests.length === 1 ? 'Request' : 'Requests'}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600">
-                  <span>{isPlanRequestsOpen ? 'Collapse' : 'Drop down to view'}</span>
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform duration-200 ${
-                      isPlanRequestsOpen ? 'rotate-180' : ''
-                    }`}
-                  />
-                </div>
-              </button>
-
-              {isPlanRequestsOpen && (
-                <div className="border-t border-slate-200">
-                  {planRequests.length === 0 ? (
-                    <div className="p-4">
-                      <EmptyState
-                        icon={<Clock className="h-8 w-8 text-slate-400" />}
-                        title="No plan change requests recorded"
-                        description="Pending and approved plan change requests will appear here."
-                      />
-                    </div>
-                  ) : (
-                    <DataTable<PlanChangeRequest>
-                      data={planRequests}
-                      columns={requestColumns}
-                      keyExtractor={(item: PlanChangeRequest) => item.id}
-                    />
-                  )}
-                </div>
-              )}
-            </div>
           </div>
         </div>
       )}
