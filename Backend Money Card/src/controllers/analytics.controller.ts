@@ -493,7 +493,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
   const totalFloatBalance = Number(
     activeSessionsList.reduce((acc, s) => acc + (s.balance || 0), 0).toFixed(2),
   );
-  const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+  const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
 
   const cardItems = activeSessionsList.map((s) => {
     const cardNum =
@@ -519,7 +519,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       }
     });
 
-    const isDormant = s.balance > 0 && lastUsedAt && new Date(lastUsedAt) < fourteenDaysAgo;
+    const isDormant = s.balance > 0 && lastUsedAt && new Date(lastUsedAt) < twoDaysAgo;
 
     return {
       id: s.id,

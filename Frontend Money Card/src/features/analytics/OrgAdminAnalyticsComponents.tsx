@@ -56,36 +56,83 @@ export function OrgAdminFinancialSection({
 
   return (
     <div className="space-y-4">
-      {/* ─── Top 4 Core Financial Cards ─── */}
+      {/* ─── Top 4 Core Financial Cards (Unified Box Style) ─── */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Food Sales (POS)"
-          value={formatCurrency(analytics.totalPurchaseVolume)}
-          icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
-        />
-        <StatCard
-          label="Card Money Loaded"
-          value={formatCurrency(analytics.totalRechargeVolume)}
-          icon={<CreditCard className="h-5 w-5 text-blue-600" />}
-        />
-        <StatCard
-          label="Current Balance in Cards"
-          value={formatCurrency(floatBalance)}
-          icon={<Wallet className="h-5 w-5 text-amber-600" />}
-        />
-        <StatCard
-          label="Total Activity Count"
-          value={analytics.totalTransactions.toLocaleString()}
-          icon={<BarChart3 className="h-5 w-5 text-violet-600" />}
-        />
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Food Sales (POS)
+            </span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+              <TrendingUp className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <p className="font-mono text-2xl font-bold text-slate-900">
+              {formatCurrency(analytics.totalPurchaseVolume)}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">Gross cafeteria sales</p>
+          </div>
+        </Card>
+
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Total Recharges
+            </span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+              <CreditCard className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <p className="font-mono text-2xl font-bold text-slate-900">
+              {formatCurrency(analytics.totalRechargeVolume)}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">Total card deposits</p>
+          </div>
+        </Card>
+
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Total Card Balance
+            </span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+              <Wallet className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <p className="font-mono text-2xl font-bold text-slate-900">
+              {formatCurrency(floatBalance)}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">Money remaining on cards</p>
+          </div>
+        </Card>
+
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Total Transactions
+            </span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
+              <BarChart3 className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <p className="font-mono text-2xl font-bold text-slate-900">
+              {analytics.totalTransactions.toLocaleString()}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">Total cafeteria activity</p>
+          </div>
+        </Card>
       </div>
 
-      {/* ─── Bottom 3 Payment & Refund Cards (in same single section) ─── */}
+      {/* ─── Bottom 3 Payment & Refund Cards (Unified Box Style) ─── */}
       <div className="grid gap-4 sm:grid-cols-3">
         <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Cash Card Deposits
+              Cash Recharges
             </span>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
               <DollarSign className="h-4 w-4" />
@@ -96,7 +143,7 @@ export function OrgAdminFinancialSection({
               {formatCurrency(cashRecharge)}
             </p>
             {totalRecharge > 0 && (
-              <p className="mt-1 text-xs text-slate-500">{cashPct}% of total money loaded</p>
+              <p className="mt-1 text-xs text-slate-500">{cashPct}% of total recharges</p>
             )}
           </div>
         </Card>
@@ -104,7 +151,7 @@ export function OrgAdminFinancialSection({
         <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              UPI / Online Card Deposits
+              UPI Recharges
             </span>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
               <CreditCard className="h-4 w-4" />
@@ -115,7 +162,7 @@ export function OrgAdminFinancialSection({
               {formatCurrency(upiRecharge)}
             </p>
             {totalRecharge > 0 && (
-              <p className="mt-1 text-xs text-slate-500">{upiPct}% of total money loaded</p>
+              <p className="mt-1 text-xs text-slate-500">{upiPct}% of total recharges</p>
             )}
           </div>
         </Card>
@@ -123,7 +170,7 @@ export function OrgAdminFinancialSection({
         <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Refunds & Card Returns
+              Cash Returned
             </span>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
               <ArrowUpDown className="h-4 w-4" />
