@@ -420,18 +420,24 @@ export function useOrgAdminAnalytics() {
   const handleViewPdf = () => {
     setIsExportingPdf(true);
     try {
-      const options = getOrgReportOptions(pdfSections);
+      const defaultSections: OrgPdfSectionOptions = {
+        includeExecutiveKpis: true,
+        includeCardLifecycle: true,
+        includePaymentBreakdown: true,
+        includeRushKpis: false,
+        includeTrafficDistribution: false,
+        includeFoodDemand: false,
+        includeBranchComparison: false,
+        includeStaffPerformance: false,
+      };
+      setPdfSections(defaultSections);
+      const options = getOrgReportOptions(defaultSections);
       if (!options) {
         notify.error('No analytics data available to render PDF.');
         return;
       }
 
       const blob = generateAnalyticsPdfBlob(options);
-      const dateStr = new Date().toISOString().split('T')[0];
-      const filename = `MoneyCard_OrgAdmin_Analytics_${dateStr}.pdf`;
-
-      console.log('[Org Admin] PDF Preview Ready:', { size: blob.size, type: blob.type, filename });
-
       if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
       const url = URL.createObjectURL(blob);
       setPdfPreviewUrl(url);
@@ -441,6 +447,22 @@ export function useOrgAdminAnalytics() {
     } finally {
       setIsExportingPdf(false);
     }
+  };
+
+  const handleUpdatePreviewSections = (selected: { financial: boolean; cards: boolean }) => {
+    const updated: OrgPdfSectionOptions = {
+      ...pdfSections,
+      includeExecutiveKpis: selected.financial,
+      includePaymentBreakdown: selected.financial,
+      includeCardLifecycle: selected.cards,
+      includeRushKpis: false,
+      includeTrafficDistribution: false,
+      includeFoodDemand: false,
+      includeBranchComparison: false,
+      includeStaffPerformance: false,
+    };
+    setPdfSections(updated);
+    refreshPdfPreview(updated);
   };
 
   const handleDownloadPdf = () => {
@@ -461,6 +483,31 @@ export function useOrgAdminAnalytics() {
       notify.error('Failed to download Analytics PDF');
     } finally {
       setIsExportingPdf(false);
+    }
+  };
+
+  const handleDownloadBothPdf = () => {
+    try {
+      const options = getOrgReportOptions({
+        includeExecutiveKpis: true,
+        includeCardLifecycle: true,
+        includePaymentBreakdown: true,
+        includeRushKpis: false,
+        includeTrafficDistribution: false,
+        includeFoodDemand: false,
+        includeBranchComparison: false,
+        includeStaffPerformance: false,
+      });
+      if (!options) {
+        notify.error('No analytics data available to download.');
+        return;
+      }
+      const dateStr = new Date().toISOString().split('T')[0];
+      const filename = `MoneyCard_Analytics_${dateStr}.pdf`;
+      downloadOrgAnalyticsPdf(options, filename);
+      notify.success(`Analytics report downloaded: ${filename}`);
+    } catch {
+      notify.error('Failed to download Analytics PDF.');
     }
   };
 
@@ -582,6 +629,8 @@ export function useOrgAdminAnalytics() {
     handleDownloadPdf,
     handleDownloadFinancialPdf,
     handleDownloadCardAnalyticsPdf,
+    handleDownloadBothPdf,
+    handleUpdatePreviewSections,
     cashRechargeAmount,
     upiRechargeAmount,
     sortedBranchComparison,

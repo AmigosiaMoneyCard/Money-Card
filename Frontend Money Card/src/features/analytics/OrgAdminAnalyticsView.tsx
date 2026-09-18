@@ -45,6 +45,8 @@ export function OrgAdminAnalyticsView() {
     handleViewPdf,
     handleDownloadFinancialPdf,
     handleDownloadCardAnalyticsPdf,
+    handleDownloadBothPdf,
+    handleUpdatePreviewSections,
     cashRechargeAmount,
     upiRechargeAmount,
   } = useOrgAdminAnalytics();
@@ -177,6 +179,8 @@ export function OrgAdminAnalyticsView() {
         onDownloadPdf={handleDownloadFinancialPdf}
         onDownloadFinancial={handleDownloadFinancialPdf}
         onDownloadCardAnalytics={handleDownloadCardAnalyticsPdf}
+        onDownloadBoth={handleDownloadBothPdf}
+        onPreviewSectionsChange={handleUpdatePreviewSections}
       />
     </div>
   );
