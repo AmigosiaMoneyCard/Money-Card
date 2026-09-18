@@ -96,6 +96,6 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
     label: 'Settings',
     path: '/settings',
     iconName: 'Settings',
-    roles: ['SUPER_ADMIN', 'ORG_ADMIN'],
+    roles: ['SUPER_ADMIN'],
   },
 ];
