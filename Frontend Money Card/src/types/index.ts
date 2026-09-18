@@ -15,6 +15,7 @@ export type {
   Organization,
   OrganizationOverview,
   Branch,
+  CreateBranchRequest,
   Staff,
   AuditLog,
   CreateStaffRequest,

@@ -87,7 +87,7 @@ export function AppRoutes() {
         <Route
           path="/staff"
           element={
-            <PermissionGuard roles={['ORG_ADMIN']}>
+            <PermissionGuard roles={['ORG_ADMIN', 'STAFF']}>
               <StaffPage />
             </PermissionGuard>
           }
@@ -95,7 +95,7 @@ export function AppRoutes() {
         <Route
           path="/cards"
           element={
-            <PermissionGuard roles={['ORG_ADMIN']}>
+            <PermissionGuard roles={['ORG_ADMIN', 'STAFF']}>
               <CardsPage />
             </PermissionGuard>
           }
@@ -103,7 +103,7 @@ export function AppRoutes() {
         <Route
           path="/sessions"
           element={
-            <PermissionGuard roles={['ORG_ADMIN']}>
+            <PermissionGuard roles={['ORG_ADMIN', 'STAFF']}>
               <SessionsPage />
             </PermissionGuard>
           }
@@ -111,7 +111,7 @@ export function AppRoutes() {
         <Route
           path="/products"
           element={
-            <PermissionGuard roles={['ORG_ADMIN']}>
+            <PermissionGuard roles={['ORG_ADMIN', 'STAFF']}>
               <ProductsPage />
             </PermissionGuard>
           }
@@ -119,7 +119,7 @@ export function AppRoutes() {
         <Route
           path="/inventory"
           element={
-            <PermissionGuard roles={['ORG_ADMIN']}>
+            <PermissionGuard roles={['ORG_ADMIN', 'STAFF']}>
               <InventoryPage />
             </PermissionGuard>
           }

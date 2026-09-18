@@ -25,12 +25,15 @@ export const mockAuthHandlers = {
   async login(credentials: LoginCredentials): Promise<ApiResult<AuthResponseData>> {
     await mockDelay();
 
-    const userMatch = mockStore.staffUsers.find(
-      (u) => u.email.toLowerCase() === credentials.email.toLowerCase(),
-    );
+    const searchIdentifier = (credentials.email || credentials.phone || '').trim().toLowerCase();
+    const userMatch = mockStore.staffUsers.find((u) => {
+      const emailMatches = u.email && u.email.toLowerCase() === searchIdentifier;
+      const phoneMatches = u.phone && (u.phone === searchIdentifier || u.phone.endsWith(searchIdentifier));
+      return emailMatches || phoneMatches;
+    });
 
     if (!userMatch || userMatch.passwordHash !== credentials.password) {
-      return createMockError('UNAUTHORIZED', 'Invalid email or password');
+      return createMockError('UNAUTHORIZED', 'Invalid credentials');
     }
 
     if ('status' in userMatch && (userMatch as { status?: string }).status === 'PENDING_ACTIVATION') {

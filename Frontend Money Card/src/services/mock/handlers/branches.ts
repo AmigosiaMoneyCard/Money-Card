@@ -1,7 +1,7 @@
 import { mockStore } from '../store';
 import { mockDelay, createMockSuccess, createMockError, paginateArray } from '../utils';
 import { mockAuthHandlers } from './auth';
-import type { ApiResult, Branch, PaginatedData, PaginationParams } from '@/types';
+import type { ApiResult, Branch, CreateBranchRequest, PaginatedData, PaginationParams } from '@/types';
 
 export const mockBranchesHandlers = {
   async deleteBranch(id: string, _options?: { force?: boolean; archive?: boolean }): Promise<ApiResult<any>> {
@@ -63,7 +63,7 @@ export const mockBranchesHandlers = {
     return createMockSuccess(branch);
   },
 
-  async createBranch(data: { name: string; organizationId?: string }): Promise<ApiResult<Branch>> {
+  async createBranch(data: CreateBranchRequest & { organizationId?: string }): Promise<ApiResult<Branch>> {
     await mockDelay();
     const currentUser = mockAuthHandlers.getCurrentSessionUser();
     if (!currentUser) {
@@ -98,6 +98,12 @@ export const mockBranchesHandlers = {
       organizationId: orgId,
       name: data.name,
       status: 'ACTIVE',
+      location: data.location,
+      credentials: data.phone ? {
+        name: data.name,
+        phone: data.phone,
+        password: data.password,
+      } : undefined,
       createdAt: mockStore.getTimestamp(),
       updatedAt: mockStore.getTimestamp(),
     };

@@ -33,6 +33,9 @@ import {
   ChevronDown,
   X,
   Layers,
+  MessageSquare,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AllBranchesOverviewModal } from './AllBranchesOverviewModal';
@@ -231,9 +234,24 @@ export function BranchesPage() {
 
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const [branchNameInput, setBranchNameInput] = useState('');
+  const [branchPhoneInput, setBranchPhoneInput] = useState('');
+  const [branchPasswordInput, setBranchPasswordInput] = useState('');
+  const [branchLocationInput, setBranchLocationInput] = useState('');
   const [nameError, setNameError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [modalApiError, setModalApiError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // WhatsApp Credentials Modal state
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+  const [createdBranchCredentials, setCreatedBranchCredentials] = useState<{
+    name: string;
+    phone: string;
+    password?: string;
+    branchId: string;
+  } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const canManage = hasPermission('BRANCH_MANAGE');
 
@@ -318,24 +336,58 @@ export function BranchesPage() {
   // ── Create Counter ─────────────────────────────────────────
   const handleOpenCreate = () => {
     setBranchNameInput('');
+    setBranchPhoneInput('');
+    setBranchPasswordInput('');
+    setBranchLocationInput('');
     setNameError(null);
+    setPhoneError(null);
+    setPasswordError(null);
     setModalApiError(null);
     setShowCreateModal(true);
   };
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    let hasErr = false;
+
     if (!branchNameInput.trim()) {
       setNameError('Counter name is required');
-      return;
+      hasErr = true;
+    } else {
+      setNameError(null);
     }
-    setNameError(null);
-    setModalApiError(null);
 
+    const cleanPhone = branchPhoneInput.trim().replace(/\D/g, '');
+    if (!cleanPhone) {
+      setPhoneError('Phone number is required');
+      hasErr = true;
+    } else if (cleanPhone.length !== 10) {
+      setPhoneError('Please enter a valid 10-digit mobile number');
+      hasErr = true;
+    } else {
+      setPhoneError(null);
+    }
+
+    if (!branchPasswordInput) {
+      setPasswordError('Password is required');
+      hasErr = true;
+    } else if (branchPasswordInput.length < 6) {
+      setPasswordError('Password must be at least 6 characters');
+      hasErr = true;
+    } else {
+      setPasswordError(null);
+    }
+
+    if (hasErr) return;
+
+    setModalApiError(null);
     setIsSubmitting(true);
     try {
       const result: ApiResult<Branch> = await apiService.branches.createBranch({
         name: branchNameInput.trim(),
+        phone: cleanPhone,
+        password: branchPasswordInput,
+        location: branchLocationInput.trim() || undefined,
       });
 
       if (!result.success) {
@@ -353,11 +405,52 @@ export function BranchesPage() {
       notify.success('Counter created successfully');
       setShowCreateModal(false);
       fetchBranches();
+
+      // Open WhatsApp Dispatch Modal
+      setCreatedBranchCredentials({
+        name: result.data.name,
+        phone: result.data.credentials?.phone || cleanPhone,
+        password: result.data.credentials?.password || branchPasswordInput,
+        branchId: result.data.id,
+      });
+      setCopied(false);
+      setShowWhatsAppModal(true);
     } catch {
       setModalApiError('An unexpected error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleCopyCredentials = () => {
+    if (!createdBranchCredentials) return;
+    const loginUrl = `${window.location.origin}/login`;
+    const textToCopy =
+      `Counter Name: ${createdBranchCredentials.name}\n` +
+      `Phone Number: ${createdBranchCredentials.phone}\n` +
+      `Password: ${createdBranchCredentials.password}\n` +
+      `Login URL: ${loginUrl}`;
+    navigator.clipboard.writeText(textToCopy);
+    setCopied(true);
+    notify.success('Credentials copied to clipboard');
+    setTimeout(() => setCopied(false), 2500);
+  };
+
+  const handleSendWhatsApp = () => {
+    if (!createdBranchCredentials) return;
+    const loginUrl = `${window.location.origin}/login`;
+    const message =
+      `🍽️ *Welcome to Money Card Counter Portal*\n\n` +
+      `Your counter account has been created successfully:\n\n` +
+      `• *Counter Name:* ${createdBranchCredentials.name}\n` +
+      `• *Mobile Number:* ${createdBranchCredentials.phone}\n` +
+      `• *Password:* ${createdBranchCredentials.password}\n\n` +
+      `🌐 *Counter Dashboard Link:* ${loginUrl}\n\n` +
+      `_Log in using your Mobile Number and Password to access your Counter Menu, Staff, and Analytics._`;
+
+    const cleanPhone = createdBranchCredentials.phone.replace(/\D/g, '').slice(-10);
+    const waUrl = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(message)}`;
+    window.open(waUrl, '_blank', 'noopener,noreferrer');
   };
 
   // ── Edit Branch ───────────────────────────────────────────
@@ -749,7 +842,7 @@ export function BranchesPage() {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         title="Create New Counter"
-        description="Add a new food counter or service station for your cafeteria."
+        description="Add a new food counter or service station with dedicated login credentials."
       >
         <form onSubmit={handleCreateSubmit} noValidate className="space-y-4">
           {modalApiError && (
@@ -762,7 +855,7 @@ export function BranchesPage() {
           <Input
             id="create-branch-name"
             label="Counter Name"
-            placeholder="e.g. Downtown Cafeteria, North Campus..."
+            placeholder="e.g. South Indian Express, Juice Bar, Bakery..."
             value={branchNameInput}
             onChange={(e) => {
               setBranchNameInput(e.target.value);
@@ -771,6 +864,43 @@ export function BranchesPage() {
             error={nameError || undefined}
             disabled={isSubmitting}
             autoFocus
+          />
+
+          <Input
+            id="create-branch-phone"
+            label="Counter Mobile Number (Login ID)"
+            type="tel"
+            placeholder="e.g. 9876543210 (10-digit mobile)"
+            value={branchPhoneInput}
+            onChange={(e) => {
+              setBranchPhoneInput(e.target.value);
+              if (phoneError) setPhoneError(null);
+            }}
+            error={phoneError || undefined}
+            disabled={isSubmitting}
+          />
+
+          <Input
+            id="create-branch-password"
+            label="Login Password"
+            type="password"
+            placeholder="Minimum 6 characters"
+            value={branchPasswordInput}
+            onChange={(e) => {
+              setBranchPasswordInput(e.target.value);
+              if (passwordError) setPasswordError(null);
+            }}
+            error={passwordError || undefined}
+            disabled={isSubmitting}
+          />
+
+          <Input
+            id="create-branch-location"
+            label="Location / Floor (Optional)"
+            placeholder="e.g. Ground Floor, Food Court Stall 3..."
+            value={branchLocationInput}
+            onChange={(e) => setBranchLocationInput(e.target.value)}
+            disabled={isSubmitting}
           />
 
           <ModalFooter>
@@ -782,6 +912,72 @@ export function BranchesPage() {
             </Button>
           </ModalFooter>
         </form>
+      </Modal>
+
+      {/* ── WhatsApp Credentials Modal ────────────────────────────── */}
+      <Modal
+        isOpen={showWhatsAppModal}
+        onClose={() => setShowWhatsAppModal(false)}
+        title="Counter Created Successfully!"
+        description="Share the login credentials with the counter manager via WhatsApp or copy directly."
+        size="md"
+      >
+        <div className="space-y-4 py-1">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 space-y-3">
+            <div className="flex items-center gap-2 text-emerald-800 font-semibold text-sm">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white text-xs">✓</span>
+              <span>Counter Login Credentials</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="bg-white/95 p-2.5 rounded-lg border border-emerald-100 shadow-2xs">
+                <span className="text-slate-500 block text-[11px]">Counter Name</span>
+                <span className="font-semibold text-slate-800 text-sm">{createdBranchCredentials?.name}</span>
+              </div>
+              <div className="bg-white/95 p-2.5 rounded-lg border border-emerald-100 shadow-2xs">
+                <span className="text-slate-500 block text-[11px]">Mobile Number (Login ID)</span>
+                <span className="font-semibold text-slate-800 font-mono text-sm">{createdBranchCredentials?.phone}</span>
+              </div>
+              <div className="bg-white/95 p-2.5 rounded-lg border border-emerald-100 shadow-2xs">
+                <span className="text-slate-500 block text-[11px]">Password</span>
+                <span className="font-semibold text-slate-800 font-mono text-sm">{createdBranchCredentials?.password}</span>
+              </div>
+              <div className="bg-white/95 p-2.5 rounded-lg border border-emerald-100 shadow-2xs">
+                <span className="text-slate-500 block text-[11px]">Web Portal</span>
+                <span className="font-medium text-emerald-700 truncate block">{window.location.origin}/login</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2.5 sm:flex-row pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCopyCredentials}
+              className="flex-1 justify-center gap-2 cursor-pointer"
+              leftIcon={copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+            >
+              {copied ? 'Copied Details' : 'Copy Credentials'}
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSendWhatsApp}
+              className="flex-1 justify-center gap-2 bg-[#25D366] hover:bg-[#20bd5a] text-white border-transparent cursor-pointer"
+              leftIcon={<MessageSquare className="h-4 w-4" />}
+            >
+              Send via WhatsApp
+            </Button>
+          </div>
+
+          <ModalFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setShowWhatsAppModal(false)}
+            >
+              Close
+            </Button>
+          </ModalFooter>
+        </div>
       </Modal>
 
       {/* ── Edit Branch Modal ─────────────────────────────────────── */}

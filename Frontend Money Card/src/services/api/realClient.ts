@@ -11,6 +11,7 @@ import type {
   OrganizationOverview,
   Organization,
   Branch,
+  CreateBranchRequest,
   PaginatedData,
   PaginationParams,
   Card,
@@ -257,7 +258,7 @@ export const realClient: typeof mockClient = {
       return handleApiCall(() => apiClient.get<Branch>(`/v1/branches/${id}`));
     },
 
-    async createBranch(data: { name: string; organizationId?: string }): Promise<ApiResult<Branch>> {
+    async createBranch(data: CreateBranchRequest & { organizationId?: string }): Promise<ApiResult<Branch>> {
       return handleApiCall(() => apiClient.post<Branch>('/v1/branches', data));
     },
 

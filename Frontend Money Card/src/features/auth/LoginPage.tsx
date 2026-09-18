@@ -1,7 +1,6 @@
 import { AlertCircle, LogIn, Eye, EyeOff } from 'lucide-react';
 // ─── Login Page ────────────────────────────────────────────
-// M3 Web Authentication — SUPER_ADMIN & ORG_ADMIN only.
-// Staff login is NOT implemented here (Flutter-only).
+// Web Authentication — SUPER_ADMIN, ORG_ADMIN, and Counter Managers (STAFF).
 // Uses apiService abstraction — does NOT import mock handlers directly.
 
 import { useState, useCallback } from 'react';
@@ -10,13 +9,24 @@ import { Card, Button, Input } from '@/components/ui';
 import { useAuth } from '@/hooks';
 import { apiService } from '@/services/api';
 
-// ── Email Validation ─────────────────────────────────────
+// ── Identifier Validation (Email or 10-digit Mobile) ──────
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_REGEX = /^[6-9]\d{9}$/;
 
-function validateEmail(email: string): string | null {
-  if (!email.trim()) return 'Email is required';
-  if (!EMAIL_REGEX.test(email.trim())) return 'Please enter a valid email address';
+function validateIdentifier(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return 'Email or Mobile Number is required';
+  const isDigits = /^\d+$/.test(trimmed);
+  if (isDigits) {
+    if (!PHONE_REGEX.test(trimmed)) {
+      return 'Please enter a valid 10-digit mobile number';
+    }
+    return null;
+  }
+  if (!EMAIL_REGEX.test(trimmed)) {
+    return 'Please enter a valid email address or 10-digit mobile number';
+  }
   return null;
 }
 
@@ -30,10 +40,10 @@ export function LoginPage() {
   const [searchParams] = useSearchParams();
   const { login } = useAuth();
 
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [emailError, setEmailError] = useState<string | null>(null);
+  const [identifierError, setIdentifierError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,29 +56,28 @@ export function LoginPage() {
       setApiError(null);
 
       // Client-side validation
-      const eErr = validateEmail(email);
+      const idErr = validateIdentifier(identifier);
       const pErr = validatePassword(password);
-      setEmailError(eErr);
+      setIdentifierError(idErr);
       setPasswordError(pErr);
-      if (eErr || pErr) return;
+      if (idErr || pErr) return;
 
       setIsSubmitting(true);
       try {
-        const result = await apiService.auth.login({ email: email.trim(), password });
+        const trimmed = identifier.trim();
+        const isDigits = /^\d+$/.test(trimmed);
+        const credentials = isDigits
+          ? { phone: trimmed, password }
+          : { email: trimmed, password };
+
+        const result = await apiService.auth.login(credentials);
 
         if (!result.success) {
-          setApiError(result.error.message || 'Invalid email or password');
+          setApiError(result.error.message || 'Invalid credentials');
           return;
         }
 
         const { user, accessToken, refreshToken } = result.data;
-
-        // M3 Web authentication is for SUPER_ADMIN and ORG_ADMIN only.
-        // Staff uses Flutter app. Reject Staff login here.
-        if (user.role === 'STAFF') {
-          setApiError('Staff accounts must use the Staff application to sign in.');
-          return;
-        }
 
         login(user, accessToken, refreshToken);
 
@@ -86,7 +95,7 @@ export function LoginPage() {
         setIsSubmitting(false);
       }
     },
-    [email, password, login, navigate, searchParams],
+    [identifier, password, login, navigate, searchParams],
   );
 
   return (
@@ -94,7 +103,7 @@ export function LoginPage() {
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
         <div className="text-center">
           <h2 className="text-xl font-semibold text-slate-900">Welcome back</h2>
-          <p className="mt-1 text-sm text-slate-500">Sign in to the admin dashboard</p>
+          <p className="mt-1 text-sm text-slate-500">Sign in to your dashboard</p>
         </div>
 
         {/* Session expired notice */}
@@ -122,25 +131,25 @@ export function LoginPage() {
           </div>
         )}
 
-        {/* Email field */}
+        {/* Email or Phone field */}
         <Input
-          id="login-email"
-          label="Email"
-          type="email"
-          placeholder="admin@example.com"
-          autoComplete="email"
+          id="login-identifier"
+          label="Email or Mobile Number"
+          type="text"
+          placeholder="admin@example.com or 10-digit mobile"
+          autoComplete="username"
           autoFocus
-          value={email}
+          value={identifier}
           onChange={(e) => {
-            setEmail(e.target.value);
-            if (emailError) setEmailError(null);
+            setIdentifier(e.target.value);
+            if (identifierError) setIdentifierError(null);
             if (apiError) setApiError(null);
           }}
-          error={emailError ?? undefined}
+          error={identifierError ?? undefined}
           disabled={isSubmitting}
           aria-required="true"
-          aria-invalid={!!emailError}
-          aria-describedby={emailError ? 'login-email-error' : undefined}
+          aria-invalid={!!identifierError}
+          aria-describedby={identifierError ? 'login-identifier-error' : undefined}
         />
 
         {/* Password field */}

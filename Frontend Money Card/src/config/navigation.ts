@@ -20,7 +20,7 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
     label: 'Dashboard',
     path: '/dashboard',
     iconName: 'LayoutDashboard',
-    roles: ['SUPER_ADMIN', 'ORG_ADMIN'],
+    roles: ['SUPER_ADMIN', 'ORG_ADMIN', 'STAFF'],
   },
   {
     id: 'organizations',
@@ -49,7 +49,7 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
     label: 'Menu',
     path: '/products',
     iconName: 'Package',
-    roles: ['ORG_ADMIN'],
+    roles: ['ORG_ADMIN', 'STAFF'],
     permission: 'PRODUCT_VIEW',
   },
   {
@@ -57,7 +57,7 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
     label: 'Staff',
     path: '/staff',
     iconName: 'Users',
-    roles: ['ORG_ADMIN'],
+    roles: ['ORG_ADMIN', 'STAFF'],
     permission: 'STAFF_VIEW',
   },
   {
@@ -65,7 +65,7 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
     label: 'Cards',
     path: '/cards',
     iconName: 'CreditCard',
-    roles: ['ORG_ADMIN'],
+    roles: ['ORG_ADMIN', 'STAFF'],
     permission: 'CARD_VIEW',
   },
   {
@@ -73,7 +73,7 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
     label: 'Customer History',
     path: '/sessions',
     iconName: 'UserCheck',
-    roles: ['ORG_ADMIN'],
+    roles: ['ORG_ADMIN', 'STAFF'],
     permission: 'SESSION_VIEW',
   },
   {
@@ -81,7 +81,7 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
     label: 'Analytics',
     path: '/analytics',
     iconName: 'BarChart3',
-    roles: ['SUPER_ADMIN', 'ORG_ADMIN'],
+    roles: ['SUPER_ADMIN', 'ORG_ADMIN', 'STAFF'],
     permission: 'VIEW_ANALYTICS',
   },
   {

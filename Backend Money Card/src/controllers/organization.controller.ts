@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/database.js';
 import { sendError, sendSuccess } from '../utils/response.js';
-import { Role, UserStatus } from '@prisma/client';
+import { Role, UserStatus, PermissionCode } from '@prisma/client';
 import { getEffectiveLimits, formatSubscription } from '../utils/limits.js';
+import { hashPassword } from '../utils/crypto.js';
 
 export async function getOrganizationProfile(req: Request, res: Response) {
   const orgId = req.user?.organizationId;
@@ -145,9 +146,18 @@ export async function createBranch(req: Request, res: Response) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'User has no associated organization');
   }
 
-  const { name, location } = req.body;
+  const { name, location, phone, password } = req.body;
   if (!name || !name.trim()) {
-    return sendError(res, 400, 'VALIDATION_ERROR', 'Branch name is required');
+    return sendError(res, 400, 'VALIDATION_ERROR', 'Counter name is required');
+  }
+
+  const cleanPhone = phone ? phone.trim().replace(/\D/g, '') : undefined;
+  if (cleanPhone && (cleanPhone.length < 10 || cleanPhone.length > 15)) {
+    return sendError(res, 400, 'VALIDATION_ERROR', 'Phone number must be at least 10 digits');
+  }
+
+  if (password && (password.length < 6 || password.length > 30)) {
+    return sendError(res, 400, 'VALIDATION_ERROR', 'Password must be between 6 and 30 characters');
   }
 
   // Authoritative Effective Branch Limit Check
@@ -161,11 +171,29 @@ export async function createBranch(req: Request, res: Response) {
       res,
       409,
       'BRANCH_LIMIT_REACHED',
-      `Your organization has reached its branch limit of ${effectiveLimits.branchLimit}. Please upgrade your plan or request a custom limit override to create more branches.`,
+      `Your organization has reached its counter limit of ${effectiveLimits.branchLimit}. Please upgrade your plan or request a custom limit override to create more counters.`,
     );
   }
 
-  const branch = await prisma.$transaction(async (tx) => {
+  // Check if phone number is already registered by another organization
+  if (cleanPhone) {
+    const existingUser = await prisma.user.findUnique({
+      where: { phone: cleanPhone },
+    });
+    if (existingUser && existingUser.organizationId && existingUser.organizationId !== orgId) {
+      return sendError(
+        res,
+        409,
+        'PHONE_IN_USE',
+        'This phone number is already registered with another organization.',
+      );
+    }
+  }
+
+  const effectivePassword = password || '123456';
+  const passwordHash = await hashPassword(effectivePassword);
+
+  const result = await prisma.$transaction(async (tx) => {
     const countInTx = await tx.branch.count({ where: { organizationId: orgId } });
     if (countInTx >= effectiveLimits.branchLimit) {
       throw new Error('BRANCH_LIMIT_REACHED');
@@ -190,10 +218,96 @@ export async function createBranch(req: Request, res: Response) {
       }).catch(() => {});
     }
 
+    // Provision or update counter manager account if phone is provided
+    if (cleanPhone) {
+      let counterUser = await tx.user.findUnique({
+        where: { phone: cleanPhone },
+      });
+
+      if (!counterUser) {
+        counterUser = await tx.user.create({
+          data: {
+            name: `${name.trim()} Counter Manager`,
+            phone: cleanPhone,
+            passwordHash,
+            role: Role.STAFF,
+            organizationId: orgId,
+            status: UserStatus.ACTIVE,
+          },
+        });
+      } else {
+        await tx.user.update({
+          where: { id: counterUser.id },
+          data: {
+            passwordHash,
+            status: UserStatus.ACTIVE,
+          },
+        });
+      }
+
+      // Assign counter management permissions
+      const defaultPermissions: PermissionCode[] = [
+        PermissionCode.CARD_VIEW,
+        PermissionCode.CARD_ISSUE,
+        PermissionCode.CARD_RETURN,
+        PermissionCode.CARD_BLOCK,
+        PermissionCode.CARD_UNBLOCK,
+        PermissionCode.SESSION_VIEW,
+        PermissionCode.RECHARGE,
+        PermissionCode.PURCHASE,
+        PermissionCode.REFUND,
+        PermissionCode.PRODUCT_VIEW,
+        PermissionCode.PRODUCT_MANAGE,
+        PermissionCode.INVENTORY_VIEW,
+        PermissionCode.INVENTORY_MANAGE,
+        PermissionCode.VIEW_ANALYTICS,
+        PermissionCode.VIEW_REPORTS,
+        PermissionCode.STAFF_VIEW,
+      ];
+
+      for (const perm of defaultPermissions) {
+        await tx.userPermission.upsert({
+          where: {
+            userId_permission: {
+              userId: counterUser.id,
+              permission: perm,
+            },
+          },
+          create: {
+            userId: counterUser.id,
+            permission: perm,
+          },
+          update: {},
+        }).catch(() => {});
+      }
+
+      // Link counter user with this branch
+      await tx.userBranch.upsert({
+        where: {
+          userId_branchId: {
+            userId: counterUser.id,
+            branchId: created.id,
+          },
+        },
+        create: {
+          userId: counterUser.id,
+          branchId: created.id,
+        },
+        update: {},
+      }).catch(() => {});
+    }
+
     return created;
   });
 
-  return sendSuccess(res, branch, 201);
+  return sendSuccess(res, {
+    ...result,
+    credentials: cleanPhone ? {
+      name: result.name,
+      phone: cleanPhone,
+      password: effectivePassword,
+    } : undefined,
+  }, 201);
 }
 
 export async function getBranchById(req: Request, res: Response) {
