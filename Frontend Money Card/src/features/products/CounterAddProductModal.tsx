@@ -14,8 +14,6 @@ interface CounterAddProductModalProps {
 
 type FoodType = 'Veg' | 'Non-Veg' | 'Drink';
 
-const QUICK_TAGS = ['Fast Food', 'Snack', 'Lunch', 'Breakfast', 'Beverages', 'Dessert'];
-
 export function CounterAddProductModal({
   isOpen,
   onClose,
@@ -25,7 +23,6 @@ export function CounterAddProductModal({
   const [itemName, setItemName] = useState('');
   const [price, setPrice] = useState('');
   const [foodType, setFoodType] = useState<FoodType>('Veg');
-  const [customCategory, setCustomCategory] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -36,7 +33,6 @@ export function CounterAddProductModal({
       setItemName('');
       setPrice('');
       setFoodType('Veg');
-      setCustomCategory('');
       setApiError(null);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
@@ -64,9 +60,6 @@ export function CounterAddProductModal({
 
     try {
       const categories: string[] = [foodType];
-      if (customCategory.trim() && !categories.includes(customCategory.trim())) {
-        categories.push(customCategory.trim());
-      }
 
       const res = await apiService.products.createProduct({
         itemName: trimmedName,
@@ -96,7 +89,6 @@ export function CounterAddProductModal({
       isOpen={isOpen}
       onClose={() => !isSubmitting && onClose()}
       title="Add Menu Item"
-      description={`Add a new item to ${branch.name}`}
       size="sm"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -188,29 +180,6 @@ export function CounterAddProductModal({
               <span>☕</span>
               <span>Drink</span>
             </button>
-          </div>
-        </div>
-
-        {/* Quick Category Tags */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Category Tag (Optional)
-          </label>
-          <div className="flex flex-wrap gap-1.5 mb-2">
-            {QUICK_TAGS.map((tag) => (
-              <button
-                key={tag}
-                type="button"
-                onClick={() => setCustomCategory(customCategory === tag ? '' : tag)}
-                className={`text-[11px] px-2.5 py-1 rounded-lg border font-medium transition-colors cursor-pointer ${
-                  customCategory === tag
-                    ? 'border-slate-800 bg-slate-800 text-white'
-                    : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                {tag}
-              </button>
-            ))}
           </div>
         </div>
 

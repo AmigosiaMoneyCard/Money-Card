@@ -1,17 +1,20 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiService } from '@/services/api';
-import { usePermissions } from '@/hooks';
+import { usePermissions, useAuth, useBranch } from '@/hooks';
 import type { Branch, ProductWithInventory } from '@/types';
-import { Button, LoadingState, EmptyState } from '@/components/ui';
-import { notify } from '@/utils';
+import { Button, LoadingState, EmptyState, Badge } from '@/components/ui';
+import { notify, formatCurrency } from '@/utils';
 import { UnauthorizedPage } from '@/features/auth';
 import {
   Search,
   Plus,
   Building2,
   Eye,
+  Edit2,
+  Trash2,
+  Check,
+  X,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { CounterAddProductModal } from './CounterAddProductModal';
 import { CounterViewEditMenuModal } from './CounterViewEditMenuModal';
 
@@ -19,46 +22,287 @@ interface ProductsPageProps {
   defaultTab?: string;
 }
 
+// ─── Counter Staff View (Counter Dashboard Scope) ──────────────────────────
+function CounterStaffMenuView({
+  branch,
+  canManage,
+}: {
+  branch: Branch | null;
+  canManage: boolean;
+}) {
+  const [products, setProducts] = useState<ProductWithInventory[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPrice, setEditPrice] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const fetchItems = useCallback(async () => {
+    if (!branch) return;
+    setIsLoading(true);
+    try {
+      const res = await apiService.products.getProducts({ branchId: branch.id });
+      if (res.success) {
+        const items = Array.isArray(res.data) ? res.data : (res.data as any)?.items || [];
+        setProducts(items);
+      }
+    } catch {
+      notify.error('Failed to load menu items');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [branch]);
+
+  useEffect(() => {
+    fetchItems();
+  }, [fetchItems]);
+
+  const filtered = products.filter((p) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase().trim();
+    return p.itemName.toLowerCase().includes(q);
+  });
+
+  const handleToggle = async (item: ProductWithInventory) => {
+    const nextStatus = item.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+    try {
+      const res = await apiService.products.updateProduct(item.id, { status: nextStatus });
+      if (res.success) {
+        setProducts((prev) =>
+          prev.map((p) => (p.id === item.id ? { ...p, status: nextStatus } : p)),
+        );
+        notify.success(`"${item.itemName}" is now ${nextStatus}`);
+      }
+    } catch {
+      notify.error('Failed to update status');
+    }
+  };
+
+  const handleStartEdit = (item: ProductWithInventory) => {
+    setEditingId(item.id);
+    setEditName(item.itemName);
+    setEditPrice(item.price.toString());
+  };
+
+  const handleSaveEdit = async (id: string) => {
+    if (!editName.trim()) return;
+    const num = parseFloat(editPrice);
+    if (isNaN(num) || num <= 0) return;
+    setIsUpdating(true);
+    try {
+      const res = await apiService.products.updateProduct(id, {
+        itemName: editName.trim(),
+        price: Math.round(num),
+      });
+      if (res.success) {
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.id === id ? { ...p, itemName: editName.trim(), price: Math.round(num) } : p,
+          ),
+        );
+        setEditingId(null);
+        notify.success('Item updated');
+      }
+    } catch {
+      notify.error('Failed to update item');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+    try {
+      const res = await apiService.products.deleteProduct(id);
+      if (res.success) {
+        setProducts((prev) => prev.filter((p) => p.id !== id));
+        notify.success(`"${name}" deleted`);
+      }
+    } catch {
+      notify.error('Failed to delete item');
+    }
+  };
+
+  if (!branch) {
+    return (
+      <div className="py-12 bg-white rounded-2xl border border-slate-200 text-center">
+        <p className="text-sm text-slate-500">No counter assigned to your account.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5 max-w-5xl mx-auto pb-10">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-4">
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-bold text-slate-900">{branch.name} Menu</h1>
+          <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold text-xs px-2.5 py-0.5">
+            Counter Scope
+          </Badge>
+        </div>
+
+        {canManage && (
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setShowAddModal(true)}
+            className="text-xs h-8 px-3 cursor-pointer"
+            leftIcon={<Plus className="h-3.5 w-3.5" />}
+          >
+            Add Menu Item
+          </Button>
+        )}
+      </div>
+
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+        <input
+          type="text"
+          placeholder="Search items..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:outline-hidden"
+        />
+      </div>
+
+      {isLoading ? (
+        <div className="py-12 bg-white rounded-2xl border border-slate-200">
+          <LoadingState message="Loading counter menu..." />
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="py-12 bg-white rounded-2xl border border-slate-200">
+          <EmptyState
+            title="No menu items"
+            description={searchQuery ? 'No items match your search.' : 'Add your first menu item.'}
+          />
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs divide-y divide-slate-100 overflow-hidden">
+          {filtered.map((p) => {
+            const isEditing = editingId === p.id;
+            const isVeg = Array.isArray(p.category) && p.category.some((c) => c.toLowerCase() === 'veg');
+            const isDrink = Array.isArray(p.category) && p.category.some((c) => c.toLowerCase() === 'drink' || c.toLowerCase() === 'beverage');
+
+            if (isEditing) {
+              return (
+                <div key={p.id} className="p-3 bg-emerald-50/30 flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="flex-1 rounded-lg border border-slate-300 px-2 py-1 text-xs"
+                  />
+                  <input
+                    type="number"
+                    value={editPrice}
+                    onChange={(e) => setEditPrice(e.target.value)}
+                    className="w-20 rounded-lg border border-slate-300 px-2 py-1 text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleSaveEdit(p.id)}
+                    disabled={isUpdating}
+                    className="p-1 rounded bg-emerald-600 text-white hover:bg-emerald-700"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingId(null)}
+                    className="p-1 rounded text-slate-500 hover:bg-slate-200"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              );
+            }
+
+            return (
+              <div key={p.id} className="p-3 flex items-center justify-between hover:bg-slate-50/60">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span>{isDrink ? '☕' : isVeg ? '🟢' : '🔴'}</span>
+                  <span className="font-semibold text-xs text-slate-900">{p.itemName}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-xs font-bold text-slate-900">{formatCurrency(p.price)}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleToggle(p)}
+                    className={`relative inline-flex h-5 w-9 rounded-full transition-colors cursor-pointer ${
+                      p.status === 'ACTIVE' ? 'bg-emerald-600' : 'bg-slate-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                        p.status === 'ACTIVE' ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                  {canManage && (
+                    <button
+                      type="button"
+                      onClick={() => handleStartEdit(p)}
+                      className="p-1 text-slate-400 hover:text-emerald-700"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  {canManage && (
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(p.id, p.itemName)}
+                      className="p-1 text-slate-400 hover:text-rose-600"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <CounterAddProductModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        branch={branch}
+        onSuccess={fetchItems}
+      />
+    </div>
+  );
+}
+
+// ─── Main Products Page ───────────────────────────────────────────────────
 export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}) {
-  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { currentBranch } = useBranch();
   const { hasPermission } = usePermissions();
 
+  const isCounterView = user?.role === 'STAFF';
   const canViewProducts = hasPermission('PRODUCT_VIEW');
   const canManageProducts = hasPermission('PRODUCT_MANAGE');
 
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [products, setProducts] = useState<ProductWithInventory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
 
-  // Modals state
+  // Modals state for Org Admin
   const [selectedBranchForAdd, setSelectedBranchForAdd] = useState<Branch | null>(null);
   const [selectedBranchForViewEdit, setSelectedBranchForViewEdit] = useState<Branch | null>(null);
-  const [togglingBranchId, setTogglingBranchId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
-      const [branchRes, prodRes] = await Promise.all([
-        apiService.branches.getBranches(),
-        apiService.products.getProducts({}),
-      ]);
-
+      const branchRes = await apiService.branches.getBranches();
       if (branchRes.success) {
         const bItems = Array.isArray(branchRes.data)
           ? branchRes.data
           : (branchRes.data as any)?.items || [];
         setBranches(bItems);
       }
-
-      if (prodRes.success) {
-        const pItems = Array.isArray(prodRes.data)
-          ? prodRes.data
-          : (prodRes.data as any)?.items || [];
-        setProducts(pItems);
-      }
     } catch {
-      notify.error('Failed to load menu and counters data');
+      notify.error('Failed to load counters data');
     } finally {
       setIsLoading(false);
     }
@@ -68,110 +312,49 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
     fetchData();
   }, [fetchData]);
 
-  // Map item count per branch
-  const branchProductCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    products.forEach((p) => {
-      if (p.branchId) {
-        counts.set(p.branchId, (counts.get(p.branchId) || 0) + 1);
-      }
-    });
-    return counts;
-  }, [products]);
-
-  // Filtered branches
+  // Filtered branches for Org Admin
   const filteredBranches = useMemo(() => {
     return branches.filter((b) => {
-      if (statusFilter !== 'ALL' && b.status !== statusFilter) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         return b.name.toLowerCase().includes(q) || (b.location && b.location.toLowerCase().includes(q));
       }
       return true;
     });
-  }, [branches, searchQuery, statusFilter]);
-
-  const handleToggleBranchStatus = async (branch: Branch) => {
-    const nextStatus = branch.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    setTogglingBranchId(branch.id);
-    try {
-      const res = await apiService.branches.updateBranch(branch.id, { status: nextStatus });
-      if (res.success) {
-        setBranches((prev) =>
-          prev.map((b) => (b.id === branch.id ? { ...b, status: nextStatus } : b)),
-        );
-        notify.success(`Counter "${branch.name}" is now ${nextStatus.toLowerCase()}`);
-      } else {
-        notify.error(res.error.message || 'Failed to update counter status');
-      }
-    } catch {
-      notify.error('Failed to update counter status');
-    } finally {
-      setTogglingBranchId(null);
-    }
-  };
+  }, [branches, searchQuery]);
 
   if (!canViewProducts) {
     return <UnauthorizedPage />;
   }
 
+  // If user is Staff (Counter Admin / Terminal View), show Counter Staff Menu View
+  if (isCounterView) {
+    const userBranchId = user?.assignedBranchIds?.[0] || currentBranch?.id;
+    const staffBranch = branches.find((b) => b.id === userBranchId) || branches[0] || null;
+    return <CounterStaffMenuView branch={staffBranch} canManage={canManageProducts} />;
+  }
+
+  // Org Admin Table View (3 Columns Only)
   return (
     <div className="space-y-5 max-w-6xl mx-auto pb-10">
       {/* ─── Minimal Header ─── */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-4">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Menu Management</h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Configure food items, menus, and live availability counter-by-counter.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/branches')}
-            className="text-xs h-8 px-3"
-            leftIcon={<Building2 className="h-3.5 w-3.5 text-slate-500" />}
-          >
-            Manage Counters
-          </Button>
-        </div>
+      <div className="border-b border-slate-200/80 pb-3">
+        <h1 className="text-xl font-bold text-slate-900 tracking-tight">Menu Management</h1>
       </div>
 
-      {/* ─── Search & Status Filters ─── */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search counters..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
-          />
-        </div>
-
-        {/* Filter pills */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200/60 self-start sm:self-auto">
-          {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                statusFilter === s
-                  ? 'bg-white text-slate-900 shadow-2xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              {s === 'ALL' ? 'All Counters' : s === 'ACTIVE' ? 'Active' : 'Inactive'}
-            </button>
-          ))}
-        </div>
+      {/* ─── Search Bar ─── */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+        <input
+          type="text"
+          placeholder="Search counters..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
+        />
       </div>
 
-      {/* ─── Minimal Table ─── */}
+      {/* ─── Minimal Table (3 Columns Only) ─── */}
       {isLoading ? (
         <div className="py-12 bg-white rounded-2xl border border-slate-200/80">
           <LoadingState message="Loading cafeteria counters..." />
@@ -189,28 +372,21 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-          {/* Desktop Table View */}
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   <th className="py-3 px-4 min-w-[200px]">Counter Name</th>
                   <th className="py-3 px-4 text-center w-[130px]">Add Item</th>
-                  <th className="py-3 px-4 text-center w-[180px]">View Menu / Edit</th>
-                  <th className="py-3 px-4 text-right w-[150px]">Active / Inactive</th>
+                  <th className="py-3 px-4 text-right w-[180px]">View Menu / Edit</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredBranches.map((branch) => {
-                  const itemCount = branchProductCounts.get(branch.id) || 0;
-                  const isActive = branch.status === 'ACTIVE';
-
                   return (
                     <tr
                       key={branch.id}
-                      className={`hover:bg-slate-50/60 transition-colors ${
-                        !isActive ? 'opacity-70 bg-slate-50/30' : ''
-                      }`}
+                      className="hover:bg-slate-50/60 transition-colors"
                     >
                       {/* 1. Counter Name */}
                       <td className="py-3.5 px-4">
@@ -218,15 +394,9 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
                           <div className="h-8 w-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
                             <Building2 className="h-4 w-4" />
                           </div>
-                          <div>
-                            <span className="font-semibold text-sm text-slate-900 block">
-                              {branch.name}
-                            </span>
-                            <span className="text-[11px] text-slate-500 font-medium">
-                              {itemCount} {itemCount === 1 ? 'item' : 'items'}
-                              {branch.location ? ` • ${branch.location}` : ''}
-                            </span>
-                          </div>
+                          <span className="font-semibold text-sm text-slate-900">
+                            {branch.name}
+                          </span>
                         </div>
                       </td>
 
@@ -237,7 +407,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
                             variant="outline"
                             size="sm"
                             onClick={() => setSelectedBranchForAdd(branch)}
-                            className="text-xs h-7 px-2.5 rounded-lg border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 font-semibold"
+                            className="text-xs h-7 px-2.5 rounded-lg border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 font-semibold cursor-pointer"
                             leftIcon={<Plus className="h-3.5 w-3.5 text-emerald-600" />}
                           >
                             Add
@@ -246,47 +416,16 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
                       </td>
 
                       {/* 3. View Menu / Edit */}
-                      <td className="py-3.5 px-4 text-center">
+                      <td className="py-3.5 px-4 text-right">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => setSelectedBranchForViewEdit(branch)}
-                          className="text-xs h-7 px-3 rounded-lg text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200 font-medium"
+                          className="text-xs h-7 px-3 rounded-lg text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200 font-medium cursor-pointer"
                           leftIcon={<Eye className="h-3.5 w-3.5 text-slate-500" />}
                         >
                           View Menu / Edit
                         </Button>
-                      </td>
-
-                      {/* 4. Active / Inactive Switch */}
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="inline-flex items-center gap-2 justify-end">
-                          <span
-                            className={`text-xs font-semibold ${
-                              isActive ? 'text-emerald-700' : 'text-slate-400'
-                            }`}
-                          >
-                            {isActive ? 'Active' : 'Inactive'}
-                          </span>
-
-                          {canManageProducts && (
-                            <button
-                              type="button"
-                              onClick={() => handleToggleBranchStatus(branch)}
-                              disabled={togglingBranchId === branch.id}
-                              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                                isActive ? 'bg-emerald-600' : 'bg-slate-300'
-                              } ${togglingBranchId === branch.id ? 'opacity-50' : ''}`}
-                              title={`Click to ${isActive ? 'deactivate' : 'activate'} counter`}
-                            >
-                              <span
-                                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                                  isActive ? 'translate-x-4' : 'translate-x-0'
-                                }`}
-                              />
-                            </button>
-                          )}
-                        </div>
                       </td>
                     </tr>
                   );
