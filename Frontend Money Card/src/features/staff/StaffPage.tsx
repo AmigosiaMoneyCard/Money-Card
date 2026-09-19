@@ -99,6 +99,8 @@ export function StaffPage() {
   // ── Counter Staff Grouping State ───────────────────────────
   const [selectedCounterGroup, setSelectedCounterGroup] = useState<CounterStaffGroup | null>(null);
   const [showCounterStaffModal, setShowCounterStaffModal] = useState(false);
+  const [modalCounterSearch, setModalCounterSearch] = useState('');
+  const [togglingStaffId, setTogglingStaffId] = useState<string | null>(null);
 
   const handleOpenStaffDetails = (staff: Staff) => {
     setSelectedStaff(staff);
@@ -107,11 +109,60 @@ export function StaffPage() {
 
   const handleOpenCounterStaff = (group: CounterStaffGroup) => {
     setSelectedCounterGroup(group);
-    if (group.staff.length === 1) {
-      setSelectedStaff(group.staff[0]);
-      setShowStaffDetailsModal(true);
-    } else {
-      setShowCounterStaffModal(true);
+    setModalCounterSearch('');
+    setShowCounterStaffModal(true);
+  };
+
+  const handleToggleStaffStatus = async (staff: Staff) => {
+    if (!canManage) return;
+    const newStatus = staff.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+    setTogglingStaffId(staff.id);
+
+    // Optimistic UI update
+    setStaffList((prev) =>
+      prev.map((s) => (s.id === staff.id ? { ...s, status: newStatus } : s)),
+    );
+    if (selectedCounterGroup) {
+      setSelectedCounterGroup((prev) =>
+        prev
+          ? {
+              ...prev,
+              staff: prev.staff.map((s) => (s.id === staff.id ? { ...s, status: newStatus } : s)),
+            }
+          : null,
+      );
+    }
+
+    try {
+      const res = await apiService.staff.updateStaff(staff.id, { status: newStatus });
+      if (!res.success) {
+        setStaffList((prev) =>
+          prev.map((s) => (s.id === staff.id ? { ...s, status: staff.status } : s)),
+        );
+        if (selectedCounterGroup) {
+          setSelectedCounterGroup((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  staff: prev.staff.map((s) => (s.id === staff.id ? { ...s, status: staff.status } : s)),
+                }
+              : null,
+          );
+        }
+        notify.error(res.error.message || 'Failed to change staff status');
+        return;
+      }
+
+      notify.success(
+        `Staff member ${staff.name} is now ${newStatus === 'ACTIVE' ? 'Active' : 'Inactive'}`,
+      );
+    } catch {
+      setStaffList((prev) =>
+        prev.map((s) => (s.id === staff.id ? { ...s, status: staff.status } : s)),
+      );
+      notify.error('An unexpected error occurred while updating status.');
+    } finally {
+      setTogglingStaffId(null);
     }
   };
 
@@ -275,12 +326,26 @@ export function StaffPage() {
       : branches;
 
     const groups: CounterStaffGroup[] = [];
+    const q = searchQuery.toLowerCase().trim();
 
     targetBranches.forEach((branch) => {
+      const isBranchNameMatch = q ? branch.name.toLowerCase().includes(q) : false;
       const assigned = filteredStaff.filter(
         (s) => Array.isArray(s.assignedBranchIds) && s.assignedBranchIds.includes(branch.id),
       );
-      if (!searchQuery && statusFilter === 'ALL') {
+      if (isBranchNameMatch) {
+        const branchStaff = staffList.filter(
+          (s) =>
+            Array.isArray(s.assignedBranchIds) &&
+            s.assignedBranchIds.includes(branch.id) &&
+            (statusFilter === 'ALL' || s.status === statusFilter),
+        );
+        groups.push({
+          id: branch.id,
+          counterName: branch.name,
+          staff: branchStaff,
+        });
+      } else if (!q && statusFilter === 'ALL') {
         groups.push({
           id: branch.id,
           counterName: branch.name,
@@ -310,7 +375,7 @@ export function StaffPage() {
     }
 
     return groups;
-  }, [branches, scopedBranches, filteredStaff, isCounterView, staffBranchFilter, searchQuery, statusFilter]);
+  }, [branches, scopedBranches, filteredStaff, staffList, isCounterView, staffBranchFilter, searchQuery, statusFilter]);
 
   // If user lacks STAFF_VIEW permission, block access
   if (!canView) {
@@ -978,6 +1043,28 @@ export function StaffPage() {
     notify.success(`Activity log for ${selectedStaffForAudit.name} exported as CSV.`);
   };
 
+  // ── Modal Filtered Staff & Counter Matching ────────────────
+  const displayedModalStaff = useMemo(() => {
+    if (!selectedCounterGroup) return [];
+    if (!modalCounterSearch.trim()) return selectedCounterGroup.staff;
+    const q = modalCounterSearch.toLowerCase().trim();
+    return selectedCounterGroup.staff.filter(
+      (st) =>
+        st.name.toLowerCase().includes(q) ||
+        (st.phone && st.phone.includes(q)) ||
+        (st.permissions.includes('STAFF_MANAGE') && 'manager admin'.includes(q)) ||
+        'cashier pos'.includes(q),
+    );
+  }, [selectedCounterGroup, modalCounterSearch]);
+
+  const otherMatchingCounters = useMemo(() => {
+    if (!modalCounterSearch.trim() || !selectedCounterGroup) return [];
+    const q = modalCounterSearch.toLowerCase().trim();
+    return counterStaffGroups.filter(
+      (g) => g.id !== selectedCounterGroup.id && g.counterName.toLowerCase().includes(q),
+    );
+  }, [counterStaffGroups, selectedCounterGroup, modalCounterSearch]);
+
   // ── Table Columns (Counter-First & Minimal) ────────────────
   const columns = [
     {
@@ -995,16 +1082,19 @@ export function StaffPage() {
     {
       key: 'staffDetails',
       header: 'Staff Details',
+      className: 'text-right',
       render: (group: CounterStaffGroup) => (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleOpenCounterStaff(group)}
-          className="text-xs font-semibold py-1.5 px-3 rounded-lg border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 transition-all shadow-2xs cursor-pointer"
-          leftIcon={<Users className="h-3.5 w-3.5 text-emerald-600" />}
-        >
-          Staff Details {group.staff.length > 0 ? `(${group.staff.length})` : ''}
-        </Button>
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleOpenCounterStaff(group)}
+            className="text-xs font-semibold py-1.5 px-3 rounded-lg border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 transition-all shadow-2xs cursor-pointer"
+            leftIcon={<Users className="h-3.5 w-3.5 text-emerald-600" />}
+          >
+            Staff Details {group.staff.length > 0 ? `(${group.staff.length})` : ''}
+          </Button>
+        </div>
       ),
     },
   ];
@@ -1059,7 +1149,7 @@ export function StaffPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           <input
             type="text"
-            placeholder="Search staff by name, phone or email..."
+            placeholder="Search counters or staff by name, phone..."
             value={searchQuery}
             maxLength={30}
             onChange={(e) => setSearchQuery(e.target.value.slice(0, 30))}
@@ -1723,25 +1813,88 @@ export function StaffPage() {
         )}
       </Modal>
 
-      {/* ── COUNTER STAFF LIST MODAL (WHEN MULTIPLE STAFF EXIST) ── */}
+      {/* ── COUNTER STAFF LIST MODAL (EXPANDED & UNCLUTTERED UX) ── */}
       <Modal
         isOpen={showCounterStaffModal}
-        onClose={() => setShowCounterStaffModal(false)}
+        onClose={() => {
+          setShowCounterStaffModal(false);
+          setModalCounterSearch('');
+        }}
         title={selectedCounterGroup ? `${selectedCounterGroup.counterName} — Staff Details` : 'Staff Details'}
-        size="lg"
+        size="2xl"
       >
         {selectedCounterGroup && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-              <div className="flex items-center gap-2.5 text-xs text-slate-700 font-medium">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold">
-                  <Building2 className="h-3.5 w-3.5" />
+            {/* Top Search Bar for Searching Counters and Filtering Staff */}
+            <div className="space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-slate-50 p-2.5 sm:p-3 rounded-xl border border-slate-200">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Search counters (e.g. Main Cafeteria, Executive Lounge)..."
+                    value={modalCounterSearch}
+                    maxLength={35}
+                    onChange={(e) => setModalCounterSearch(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-white pl-9 pr-8 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none"
+                  />
+                  {modalCounterSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setModalCounterSearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      aria-label="Clear search"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
-                <span>Counter: <strong className="text-slate-900 font-semibold">{selectedCounterGroup.counterName}</strong></span>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {branches.length > 1 && (
+                    <CustomSelect
+                      value={selectedCounterGroup.id}
+                      onChange={(branchId) => {
+                        const targetGroup = counterStaffGroups.find((g) => g.id === branchId);
+                        if (targetGroup) {
+                          setSelectedCounterGroup(targetGroup);
+                          setModalCounterSearch('');
+                        }
+                      }}
+                      size="sm"
+                      className="min-w-[160px]"
+                      options={branches.map((b) => ({
+                        value: b.id,
+                        label: b.name,
+                        icon: <Building2 className="h-3.5 w-3.5 text-emerald-600" />,
+                      }))}
+                    />
+                  )}
+                  <Badge variant="outline" className="text-xs bg-white text-emerald-700 border-emerald-300 font-bold whitespace-nowrap">
+                    {displayedModalStaff.length} {displayedModalStaff.length === 1 ? 'Staff Account' : 'Staff Accounts'}
+                  </Badge>
+                </div>
               </div>
-              <Badge variant="outline" className="text-xs bg-white text-emerald-700 border-emerald-300 font-bold">
-                {selectedCounterGroup.staff.length} {selectedCounterGroup.staff.length === 1 ? 'Staff Account' : 'Staff Accounts'}
-              </Badge>
+
+              {otherMatchingCounters.length > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap px-1 text-[11px] text-slate-500">
+                  <span className="font-medium">Switch to counter:</span>
+                  {otherMatchingCounters.map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCounterGroup(g);
+                        setModalCounterSearch('');
+                      }}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 font-medium cursor-pointer transition-colors"
+                    >
+                      <Building2 className="h-3 w-3" />
+                      <span>{g.counterName} ({g.staff.length})</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {selectedCounterGroup.staff.length === 0 ? (
@@ -1755,6 +1908,7 @@ export function StaffPage() {
                     size="sm"
                     onClick={() => {
                       setShowCounterStaffModal(false);
+                      setModalCounterSearch('');
                       handleOpenAdd();
                     }}
                     leftIcon={<UserPlus className="h-3.5 w-3.5" />}
@@ -1764,32 +1918,43 @@ export function StaffPage() {
                   </Button>
                 )}
               </div>
+            ) : displayedModalStaff.length === 0 ? (
+              <div className="text-center py-8 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                <Search className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+                <p className="text-xs font-semibold text-slate-700">No staff accounts match "{modalCounterSearch}"</p>
+                <button
+                  type="button"
+                  onClick={() => setModalCounterSearch('')}
+                  className="mt-2 text-xs font-medium text-emerald-600 hover:text-emerald-700 underline cursor-pointer"
+                >
+                  Clear search filter
+                </button>
+              </div>
             ) : (
-              <div className="space-y-2.5 max-h-[55vh] overflow-y-auto pr-1">
-                {selectedCounterGroup.staff.map((st) => (
+              <div className="space-y-3 max-h-[58vh] overflow-y-auto pr-1">
+                {displayedModalStaff.map((st) => (
                   <div
                     key={st.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/20 transition-all gap-3"
+                    className="flex flex-col md:flex-row md:items-center justify-between p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/20 transition-all gap-3.5"
                   >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-sm font-bold text-white shadow-2xs">
+                    <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                      <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-sm sm:text-base font-bold text-white shadow-2xs">
                         {st.name.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-slate-900 text-sm break-words">{st.name}</span>
-                          <Badge variant={st.status === 'ACTIVE' ? 'success' : 'danger'} className="text-[10px] py-0 px-1.5 shrink-0">
-                            {st.status === 'ACTIVE' ? 'Active' : 'Inactive'}
-                          </Badge>
+                          <span className="font-bold text-slate-900 text-sm sm:text-base">{st.name}</span>
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5">
-                          <span>{st.permissions.includes('STAFF_MANAGE') ? 'Manager / Admin' : 'Cashier / POS'}</span>
-                          {st.phone && <span>• {st.phone}</span>}
+                        <div className="flex items-center gap-2.5 text-xs text-slate-500 mt-0.5 flex-wrap">
+                          <span className="font-medium text-slate-600">
+                            {st.permissions.includes('STAFF_MANAGE') ? 'Manager / Admin' : 'Cashier / POS'}
+                          </span>
+                          {st.phone && <span className="font-mono text-slate-500">• {st.phone}</span>}
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                    <div className="flex items-center gap-2 self-end md:self-center shrink-0 flex-wrap sm:flex-nowrap">
                       <Button
                         variant="outline"
                         size="sm"
@@ -1797,7 +1962,7 @@ export function StaffPage() {
                           setShowCounterStaffModal(false);
                           handleOpenStaffDetails(st);
                         }}
-                        className="text-xs h-7 px-2.5 font-medium border-slate-300 text-slate-700 hover:border-emerald-500 hover:bg-emerald-50 cursor-pointer"
+                        className="text-xs h-7.5 px-2.5 font-medium border-slate-300 text-slate-700 hover:border-emerald-500 hover:bg-emerald-50 cursor-pointer"
                       >
                         View Details
                       </Button>
@@ -1810,7 +1975,7 @@ export function StaffPage() {
                             handleOpenStaffModal(st, 'overview');
                           }}
                           leftIcon={<Edit2 className="h-3 w-3" />}
-                          className="text-xs h-7 px-2.5 font-medium cursor-pointer"
+                          className="text-xs h-7.5 px-2.5 font-medium cursor-pointer"
                         >
                           Edit
                         </Button>
@@ -1823,10 +1988,43 @@ export function StaffPage() {
                           handleOpenStaffAudit(st);
                         }}
                         leftIcon={<FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />}
-                        className="text-xs h-7 px-2.5 font-medium border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 cursor-pointer"
+                        className="text-xs h-7.5 px-2.5 font-medium border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 cursor-pointer"
                       >
                         Performance & Audit
                       </Button>
+
+                      {/* Active / Inactive Slide Switch */}
+                      <div className="flex items-center gap-2 pl-2.5 border-l border-slate-200">
+                        <span
+                          className={`text-xs font-semibold select-none ${
+                            st.status === 'ACTIVE' ? 'text-emerald-700' : 'text-slate-400'
+                          }`}
+                        >
+                          {st.status === 'ACTIVE' ? 'Active' : 'Inactive'}
+                        </span>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={st.status === 'ACTIVE'}
+                          disabled={!canManage || togglingStaffId === st.id}
+                          onClick={() => handleToggleStaffStatus(st)}
+                          className={`relative inline-flex h-5.5 w-10 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500/40 disabled:opacity-50 disabled:cursor-not-allowed ${
+                            st.status === 'ACTIVE' ? 'bg-emerald-600' : 'bg-slate-300'
+                          }`}
+                          title={
+                            st.status === 'ACTIVE'
+                              ? 'Click to slide Inactive'
+                              : 'Click to slide Active'
+                          }
+                        >
+                          <span
+                            aria-hidden="true"
+                            className={`pointer-events-none inline-block h-4 w-4 mt-[3px] rounded-full bg-white shadow-md transform ring-0 transition duration-200 ease-in-out ${
+                              st.status === 'ACTIVE' ? 'translate-x-[21px]' : 'translate-x-[3px]'
+                            }`}
+                          />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1834,7 +2032,14 @@ export function StaffPage() {
             )}
 
             <ModalFooter>
-              <Button variant="outline" size="sm" onClick={() => setShowCounterStaffModal(false)}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowCounterStaffModal(false);
+                  setModalCounterSearch('');
+                }}
+              >
                 Close
               </Button>
               {canManage && (
@@ -1844,6 +2049,7 @@ export function StaffPage() {
                   leftIcon={<UserPlus className="h-3.5 w-3.5" />}
                   onClick={() => {
                     setShowCounterStaffModal(false);
+                    setModalCounterSearch('');
                     handleOpenAdd();
                   }}
                 >
