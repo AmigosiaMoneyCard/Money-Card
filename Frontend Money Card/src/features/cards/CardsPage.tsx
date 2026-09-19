@@ -204,7 +204,12 @@ export function CardsPage() {
   }, [branches, counterSearchQuery]);
 
   const getBranchCards = useCallback((branchId: string) => {
-    return allCards.filter((c) => c.currentBranchId === branchId);
+    return allCards.filter((c) => {
+      if (c.activeSession?.branchId === branchId) return true;
+      if (c.currentBranchId === branchId) return true;
+      if (c.status === 'AVAILABLE' && (!c.currentBranchId || c.currentBranchId === branchId)) return true;
+      return false;
+    });
   }, [allCards]);
 
   const branchCardsForDetails = useMemo(() => {
@@ -216,7 +221,8 @@ export function CardsPage() {
       const couponId = (c.physicalCardNumber || c.qrToken || '').toLowerCase();
       const customer = (c.activeSession?.customerName || '').toLowerCase();
       const phone = (c.activeSession?.customerPhone || '').toLowerCase();
-      return couponId.includes(q) || customer.includes(q) || phone.includes(q);
+      const status = (c.status || '').toLowerCase();
+      return couponId.includes(q) || customer.includes(q) || phone.includes(q) || status.includes(q);
     });
   }, [selectedBranchForDetails, getBranchCards, modalSearchQuery]);
 
@@ -593,7 +599,7 @@ export function CardsPage() {
           isOpen={!!selectedBranchForDetails}
           onClose={() => setSelectedBranchForDetails(null)}
           title={`Card Details — ${selectedBranchForDetails.name}`}
-          size="lg"
+          size="xl"
         >
           <div className="space-y-4">
             {/* Search Bar inside Details Modal */}
@@ -627,7 +633,8 @@ export function CardsPage() {
                     <tr>
                       <th className="py-2.5 px-4">Coupon ID</th>
                       <th className="py-2.5 px-4">Status</th>
-                      <th className="py-2.5 px-4">Current User & Balance</th>
+                      <th className="py-2.5 px-4">Live Current User</th>
+                      <th className="py-2.5 px-4 text-right">Balance</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -636,7 +643,7 @@ export function CardsPage() {
                       return (
                         <tr key={card.id} className="hover:bg-slate-50/70 transition-colors">
                           {/* 1. Coupon ID (Clean without '#') */}
-                          <td className="py-3 px-4 font-mono font-bold text-slate-900 text-xs">
+                          <td className="py-3 px-4 font-mono font-bold text-slate-900 text-xs whitespace-nowrap">
                             {couponId}
                           </td>
 
@@ -656,20 +663,41 @@ export function CardsPage() {
                             )}
                           </td>
 
-                          {/* 3. Current User & Balance */}
+                          {/* 3. Live Current User */}
                           <td className="py-3 px-4">
                             {card.activeSession ? (
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-semibold text-slate-800">
-                                  {card.activeSession.customerName || 'Walk-in Customer'}
-                                </span>
-                                <span className="text-slate-400">—</span>
-                                <span className="font-mono font-bold text-emerald-600">
-                                  {formatCurrency(card.activeSession.balance)}
-                                </span>
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 shrink-0">
+                                  {(card.activeSession.customerName || 'W').charAt(0).toUpperCase()}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-slate-800 truncate leading-tight">
+                                    {card.activeSession.customerName || 'Walk-in Customer'}
+                                  </p>
+                                  {card.activeSession.customerPhone && (
+                                    <p className="text-[10px] text-slate-400 font-mono leading-tight">
+                                      {card.activeSession.customerPhone}
+                                    </p>
+                                  )}
+                                </div>
                               </div>
+                            ) : card.status === 'BLOCKED' ? (
+                              <span className="text-slate-400 font-medium text-[11px]">— (Security Locked)</span>
                             ) : (
-                              <span className="text-slate-400 font-medium">— (Ready)</span>
+                              <span className="text-slate-400 font-medium text-[11px]">— (Ready to Issue)</span>
+                            )}
+                          </td>
+
+                          {/* 4. Balance */}
+                          <td className="py-3 px-4 text-right">
+                            {card.activeSession ? (
+                              <span className="font-mono font-bold text-emerald-600 text-xs">
+                                {formatCurrency(card.activeSession.balance)}
+                              </span>
+                            ) : (
+                              <span className="font-mono font-medium text-slate-400 text-xs">
+                                {formatCurrency(0)}
+                              </span>
                             )}
                           </td>
                         </tr>
