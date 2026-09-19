@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Staff, Branch } from '@/types';
+import type { CounterStaffGroup } from '@/features/staff/StaffPage';
 
 describe('Staff Management Minimal Table & Counter-First Layout Tests', () => {
   const mockBranches: Branch[] = [
@@ -41,7 +42,7 @@ describe('Staff Management Minimal Table & Counter-First Layout Tests', () => {
       phone: '9876543211',
       email: 'staff@example.com',
       status: 'ACTIVE',
-      assignedBranchIds: ['branch-2'],
+      assignedBranchIds: ['branch-1'], // Both in branch-1
       permissions: ['CARD_VIEW', 'RECHARGE'],
       createdAt: '2026-09-10T10:00:00Z',
       updatedAt: '2026-09-10T10:00:00Z',
@@ -60,24 +61,50 @@ describe('Staff Management Minimal Table & Counter-First Layout Tests', () => {
     },
   ];
 
-  it('should correctly resolve counter names for each staff row without text cutoff', () => {
-    const resolveCounterName = (staff: Staff, branches: Branch[]) => {
-      const assigned = branches.filter((b) => staff.assignedBranchIds.includes(b.id));
-      return assigned.length > 0 ? assigned.map((b) => b.name).join(', ') : 'All Counters';
+  it('should group staff by counter and prevent repeating counter rows', () => {
+    // Option 1 grouping logic
+    const buildCounterGroups = (branches: Branch[], staff: Staff[]): CounterStaffGroup[] => {
+      const groups: CounterStaffGroup[] = [];
+      branches.forEach((b) => {
+        const assigned = staff.filter((s) => s.assignedBranchIds.includes(b.id));
+        groups.push({
+          id: b.id,
+          counterName: b.name,
+          staff: assigned,
+        });
+      });
+      return groups;
     };
 
-    expect(resolveCounterName(mockStaffList[0], mockBranches)).toBe('Main Cafeteria');
-    expect(resolveCounterName(mockStaffList[1], mockBranches)).toBe('Snack Bar');
-    expect(resolveCounterName(mockStaffList[2], mockBranches)).toBe('Main Cafeteria, Snack Bar');
+    const groups = buildCounterGroups(mockBranches, mockStaffList);
+    // Main Cafeteria has staff-1, staff-2, and staff-3 (3 staff accounts)
+    expect(groups.length).toBe(2);
+    expect(groups[0].counterName).toBe('Main Cafeteria');
+    expect(groups[0].staff.length).toBe(3);
+
+    // Snack Bar has staff-3 (1 staff account)
+    expect(groups[1].counterName).toBe('Snack Bar');
+    expect(groups[1].staff.length).toBe(1);
   });
 
-  it('should format staff role label accurately for detail modal', () => {
-    const getRoleLabel = (staff: Staff) => {
-      return staff.permissions.includes('STAFF_MANAGE') ? 'Manager / Admin' : 'Cashier / POS';
+  it('should format button label as "Staff Details (N)" without displaying raw names in the table cell', () => {
+    const getStaffDetailsButtonLabel = (group: CounterStaffGroup) => {
+      return `Staff Details ${group.staff.length > 0 ? `(${group.staff.length})` : ''}`.trim();
     };
 
-    expect(getRoleLabel(mockStaffList[0])).toBe('Cashier / POS');
-    expect(getRoleLabel(mockStaffList[2])).toBe('Manager / Admin');
+    const groupWithThree = {
+      id: 'branch-1',
+      counterName: 'Main Cafeteria',
+      staff: mockStaffList,
+    };
+    const groupWithZero = {
+      id: 'branch-empty',
+      counterName: 'Empty Counter',
+      staff: [],
+    };
+
+    expect(getStaffDetailsButtonLabel(groupWithThree)).toBe('Staff Details (3)');
+    expect(getStaffDetailsButtonLabel(groupWithZero)).toBe('Staff Details');
   });
 
   it('should verify the minimal 2-column table structure: Counter Name and Staff Details only', () => {
@@ -95,5 +122,21 @@ describe('Staff Management Minimal Table & Counter-First Layout Tests', () => {
     const modalActions = ['Close', 'Actions', 'Edit Staff'];
     expect(modalActions).toContain('Edit Staff');
     expect(modalActions).toContain('Actions');
+  });
+
+  it('should determine whether to open single staff details or counter staff list modal', () => {
+    const decideModalToOpen = (group: CounterStaffGroup) => {
+      if (group.staff.length === 1) {
+        return 'SINGLE_STAFF_DETAILS_MODAL';
+      }
+      return 'COUNTER_STAFF_LIST_MODAL';
+    };
+
+    expect(decideModalToOpen({ id: '1', counterName: 'Main', staff: [mockStaffList[0]] })).toBe(
+      'SINGLE_STAFF_DETAILS_MODAL',
+    );
+    expect(decideModalToOpen({ id: '2', counterName: 'Main', staff: mockStaffList })).toBe(
+      'COUNTER_STAFF_LIST_MODAL',
+    );
   });
 });
