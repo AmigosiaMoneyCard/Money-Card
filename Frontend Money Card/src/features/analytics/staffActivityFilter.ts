@@ -6,7 +6,7 @@ export interface FilterStaffActivitiesOptions {
   branchName?: string;  // Target branch name for fallback matching
   startDate?: string;
   endDate?: string;
-  typeFilter?: 'ALL' | 'CARD_ACTIVATION' | 'RECHARGE' | 'PURCHASE' | 'CARD_SETTLEMENT' | 'OTHER';
+  typeFilter?: 'ALL' | 'CARD_ACTIVATION' | 'RECHARGE' | 'PURCHASE' | 'CARD_SETTLEMENT' | 'REFUND' | 'OTHER';
   searchQuery?: string;
 }
 
@@ -43,12 +43,14 @@ function matchesActivityType(act: StaffActivityItem, typeFilter: string): boolea
   if (typeFilter === 'RECHARGE') return act.type.includes('RECHARGE');
   if (typeFilter === 'PURCHASE') return act.type === 'PURCHASE';
   if (typeFilter === 'CARD_SETTLEMENT') return act.type === 'CARD_SETTLEMENT';
+  if (typeFilter === 'REFUND') return act.type === 'REFUND';
   if (typeFilter === 'OTHER') {
     const isStandard =
       act.type === 'CARD_ACTIVATION' ||
       act.type.includes('RECHARGE') ||
       act.type === 'PURCHASE' ||
-      act.type === 'CARD_SETTLEMENT';
+      act.type === 'CARD_SETTLEMENT' ||
+      act.type === 'REFUND';
     return !isStandard;
   }
   return true;

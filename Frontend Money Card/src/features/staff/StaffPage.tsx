@@ -56,6 +56,14 @@ import {
   Trash2,
 } from 'lucide-react';
 
+const getTodayDateStr = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export interface CounterStaffGroup {
   id: string;
   counterName: string;
@@ -212,9 +220,9 @@ export function StaffPage() {
   // ── Staff Performance & Operational Audit State ───────────
   const [selectedStaffForAudit, setSelectedStaffForAudit] = useState<Staff | null>(null);
   const [staffPerformanceList, setStaffPerformanceList] = useState<StaffPerformanceMetric[]>([]);
-  const [auditStartDate, setAuditStartDate] = useState<string>('');
-  const [auditEndDate, setAuditEndDate] = useState<string>('');
-  const [auditActivityTypeFilter, setAuditActivityTypeFilter] = useState<'ALL' | 'CARD_ACTIVATION' | 'RECHARGE' | 'PURCHASE' | 'CARD_SETTLEMENT' | 'OTHER'>('ALL');
+  const [auditStartDate, setAuditStartDate] = useState<string>(getTodayDateStr);
+  const [auditEndDate, setAuditEndDate] = useState<string>(getTodayDateStr);
+  const [auditActivityTypeFilter, setAuditActivityTypeFilter] = useState<'ALL' | 'CARD_ACTIVATION' | 'RECHARGE' | 'PURCHASE' | 'CARD_SETTLEMENT' | 'REFUND' | 'OTHER'>('ALL');
   const [auditSearch, setAuditSearch] = useState('');
 
   // ── Validation & Error state ──────────────────────────────
@@ -893,8 +901,9 @@ export function StaffPage() {
 
   const handleOpenStaffAudit = async (staff: Staff) => {
     setSelectedStaffForAudit(staff);
-    setAuditStartDate('');
-    setAuditEndDate('');
+    const today = getTodayDateStr();
+    setAuditStartDate(today);
+    setAuditEndDate(today);
     setAuditActivityTypeFilter('ALL');
     setAuditSearch('');
 
@@ -2495,8 +2504,9 @@ export function StaffPage() {
             setSelectedStaffForAudit(null);
             setAuditActivityTypeFilter('ALL');
             setAuditSearch('');
-            setAuditStartDate('');
-            setAuditEndDate('');
+            const today = getTodayDateStr();
+            setAuditStartDate(today);
+            setAuditEndDate(today);
           }}
           title={`${selectedStaffForAudit.name} — Staff Performance & Operational Audit`}
           size="xl"
@@ -2533,7 +2543,7 @@ export function StaffPage() {
             </div>
 
             {/* Custom Time Range Filter Toolbar */}
-            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs">
               <div className="flex flex-wrap items-center gap-3">
                 <div>
                   <label className="mb-1 block text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
@@ -2559,8 +2569,22 @@ export function StaffPage() {
                   />
                 </div>
 
-                {(auditStartDate || auditEndDate) && (
-                  <div className="pt-4">
+                <div className="flex items-center gap-2 pt-4">
+                  {(auditStartDate !== getTodayDateStr() || auditEndDate !== getTodayDateStr()) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const today = getTodayDateStr();
+                        setAuditStartDate(today);
+                        setAuditEndDate(today);
+                      }}
+                      className="h-8.5 px-3 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-xs font-semibold text-emerald-700 transition-colors cursor-pointer"
+                    >
+                      Reset to Today
+                    </button>
+                  )}
+
+                  {(auditStartDate || auditEndDate) && (
                     <button
                       type="button"
                       onClick={() => {
@@ -2569,10 +2593,10 @@ export function StaffPage() {
                       }}
                       className="h-8.5 px-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-600 transition-colors cursor-pointer"
                     >
-                      Reset
+                      View All Time
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
 
@@ -2596,7 +2620,7 @@ export function StaffPage() {
               </div>
               <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
                 <span className="text-xs font-semibold text-slate-600 tracking-tight leading-snug">
-                  Card Recharges (POS)
+                  Card Recharges
                 </span>
                 <p className="font-mono text-xl font-bold text-emerald-600 mt-1.5">
                   {formatCurrency(auditMetrics.cardRechargeVolume)}
@@ -2604,7 +2628,7 @@ export function StaffPage() {
               </div>
               <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
                 <span className="text-xs font-semibold text-slate-600 tracking-tight leading-snug">
-                  POS Sales Billed
+                  Food Sales
                 </span>
                 <p className="font-mono text-xl font-bold text-emerald-600 mt-1.5">
                   {formatCurrency(auditMetrics.purchaseVolume)}
@@ -2625,11 +2649,11 @@ export function StaffPage() {
               <div className="flex flex-wrap items-center gap-1.5">
                 {[
                   { key: 'ALL', label: 'All Activities' },
-                  { key: 'CARD_ACTIVATION', label: 'Card Activations' },
-                  { key: 'RECHARGE', label: 'Recharges' },
-                  { key: 'PURCHASE', label: 'POS Sales' },
-                  { key: 'CARD_SETTLEMENT', label: 'Settlements' },
-                  { key: 'OTHER', label: 'Card Actions' },
+                  { key: 'CARD_ACTIVATION', label: 'Cards Activated' },
+                  { key: 'CARD_SETTLEMENT', label: 'Cards Settled' },
+                  { key: 'RECHARGE', label: 'Card Recharges' },
+                  { key: 'PURCHASE', label: 'Food Sales' },
+                  { key: 'REFUND', label: 'Refunds Processed' },
                 ].map((tab) => (
                   <button
                     key={tab.key}
@@ -2674,21 +2698,20 @@ export function StaffPage() {
 
             {/* Operational Activity Ledger Table */}
             <div className="max-h-[380px] overflow-y-auto overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
-              <table className="w-full min-w-[760px] text-left text-xs">
+              <table className="w-full min-w-[700px] text-left text-xs">
                 <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 text-[11px] font-semibold text-slate-600 backdrop-blur-xs">
                   <tr>
                     <th className="py-3 pl-4 pr-3 whitespace-nowrap">Date & Time</th>
                     <th className="px-3 py-3 whitespace-nowrap">Operation</th>
                     <th className="px-3 py-3 whitespace-nowrap">Coupon ID</th>
                     <th className="px-4 py-3">Customer</th>
-                    <th className="px-3 py-3 text-right whitespace-nowrap">Amount</th>
-                    <th className="py-3 pl-3 pr-4 whitespace-nowrap">Counter</th>
+                    <th className="py-3 pl-3 pr-4 text-right whitespace-nowrap">Amount</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-sans text-slate-700">
                   {filteredAuditActivities.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-12 text-center text-xs text-slate-500">
+                      <td colSpan={5} className="py-12 text-center text-xs text-slate-500">
                         No activity records found for this staff member matching selected criteria.
                       </td>
                     </tr>
@@ -2749,13 +2772,8 @@ export function StaffPage() {
                               </div>
                             ) : null}
                           </td>
-                          <td className="px-3 py-3.5 text-right font-mono font-bold text-slate-900 text-xs align-top">
+                          <td className="py-3.5 pl-3 pr-4 text-right font-mono font-bold text-slate-900 text-xs align-top">
                             {act.amount !== undefined ? formatCurrency(act.amount) : '—'}
-                          </td>
-                          <td className="py-3.5 pl-3 pr-4 align-top">
-                            <span className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 border border-slate-200/60">
-                              {act.branchName || 'Main Cafeteria'}
-                            </span>
                           </td>
                         </tr>
                       );
@@ -2773,8 +2791,9 @@ export function StaffPage() {
                   setSelectedStaffForAudit(null);
                   setAuditActivityTypeFilter('ALL');
                   setAuditSearch('');
-                  setAuditStartDate('');
-                  setAuditEndDate('');
+                  const today = getTodayDateStr();
+                  setAuditStartDate(today);
+                  setAuditEndDate(today);
                 }}
               >
                 Close
