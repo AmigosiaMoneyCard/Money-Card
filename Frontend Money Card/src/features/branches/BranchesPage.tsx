@@ -663,7 +663,7 @@ export function BranchesPage() {
       {/* Plan Usage Indicator (if available) */}
       {orgOverview?.usage && (
         <div className="text-xs text-slate-600 font-medium">
-          Counter Usage ({orgOverview.plan?.name || 'Standard'}):{' '}
+          Counter Usage:{' '}
           <strong className="text-slate-900">{orgOverview.usage.branchCount}</strong> /{' '}
           {orgOverview.usage.branchLimit} branches created
         </div>
@@ -807,7 +807,6 @@ export function BranchesPage() {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         title="Create New Counter"
-        description="Add a new food counter or service station with dedicated login credentials."
       >
         <form onSubmit={handleCreateSubmit} noValidate className="space-y-4">
           {modalApiError && (
@@ -834,7 +833,7 @@ export function BranchesPage() {
 
           <Input
             id="create-branch-phone"
-            label="Counter Mobile Number (Login ID)"
+            label="Mobile number"
             type="tel"
             maxLength={10}
             placeholder="e.g. 9876543210 (10-digit mobile)"
@@ -955,7 +954,6 @@ export function BranchesPage() {
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
         title="Edit Counter"
-        description={`Update information for ${selectedBranch?.name}.`}
       >
         <form onSubmit={handleEditSubmit} noValidate className="space-y-4">
           {modalApiError && (
@@ -1042,7 +1040,6 @@ export function BranchesPage() {
         isOpen={showDeleteModal}
         onClose={() => !isSubmitting && setShowDeleteModal(false)}
         title="Delete Counter"
-        description="Permanent removal or safe deactivation of counter"
         size="md"
       >
         <div className="space-y-4">
