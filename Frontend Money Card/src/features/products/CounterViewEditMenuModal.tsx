@@ -193,7 +193,6 @@ export function CounterViewEditMenuModal({
       isOpen={isOpen}
       onClose={onClose}
       title={`${branch.name} Menu`}
-      description={`Manage food catalog items and prices (${products.length} items)`}
       size="lg"
     >
       <div className="space-y-4">

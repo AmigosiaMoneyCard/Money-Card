@@ -32,7 +32,6 @@ import {
   MoreVertical,
   ChevronDown,
   X,
-  Layers,
   MessageSquare,
   Copy,
   Check,
@@ -40,7 +39,6 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { AllBranchesOverviewModal } from './AllBranchesOverviewModal';
 import { BranchDetailsModal } from './BranchDetailsModal';
 
 interface BranchActionMenuProps {
@@ -221,9 +219,6 @@ export function BranchesPage() {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteApiConflict, setDeleteApiConflict] = useState<boolean>(false);
-
-  // All Branches Consolidated Overview Modal state
-  const [showOverviewModal, setShowOverviewModal] = useState(false);
 
   // Individual Branch 360 End-to-End Details Modal state
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -600,22 +595,14 @@ export function BranchesPage() {
       key: 'name',
       header: 'Counter Name',
       render: (branch: Branch) => (
-        <button
-          type="button"
-          onClick={() => handleOpenBranchDetails(branch)}
-          className="flex items-center gap-3 text-left group cursor-pointer"
-          title={`Click to view details for ${branch.name}`}
-        >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 group-hover:bg-emerald-600 group-hover:text-white group-hover:border-emerald-600 transition-all">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
             <Building2 className="h-4 w-4" />
           </div>
-          <div>
-            <p className="font-bold text-slate-900 group-hover:text-emerald-700 transition-colors underline-offset-2 group-hover:underline">
-              {branch.name}
-            </p>
-            <p className="text-[11px] text-slate-400 group-hover:text-slate-600">Click to view details</p>
-          </div>
-        </button>
+          <p className="font-bold text-slate-900">
+            {branch.name}
+          </p>
+        </div>
       ),
     },
     {
@@ -661,16 +648,6 @@ export function BranchesPage() {
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
-          <Button
-            variant="outline"
-            onClick={() => setShowOverviewModal(true)}
-            leftIcon={<Layers className="h-4 w-4 text-emerald-600" />}
-            className="border-slate-200 hover:border-emerald-500 text-slate-700 bg-white shadow-2xs font-semibold cursor-pointer"
-            title="View consolidated overview across all counters"
-          >
-            End-to-End Overview
-          </Button>
-
           {canManage && (
             <Button
               variant="primary"
@@ -685,28 +662,11 @@ export function BranchesPage() {
 
       {/* Plan Usage Indicator (if available) */}
       {orgOverview?.usage && (
-        <Card padding="sm" className="bg-slate-50 border border-slate-200">
-          <div className="flex items-center justify-between text-xs font-medium">
-            <span className="text-slate-600">
-              Counter Usage ({orgOverview.plan?.name || 'Active Plan'}):
-            </span>
-            <span className="text-slate-800">
-              <strong className="text-emerald-600">{orgOverview.usage.branchCount}</strong> /{' '}
-              {orgOverview.usage.branchLimit} branches created
-            </span>
-          </div>
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
-            <div
-              className="h-full bg-emerald-600 transition-all duration-300"
-              style={{
-                width: `${Math.min(
-                  (orgOverview.usage.branchCount / orgOverview.usage.branchLimit) * 100,
-                  100,
-                )}%`,
-              }}
-            />
-          </div>
-        </Card>
+        <div className="text-xs text-slate-600 font-medium">
+          Counter Usage ({orgOverview.plan?.name || 'Standard'}):{' '}
+          <strong className="text-slate-900">{orgOverview.usage.branchCount}</strong> /{' '}
+          {orgOverview.usage.branchLimit} branches created
+        </div>
       )}
 
       {/* Filter / Search Bar */}
@@ -1140,20 +1100,6 @@ export function BranchesPage() {
           </ModalFooter>
         </div>
       </Modal>
-
-      {/* ── All Branches End-to-End Overview Modal ───────────────── */}
-      <AllBranchesOverviewModal
-        isOpen={showOverviewModal}
-        onClose={() => setShowOverviewModal(false)}
-        onOpenBranchMenu={(_branch) => {
-          setShowOverviewModal(false);
-          navigate('/products');
-        }}
-        onEditBranch={(branch) => {
-          setShowOverviewModal(false);
-          handleOpenEdit(branch);
-        }}
-      />
 
       {/* ── Individual Branch 360° End-to-End Details Modal ──────── */}
       <BranchDetailsModal
