@@ -270,6 +270,7 @@ export async function getMe(req: Request, res: Response) {
     return sendSuccess(res, {
       id: user.id,
       email: user.email,
+      phone: user.phone,
       name: user.name,
       role: user.role,
       organizationId: user.organizationId,

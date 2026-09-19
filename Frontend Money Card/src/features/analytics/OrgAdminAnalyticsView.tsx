@@ -1,4 +1,5 @@
-import { Eye, RefreshCw, BarChart3, CreditCard } from 'lucide-react';
+import { Eye, RefreshCw, BarChart3, CreditCard, Store } from 'lucide-react';
+import { useAuth } from '@/hooks';
 import { Button, Select, LoadingState, ErrorState } from '@/components/ui';
 import {
   OrgAdminFinancialSection,
@@ -24,6 +25,9 @@ export type StaffSortMetric =
   | 'name';
 
 export function OrgAdminAnalyticsView() {
+  const { user } = useAuth();
+  const isCounterStaff = user?.role === 'STAFF';
+
   const {
     branches,
     branchFilter,
@@ -53,29 +57,42 @@ export function OrgAdminAnalyticsView() {
     upiRechargeAmount,
   } = useOrgAdminAnalytics();
 
+  const assignedBranchName =
+    branches.find((b) => b.id === branchFilter)?.name ||
+    (branches.length > 0 ? branches[0].name : 'Assigned Counter');
+
   return (
     <div className="space-y-6">
       {/* ─── Header Bar: Title on Left, Filter Options & Actions on Right ─── */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-200 pb-5">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">Analytics</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+            {isCounterStaff ? 'Counter Analytics' : 'Analytics'}
+          </h1>
         </div>
 
         {/* Filter Controls: Cafeteria Filter + Custom Date Range + Actions */}
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Cafeteria Filter */}
-          <div className="w-44 sm:w-52">
-            <Select
-              id="analytics-cafeteria-filter"
-              value={branchFilter}
-              onChange={(e) => handleBranchChange(e.target.value)}
-              options={[
-                { value: 'ALL', label: 'All Cafeterias' },
-                ...branches.map((b) => ({ value: b.id, label: b.name })),
-              ]}
-              className="h-9 py-1.5 pl-3 pr-8 text-xs leading-normal font-medium"
-            />
-          </div>
+          {!isCounterStaff ? (
+            <div className="w-44 sm:w-52">
+              <Select
+                id="analytics-cafeteria-filter"
+                value={branchFilter}
+                onChange={(e) => handleBranchChange(e.target.value)}
+                options={[
+                  { value: 'ALL', label: 'All Cafeterias' },
+                  ...branches.map((b) => ({ value: b.id, label: b.name })),
+                ]}
+                className="h-9 py-1.5 pl-3 pr-8 text-xs leading-normal font-medium"
+              />
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800 shadow-2xs">
+              <Store className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+              <span className="truncate max-w-[160px]">{assignedBranchName}</span>
+            </div>
+          )}
 
           {/* Custom Date Pickers — always visible */}
           <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-lg border border-slate-200">

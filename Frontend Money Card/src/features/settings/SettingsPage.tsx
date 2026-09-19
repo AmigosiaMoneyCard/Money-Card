@@ -340,8 +340,7 @@ function CounterSettingsView({
     null;
 
   const counterName = assignedBranch?.name || 'Assigned Counter';
-  const managerName = profile?.name || user?.name || 'Counter Manager';
-  const phone = profile?.phone || user?.phone || 'N/A';
+  const phone = profile?.phone || user?.phone || assignedBranch?.phone || 'N/A';
   const branchId = assignedBranch?.id || profile?.assignedBranchIds?.[0] || user?.assignedBranchIds?.[0] || 'N/A';
   const orgName = profile?.organizationName || user?.organizationName || 'Cafeteria';
 
@@ -378,14 +377,6 @@ function CounterSettingsView({
 
           <div className="flex items-center justify-between border-b border-slate-200 pb-3">
             <div className="flex items-center gap-2 text-sm text-slate-600">
-              <UserCheck className="h-4 w-4 text-emerald-600" />
-              <span className="font-medium">Manager Name</span>
-            </div>
-            <span className="text-sm font-medium text-slate-800">{managerName}</span>
-          </div>
-
-          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-            <div className="flex items-center gap-2 text-sm text-slate-600">
               <Phone className="h-4 w-4 text-emerald-600" />
               <span className="font-medium">Phone Number</span>
             </div>
@@ -399,19 +390,12 @@ function CounterSettingsView({
             </code>
           </div>
 
-          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm text-slate-600">
               <Building2 className="h-4 w-4 text-emerald-600" />
               <span className="font-medium">Organization</span>
             </div>
             <span className="text-sm font-medium text-slate-800">{orgName}</span>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-600">Terminal Status</span>
-            <Badge variant="outline" className="border-emerald-200 text-emerald-700 bg-emerald-50/50">
-              Active Terminal
-            </Badge>
           </div>
         </CardContent>
       </Card>

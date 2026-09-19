@@ -27,7 +27,7 @@ export function AnalyticsPage() {
     return <SuperAdminAnalyticsView />;
   }
 
-  if (user?.role === 'ORG_ADMIN') {
+  if (user?.role === 'ORG_ADMIN' || user?.role === 'STAFF') {
     return <OrgAdminAnalyticsView />;
   }
 
