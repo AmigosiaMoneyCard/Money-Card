@@ -16,7 +16,6 @@ import type {
 import {
   Button,
   Input,
-  Select,
   Badge,
   Modal,
   ModalFooter,
@@ -213,8 +212,6 @@ export function StaffPage() {
   // ── Staff Performance & Operational Audit State ───────────
   const [selectedStaffForAudit, setSelectedStaffForAudit] = useState<Staff | null>(null);
   const [staffPerformanceList, setStaffPerformanceList] = useState<StaffPerformanceMetric[]>([]);
-  const [auditBranchFilter, setAuditBranchFilter] = useState<string>('ALL');
-  const [auditDatePreset, setAuditDatePreset] = useState<string>('all');
   const [auditStartDate, setAuditStartDate] = useState<string>('');
   const [auditEndDate, setAuditEndDate] = useState<string>('');
   const [auditActivityTypeFilter, setAuditActivityTypeFilter] = useState<'ALL' | 'CARD_ACTIVATION' | 'RECHARGE' | 'PURCHASE' | 'CARD_SETTLEMENT' | 'OTHER'>('ALL');
@@ -894,41 +891,8 @@ export function StaffPage() {
     return 'Staff';
   };
 
-  const getAuditPresetDates = (preset: string): { startDate: string; endDate: string } => {
-    const now = new Date();
-    const endStr = now.toISOString().split('T')[0];
-
-    if (preset === 'today') {
-      return { startDate: endStr, endDate: endStr };
-    }
-    if (preset === 'yesterday') {
-      const yest = new Date(now);
-      yest.setDate(yest.getDate() - 1);
-      const yestStr = yest.toISOString().split('T')[0];
-      return { startDate: yestStr, endDate: yestStr };
-    }
-    if (preset === 'last7') {
-      const start = new Date(now);
-      start.setDate(start.getDate() - 7);
-      return { startDate: start.toISOString().split('T')[0], endDate: endStr };
-    }
-    if (preset === 'last30') {
-      const start = new Date(now);
-      start.setDate(start.getDate() - 30);
-      return { startDate: start.toISOString().split('T')[0], endDate: endStr };
-    }
-    if (preset === 'thisMonth') {
-      const start = new Date(now.getFullYear(), now.getMonth(), 1);
-      return { startDate: start.toISOString().split('T')[0], endDate: endStr };
-    }
-
-    return { startDate: '', endDate: '' };
-  };
-
   const handleOpenStaffAudit = async (staff: Staff) => {
     setSelectedStaffForAudit(staff);
-    setAuditBranchFilter('ALL');
-    setAuditDatePreset('all');
     setAuditStartDate('');
     setAuditEndDate('');
     setAuditActivityTypeFilter('ALL');
@@ -977,21 +941,15 @@ export function StaffPage() {
     );
   }, [selectedStaffForAudit, staffPerformanceList, branches]);
 
-  const targetBranchName = useMemo(() => {
-    if (auditBranchFilter === 'ALL') return undefined;
-    return branches.find((b) => b.id === auditBranchFilter)?.name;
-  }, [auditBranchFilter, branches]);
-
   const scopedAuditActivities = useMemo(() => {
     if (!targetStaffMetric?.activities) return [];
     return filterStaffActivities({
       activities: targetStaffMetric.activities,
-      branchFilter: auditBranchFilter,
-      branchName: targetBranchName,
+      branchFilter: 'ALL',
       startDate: auditStartDate,
       endDate: auditEndDate,
     });
-  }, [targetStaffMetric, auditBranchFilter, targetBranchName, auditStartDate, auditEndDate]);
+  }, [targetStaffMetric, auditStartDate, auditEndDate]);
 
   const filteredAuditActivities = useMemo(() => {
     return filterStaffActivities({
@@ -2537,6 +2495,8 @@ export function StaffPage() {
             setSelectedStaffForAudit(null);
             setAuditActivityTypeFilter('ALL');
             setAuditSearch('');
+            setAuditStartDate('');
+            setAuditEndDate('');
           }}
           title={`${selectedStaffForAudit.name} — Staff Performance & Operational Audit`}
           size="xl"
@@ -2576,63 +2536,45 @@ export function StaffPage() {
               </div>
             </div>
 
-            {/* Interactive Filter Toolbar (Branch Scope & Time Window) */}
+            {/* Custom Time Range Filter Toolbar */}
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3">
-              <div className="flex flex-wrap items-center gap-3">
-                {/* Branch Scope */}
-                <div className="w-44">
-                  <label className="mb-1 block text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Counter Scope</label>
-                  <Select
-                    id="audit-branch-filter"
-                    value={auditBranchFilter}
-                    onChange={(e) => setAuditBranchFilter(e.target.value)}
-                    options={[
-                      { value: 'ALL', label: 'All Counters' },
-                      ...branches.map((b) => ({ value: b.id, label: b.name })),
-                    ]}
+              <div className="flex flex-wrap items-center gap-2.5">
+                <div>
+                  <label className="mb-1 block text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                    From Date
+                  </label>
+                  <input
+                    type="date"
+                    value={auditStartDate}
+                    onChange={(e) => setAuditStartDate(e.target.value)}
+                    className="h-8 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-800 focus:border-emerald-500 focus:outline-none"
                   />
                 </div>
 
-                {/* Time Window */}
-                <div className="w-40">
-                  <label className="mb-1 block text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Time Window</label>
-                  <Select
-                    id="audit-date-preset"
-                    value={auditDatePreset}
-                    onChange={(e) => {
-                      const preset = e.target.value;
-                      setAuditDatePreset(preset);
-                      const dates = getAuditPresetDates(preset);
-                      setAuditStartDate(dates.startDate);
-                      setAuditEndDate(dates.endDate);
-                    }}
-                    options={[
-                      { value: 'all', label: 'All Time' },
-                      { value: 'today', label: 'Today' },
-                      { value: 'yesterday', label: 'Yesterday' },
-                      { value: 'last7', label: 'Last 7 Days' },
-                      { value: 'last30', label: 'Last 30 Days' },
-                      { value: 'thisMonth', label: 'This Month' },
-                      { value: 'custom', label: 'Custom Range' },
-                    ]}
+                <div>
+                  <label className="mb-1 block text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                    To Date
+                  </label>
+                  <input
+                    type="date"
+                    value={auditEndDate}
+                    onChange={(e) => setAuditEndDate(e.target.value)}
+                    className="h-8 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-800 focus:border-emerald-500 focus:outline-none"
                   />
                 </div>
 
-                {auditDatePreset === 'custom' && (
-                  <div className="flex items-center gap-2 pt-3">
-                    <input
-                      type="date"
-                      value={auditStartDate}
-                      onChange={(e) => setAuditStartDate(e.target.value)}
-                      className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-800"
-                    />
-                    <span className="text-slate-400">to</span>
-                    <input
-                      type="date"
-                      value={auditEndDate}
-                      onChange={(e) => setAuditEndDate(e.target.value)}
-                      className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-800"
-                    />
+                {(auditStartDate || auditEndDate) && (
+                  <div className="pt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuditStartDate('');
+                        setAuditEndDate('');
+                      }}
+                      className="h-8 px-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-600 transition-colors cursor-pointer"
+                    >
+                      Reset
+                    </button>
                   </div>
                 )}
               </div>
@@ -2706,7 +2648,7 @@ export function StaffPage() {
                 <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Filter by card, customer, phone..."
+                  placeholder="Filter by coupon ID, customer..."
                   value={auditSearch}
                   maxLength={30}
                   onChange={(e) => {
@@ -2729,23 +2671,22 @@ export function StaffPage() {
             </div>
 
             {/* Operational Activity Ledger Table */}
-            <div className="max-h-[360px] overflow-y-auto rounded-lg border border-slate-200">
-              <table className="w-full text-left text-xs">
+            <div className="max-h-[360px] overflow-y-auto overflow-x-auto rounded-lg border border-slate-200">
+              <table className="w-full min-w-[540px] text-left text-xs">
                 <thead className="sticky top-0 border-b border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-600">
                   <tr>
                     <th className="py-2.5 pl-3 pr-2">Date & Time</th>
                     <th className="px-2 py-2.5">Operation</th>
-                    <th className="px-2 py-2.5">Card #</th>
+                    <th className="px-2 py-2.5">Coupon ID</th>
                     <th className="px-2 py-2.5">Customer</th>
                     <th className="px-2 py-2.5 text-right">Amount</th>
-                    <th className="px-2 py-2.5">Counter</th>
-                    <th className="py-2.5 pl-2 pr-3">Details / Remarks</th>
+                    <th className="py-2.5 pl-2 pr-3">Counter</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-sans text-slate-700">
                   {filteredAuditActivities.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-xs text-slate-500">
+                      <td colSpan={6} className="py-8 text-center text-xs text-slate-500">
                         No activity records found for this staff member matching selected criteria.
                       </td>
                     </tr>
@@ -2789,11 +2730,8 @@ export function StaffPage() {
                           <td className="px-2 py-2 text-right font-mono font-bold text-slate-900">
                             {act.amount !== undefined ? formatCurrency(act.amount) : '—'}
                           </td>
-                          <td className="px-2 py-2 text-slate-600">
+                          <td className="py-2 pl-2 pr-3 text-slate-600">
                             {act.branchName || 'Main Cafeteria'}
-                          </td>
-                          <td className="py-2 pl-2 pr-3 text-slate-500 truncate max-w-[200px]" title={act.description}>
-                            {act.description || '—'}
                           </td>
                         </tr>
                       );
@@ -2811,6 +2749,8 @@ export function StaffPage() {
                   setSelectedStaffForAudit(null);
                   setAuditActivityTypeFilter('ALL');
                   setAuditSearch('');
+                  setAuditStartDate('');
+                  setAuditEndDate('');
                 }}
               >
                 Close

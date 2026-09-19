@@ -51,6 +51,14 @@ When merging `staging` into `main` (Production), zero errors and zero URL/domain
      - **Mobile PDF Services**: `Flutter Money card/lib/services/analytics_pdf_service.dart`, `digital_receipt_service.dart`, and receipt providers.
    - Maintain 100% consistency across metrics, labels, layout structures, and calculations between the screens and their exported PDFs.
 
+4. **Web App Mobile Viewport Compatibility (Responsive Design)**:
+   - Whenever any UI, page, component, modal, table, toolbar, or filter is modified or added in the **Web App (`Frontend Money Card`)**, it **MUST be fully responsive and mobile-view compatible** (smartphones, tablets, and small viewports).
+   - **Responsive Modals & Dialogs**: Ensure modal containers do not overflow screen edges on mobile devices. Use responsive widths (`max-w-[95vw]`, `w-full`), responsive padding (`p-3 sm:p-6`), and scrollable bodies (`max-h-[80vh] overflow-y-auto`).
+   - **Tables & Grids**: Wrap tabular data in horizontal scroll containers (`overflow-x-auto`) with minimum table widths so columns never shrink to an illegible size or break layout bounds on mobile.
+   - **Toolbars, Filters & Date Pickers**: Search bars, action buttons, date range pickers, and filter controls must wrap gracefully (`flex-wrap`, `flex-col sm:flex-row`, `w-full sm:w-auto`) to avoid being cut off on narrow viewports.
+   - **Touch Targets & Typography**: Interactive buttons and inputs must maintain comfortable touch targets (minimum 36–44px height) with legible text sizes across mobile devices.
+   - **Zero Horizontal Body Overflow**: Prevent unintended horizontal scrolling on the root page body across all screen sizes.
+
 ---
 
 ## Project Overview
@@ -345,7 +353,8 @@ Files to change:
 - Always use `apiService.<domain>.<method>()` — never raw fetch/axios
 - Use `requirePermission(PermissionCode.X)` for permission-based route guards (works for all roles including STAFF with that permission)
 - Use `requireRole(Role.SUPER_ADMIN, Role.ORG_ADMIN)` only when you want to exclude STAFF entirely regardless of permissions
-- Run `npm test -- --run` in `Frontend Money Card/` before any commit — all tests (currently 253+) must pass
+- Run `npm test -- --run` in `Frontend Money Card/` before any commit — all tests (currently 255+) must pass
+- Ensure all Web App UI changes are mobile-view compatible and responsive (mobile browsers, small screens, touch targets, horizontal scroll for tables, wrapping toolbars)
 - Use `notify.success()` / `notify.error()` for toast messages in frontend
 
 ### DON'T

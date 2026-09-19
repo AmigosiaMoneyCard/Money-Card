@@ -255,13 +255,15 @@ export function BranchesPage() {
   // ── Instant Client-Side Filtered Branches ──────────────────
   const filteredBranches = useMemo(() => {
     let result = branches;
-    if (currentBranch && currentBranch.id && currentBranch.id !== 'ALL') {
-      result = result.filter((b) => b.id === currentBranch.id);
-    }
     if (!searchQuery.trim()) return result;
     const q = searchQuery.toLowerCase().trim();
-    return result.filter((b) => b.name.toLowerCase().includes(q));
-  }, [branches, currentBranch, searchQuery]);
+    return result.filter(
+      (b) =>
+        b.name.toLowerCase().includes(q) ||
+        (b.manager?.phone && b.manager.phone.toLowerCase().includes(q)) ||
+        (b.credentials?.phone && b.credentials.phone.toLowerCase().includes(q)),
+    );
+  }, [branches, searchQuery]);
 
   // ── Create Counter ─────────────────────────────────────────
   const handleOpenCreate = () => {
