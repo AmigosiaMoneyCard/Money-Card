@@ -80,6 +80,7 @@ export function OrgAdminDashboard() {
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
   const { currentBranch, selectBranch, clearBranch, setBranches: updateBranchContext } = useBranch();
+  const isCounterAdmin = user?.role === 'STAFF';
 
   const setupStorageKey = `org_setup_complete_${user?.organizationId || 'default'}`;
   const setupDismissedKey = `org_setup_dismissed_${user?.organizationId || 'default'}`;
@@ -100,23 +101,13 @@ export function OrgAdminDashboard() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsOverview | null>(null);
 
-  // Date Filtering State (Default: Today)
-  const [datePreset, setDatePreset] = useState<DatePreset>('today');
+  // Date Filtering State (Custom Range, Default: Today)
   const [startDate, setStartDate] = useState<string>(() => getPresetDates('today').startDate);
   const [endDate, setEndDate] = useState<string>(() => getPresetDates('today').endDate);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const handlePresetChange = (preset: DatePreset) => {
-    setDatePreset(preset);
-    if (preset !== 'custom') {
-      const { startDate: s, endDate: e } = getPresetDates(preset);
-      setStartDate(s);
-      setEndDate(e);
-    }
-  };
 
   const fetchOrgDashboardData = useCallback(async (isSilent = false) => {
     if (!isSilent) setIsLoading(true);
@@ -322,8 +313,9 @@ export function OrgAdminDashboard() {
       {/* Header Bar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Organization Dashboard</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Real-time overview of counter operations and sales.</p>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {isCounterAdmin ? 'Counter Dashboard' : 'Organization Dashboard'}
+          </h1>
         </div>
       </div>
 
@@ -347,9 +339,6 @@ export function OrgAdminDashboard() {
               <h3 className="font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
                 Smart Cards Directory
               </h3>
-              <p className="mt-1 text-xs text-slate-500">
-                View auto-registered and active customer cards
-              </p>
             </div>
           </button>
         )}
@@ -372,9 +361,6 @@ export function OrgAdminDashboard() {
               <h3 className="font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
                 Add Team Member
               </h3>
-              <p className="mt-1 text-xs text-slate-500">
-                Invite cashiers and branch supervisors
-              </p>
             </div>
           </button>
         )}
@@ -397,9 +383,6 @@ export function OrgAdminDashboard() {
               <h3 className="font-bold text-slate-900 group-hover:text-teal-600 transition-colors">
                 Add Menu Item
               </h3>
-              <p className="mt-1 text-xs text-slate-500">
-                Create food items and prices for POS checkout
-              </p>
             </div>
           </button>
         )}
@@ -421,9 +404,6 @@ export function OrgAdminDashboard() {
             <h3 className="font-bold text-slate-900 group-hover:text-amber-600 transition-colors">
               Today's Activity & Sales
             </h3>
-            <p className="mt-1 text-xs text-slate-500">
-              Inspect active cards, orders, and settlements
-            </p>
           </div>
         </button>
       </div>
@@ -475,9 +455,6 @@ export function OrgAdminDashboard() {
                   {completedStepsCount} of {setupSteps.length} Steps
                 </Badge>
               </div>
-              <p className="mt-1 text-xs text-slate-500">
-                Complete these initial steps to get your cafeteria operations fully running.
-              </p>
             </div>
             <div className="flex items-center gap-3">
               <div className="w-full sm:w-48 space-y-1">
@@ -662,69 +639,51 @@ export function OrgAdminDashboard() {
               {/* Filter Toolbar (Branch Scope, Time Window, Refresh Data) */}
               <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-wrap items-center gap-3">
-                  {/* Branch Scope Filter */}
-                  <div className="w-full sm:w-52">
-                    <label className="mb-1 block text-[11px] font-medium text-slate-600">Cafeteria Scope</label>
-                    <Select
-                      id="dashboard-branch-filter"
-                      value={currentBranch?.id || ''}
-                      onChange={(e) => {
-                        const bId = e.target.value;
-                        if (!bId) {
-                          clearBranch();
-                        } else {
-                          const target = branches.find((b) => b.id === bId);
-                          if (target) selectBranch(target);
-                        }
-                      }}
-                      options={[
-                        { value: '', label: 'All Cafeterias' },
-                        ...branches.map((b) => ({ value: b.id, label: b.name })),
-                      ]}
-                    />
-                  </div>
-
-                  {/* Time Window Filter */}
-                  <div className="w-full sm:w-44">
-                    <label className="mb-1 block text-[11px] font-medium text-slate-600">Time Window</label>
-                    <Select
-                      id="dashboard-preset-filter"
-                      value={datePreset}
-                      onChange={(e) => handlePresetChange(e.target.value as DatePreset)}
-                      options={[
-                        { value: 'today', label: 'Today' },
-                        { value: 'yesterday', label: 'Yesterday' },
-                        { value: 'last7', label: 'Last 7 Days' },
-                        { value: 'last30', label: 'Last 30 Days' },
-                        { value: 'all', label: 'All Time' },
-                        { value: 'custom', label: 'Custom Range' },
-                      ]}
-                    />
-                  </div>
-
-                  {/* Custom Date Inputs (if selected) */}
-                  {datePreset === 'custom' && (
-                    <div className="flex items-end gap-2">
-                      <div>
-                        <label className="mb-1 block text-[11px] font-medium text-slate-600">Start Date</label>
-                        <input
-                          type="date"
-                          value={startDate}
-                          onChange={(e) => setStartDate(e.target.value)}
-                          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-[11px] font-medium text-slate-600">End Date</label>
-                        <input
-                          type="date"
-                          value={endDate}
-                          onChange={(e) => setEndDate(e.target.value)}
-                          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
-                        />
-                      </div>
+                  {/* Branch Scope Filter (Org Admin only) */}
+                  {!isCounterAdmin && (
+                    <div className="w-full sm:w-52">
+                      <label className="mb-1 block text-[11px] font-medium text-slate-600">Cafeteria Scope</label>
+                      <Select
+                        id="dashboard-branch-filter"
+                        value={currentBranch?.id || ''}
+                        onChange={(e) => {
+                          const bId = e.target.value;
+                          if (!bId) {
+                            clearBranch();
+                          } else {
+                            const target = branches.find((b) => b.id === bId);
+                            if (target) selectBranch(target);
+                          }
+                        }}
+                        options={[
+                          { value: '', label: 'All Cafeterias' },
+                          ...branches.map((b) => ({ value: b.id, label: b.name })),
+                        ]}
+                      />
                     </div>
                   )}
+
+                  {/* Time Window Filter (Custom Range Only) */}
+                  <div>
+                    <label className="mb-1 block text-[11px] font-medium text-slate-600">Time Window</label>
+                    <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 shadow-2xs">
+                      <input
+                        id="dashboard-start-date"
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-800 focus:border-emerald-500 focus:bg-white focus:outline-none"
+                      />
+                      <span className="text-xs text-slate-400">to</span>
+                      <input
+                        id="dashboard-end-date"
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-800 focus:border-emerald-500 focus:bg-white focus:outline-none"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Refresh Data Button */}

@@ -100,8 +100,14 @@ export async function getBranches(req: Request, res: Response) {
     where.organizationId = orgId;
   }
 
-  // Staff only see active branches in their organization
+  // Staff only see active branches assigned to them
   if (req.user?.role === Role.STAFF) {
+    const userBranches = await prisma.userBranch.findMany({
+      where: { userId: req.user.id },
+      select: { branchId: true },
+    });
+    const staffBranchIds = userBranches.map((b) => b.branchId);
+    where.id = { in: staffBranchIds };
     where.status = 'ACTIVE';
   }
 

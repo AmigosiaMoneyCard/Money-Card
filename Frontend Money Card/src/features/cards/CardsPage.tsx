@@ -5,8 +5,10 @@ import { toast } from 'sonner';
 // Uses apiService abstraction strictly — does NOT import mock handlers directly.
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { apiService } from '@/services/api';
 import { usePermissions, useAuth, useBranch } from '@/hooks';
+import { SessionsPage } from '@/features/sessions';
 import type {
   Card as CardEntity,
   CardStatus,
@@ -47,6 +49,7 @@ import {
   Phone,
   User,
   Building2,
+  History,
 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { getPublicCustomerPortalUrl } from '@/utils';
@@ -56,6 +59,19 @@ export function CardsPage() {
   const { hasPermission } = usePermissions();
   const { user } = useAuth();
   const { currentBranch, selectBranch } = useBranch();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const topTab = searchParams.get('tab') === 'history' ? 'history' : 'cards';
+
+  const handleTopTabChange = (tab: 'cards' | 'history') => {
+    const next = new URLSearchParams(searchParams);
+    if (tab === 'history') {
+      next.set('tab', 'history');
+    } else {
+      next.delete('tab');
+    }
+    setSearchParams(next);
+  };
 
   const [blockReasonCategory, setBlockReasonCategory] = useState('Lost or Stolen Card');
   const [additionalBlockReason, setAdditionalBlockReason] = useState('');
@@ -416,12 +432,13 @@ export function CardsPage() {
     },
     {
       key: 'currentBranchId',
-      header: 'Cafeteria',
+      header: 'Counter',
       render: (card: CardEntity) => {
         const branch = branches.find((b) => b.id === card.currentBranchId);
         return (
-          <span className="text-xs text-slate-600">
-            {branch ? branch.name : 'All Cafeterias'}
+          <span className="text-xs font-medium text-slate-700 flex items-center gap-1">
+            <Building2 className="h-3.5 w-3.5 text-slate-500" />
+            {branch ? branch.name : 'All Counters'}
           </span>
         );
       },
@@ -573,29 +590,70 @@ export function CardsPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      {/* ─── Page Header & Action Buttons ────────────────────────────── */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-5 max-w-6xl mx-auto pb-10">
+      {/* ─── Minimal Header matching Menu page pattern ─── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
-            <CreditCard className="h-8 w-8 text-emerald-600" />
-            Physical Cards & QR Registry
-          </h1>
+          <div className="flex items-center gap-2.5">
+            <CreditCard className="h-6 w-6 text-emerald-600" />
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Cards & Customer History</h1>
+          </div>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Manage customer card registry, real-time card balances, and security lock statuses.
+          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          <Button
-            variant="outline"
-            size="md"
-            className="gap-2"
-            onClick={fetchCardsData}
-            title="Refresh Registry"
-          >
-            <RefreshCw className="h-4 w-4 text-slate-500" />
-            <span className="hidden sm:inline">Refresh</span>
-          </Button>
-        </div>
+        {topTab === 'cards' && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs h-8 px-3 rounded-xl border-slate-200 text-slate-700 hover:border-emerald-500 font-medium"
+              onClick={fetchCardsData}
+              leftIcon={<RefreshCw className="h-3.5 w-3.5 text-slate-500" />}
+            >
+              Refresh
+            </Button>
+          </div>
+        )}
       </div>
+
+      {/* ─── Top Tabs: Cards Directory & Customer History ─────────────── */}
+      <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200/60 self-start">
+        <button
+          type="button"
+          onClick={() => handleTopTabChange('cards')}
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            topTab === 'cards'
+              ? 'bg-white text-slate-900 shadow-2xs font-bold'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <CreditCard className="h-3.5 w-3.5" />
+          <span>Cards Directory</span>
+          <span className="ml-1 rounded-full bg-slate-200/80 px-1.5 py-0.2 text-[10px] text-slate-700 font-bold">
+            {allCards.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTopTabChange('history')}
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            topTab === 'history'
+              ? 'bg-white text-slate-900 shadow-2xs font-bold'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <History className="h-3.5 w-3.5" />
+          <span>Customer History</span>
+        </button>
+      </div>
+
+      {topTab === 'history' ? (
+        <SessionsPage hideHeader />
+      ) : (
+        <>
 
       {/* ─── Auto-Registration Information Banner ─────────────────────── */}
       <div className="flex items-center gap-3.5 p-4 rounded-xl border border-emerald-200 bg-emerald-50/70 text-emerald-950 shadow-sm">
@@ -838,11 +896,13 @@ export function CardsPage() {
             }
           />
         ) : (
-          <DataTable
-            data={filteredBlockedCards}
-            columns={blockedCardColumns}
-            keyExtractor={(c) => c.id}
-          />
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+            <DataTable
+              data={filteredBlockedCards}
+              columns={blockedCardColumns}
+              keyExtractor={(c) => c.id}
+            />
+          </div>
         )
       ) : filteredCards.length === 0 ? (
         <EmptyState
@@ -867,7 +927,11 @@ export function CardsPage() {
           }
         />
       ) : (
-        <DataTable data={filteredCards} columns={cardColumns} keyExtractor={(c) => c.id} />
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+          <DataTable data={filteredCards} columns={cardColumns} keyExtractor={(c) => c.id} />
+        </div>
+      )}
+        </>
       )}
 
 

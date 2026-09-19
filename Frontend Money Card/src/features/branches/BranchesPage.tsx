@@ -665,7 +665,7 @@ export function BranchesPage() {
         <div className="text-xs text-slate-600 font-medium">
           Counter Usage:{' '}
           <strong className="text-slate-900">{orgOverview.usage.branchCount}</strong> /{' '}
-          {orgOverview.usage.branchLimit} branches created
+          {orgOverview.usage.branchLimit} counters created
         </div>
       )}
 
@@ -768,7 +768,6 @@ export function BranchesPage() {
                       <h3 className="font-bold text-slate-900 text-sm truncate group-hover:text-emerald-700">
                         {branch.name}
                       </h3>
-                      <p className="text-[11px] text-slate-500 mt-0.5">Created {formatDate(branch.createdAt)} • Tap for details</p>
                     </div>
                   </div>
                   <Badge variant={branch.status === 'ACTIVE' ? 'success' : 'outline'} className="text-xs shrink-0">

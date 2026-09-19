@@ -125,7 +125,7 @@ function SessionTransactionItem({ tx }: { tx: Transaction }) {
   );
 }
 
-export function SessionsPage() {
+export function SessionsPage({ hideHeader = false }: { hideHeader?: boolean } = {}) {
   const { hasPermission } = usePermissions();
   const { currentBranch, selectBranch } = useBranch();
 
@@ -450,25 +450,27 @@ export function SessionsPage() {
   return (
     <div className="space-y-6">
       {/* ─── Header ───────────────────────────────────────────────── */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Customer History & Audit Trail
-          </h1>
+      {!hideHeader && (
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+              Customer History & Audit Trail
+            </h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchCustomerHistoryData()}
+              isLoading={isLoading}
+              className="gap-2"
+            >
+              <RefreshCw className="h-4 w-4 text-emerald-600" />
+              <span>Refresh History</span>
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => fetchCustomerHistoryData()}
-            isLoading={isLoading}
-            className="gap-2"
-          >
-            <RefreshCw className="h-4 w-4 text-emerald-600" />
-            <span>Refresh History</span>
-          </Button>
-        </div>
-      </div>
+      )}
 
       {/* ─── Filter Bar ───────────────────────────────────────────── */}
       <UiCard padding="md" className="border-slate-200 bg-white shadow-sm">

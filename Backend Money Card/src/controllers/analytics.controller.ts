@@ -127,11 +127,8 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       return sendError(res, 403, 'FORBIDDEN', 'Staff member is not assigned to any counter');
     }
 
-    if (effectiveBranchId && !staffBranchIds.includes(effectiveBranchId)) {
-      return sendError(res, 403, 'FORBIDDEN', 'Access denied to analytics outside your assigned counter');
-    }
-
-    if (!effectiveBranchId) {
+    // Always constrain staff to their assigned counter — never deny access if a stale/mismatched branchId was passed
+    if (!effectiveBranchId || !staffBranchIds.includes(effectiveBranchId)) {
       effectiveBranchId = staffBranchIds[0];
     }
   }
@@ -789,11 +786,8 @@ export async function getPeakAnalytics(req: Request, res: Response) {
       return sendError(res, 403, 'FORBIDDEN', 'Staff member is not assigned to any counter');
     }
 
-    if (effectiveBranchId && !staffBranchIds.includes(effectiveBranchId)) {
-      return sendError(res, 403, 'FORBIDDEN', 'Access denied to analytics outside your assigned counter');
-    }
-
-    if (!effectiveBranchId) {
+    // Always constrain staff to their assigned counter — never deny access if a stale/mismatched branchId was passed
+    if (!effectiveBranchId || !staffBranchIds.includes(effectiveBranchId)) {
       effectiveBranchId = staffBranchIds[0];
     }
   }

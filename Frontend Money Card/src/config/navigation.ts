@@ -38,7 +38,7 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
   },
   {
     id: 'branches',
-    label: 'Cafeterias',
+    label: 'Counters',
     path: '/branches',
     iconName: 'Building2',
     roles: ['ORG_ADMIN'],
@@ -62,19 +62,11 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
   },
   {
     id: 'cards',
-    label: 'Cards',
+    label: 'Cards & History',
     path: '/cards',
     iconName: 'CreditCard',
     roles: ['ORG_ADMIN', 'STAFF'],
     permission: 'CARD_VIEW',
-  },
-  {
-    id: 'sessions',
-    label: 'Customer History',
-    path: '/sessions',
-    iconName: 'UserCheck',
-    roles: ['STAFF'],
-    permission: 'SESSION_VIEW',
   },
   {
     id: 'analytics',
