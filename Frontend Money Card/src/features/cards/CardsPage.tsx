@@ -82,18 +82,10 @@ export function CardsPage() {
   const [sessionTxns, setSessionTxns] = useState<Transaction[]>([]);
   const [isLoadingTxns, setIsLoadingTxns] = useState(false);
 
-  // Analytics Custom Range Date States (Strictly Custom Range)
-  const [customStartDate, setCustomStartDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 30);
-    return d.toISOString().split('T')[0];
-  });
+  // Analytics Custom Range Date States (Strictly Custom Range, Default: Today)
+  const [customStartDate, setCustomStartDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [customEndDate, setCustomEndDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [appliedStartDate, setAppliedStartDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 30);
-    return d.toISOString().split('T')[0];
-  });
+  const [appliedStartDate, setAppliedStartDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [appliedEndDate, setAppliedEndDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [counterAnalyticsData, setCounterAnalyticsData] = useState<any>(null);
   const [isLoadingCounterAnalytics, setIsLoadingCounterAnalytics] = useState(false);
@@ -126,6 +118,17 @@ export function CardsPage() {
     setAppliedEndDate(customEndDate);
     fetchCounterAnalytics(selectedBranchForAnalytics.id, customStartDate, customEndDate);
   }, [selectedBranchForAnalytics, customStartDate, customEndDate, fetchCounterAnalytics]);
+
+  const handleResetToToday = useCallback(() => {
+    const today = new Date().toISOString().split('T')[0];
+    setCustomStartDate(today);
+    setCustomEndDate(today);
+    setAppliedStartDate(today);
+    setAppliedEndDate(today);
+    if (selectedBranchForAnalytics) {
+      fetchCounterAnalytics(selectedBranchForAnalytics.id, today, today);
+    }
+  }, [selectedBranchForAnalytics, fetchCounterAnalytics]);
 
   // ─── Open Customer History per Counter ────────────────────────────
   const handleOpenCustomerHistory = useCallback(async (branch: Branch) => {
@@ -762,6 +765,14 @@ export function CardsPage() {
                 className="text-xs h-7 px-3 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold cursor-pointer rounded-lg"
               >
                 Apply
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResetToToday}
+                className="text-xs h-7 px-3 border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold cursor-pointer rounded-lg"
+              >
+                Reset to Today
               </Button>
             </div>
 

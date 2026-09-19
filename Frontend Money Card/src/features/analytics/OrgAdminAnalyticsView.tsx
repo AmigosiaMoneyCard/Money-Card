@@ -95,7 +95,7 @@ export function OrgAdminAnalyticsView() {
           )}
 
           {/* Custom Date Pickers — always visible */}
-          <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-lg border border-slate-200">
+          <div className="flex flex-wrap items-center gap-1.5 bg-slate-50 p-1 rounded-lg border border-slate-200">
             <input
               id="org-analytics-start-date"
               type="date"
@@ -118,6 +118,17 @@ export function OrgAdminAnalyticsView() {
               className="h-7 px-2.5 text-xs font-semibold"
             >
               Apply
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                const today = new Date().toISOString().split('T')[0];
+                handleCustomDateApply(today, today);
+              }}
+              className="h-7 px-2.5 text-xs font-semibold border-emerald-300 bg-emerald-50/70 text-emerald-700 hover:bg-emerald-100"
+            >
+              Reset to Today
             </Button>
           </div>
 

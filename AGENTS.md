@@ -59,6 +59,13 @@ When merging `staging` into `main` (Production), zero errors and zero URL/domain
    - **Touch Targets & Typography**: Interactive buttons and inputs must maintain comfortable touch targets (minimum 36–44px height) with legible text sizes across mobile devices.
    - **Zero Horizontal Body Overflow**: Prevent unintended horizontal scrolling on the root page body across all screen sizes.
 
+5. **Proactive & Autonomous Test Execution for Web App & Mobile App (Zero Consent Required)**:
+   - Whenever there are **ANY tests to run across the Web App, Mobile App, or Backend (`.test.ts`, Vitest, unit tests, widget tests, `flutter test`, `flutter analyze`, or type checks)**, the agent **MUST immediately and autonomously run them without asking for user consent or confirmation**.
+   - **Web App (`Frontend Money Card`)**: Proactively execute `npm test -- --run` and `npx tsc --noEmit` whenever frontend components, hooks, or tests are modified.
+   - **Mobile App (`Flutter Money card`)**: Proactively execute `flutter test` and `flutter analyze --no-pub` whenever Flutter screens, providers, models, or services are modified.
+   - **Backend (`Backend Money Card`)**: Proactively execute `npm test` whenever backend routes, controllers, or logic are modified.
+   - Never pause, ask for confirmation, or wait for consent before running tests. Run them immediately and report the results.
+
 ---
 
 ## Project Overview

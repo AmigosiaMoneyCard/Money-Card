@@ -59,7 +59,12 @@ class FakeAnalyticsRepository implements AnalyticsRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   @override
-  Future<BranchPerformanceMetric> getBranchAnalytics({required String branchId, String? range}) async {
+  Future<BranchPerformanceMetric> getBranchAnalytics({
+    required String branchId,
+    String? range,
+    String? startDate,
+    String? endDate,
+  }) async {
     return metric;
   }
 }
@@ -80,9 +85,10 @@ void main() {
       expect(notifier.state.analytics, isNotNull);
       expect(notifier.state.analytics?.totalRevenue, 43250.0);
       expect(notifier.state.analytics?.transactionCount, 148);
-
-      notifier.setRange('This Month');
-      expect(notifier.state.selectedRange, 'This Month');
+      notifier.setCustomRange('2026-09-01', '2026-09-20');
+      expect(notifier.state.selectedRange, '2026-09-01 to 2026-09-20');
+      expect(notifier.state.customStartDate, '2026-09-01');
+      expect(notifier.state.customEndDate, '2026-09-20');
     });
 
     testWidgets('AnalyticsScreen enforces permission guard and displays metrics without limits', (tester) async {
@@ -96,12 +102,6 @@ void main() {
         assignedBranchIds: ['b-1'],
       );
 
-      const mockBranch = Branch(
-        id: 'b-1',
-        organizationId: 'org-1',
-        name: 'Main Cafeteria',
-      );
-
       final analyticsNotifier = AnalyticsNotifier(fakeRepo, 'b-1');
       await analyticsNotifier.loadAnalytics();
 
@@ -109,7 +109,7 @@ void main() {
         ProviderScope(
           overrides: [
             currentUserProvider.overrideWithValue(authorizedUser),
-            currentBranchProvider.overrideWithValue(mockBranch),
+            branchNotifierProvider.overrideWith((ref) => BranchNotifier(FakeBranchRepository())),
             analyticsNotifierProvider.overrideWith((ref) => analyticsNotifier),
           ],
           child: const MaterialApp(
@@ -122,22 +122,16 @@ void main() {
 
       expect(find.text('₹43250.00'), findsOneWidget);
       expect(find.text('148'), findsOneWidget); // Total transactions
+      expect(find.text('Orders / Purchases'), findsOneWidget);
+      expect(find.text('Card Recharges'), findsOneWidget);
+      expect(find.text('Reset to Today'), findsOneWidget);
+      expect(find.text('Apply'), findsOneWidget);
+      expect(find.text('View PDF'), findsOneWidget);
 
-      // Scroll to Product Demand & Peak periods
-      await tester.scrollUntilVisible(
-        find.text('Veg Burger'),
-        200,
-        scrollable: find.byType(Scrollable).first,
-      );
-      expect(find.text('Veg Burger'), findsOneWidget); // Product demand
-
-      await tester.scrollUntilVisible(
-        find.text('12:00 PM – 1:00 PM'),
-        200,
-        scrollable: find.byType(Scrollable).first,
-      );
-      expect(find.text('12:00 PM – 1:00 PM'), findsOneWidget); // Peak period
-      expect(find.text('Highest'), findsOneWidget);
+      // Verify tapping Reset to Today
+      await tester.tap(find.text('Reset to Today'));
+      await tester.pumpAndSettle();
+      expect(find.text('Reset to Today'), findsOneWidget);
 
       // Verify NO transaction limits or quotas exist
       expect(find.textContaining(RegExp(r'limit', caseSensitive: false)), findsNothing);
@@ -218,7 +212,7 @@ void main() {
       expect(find.text('Main Central 2'), findsOneWidget);
     });
 
-    testWidgets('AnalyticsScreen renders pure live time for Peak Activity Periods and strips meal labels', (tester) async {
+    testWidgets('AnalyticsScreen switches to Card Analytics tab and displays card fleet metrics', (tester) async {
       const authorizedUser = AuthUser(
         id: 'staff-1',
         email: 'staff@moneycard.io',
@@ -229,39 +223,7 @@ void main() {
         assignedBranchIds: ['b-1'],
       );
 
-      final fakeRepoWithMealLabels = FakeAnalyticsRepository();
-      fakeRepoWithMealLabels.metric = const BranchPerformanceMetric(
-        branchId: 'b-1',
-        branchName: 'Main Cafeteria',
-        transactionCount: 148,
-        purchaseCount: 96,
-        purchaseVolume: 18450.0,
-        rechargeCount: 52,
-        rechargeVolume: 24800.0,
-        totalRevenue: 43250.0,
-        peakPeriods: [
-          PeakPeriod(
-            timeSlot: '12:00 PM - 02:30 PM (Lunch Peak)',
-            activityLevel: 'Highest',
-            transactionCount: 35,
-            purchaseVolume: 4200.0,
-          ),
-          PeakPeriod(
-            timeSlot: '04:30 PM - 06:30 PM (Evening Refreshment)',
-            activityLevel: 'Moderate',
-            transactionCount: 0, // 0 transactions: should be omitted
-            purchaseVolume: 0.0,
-          ),
-          PeakPeriod(
-            timeSlot: '07:30 PM - 09:30 PM (Dinner)',
-            activityLevel: 'High',
-            transactionCount: 18,
-            purchaseVolume: 2500.0,
-          ),
-        ],
-      );
-
-      final notifier = AnalyticsNotifier(fakeRepoWithMealLabels, 'b-1');
+      final notifier = AnalyticsNotifier(fakeRepo, 'b-1');
       await notifier.loadAnalytics();
 
       await tester.pumpWidget(
@@ -279,27 +241,14 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Scroll to Peak Activity Periods
-      await tester.scrollUntilVisible(
-        find.text('Peak Activity Periods'),
-        200,
-        scrollable: find.byType(Scrollable).first,
-      );
+      // Tap Card Analytics Tab
+      await tester.tap(find.text('Card Analytics'));
+      await tester.pumpAndSettle();
 
-      // Verify Peak Activity Periods header is present
-      expect(find.text('Peak Activity Periods'), findsOneWidget);
-
-      // Verify clean live time without meal labels
-      expect(find.text('12:00 PM - 02:30 PM'), findsOneWidget);
-      expect(find.text('07:30 PM - 09:30 PM'), findsOneWidget);
-
-      // Verify meal names are removed
-      expect(find.textContaining('Lunch Peak'), findsNothing);
-      expect(find.textContaining('Evening Refreshment'), findsNothing);
-      expect(find.textContaining('Dinner'), findsNothing);
-
-      // Verify 0-transaction period is omitted
-      expect(find.textContaining('04:30 PM'), findsNothing);
+      expect(find.text('Card Fleet & Session Lifecycle'), findsOneWidget);
+      expect(find.text('In Circulation'), findsOneWidget);
+      expect(find.text('Settled Cards'), findsOneWidget);
+      expect(find.text('Circulation vs. Settled Ratio'), findsOneWidget);
     });
   });
 }

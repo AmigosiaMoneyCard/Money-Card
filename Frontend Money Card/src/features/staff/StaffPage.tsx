@@ -2570,19 +2570,17 @@ export function StaffPage() {
                 </div>
 
                 <div className="flex items-center gap-2 pt-4">
-                  {(auditStartDate !== getTodayDateStr() || auditEndDate !== getTodayDateStr()) && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const today = getTodayDateStr();
-                        setAuditStartDate(today);
-                        setAuditEndDate(today);
-                      }}
-                      className="h-8.5 px-3 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-xs font-semibold text-emerald-700 transition-colors cursor-pointer"
-                    >
-                      Reset to Today
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const today = getTodayDateStr();
+                      setAuditStartDate(today);
+                      setAuditEndDate(today);
+                    }}
+                    className="h-8.5 px-3 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-xs font-semibold text-emerald-700 transition-colors cursor-pointer"
+                  >
+                    Reset to Today
+                  </button>
 
                   {(auditStartDate || auditEndDate) && (
                     <button

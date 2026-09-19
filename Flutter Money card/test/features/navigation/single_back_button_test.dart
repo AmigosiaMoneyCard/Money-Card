@@ -23,7 +23,12 @@ class FakeAnalyticsRepository implements AnalyticsRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   @override
-  Future<BranchPerformanceMetric> getBranchAnalytics({required String branchId, String? range}) async {
+  Future<BranchPerformanceMetric> getBranchAnalytics({
+    required String branchId,
+    String? range,
+    String? startDate,
+    String? endDate,
+  }) async {
     return const BranchPerformanceMetric(
       branchId: 'branch-001',
       branchName: 'Main Cafeteria',
