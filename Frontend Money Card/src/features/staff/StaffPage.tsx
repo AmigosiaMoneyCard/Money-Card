@@ -2,8 +2,7 @@
 // Unified Staff Details, Permissions, Branches, and Add Staff UX for ORG_ADMIN.
 // Uses apiService abstraction strictly — does NOT call mock handlers directly.
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiService } from '@/services/api';
 import { usePermissions, useBranch, useAuth } from '@/hooks';
 import type {
@@ -27,7 +26,7 @@ import {
   ErrorState,
 } from '@/components/ui';
 import { DataTable } from '@/components/tables';
-import { notify, formatDate, formatCurrency } from '@/utils';
+import { notify, formatCurrency } from '@/utils';
 import { filterStaffActivities, calculateScopedStaffMetrics } from '@/features/analytics/staffActivityFilter';
 import { PermissionMatrix } from './PermissionMatrix';
 import { UnauthorizedPage } from '@/features/auth';
@@ -36,7 +35,6 @@ import {
   UserPlus,
   Search,
   Edit2,
-  Power,
   Building2,
   ShieldCheck,
   RefreshCw,
@@ -46,12 +44,9 @@ import {
   ArrowRight,
   ArrowLeft,
   User,
-  Trash2,
   Lock,
   Key,
   X,
-  MoreVertical,
-  ChevronDown,
   FileSpreadsheet,
   Smartphone,
   Copy,
@@ -60,238 +55,6 @@ import {
   Phone,
   CheckCircle2,
 } from 'lucide-react';
-
-interface StaffActionMenuProps {
-  staff: Staff;
-  canManage: boolean;
-  isCounterView?: boolean;
-  onEditOrView: () => void;
-  onViewAudit?: () => void;
-  onPermissions: () => void;
-  onBranches: () => void;
-  onSecurity: () => void;
-  onToggleStatus: () => void;
-  onDelete: () => void;
-}
-
-function StaffActionMenu({
-  staff,
-  canManage,
-  isCounterView,
-  onEditOrView,
-  onViewAudit,
-  onPermissions,
-  onBranches,
-  onSecurity,
-  onToggleStatus,
-  onDelete,
-}: StaffActionMenuProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number }>({
-    top: 0,
-    left: 0,
-  });
-  const containerRef = useRef<HTMLDivElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  const updatePosition = useCallback(() => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const menuWidth = 210;
-    const menuHeight = 250;
-
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const openUpwards = spaceBelow < menuHeight && rect.top > menuHeight;
-
-    const top = openUpwards ? rect.top - menuHeight - 6 : rect.bottom + 6;
-    const left = Math.max(8, rect.right - menuWidth);
-
-    setMenuPosition({ top, left });
-  }, []);
-
-  const handleToggle = () => {
-    if (!isOpen) {
-      updatePosition();
-      setIsOpen(true);
-    } else {
-      setIsOpen(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(event.target as Node) &&
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    };
-
-    const handleScrollOrResize = () => {
-      setIsOpen(false);
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    window.addEventListener('scroll', handleScrollOrResize, true);
-    window.addEventListener('resize', handleScrollOrResize);
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      window.removeEventListener('scroll', handleScrollOrResize, true);
-      window.removeEventListener('resize', handleScrollOrResize);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen]);
-
-  return (
-    <div ref={containerRef} className="inline-block text-left">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleToggle}
-        className="flex items-center gap-1.5 text-xs py-1 px-2.5 bg-white border border-slate-300 hover:border-emerald-500 text-slate-700 shadow-xs"
-      >
-        <MoreVertical className="h-3.5 w-3.5 text-slate-400" />
-        <span>Actions</span>
-        <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
-      </Button>
-
-      {isOpen &&
-        createPortal(
-          <div
-            ref={menuRef}
-            style={{
-              position: 'fixed',
-              top: `${menuPosition.top}px`,
-              left: `${menuPosition.left}px`,
-              zIndex: 9999,
-            }}
-            className="w-52 rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
-          >
-            {/* Performance & Operational Audit */}
-            {onViewAudit && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsOpen(false);
-                  onViewAudit();
-                }}
-                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors cursor-pointer text-left"
-              >
-                <Eye className="h-4 w-4 text-emerald-600" />
-                <span>Performance & Audit</span>
-              </button>
-            )}
-
-            {/* Profile / Details */}
-            <button
-              type="button"
-              onClick={() => {
-                setIsOpen(false);
-                onEditOrView();
-              }}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer text-left"
-            >
-              {canManage ? <Edit2 className="h-4 w-4 text-emerald-600" /> : <Eye className="h-4 w-4 text-emerald-600" />}
-              <span>{canManage ? 'Edit / Details' : 'View Details'}</span>
-            </button>
-
-            {/* Manage / View Permissions */}
-            <button
-              type="button"
-              onClick={() => {
-                setIsOpen(false);
-                onPermissions();
-              }}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer text-left"
-            >
-              <ShieldCheck className="h-4 w-4 text-teal-600" />
-              <span>{canManage ? 'Permissions' : 'View Permissions'}</span>
-            </button>
-
-            {/* Branch Assignments */}
-            {!isCounterView && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsOpen(false);
-                  onBranches();
-                }}
-                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer text-left"
-              >
-                <Building2 className="h-4 w-4 text-sky-600" />
-                <span>Counter Access</span>
-              </button>
-            )}
-
-            {/* Change Password */}
-            {canManage && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsOpen(false);
-                  onSecurity();
-                }}
-                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer text-left"
-              >
-                <Key className="h-4 w-4 text-amber-500" />
-                <span>Change Password</span>
-              </button>
-            )}
-
-            {canManage && <div className="my-1 border-t border-slate-200" />}
-
-            {/* Status Toggle */}
-            {canManage && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsOpen(false);
-                  onToggleStatus();
-                }}
-                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors cursor-pointer text-left ${
-                  staff.status === 'ACTIVE'
-                    ? 'text-rose-400 hover:bg-rose-500/10 hover:text-rose-300'
-                    : 'text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300'
-                }`}
-              >
-                <Power className="h-4 w-4" />
-                <span>{staff.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}</span>
-              </button>
-            )}
-
-            {/* Delete Staff */}
-            {canManage && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsOpen(false);
-                  onDelete();
-                }}
-                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors cursor-pointer text-left"
-              >
-                <Trash2 className="h-4 w-4 text-rose-600" />
-                <span>Delete Staff</span>
-              </button>
-            )}
-          </div>,
-          document.body,
-        )}
-    </div>
-  );
-}
 
 export interface CounterStaffGroup {
   id: string;
@@ -331,7 +94,7 @@ export function StaffPage() {
   // ── Unified Staff Details/Edit Modal State ─────────────────
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [showStaffDetailsModal, setShowStaffDetailsModal] = useState(false);
-  const [staffTab, setStaffTab] = useState<'overview' | 'permissions' | 'branches' | 'security'>('overview');
+  const [staffTab, setStaffTab] = useState<'overview' | 'permissions' | 'branches'>('overview');
 
   // ── Counter Staff Grouping State ───────────────────────────
   const [selectedCounterGroup, setSelectedCounterGroup] = useState<CounterStaffGroup | null>(null);
@@ -365,9 +128,6 @@ export function StaffPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [addTab, setAddTab] = useState<'basic' | 'branches' | 'permissions'>('basic');
 
-  // ── Status Toggle Modal ───────────────────────────────────
-  const [showStatusModal, setShowStatusModal] = useState(false);
-  const [showDeleteStaffModal, setShowDeleteStaffModal] = useState(false);
   const [showStaffCreatedModal, setShowStaffCreatedModal] = useState(false);
   const [createdStaffCredentials, setCreatedStaffCredentials] = useState<{
     name: string;
@@ -701,7 +461,7 @@ export function StaffPage() {
   // ── Open Unified Staff Details/Edit Modal ─────────────────
   const handleOpenStaffModal = (
     staff: Staff,
-    initialTab: 'overview' | 'permissions' | 'branches' | 'security' = 'overview',
+    initialTab: 'overview' | 'permissions' | 'branches' = 'overview',
   ) => {
     setSelectedStaff(staff);
     setFormName(staff.name);
@@ -774,6 +534,60 @@ export function StaffPage() {
     }
   };
 
+  // ── Share & Copy Staff Credentials from Edit Modal ────────
+  const handleCopyCredentialsFromEdit = () => {
+    if (!selectedStaff) return;
+    const pwdText = formNewPassword.trim() || '[Your Existing Password]';
+    const cleanPhone = (formPhone || selectedStaff.phone || '').replace(/\D/g, '').slice(-10);
+    const assignedBranchesText =
+      branches
+        .filter((b) => formBranchIds.includes(b.id))
+        .map((b) => b.name)
+        .join(', ') || 'All Counters';
+    const loginUrl = `${window.location.origin}/login`;
+
+    const text =
+      `Staff Login Credentials:\n` +
+      `Name: ${formName.trim() || selectedStaff.name}\n` +
+      `Phone: ${cleanPhone}\n` +
+      `Password: ${pwdText}\n` +
+      `Counter: ${assignedBranchesText}\n` +
+      `Login URL: ${loginUrl}`;
+
+    navigator.clipboard.writeText(text);
+    notify.success('Staff credentials copied to clipboard!');
+  };
+
+  const handleSendWhatsAppFromEdit = () => {
+    if (!selectedStaff) return;
+    const cleanPhone = (formPhone || selectedStaff.phone || '').replace(/\D/g, '').slice(-10);
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      notify.error('Please enter a valid 10-digit mobile number to send via WhatsApp');
+      return;
+    }
+
+    const pwdText = formNewPassword.trim() || '[Your Existing Password]';
+    const assignedBranchesText =
+      branches
+        .filter((b) => formBranchIds.includes(b.id))
+        .map((b) => b.name)
+        .join(', ') || 'All Counters';
+    const loginUrl = `${window.location.origin}/login`;
+
+    const message =
+      `🍽️ *Money Card Staff Credentials*\n\n` +
+      `Hello ${formName.trim() || selectedStaff.name},\n\n` +
+      `Here are your updated staff login credentials:\n\n` +
+      `• *Counter:* ${assignedBranchesText}\n` +
+      `• *Mobile Number:* ${cleanPhone}\n` +
+      `• *Password:* ${pwdText}\n\n` +
+      `🌐 *POS Login Link:* ${loginUrl}\n\n` +
+      `_Log in using your Mobile Number and Password to access your counter POS._`;
+
+    const waUrl = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(message)}`;
+    window.open(waUrl, '_blank', 'noopener,noreferrer');
+  };
+
   // ── Save Unified Staff Details & Permissions & Branches ───
   //  Save Staff Profile Information
   const handleSaveProfile = async (e?: React.FormEvent) => {
@@ -781,21 +595,33 @@ export function StaffPage() {
     if (!selectedStaff) return;
 
     const errors: Record<string, string> = {};
-    if (!formName.trim()) errors.name = 'Staff name is required';
-    if (formPhone.trim()) {
-      const cleanPhone = formPhone.trim().replace(/\D/g, '');
-      if (cleanPhone.length < 10 || cleanPhone.length > 15) {
-        errors.phone = 'Please provide a valid 10-digit phone number';
-      }
+    if (!formName.trim()) {
+      errors.name = 'Staff name is required';
+    } else if (formName.trim().length > 20) {
+      errors.name = 'Staff name cannot exceed 20 characters';
     }
-    if (formEmail.trim() && !/\S+@\S+\.\S+/.test(formEmail)) {
-      errors.email = 'Enter a valid email address';
+
+    const cleanPhone = formPhone.trim().replace(/\D/g, '');
+    if (!cleanPhone) {
+      errors.phone = 'Phone number is required';
+    } else if (cleanPhone.length !== 10) {
+      errors.phone = 'Please provide a valid 10-digit phone number';
     }
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       setStaffTab('overview');
       return;
+    }
+
+    // If new password is entered, validate it before saving
+    if (formNewPassword) {
+      const pwdErr = validateStaffPassword();
+      if (pwdErr) {
+        setPasswordChangeError(pwdErr);
+        setStaffTab('overview');
+        return;
+      }
     }
 
     setFormErrors({});
@@ -805,13 +631,24 @@ export function StaffPage() {
     try {
       const res = await apiService.staff.updateStaff(selectedStaff.id, {
         name: formName.trim(),
-        phone: formPhone.trim().replace(/\D/g, '') || undefined,
-        email: formEmail.trim() || undefined,
+        phone: cleanPhone || undefined,
       });
 
       if (!res.success) {
         setModalApiError(res.error.message || 'Failed to update staff profile');
         return;
+      }
+
+      if (formNewPassword) {
+        const pwdRes = await apiService.staff.changePassword(selectedStaff.id, {
+          newPassword: formNewPassword,
+          confirmPassword: formConfirmPassword,
+        });
+        if (!pwdRes.success) {
+          setPasswordChangeError(pwdRes.error?.message || 'Profile saved, but failed to update password');
+        } else {
+          setPasswordChangeSuccess('Password updated successfully.');
+        }
       }
 
       notify.success('Staff profile updated successfully.');
@@ -820,8 +657,7 @@ export function StaffPage() {
           ? {
               ...prev,
               name: formName.trim(),
-              phone: formPhone.trim().replace(/\D/g, '') || prev.phone,
-              email: formEmail.trim() || prev.email,
+              phone: cleanPhone || prev.phone,
             }
           : null,
       );
@@ -962,75 +798,6 @@ export function StaffPage() {
 
       notify.success('Staff profile, permissions, and cafeteria assignments updated successfully');
       setShowStaffModal(false);
-      fetchStaffData();
-    } catch {
-      setModalApiError('An unexpected error occurred. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // ── Toggle Status Modal ───────────────────────────────────
-  const handleOpenStatus = (staff: Staff) => {
-    setSelectedStaff(staff);
-    setModalApiError(null);
-    setShowStatusModal(true);
-  };
-
-  const handleStatusSubmit = async () => {
-    if (!selectedStaff) return;
-    if (selectedStaff.status === 'PENDING_ACTIVATION') {
-      setModalApiError('This staff account is pending email activation. Please ask the staff member to activate via the email link, or click Resend Invite.');
-      return;
-    }
-    const newStatus = selectedStaff.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    setIsSubmitting(true);
-    setModalApiError(null);
-
-    try {
-      const res = await apiService.staff.updateStaff(selectedStaff.id, { status: newStatus });
-      if (!res.success) {
-        setModalApiError(res.error.message || 'Failed to change staff status');
-        return;
-      }
-
-      notify.success(
-        `Staff member ${selectedStaff.name} is now ${newStatus === 'ACTIVE' ? 'Active' : 'Inactive'}`,
-      );
-      setShowStatusModal(false);
-      fetchStaffData();
-    } catch {
-      setModalApiError('An unexpected error occurred.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // ── Delete / Deactivate Staff ──────────────────────────────
-  const handleOpenDeleteStaff = (staff: Staff) => {
-    setSelectedStaff(staff);
-    setModalApiError(null);
-    setShowDeleteStaffModal(true);
-  };
-
-  const handleDeleteStaffSubmit = async () => {
-    if (!selectedStaff) return;
-    setIsSubmitting(true);
-    setModalApiError(null);
-
-    try {
-      const res = await apiService.staff.deleteStaff(selectedStaff.id);
-      if (!res.success) {
-        setModalApiError(res.error.message || 'Failed to delete staff member');
-        return;
-      }
-
-      notify.success(
-        res.data?.deactivated
-          ? 'Staff member deactivated to preserve historical transaction records'
-          : 'Staff member deleted successfully',
-      );
-      setShowDeleteStaffModal(false);
       fetchStaffData();
     } catch {
       setModalApiError('An unexpected error occurred. Please try again.');
@@ -1480,129 +1247,188 @@ export function StaffPage() {
                 </Badge>
               </button>
             )}
-
-            <button
-              type="button"
-              onClick={() => setStaffTab('security')}
-              className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
-                staffTab === 'security'
-                  ? 'border-emerald-600 text-emerald-700 font-semibold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <Lock className="h-4 w-4" />
-              <span>Security</span>
-            </button>
           </div>
 
-          {/* Tab Content Panes (Natural scrolling without nested scroll trapping) */}
+          {/* Tab Content Panes */}
           <div className="max-h-[64vh] overflow-y-auto pr-1">
-            {/* ── TAB 1: OVERVIEW ── */}
+            {/* ── TAB 1: OVERVIEW (PROFILE & INTEGRATED SECURITY) ── */}
             {staffTab === 'overview' && (
-              <div className="space-y-6">
-                {/* Metric Summary Cards */}
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1">
-                    <span className="text-xs text-slate-500">Account Status</span>
-                    <div className="flex items-center gap-2 pt-1">
-                      {selectedStaff?.status === 'PENDING_ACTIVATION' ? (
-                        <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 border border-amber-200">
-                          Pending Activation
-                        </span>
-                      ) : (
-                        <Badge variant={selectedStaff?.status === 'ACTIVE' ? 'success' : 'danger'}>
-                          {selectedStaff?.status === 'ACTIVE' ? 'Active' : 'Inactive'}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1">
-                    <span className="text-xs text-slate-500">Assigned Counters</span>
-                    <p className="font-mono text-sm font-bold text-slate-800 pt-1">
-                      {formBranchIds.length} branch(es)
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1">
-                    <span className="text-xs text-slate-500">Granted Permissions</span>
-                    <p className="font-mono text-sm font-bold text-emerald-700 pt-1">
-                      {formPermissions.length} / 20 permissions
-                    </p>
-                  </div>
-                </div>
-
+              <div className="space-y-4">
                 {/* Account Details & Edit Fields */}
                 <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
                     Staff Profile Information
                   </h4>
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Input
                       id="staff-edit-name"
-                      label="Full Name"
+                      label="Full Name (Max 20 chars)"
                       value={formName}
-                      onChange={(e) => setFormName(e.target.value)}
+                      maxLength={20}
+                      onChange={(e) => {
+                        setFormName(e.target.value.slice(0, 20));
+                        if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: '' }));
+                      }}
                       error={formErrors.name}
                       disabled={!canManage || isSubmitting}
                     />
 
                     <Input
                       id="staff-edit-phone"
-                      label="Phone Number"
+                      label="Phone Number (10 digits)"
                       placeholder="e.g. 9876543210"
                       value={formPhone}
-                      onChange={(e) => setFormPhone(e.target.value)}
+                      maxLength={10}
+                      onChange={(e) => {
+                        const clean = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setFormPhone(clean);
+                        if (formErrors.phone) setFormErrors((prev) => ({ ...prev, phone: '' }));
+                      }}
                       error={formErrors.phone}
                       disabled={!canManage || isSubmitting}
                     />
                   </div>
-
-                  <div>
-                    <Input
-                      id="staff-edit-email"
-                      type="email"
-                      label="Email Address (Optional)"
-                      value={formEmail}
-                      onChange={(e) => setFormEmail(e.target.value)}
-                      error={formErrors.email}
-                      disabled={!canManage || isSubmitting}
-                    />
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t border-slate-200 text-xs">
-                    <div>
-                      <span className="text-slate-500">Staff ID:</span>
-                      <p className="font-mono font-semibold text-slate-700">STAFF-#{selectedStaff?.id.slice(0, 8).toUpperCase()}</p>
-                    </div>
-                    <div>
-                      <span className="text-slate-500">Created Date:</span>
-                      <p className="font-semibold text-slate-700">
-                        {selectedStaff?.createdAt ? formatDate(selectedStaff.createdAt) : 'N/A'}
-                      </p>
-                    </div>
-                  </div>
                 </div>
 
-                {/* Quick Security & Password Summary */}
-                <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-4">
+                {/* Unified Security & Change Password Section */}
+                <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Lock className="h-4 w-4 text-emerald-600" />
-                      <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                        Security & Credentials
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
+                        Password & Credentials
                       </h4>
                     </div>
-                    {canManage && (
-                      <button
-                        type="button"
-                        onClick={() => setStaffTab('security')}
-                        className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
-                      >
-                        Change Password →
-                      </button>
+                    {formNewPassword && (
+                      <span className="text-[11px] text-amber-600 font-medium">Unsaved password changes</span>
                     )}
+                  </div>
+
+                  {passwordChangeError && (
+                    <div className="flex items-start gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-700">
+                      <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-500" />
+                      <span>{passwordChangeError}</span>
+                    </div>
+                  )}
+
+                  {passwordChangeSuccess && (
+                    <div className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700">
+                      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                      <span>{passwordChangeSuccess}</span>
+                    </div>
+                  )}
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Input
+                      id="staff-new-password"
+                      type={showNewPassword ? 'text' : 'password'}
+                      label="New Password"
+                      placeholder="Enter new password"
+                      value={formNewPassword}
+                      onChange={(e) => {
+                        setFormNewPassword(e.target.value);
+                        if (passwordChangeError) setPasswordChangeError(null);
+                      }}
+                      disabled={!canManage || isChangingPassword}
+                      autoComplete="new-password"
+                      rightElement={
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="text-slate-400 hover:text-slate-600 focus:outline-none p-1 flex items-center justify-center cursor-pointer"
+                          tabIndex={-1}
+                        >
+                          {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      }
+                    />
+
+                    <Input
+                      id="staff-confirm-password"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      label="Confirm New Password"
+                      placeholder="Re-enter new password"
+                      value={formConfirmPassword}
+                      onChange={(e) => {
+                        setFormConfirmPassword(e.target.value);
+                        if (passwordChangeError) setPasswordChangeError(null);
+                      }}
+                      disabled={!canManage || isChangingPassword}
+                      autoComplete="new-password"
+                      rightElement={
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="text-slate-400 hover:text-slate-600 focus:outline-none p-1 flex items-center justify-center cursor-pointer"
+                          tabIndex={-1}
+                        >
+                          {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      }
+                    />
+                  </div>
+
+                  {/* Minimal Password Requirements Checklist */}
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-[11px] text-slate-600">
+                    <div className="font-semibold text-slate-700 mb-1">Password Requirements:</div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-1">
+                      <span className={formNewPassword.length >= 8 ? 'text-emerald-600 font-medium' : 'text-slate-500'}>
+                        • 8+ characters
+                      </span>
+                      <span className={/[A-Z]/.test(formNewPassword) ? 'text-emerald-600 font-medium' : 'text-slate-500'}>
+                        • One uppercase [A-Z]
+                      </span>
+                      <span className={/[a-z]/.test(formNewPassword) ? 'text-emerald-600 font-medium' : 'text-slate-500'}>
+                        • One lowercase [a-z]
+                      </span>
+                      <span className={/[0-9]/.test(formNewPassword) ? 'text-emerald-600 font-medium' : 'text-slate-500'}>
+                        • One number [0-9]
+                      </span>
+                      <span className={/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(formNewPassword) ? 'text-emerald-600 font-medium' : 'text-slate-500'}>
+                        • One special (!@#$)
+                      </span>
+                      <span className={formNewPassword && formNewPassword === formConfirmPassword ? 'text-emerald-600 font-medium' : 'text-slate-500'}>
+                        • Passwords match
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Action & Credentials Buttons */}
+                  <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
+                    {canManage && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleChangeStaffPassword}
+                        disabled={isChangingPassword || !formNewPassword || !formConfirmPassword}
+                        isLoading={isChangingPassword}
+                        leftIcon={<Key className="h-3.5 w-3.5" />}
+                        className="text-xs h-8"
+                      >
+                        Update Password
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopyCredentialsFromEdit}
+                      className="flex-1 justify-center gap-1.5 text-xs h-8 bg-white border-slate-200 hover:border-slate-300 text-slate-700 cursor-pointer"
+                      leftIcon={<Copy className="h-3.5 w-3.5 text-slate-500" />}
+                    >
+                      Copy Credentials
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleSendWhatsAppFromEdit}
+                      className="flex-1 justify-center gap-1.5 text-xs h-8 bg-[#25D366] hover:bg-[#20bd5a] text-white border-transparent cursor-pointer font-medium"
+                      leftIcon={<ExternalLink className="h-3.5 w-3.5" />}
+                    >
+                      Send via WhatsApp
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -1614,6 +1440,50 @@ export function StaffPage() {
                 <div className="flex items-center justify-end pb-2">
                   {canManage && (
                     <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormPermissions([
+                            'CARD_VIEW',
+                            'CARD_ISSUE',
+                            'CARD_RETURN',
+                            'RECHARGE',
+                            'PURCHASE',
+                            'SESSION_VIEW',
+                            'PRODUCT_VIEW',
+                            'INVENTORY_VIEW',
+                          ])
+                        }
+                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                      >
+                        Cashier Preset
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormPermissions([
+                            'CARD_VIEW',
+                            'CARD_ISSUE',
+                            'CARD_RETURN',
+                            'CARD_BLOCK',
+                            'CARD_UNBLOCK',
+                            'RECHARGE',
+                            'PURCHASE',
+                            'REFUND',
+                            'SESSION_VIEW',
+                            'PRODUCT_VIEW',
+                            'PRODUCT_MANAGE',
+                            'INVENTORY_VIEW',
+                            'INVENTORY_MANAGE',
+                            'INVENTORY_IMPORT',
+                            'BRANCH_VIEW',
+                            'STAFF_VIEW',
+                          ])
+                        }
+                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                      >
+                        Supervisor Preset
+                      </button>
                       <button
                         type="button"
                         onClick={() =>
@@ -1640,17 +1510,9 @@ export function StaffPage() {
                             'BRANCH_MANAGE',
                           ])
                         }
-                        className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
+                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
                       >
-                        Select All (20)
-                      </button>
-                      <span className="text-slate-300">|</span>
-                      <button
-                        type="button"
-                        onClick={() => setFormPermissions([])}
-                        className="text-xs text-slate-500 hover:text-slate-700 font-medium"
-                      >
-                        Clear All
+                        Manager Preset
                       </button>
                     </div>
                   )}
@@ -1658,225 +1520,73 @@ export function StaffPage() {
 
                 <PermissionMatrix
                   selectedPermissions={formPermissions}
-                  onChange={canManage ? setFormPermissions : undefined}
+                  onChange={(perms) => setFormPermissions(perms)}
                   readOnly={!canManage}
                 />
-
-
               </div>
             )}
 
-            {/* ── TAB 3: BRANCHES ── */}
-            {staffTab === 'branches' && (
+            {/* ── TAB 3: COUNTERS ── */}
+            {!isCounterView && staffTab === 'branches' && (
               <div className="space-y-4">
-                <div className="flex items-center justify-end pb-2">
-                  {canManage && (
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setFormBranchIds(branches.map((b) => b.id))}
-                        className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
-                      >
-                        Select All
-                      </button>
-                      <span className="text-slate-300">|</span>
-                      <button
-                        type="button"
-                        onClick={() => setFormBranchIds([])}
-                        className="text-xs text-slate-500 hover:text-slate-700 font-medium"
-                      >
-                        Clear All
-                      </button>
-                    </div>
-                  )}
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                    Cafeteria Counter Assignments
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    Assign which cafeteria counters this staff member is authorized to access and operate.
+                  </p>
                 </div>
 
-                <div className="grid gap-2.5 sm:grid-cols-2">
-                  {branches.map((b) => {
-                    const isAssigned = formBranchIds.includes(b.id);
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {branches.map((branch) => {
+                    const isSelected = formBranchIds.includes(branch.id);
                     return (
                       <button
+                        key={branch.id}
                         type="button"
-                        key={b.id}
+                        disabled={!canManage}
                         onClick={() => {
-                          if (isAssigned) {
-                            setFormBranchIds(formBranchIds.filter((id) => id !== b.id));
+                          if (isSelected) {
+                            setFormBranchIds(formBranchIds.filter((id) => id !== branch.id));
                           } else {
-                            setFormBranchIds([...formBranchIds, b.id]);
+                            setFormBranchIds([...formBranchIds, branch.id]);
                           }
                         }}
-                        role="checkbox"
-                        aria-checked={isAssigned}
-                        disabled={!canManage}
-                        className={`flex w-full cursor-pointer items-center justify-between rounded-xl border p-3.5 text-xs text-left transition-all select-none ${!canManage ? "pointer-events-none opacity-80" : ""} ${
-                          isAssigned
-                            ? 'border-emerald-500 bg-emerald-50 text-slate-900'
-                            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                        }`}
+                        className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-emerald-500 bg-emerald-50/40 text-emerald-950 ring-1 ring-emerald-500'
+                            : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
+                        } ${!canManage ? 'cursor-not-allowed opacity-70' : ''}`}
                       >
                         <div className="flex items-center gap-3">
                           <div
-                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${
-                              isAssigned
-                                ? 'border-emerald-600 bg-emerald-600 text-white'
-                                : 'border-slate-300 bg-slate-100'
+                            className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                              isSelected ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500'
                             }`}
                           >
-                            {isAssigned && <Check className="h-3.5 w-3.5" />}
+                            <Building2 className="h-4 w-4" />
                           </div>
                           <div>
-                            <p className="font-semibold text-slate-800">{b.name}</p>
-                            <span className="text-[11px] text-slate-500">{b.name}</span>
+                            <p className="text-xs font-semibold">{branch.name}</p>
+                            <p className="text-[10px] text-slate-400">ID: {branch.id.slice(0, 8)}</p>
                           </div>
                         </div>
-
-                        <Badge variant={b.status === 'ACTIVE' ? 'success' : 'outline'} className="text-[10px]">
-                          {b.status}
+                        <Badge
+                          variant={isSelected ? 'success' : 'outline'}
+                          className="text-[10px]"
+                        >
+                          {isSelected ? 'Assigned' : 'Unassigned'}
                         </Badge>
                       </button>
                     );
                   })}
-                </div>
-
-
-              </div>
-            )}
-
-            {/* ── TAB 4: SECURITY & CHANGE PASSWORD ── */}
-            {staffTab === 'security' && (
-              <div className="space-y-5">
-
-                {passwordChangeError && (
-                  <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
-                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
-                    <span>{passwordChangeError}</span>
-                  </div>
-                )}
-
-                {passwordChangeSuccess && (
-                  <div className="flex items-start gap-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                    <span>{passwordChangeSuccess}</span>
-                  </div>
-                )}
-
-                <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Change Password
-                  </h4>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <Input
-                      id="staff-new-password"
-                      type={showNewPassword ? 'text' : 'password'}
-                      label="New Password"
-                      placeholder="Enter new password"
-                      value={formNewPassword}
-                      onChange={(e) => {
-                        setFormNewPassword(e.target.value);
-                        if (passwordChangeError) setPasswordChangeError(null);
-                      }}
-                      disabled={!canManage || isChangingPassword}
-                      autoComplete="new-password"
-                      rightElement={
-                        <button
-                          type="button"
-                          onClick={() => setShowNewPassword(!showNewPassword)}
-                          className="text-slate-400 hover:text-slate-600 focus:outline-none p-1 flex items-center justify-center cursor-pointer"
-                          title={showNewPassword ? 'Hide password' : 'Show password'}
-                          tabIndex={-1}
-                        >
-                          {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      }
-                    />
-
-                    <Input
-                      id="staff-confirm-password"
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      label="Confirm New Password"
-                      placeholder="Re-enter new password"
-                      value={formConfirmPassword}
-                      onChange={(e) => {
-                        setFormConfirmPassword(e.target.value);
-                        if (passwordChangeError) setPasswordChangeError(null);
-                      }}
-                      disabled={!canManage || isChangingPassword}
-                      autoComplete="new-password"
-                      rightElement={
-                        <button
-                          type="button"
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          className="text-slate-400 hover:text-slate-600 focus:outline-none p-1 flex items-center justify-center cursor-pointer"
-                          title={showConfirmPassword ? 'Hide password' : 'Show password'}
-                          tabIndex={-1}
-                        >
-                          {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      }
-                    />
-                  </div>
-
-                  {/* Password requirements checklist */}
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs space-y-1.5">
-                    <span className="font-semibold text-slate-600">Password Requirements:</span>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-slate-600">
-                      <div className={`flex items-center gap-1.5 ${formNewPassword.length >= 8 ? 'text-emerald-600 font-medium' : ''}`}>
-                        <span className="text-xs">•</span> At least 8 characters
-                      </div>
-                      <div className={`flex items-center gap-1.5 ${/[A-Z]/.test(formNewPassword) ? 'text-emerald-600 font-medium' : ''}`}>
-                        <span className="text-xs">•</span> One uppercase letter [A-Z]
-                      </div>
-                      <div className={`flex items-center gap-1.5 ${/[a-z]/.test(formNewPassword) ? 'text-emerald-600 font-medium' : ''}`}>
-                        <span className="text-xs">•</span> One lowercase letter [a-z]
-                      </div>
-                      <div className={`flex items-center gap-1.5 ${/[0-9]/.test(formNewPassword) ? 'text-emerald-600 font-medium' : ''}`}>
-                        <span className="text-xs">•</span> One number [0-9]
-                      </div>
-                      <div className={`flex items-center gap-1.5 ${/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(formNewPassword) ? 'text-emerald-600 font-medium' : ''}`}>
-                        <span className="text-xs">•</span> One special character (!@#$)
-                      </div>
-                      <div className={`flex items-center gap-1.5 ${formNewPassword && formNewPassword === formConfirmPassword ? 'text-emerald-600 font-medium' : ''}`}>
-                        <span className="text-xs">•</span> Passwords match
-                      </div>
-                    </div>
-                  </div>
-
-
-                  {canManage && (
-                    <div className="pt-2 flex justify-end">
-                      <Button
-                        type="button"
-                        variant="primary"
-                        onClick={handleChangeStaffPassword}
-                        isLoading={isChangingPassword}
-                        disabled={isChangingPassword || !formNewPassword || !formConfirmPassword}
-                        leftIcon={<Key className="h-4 w-4" />}
-                      >
-                        Change Password
-                      </Button>
-                    </div>
-                  )}
                 </div>
               </div>
             )}
           </div>
 
           <ModalFooter>
-            {canManage && (
-              <Button
-                type="button"
-                variant="danger"
-                className="mr-auto text-xs"
-                leftIcon={<Trash2 className="h-4 w-4" />}
-                onClick={() => {
-                  setShowStaffModal(false);
-                  if (selectedStaff) handleOpenDeleteStaff(selectedStaff);
-                }}
-              >
-                Delete Staff
-              </Button>
-            )}
             <Button variant="outline" onClick={() => setShowStaffModal(false)} disabled={isSubmitting}>
               Close
             </Button>
@@ -1952,23 +1662,9 @@ export function StaffPage() {
               </div>
 
               <div className="flex items-center justify-between p-3.5 text-xs">
-                <span className="text-slate-500 font-medium">Email Address</span>
-                <span className="font-mono text-slate-700">
-                  {selectedStaff.email || 'Not provided'}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between p-3.5 text-xs">
                 <span className="text-slate-500 font-medium">Role & Position</span>
                 <span className="font-semibold text-slate-800">
                   {selectedStaff.permissions.includes('STAFF_MANAGE') ? 'Manager / Admin' : 'Cashier / POS'}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between p-3.5 text-xs">
-                <span className="text-slate-500 font-medium">Created Date</span>
-                <span className="text-slate-700">
-                  {formatDate(selectedStaff.createdAt)}
                 </span>
               </div>
             </div>
@@ -1997,39 +1693,18 @@ export function StaffPage() {
               >
                 Close
               </Button>
-              <StaffActionMenu
-                staff={selectedStaff}
-                canManage={canManage}
-                isCounterView={isCounterView}
-                onEditOrView={() => {
-                  setShowStaffDetailsModal(false);
-                  handleOpenStaffModal(selectedStaff, 'overview');
-                }}
-                onViewAudit={() => {
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
                   setShowStaffDetailsModal(false);
                   handleOpenStaffAudit(selectedStaff);
                 }}
-                onPermissions={() => {
-                  setShowStaffDetailsModal(false);
-                  handleOpenStaffModal(selectedStaff, 'permissions');
-                }}
-                onBranches={() => {
-                  setShowStaffDetailsModal(false);
-                  handleOpenStaffModal(selectedStaff, 'branches');
-                }}
-                onSecurity={() => {
-                  setShowStaffDetailsModal(false);
-                  handleOpenStaffModal(selectedStaff, 'security');
-                }}
-                onToggleStatus={() => {
-                  setShowStaffDetailsModal(false);
-                  handleOpenStatus(selectedStaff);
-                }}
-                onDelete={() => {
-                  setShowStaffDetailsModal(false);
-                  handleOpenDeleteStaff(selectedStaff);
-                }}
-              />
+                leftIcon={<FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />}
+                className="text-xs font-medium border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 cursor-pointer"
+              >
+                Performance & Audit
+              </Button>
               {canManage && (
                 <Button
                   variant="primary"
@@ -2096,14 +1771,14 @@ export function StaffPage() {
                     key={st.id}
                     className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/20 transition-all gap-3"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-sm font-bold text-white shadow-2xs">
                         {st.name.charAt(0).toUpperCase()}
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-slate-900 text-sm truncate">{st.name}</span>
-                          <Badge variant={st.status === 'ACTIVE' ? 'success' : 'danger'} className="text-[10px] py-0 px-1.5">
+                          <span className="font-bold text-slate-900 text-sm break-words">{st.name}</span>
+                          <Badge variant={st.status === 'ACTIVE' ? 'success' : 'danger'} className="text-[10px] py-0 px-1.5 shrink-0">
                             {st.status === 'ACTIVE' ? 'Active' : 'Inactive'}
                           </Badge>
                         </div>
@@ -2122,7 +1797,7 @@ export function StaffPage() {
                           setShowCounterStaffModal(false);
                           handleOpenStaffDetails(st);
                         }}
-                        className="text-xs h-7 px-2.5 font-medium border-slate-300 text-slate-700 hover:border-emerald-500 hover:bg-emerald-50"
+                        className="text-xs h-7 px-2.5 font-medium border-slate-300 text-slate-700 hover:border-emerald-500 hover:bg-emerald-50 cursor-pointer"
                       >
                         View Details
                       </Button>
@@ -2135,44 +1810,23 @@ export function StaffPage() {
                             handleOpenStaffModal(st, 'overview');
                           }}
                           leftIcon={<Edit2 className="h-3 w-3" />}
-                          className="text-xs h-7 px-2.5 font-medium"
+                          className="text-xs h-7 px-2.5 font-medium cursor-pointer"
                         >
                           Edit
                         </Button>
                       )}
-                      <StaffActionMenu
-                        staff={st}
-                        canManage={canManage}
-                        isCounterView={isCounterView}
-                        onEditOrView={() => {
-                          setShowCounterStaffModal(false);
-                          handleOpenStaffModal(st, 'overview');
-                        }}
-                        onViewAudit={() => {
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
                           setShowCounterStaffModal(false);
                           handleOpenStaffAudit(st);
                         }}
-                        onPermissions={() => {
-                          setShowCounterStaffModal(false);
-                          handleOpenStaffModal(st, 'permissions');
-                        }}
-                        onBranches={() => {
-                          setShowCounterStaffModal(false);
-                          handleOpenStaffModal(st, 'branches');
-                        }}
-                        onSecurity={() => {
-                          setShowCounterStaffModal(false);
-                          handleOpenStaffModal(st, 'security');
-                        }}
-                        onToggleStatus={() => {
-                          setShowCounterStaffModal(false);
-                          handleOpenStatus(st);
-                        }}
-                        onDelete={() => {
-                          setShowCounterStaffModal(false);
-                          handleOpenDeleteStaff(st);
-                        }}
-                      />
+                        leftIcon={<FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />}
+                        className="text-xs h-7 px-2.5 font-medium border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 cursor-pointer"
+                      >
+                        Performance & Audit
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -2745,43 +2399,7 @@ export function StaffPage() {
         </div>
       </Modal>
 
-      {/* ── 3. ACTIVATE / DEACTIVATE CONFIRMATION MODAL ── */}
-      <Modal
-        isOpen={showStatusModal}
-        onClose={() => setShowStatusModal(false)}
-        title={selectedStaff?.status === 'ACTIVE' ? 'Deactivate Staff Account' : 'Activate Staff Account'}
-      >
-        <div className="space-y-4 py-2">
-          {modalApiError && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
-              <span>{modalApiError}</span>
-            </div>
-          )}
 
-          <p className="text-sm text-slate-700">
-            Are you sure you want to{' '}
-            <strong className="text-slate-900">
-              {selectedStaff?.status === 'ACTIVE' ? 'deactivate' : 'activate'}
-            </strong>{' '}
-            the staff member <span className="text-emerald-700 font-semibold">{selectedStaff?.name}</span>?
-          </p>
-
-          <ModalFooter>
-            <Button variant="outline" onClick={() => setShowStatusModal(false)} disabled={isSubmitting}>
-              Close
-            </Button>
-            <Button
-              variant={selectedStaff?.status === 'ACTIVE' ? 'danger' : 'primary'}
-              onClick={handleStatusSubmit}
-              isLoading={isSubmitting}
-              disabled={isSubmitting}
-            >
-              Confirm {selectedStaff?.status === 'ACTIVE' ? 'Deactivation' : 'Activation'}
-            </Button>
-          </ModalFooter>
-        </div>
-      </Modal>
 
       {/* ── WhatsApp & Staff Credentials Popup Modal (Opens right after creating staff member) ── */}
       <Modal
@@ -2876,63 +2494,7 @@ export function StaffPage() {
           </ModalFooter>
         </div>
       </Modal>
-      {/* ── Delete Staff Confirmation Modal ───────────────────────── */}
-      <Modal
-        isOpen={showDeleteStaffModal}
-        onClose={() => !isSubmitting && setShowDeleteStaffModal(false)}
-        title="Delete Staff Account"
-        description="Safely remove staff access while preserving 100% of historical records"
-        size="md"
-      >
-        <div className="space-y-4">
-          {modalApiError && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-700">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-500 mt-0.5" />
-              <div className="space-y-1">
-                <p className="font-semibold">Action Blocked</p>
-                <p>{modalApiError}</p>
-              </div>
-            </div>
-          )}
 
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
-            <p className="text-sm text-slate-800 font-medium">
-              Are you sure you want to delete staff account <span className="text-emerald-700 font-bold font-mono">{selectedStaff?.name}</span> ({selectedStaff?.phone || selectedStaff?.email})?
-            </p>
-
-            <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800 space-y-1">
-              <p className="font-semibold flex items-center gap-1.5 text-emerald-900">
-                <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
-                100% Data Preservation Guarantee
-              </p>
-              <p className="leading-relaxed">
-                All historical sales transactions, card issuances, refunds, and audit trail records will remain intact with <strong>{selectedStaff?.name}</strong> attributed permanently.
-              </p>
-            </div>
-
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Login access will be immediately terminated, security tokens revoked, and their seat in your subscription plan will be freed for new staff members.
-            </p>
-          </div>
-
-          <ModalFooter>
-            <Button
-              variant="ghost"
-              onClick={() => setShowDeleteStaffModal(false)}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="danger"
-              onClick={handleDeleteStaffSubmit}
-              isLoading={isSubmitting}
-            >
-              Confirm Deletion
-            </Button>
-          </ModalFooter>
-        </div>
-      </Modal>
 
       {/* ── 5. STAFF PERFORMANCE & OPERATIONAL AUDIT MODAL ── */}
       {selectedStaffForAudit && (

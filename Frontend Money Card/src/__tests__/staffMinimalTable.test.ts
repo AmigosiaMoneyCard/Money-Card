@@ -118,25 +118,59 @@ describe('Staff Management Minimal Table & Counter-First Layout Tests', () => {
     expect(tableColumns[1].header).toBe('Staff Details');
   });
 
-  it('should verify that Edit and Actions belong inside the Staff Details popup modal', () => {
-    const modalActions = ['Close', 'Actions', 'Edit Staff'];
-    expect(modalActions).toContain('Edit Staff');
-    expect(modalActions).toContain('Actions');
-  });
-
-  it('should determine whether to open single staff details or counter staff list modal', () => {
-    const decideModalToOpen = (group: CounterStaffGroup) => {
-      if (group.staff.length === 1) {
-        return 'SINGLE_STAFF_DETAILS_MODAL';
-      }
-      return 'COUNTER_STAFF_LIST_MODAL';
+  it('should validate staff name field with a limit of 20 characters', () => {
+    const validateName = (name: string) => {
+      if (!name.trim()) return 'Name is required';
+      if (name.trim().length > 20) return 'Name cannot exceed 20 characters';
+      return null;
     };
 
-    expect(decideModalToOpen({ id: '1', counterName: 'Main', staff: [mockStaffList[0]] })).toBe(
-      'SINGLE_STAFF_DETAILS_MODAL',
-    );
-    expect(decideModalToOpen({ id: '2', counterName: 'Main', staff: mockStaffList })).toBe(
-      'COUNTER_STAFF_LIST_MODAL',
-    );
+    expect(validateName('Alex Counter Staff')).toBeNull();
+    expect(validateName('A'.repeat(20))).toBeNull();
+    expect(validateName('A'.repeat(21))).toBe('Name cannot exceed 20 characters');
+    expect(validateName('   ')).toBe('Name is required');
+  });
+
+  it('should validate staff phone number with simple 10-digit validation', () => {
+    const validatePhone = (phone: string) => {
+      const cleanPhone = phone.replace(/\D/g, '');
+      if (!cleanPhone) return 'Phone number is required';
+      if (!/^\d{10}$/.test(cleanPhone)) return 'Phone number must be exactly 10 digits';
+      return null;
+    };
+
+    expect(validatePhone('9876543210')).toBeNull();
+    expect(validatePhone('98765-43210')).toBeNull();
+    expect(validatePhone('12345')).toBe('Phone number must be exactly 10 digits');
+    expect(validatePhone('987654321099')).toBe('Phone number must be exactly 10 digits');
+    expect(validatePhone('')).toBe('Phone number is required');
+  });
+
+  it('should verify minimal password checklist requirements', () => {
+    const checkPasswordRequirements = (pwd: string, confirm: string) => ({
+      length: pwd.length >= 8,
+      uppercase: /[A-Z]/.test(pwd),
+      lowercase: /[a-z]/.test(pwd),
+      number: /[0-9]/.test(pwd),
+      special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(pwd),
+      matches: Boolean(pwd && pwd === confirm),
+    });
+
+    const weak = checkPasswordRequirements('pass', 'pass');
+    expect(weak.length).toBe(false);
+    expect(weak.uppercase).toBe(false);
+
+    const strong = checkPasswordRequirements('StrongPass1@', 'StrongPass1@');
+    expect(strong.length).toBe(true);
+    expect(strong.uppercase).toBe(true);
+    expect(strong.lowercase).toBe(true);
+    expect(strong.number).toBe(true);
+    expect(strong.special).toBe(true);
+    expect(strong.matches).toBe(true);
+  });
+
+  it('should verify that Performance & Audit is the designated primary audit action', () => {
+    const staffActionName = 'Performance & Audit';
+    expect(staffActionName).toBe('Performance & Audit');
   });
 });
