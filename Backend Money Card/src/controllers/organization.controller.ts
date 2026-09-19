@@ -126,6 +126,24 @@ export async function getBranches(req: Request, res: Response) {
           cardSessions: true,
         },
       },
+      staffAssignments: {
+        where: {
+          user: {
+            role: Role.STAFF,
+          },
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              email: true,
+            },
+          },
+        },
+        take: 1,
+      },
     },
     orderBy: { createdAt: 'asc' },
   });
@@ -139,6 +157,13 @@ export async function getBranches(req: Request, res: Response) {
     staffCount: b._count.staffAssignments,
     inventoryCount: b._count.inventoryItems,
     sessionCount: b._count.cardSessions,
+    manager: b.staffAssignments?.[0]?.user
+      ? {
+          id: b.staffAssignments[0].user.id,
+          name: b.staffAssignments[0].user.name,
+          phone: b.staffAssignments[0].user.phone,
+        }
+      : null,
     createdAt: b.createdAt,
     updatedAt: b.updatedAt,
   }));
@@ -323,26 +348,94 @@ export async function getBranchById(req: Request, res: Response) {
 
   const branch = await prisma.branch.findFirst({
     where: { id, organizationId: orgId || undefined },
+    include: {
+      staffAssignments: {
+        where: {
+          user: {
+            role: Role.STAFF,
+          },
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              email: true,
+            },
+          },
+        },
+        take: 1,
+      },
+    },
   });
 
   if (!branch) {
     return sendError(res, 404, 'NOT_FOUND', 'Branch not found');
   }
 
-  return sendSuccess(res, branch);
+  const manager = branch.staffAssignments?.[0]?.user
+    ? {
+        id: branch.staffAssignments[0].user.id,
+        name: branch.staffAssignments[0].user.name,
+        phone: branch.staffAssignments[0].user.phone,
+      }
+    : null;
+
+  return sendSuccess(res, { ...branch, manager });
 }
 
 export async function updateBranch(req: Request, res: Response) {
   const { id } = req.params;
   const orgId = req.user?.organizationId;
-  const { name, location, status } = req.body;
+  const { name, location, status, phone, password } = req.body;
 
   const branch = await prisma.branch.findFirst({
     where: { id, organizationId: orgId || undefined },
+    include: {
+      staffAssignments: {
+        where: {
+          user: {
+            role: Role.STAFF,
+          },
+        },
+        include: {
+          user: true,
+        },
+        take: 1,
+      },
+    },
   });
 
   if (!branch) {
     return sendError(res, 404, 'NOT_FOUND', 'Branch not found');
+  }
+
+  // Validate Name if provided
+  if (name !== undefined) {
+    const trimmed = typeof name === 'string' ? name.trim() : '';
+    if (trimmed.length < 2 || trimmed.length > 20) {
+      return sendError(res, 400, 'VALIDATION_ERROR', 'Counter name must be between 2 and 20 characters');
+    }
+    const nameRegex = /^[a-zA-Z0-9\s\-&]+$/;
+    if (!nameRegex.test(trimmed)) {
+      return sendError(res, 400, 'VALIDATION_ERROR', 'Counter name can only contain letters, numbers, spaces, hyphens, and ampersands');
+    }
+  }
+
+  // Validate Phone if provided
+  const cleanPhone = phone ? String(phone).trim().replace(/\D/g, '') : undefined;
+  if (phone !== undefined && phone !== '') {
+    if (!cleanPhone || cleanPhone.length !== 10 || !/^[6-9]\d{9}$/.test(cleanPhone)) {
+      return sendError(res, 400, 'VALIDATION_ERROR', 'Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9');
+    }
+  }
+
+  // Validate Password if provided
+  if (password !== undefined && password !== '') {
+    if (typeof password !== 'string' || password.length < 6 || password.length > 30) {
+      return sendError(res, 400, 'VALIDATION_ERROR', 'Password must be between 6 and 30 characters');
+    }
   }
 
   // Prevent disabling all branches - at least one active branch is strictly required per organization
@@ -359,21 +452,89 @@ export async function updateBranch(req: Request, res: Response) {
         res,
         400,
         'MIN_ACTIVE_BRANCH_REQUIRED',
-        'Cannot disable this branch. An organization must have at least one active branch.',
+        'Cannot disable this counter. A cafeteria must have at least one active counter.',
       );
     }
   }
 
-  const updated = await prisma.branch.update({
-    where: { id },
-    data: {
-      ...(name ? { name: name.trim() } : {}),
-      ...(location !== undefined ? { location } : {}),
-      ...(status ? { status } : {}),
-    },
+  const effectivePassword = (password !== undefined && password !== '') ? String(password) : undefined;
+  let passwordHash: string | undefined = undefined;
+  if (effectivePassword) {
+    passwordHash = await hashPassword(effectivePassword);
+  }
+
+  const updatedBranch = await prisma.$transaction(async (tx) => {
+    const updated = await tx.branch.update({
+      where: { id },
+      data: {
+        ...(name !== undefined ? { name: String(name).trim() } : {}),
+        ...(location !== undefined ? { location } : {}),
+        ...(status ? { status } : {}),
+      },
+    });
+
+    const existingManager = branch.staffAssignments?.[0]?.user;
+    if (existingManager) {
+      await tx.user.update({
+        where: { id: existingManager.id },
+        data: {
+          ...(name !== undefined ? { name: `${String(name).trim()} Counter Manager` } : {}),
+          ...(cleanPhone ? { phone: cleanPhone } : {}),
+          ...(passwordHash ? { passwordHash } : {}),
+        },
+      });
+    } else if (cleanPhone) {
+      const defaultPassword = effectivePassword || '123456';
+      const hash = passwordHash || await hashPassword(defaultPassword);
+
+      const newManager = await tx.user.upsert({
+        where: { phone: cleanPhone },
+        create: {
+          name: `${(name ? String(name).trim() : branch.name)} Counter Manager`,
+          phone: cleanPhone,
+          passwordHash: hash,
+          role: Role.STAFF,
+          organizationId: branch.organizationId,
+          status: UserStatus.ACTIVE,
+        },
+        update: {
+          passwordHash: hash,
+          status: UserStatus.ACTIVE,
+        },
+      });
+
+      await tx.userBranch.upsert({
+        where: {
+          userId_branchId: {
+            userId: newManager.id,
+            branchId: id,
+          },
+        },
+        create: {
+          userId: newManager.id,
+          branchId: id,
+        },
+        update: {},
+      }).catch(() => {});
+    }
+
+    return updated;
   });
 
-  return sendSuccess(res, updated);
+  const finalManagerPhone = cleanPhone || branch.staffAssignments?.[0]?.user?.phone;
+
+  return sendSuccess(res, {
+    ...updatedBranch,
+    manager: {
+      name: updatedBranch.name,
+      phone: finalManagerPhone || '',
+    },
+    credentials: {
+      name: updatedBranch.name,
+      phone: finalManagerPhone || '',
+      password: effectivePassword,
+    },
+  });
 }
 
 export async function deleteBranch(req: Request, res: Response) {

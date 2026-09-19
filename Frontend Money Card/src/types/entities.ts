@@ -47,6 +47,14 @@ export interface CreateBranchRequest {
   location?: string;
 }
 
+export interface UpdateBranchRequest {
+  name?: string;
+  phone?: string;
+  password?: string;
+  status?: 'ACTIVE' | 'INACTIVE' | 'PENDING_ACTIVATION';
+  location?: string;
+}
+
 export interface Branch {
   id: string;
   organizationId: string;
@@ -58,6 +66,11 @@ export interface Branch {
     phone: string;
     password?: string;
   };
+  manager?: {
+    id?: string;
+    name?: string;
+    phone?: string;
+  } | null;
   createdAt: string;
   updatedAt: string;
 }
