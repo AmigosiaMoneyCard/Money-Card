@@ -167,13 +167,23 @@ export function useOrgAdminAnalytics() {
   const [sortBy, setSortBy] = useState<SortMetric>('revenue');
   const [selectedBranchDetail, setSelectedBranchDetail] = useState<BranchPerformanceMetric | null>(null);
 
-  const [branchFilter, setBranchFilter] = useState<string>(
-    searchParams.get('branchId') || currentBranch?.id || 'ALL',
-  );
+  const isStaff = user?.role === 'STAFF';
+
+  const [branchFilter, setBranchFilter] = useState<string>(() => {
+    if (isStaff) {
+      return currentBranch?.id || user?.assignedBranchIds?.[0] || searchParams.get('branchId') || '';
+    }
+    return searchParams.get('branchId') || currentBranch?.id || 'ALL';
+  });
 
   useEffect(() => {
-    setBranchFilter(currentBranch ? currentBranch.id : 'ALL');
-  }, [currentBranch]);
+    if (isStaff) {
+      const bId = currentBranch?.id || user?.assignedBranchIds?.[0] || '';
+      if (bId) setBranchFilter(bId);
+    } else {
+      setBranchFilter(currentBranch ? currentBranch.id : 'ALL');
+    }
+  }, [currentBranch, isStaff, user?.assignedBranchIds]);
 
   const [datePreset, setDatePreset] = useState<DatePreset>(
     (searchParams.get('preset') as DatePreset) || 'custom',

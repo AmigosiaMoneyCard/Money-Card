@@ -31,6 +31,12 @@ async function patchCounterManagers() {
     if (!existingCodes.has(PermissionCode.STAFF_MANAGE)) {
       toAdd.push(PermissionCode.STAFF_MANAGE);
     }
+    if (!existingCodes.has(PermissionCode.VIEW_ANALYTICS)) {
+      toAdd.push(PermissionCode.VIEW_ANALYTICS);
+    }
+    if (!existingCodes.has(PermissionCode.VIEW_REPORTS)) {
+      toAdd.push(PermissionCode.VIEW_REPORTS);
+    }
 
     if (toAdd.length > 0) {
       for (const perm of toAdd) {
