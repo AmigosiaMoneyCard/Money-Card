@@ -28,11 +28,8 @@ import {
 import { DataTable } from '@/components/tables';
 import { formatDate, formatCurrency, extractTransactionItems } from '@/utils';
 import {
-  CreditCard,
-  Building2,
   Search,
   RefreshCw,
-  Eye,
   Wallet,
   ArrowUpRight,
   ShoppingBag,
@@ -344,27 +341,13 @@ export function SessionsPage({ hideHeader = false }: { hideHeader?: boolean } = 
       header: 'Customer',
       render: (item: CustomerHistoryItem) => (
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400 font-bold text-sm shrink-0">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-600 font-bold text-sm shrink-0">
             {item.customerName ? item.customerName.charAt(0).toUpperCase() : <User className="h-4 w-4" />}
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-900">
-                {item.customerName || 'Walk-in Customer'}
-              </span>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleOpenDetails(item);
-                }}
-                className="p-1 rounded-md text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 transition-colors cursor-pointer"
-                title="View customer session details"
-                aria-label={`View session for ${item.customerName || 'Walk-in Customer'}`}
-              >
-                <Eye className="h-3.5 w-3.5" />
-              </button>
-            </div>
+            <span className="font-bold text-slate-900 block">
+              {item.customerName || 'Walk-in Customer'}
+            </span>
             {item.customerPhone && (
               <p className="text-xs text-slate-500 font-medium flex items-center gap-1 mt-0.5">
                 <Phone className="h-3 w-3 text-slate-400" />
@@ -377,69 +360,24 @@ export function SessionsPage({ hideHeader = false }: { hideHeader?: boolean } = 
     },
     {
       key: 'physicalCardNumber',
-      header: 'Card Number',
+      header: 'Coupon ID',
+      className: 'text-right pr-4',
       render: (item: CustomerHistoryItem) => (
-        <div className="flex items-center gap-2">
-          <CreditCard className="h-4 w-4 text-emerald-600" />
-          <span className="font-mono font-bold text-slate-900">
-            {item.physicalCardNumber}
-          </span>
-          <span
-            className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200 font-mono"
-            title={`Card Cycle #${item.cycleNumber}`}
-          >
-            #{item.cycleNumber}
-          </span>
-        </div>
-      ),
-    },
-    {
-      key: 'sessionStatus',
-      header: 'Status',
-      render: (item: CustomerHistoryItem) => (
-        <Badge variant={item.sessionStatus === 'ACTIVE' ? 'success' : 'outline'}>
-          {item.sessionStatus}
-        </Badge>
-      ),
-    },
-    {
-      key: 'balance',
-      header: 'Balance',
-      render: (item: CustomerHistoryItem) => (
-        <span className="font-mono font-bold text-slate-900">
-          {formatCurrency(item.balance)}
-        </span>
-      ),
-    },
-    {
-      key: 'branchName',
-      header: 'Counter',
-      render: (item: CustomerHistoryItem) => (
-        <span className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
-          <Building2 className="h-3.5 w-3.5 text-slate-500" />
-          {item.branchName}
-        </span>
-      ),
-    },
-    {
-      key: 'startedAt',
-      header: 'Issued At',
-      render: (item: CustomerHistoryItem) => (
-        <span className="text-xs font-medium text-slate-500">
-          {formatDate(item.startedAt)}
+        <span className="font-mono font-bold text-slate-900 text-sm">
+          {item.physicalCardNumber || item.sessionCardNumber || item.cardId}
         </span>
       ),
     },
     {
       key: 'action',
       header: '',
-      className: 'text-right',
+      className: 'text-right w-24',
       render: (item: CustomerHistoryItem) => (
         <Button
           variant="outline"
           size="sm"
           onClick={() => handleOpenDetails(item)}
-          leftIcon={<Eye className="h-3.5 w-3.5" />}
+          className="text-xs font-semibold hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300"
         >
           View
         </Button>
@@ -480,7 +418,7 @@ export function SessionsPage({ hideHeader = false }: { hideHeader?: boolean } = 
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Search by customer, phone, or card number..."
+              placeholder="Search by customer, phone, or coupon ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value.slice(0, 30))}
               maxLength={30}

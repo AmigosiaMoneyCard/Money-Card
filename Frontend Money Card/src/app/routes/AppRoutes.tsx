@@ -101,7 +101,7 @@ export function AppRoutes() {
         />
         <Route
           path="/sessions"
-          element={<Navigate to="/cards?tab=history" replace />}
+          element={<Navigate to="/cards" replace />}
         />
         <Route
           path="/products"
