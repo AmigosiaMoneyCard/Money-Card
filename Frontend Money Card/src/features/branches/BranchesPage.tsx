@@ -164,6 +164,8 @@ export function BranchesPage() {
   const [editPhoneInput, setEditPhoneInput] = useState('');
   const [editPasswordInput, setEditPasswordInput] = useState('');
   const [showEditPassword, setShowEditPassword] = useState(false);
+  const [currentBranchPassword, setCurrentBranchPassword] = useState('123456');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [editNameError, setEditNameError] = useState<string | null>(null);
   const [editPhoneError, setEditPhoneError] = useState<string | null>(null);
   const [editPasswordError, setEditPasswordError] = useState<string | null>(null);
@@ -366,6 +368,9 @@ export function BranchesPage() {
     setEditNameInput(branch.name);
     const initialPhone = (branch.manager?.phone || branch.credentials?.phone || '').replace(/\D/g, '').slice(-10);
     setEditPhoneInput(initialPhone);
+    const initialPassword = branch.credentials?.password || '123456';
+    setCurrentBranchPassword(initialPassword);
+    setShowCurrentPassword(false);
     setEditPasswordInput('');
     setShowEditPassword(false);
     setEditNameError(null);
@@ -412,6 +417,9 @@ export function BranchesPage() {
         return;
       }
 
+      if (editPasswordInput.trim()) {
+        setCurrentBranchPassword(editPasswordInput.trim());
+      }
       notify.success('Counter details updated successfully');
       setShowViewEditModal(false);
       fetchBranches();
@@ -426,7 +434,7 @@ export function BranchesPage() {
     if (!selectedBranch) return;
     const cleanPhone = editPhoneInput.replace(/\D/g, '').slice(-10);
     const loginUrl = `${window.location.origin}/login`;
-    const passwordText = editPasswordInput.trim() ? editPasswordInput.trim() : '[Existing Password]';
+    const passwordText = editPasswordInput.trim() || currentBranchPassword || '123456';
     const textToCopy =
       `Counter Name: ${editNameInput.trim() || selectedBranch.name}\n` +
       `Mobile Number: ${cleanPhone || 'Not set'}\n` +
@@ -445,7 +453,7 @@ export function BranchesPage() {
     }
 
     const loginUrl = `${window.location.origin}/login`;
-    const passwordText = editPasswordInput.trim() ? editPasswordInput.trim() : '[Your Existing Password]';
+    const passwordText = editPasswordInput.trim() || currentBranchPassword || '123456';
     const message =
       `🍽️ *Money Card Counter Credentials*\n\n` +
       `Here are your counter login details:\n\n` +
@@ -1027,6 +1035,30 @@ export function BranchesPage() {
                 error={editPasswordError || undefined}
                 disabled={isSubmitting}
               />
+            </div>
+
+            {/* Current Password Display Card */}
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3 flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider block">
+                  Current Password
+                </span>
+                <span className="font-mono text-sm font-bold text-slate-800">
+                  {showCurrentPassword ? (editPasswordInput.trim() || currentBranchPassword) : '••••••••'}
+                </span>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Copying or sharing credentials will use this password.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                className="p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-100 transition-colors cursor-pointer flex items-center gap-1 text-xs font-semibold"
+                aria-label={showCurrentPassword ? 'Hide current password' : 'Show current password'}
+              >
+                {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                <span>{showCurrentPassword ? 'Hide' : 'Reveal'}</span>
+              </button>
             </div>
 
             {/* Quick Sharing Actions Bar */}

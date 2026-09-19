@@ -12,6 +12,23 @@
 3. **Default**: Push only to the active feature branch on remote (`origin/<feature-branch>`).
 4. User manually reviews PRs and merges into staging/main themselves.
 
+### Zero-Error Staging → Main Merge & URL Integrity Rules
+When merging `staging` into `main` (Production), zero errors and zero URL/domain mismatches must occur:
+- **No Hardcoded URLs**: Never hardcode environment-specific URLs (e.g. `localhost`, `*-staging.vercel.app`, or `*-staging.onrender.com`) in shared frontend/backend logic.
+- **Frontend URL Resolution**:
+  - API base URL must always load from environment variables (`import.meta.env.VITE_API_BASE_URL`).
+  - Customer portal links and QR redirects must use `getPublicCustomerPortalUrl()` (`window.location.origin` in production, and `money-card-frontend-staging.vercel.app` only when hostname explicitly includes `'staging'`).
+  - Production Vercel must route to production backend (`https://money-card-backend.onrender.com/api`).
+  - Staging Vercel must route to staging backend (`https://money-card-backend-staging.onrender.com/api`).
+- **Mobile POS Flavors (`Flutter Money card`)**:
+  - Keep `productionBaseUrl` (`https://money-card-backend.onrender.com/api/v1`) and `stagingBaseUrl` (`https://money-card-backend-staging.onrender.com/api/v1`) isolated by entry point (`main_production.dart` vs `main_staging.dart`).
+  - Maintain the active guard in `ServerConfigStorage` that purges any staging URL contamination when running a production build.
+- **Pre-Merge Integrity Check**:
+  - Before approving or proposing a staging-to-main merge, all test suites must pass (`Frontend`: 255+ passing, `Backend`: 100 passing, TypeScript: 0 errors).
+  - Confirm `git diff main..staging` on `.env*`, `client.ts`, `vercel.json`, and `app_config.dart` contains no unintended hardcoded staging URLs.
+  - Verify Prisma schema and migrations are in complete parity between branches.
+
+
 ---
 
 ## Mandatory Agent Workflow Rules

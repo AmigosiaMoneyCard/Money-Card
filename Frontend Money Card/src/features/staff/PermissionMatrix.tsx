@@ -201,13 +201,17 @@ export function PermissionMatrix({
             </div>
 
             <p className="text-xs text-slate-600 font-medium mt-2 leading-relaxed">
-              Authorized to deduct amount from customer cards at POS checkout, add food products to cart, and scan cards.
+              Authorized to deduct amount from customer cards at POS checkout, add food products to cart, and create & edit menu items.
             </p>
 
             <div className="mt-3.5 pt-3 border-t border-slate-200/80 space-y-1.5 text-xs">
               <div className="flex items-center gap-2 text-slate-700">
                 <Check className="h-3.5 w-3.5 text-sky-600 shrink-0" />
                 <span className="font-semibold text-slate-800">Deduct Card Amount (POS Checkout)</span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-700">
+                <Check className="h-3.5 w-3.5 text-sky-600 shrink-0" />
+                <span className="font-semibold text-slate-800">Create & Edit Menu Products</span>
               </div>
               <div className="flex items-center gap-2 text-slate-700">
                 <Check className="h-3.5 w-3.5 text-sky-600 shrink-0" />

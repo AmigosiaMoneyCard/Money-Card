@@ -164,6 +164,13 @@ export async function getBranches(req: Request, res: Response) {
           phone: b.staffAssignments[0].user.phone,
         }
       : null,
+    credentials: b.staffAssignments?.[0]?.user
+      ? {
+          name: b.name,
+          phone: b.staffAssignments[0].user.phone || '',
+          password: '123456',
+        }
+      : undefined,
     createdAt: b.createdAt,
     updatedAt: b.updatedAt,
   }));
@@ -382,7 +389,17 @@ export async function getBranchById(req: Request, res: Response) {
       }
     : null;
 
-  return sendSuccess(res, { ...branch, manager });
+  return sendSuccess(res, {
+    ...branch,
+    manager,
+    credentials: manager
+      ? {
+          name: branch.name,
+          phone: manager.phone || '',
+          password: '123456',
+        }
+      : undefined,
+  });
 }
 
 export async function updateBranch(req: Request, res: Response) {

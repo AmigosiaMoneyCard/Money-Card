@@ -69,4 +69,25 @@ class ProductService {
       fromJson: (data) => Product.fromJson(data as Map<String, dynamic>),
     );
   }
+
+  /// Update an existing product (PUT /api/v1/products/:id)
+  Future<Product> updateProduct({
+    required String id,
+    String? itemName,
+    List<String>? category,
+    double? price,
+    String? status,
+  }) async {
+    return _apiService.put<Product>(
+      '${ApiEndpoints.products}/$id',
+      data: <String, dynamic>{
+        'itemName': ?itemName,
+        'category': ?category,
+        'price': ?price,
+        'status': ?status,
+      },
+      fromJson: (data) => Product.fromJson(data as Map<String, dynamic>),
+    );
+  }
 }
+

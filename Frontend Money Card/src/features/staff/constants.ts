@@ -141,6 +141,8 @@ export const STAFF_PERMISSIONS: Permission[] = [
   'CARD_VIEW',
   'PURCHASE',
   'PRODUCT_VIEW',
+  'PRODUCT_MANAGE',
   'SESSION_VIEW',
 ];
+
 

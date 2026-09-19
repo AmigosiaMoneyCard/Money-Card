@@ -326,6 +326,14 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                           label: product.status,
                           variant: isActive ? AppBadgeVariant.success : AppBadgeVariant.neutral,
                         ),
+                        const SizedBox(width: 4),
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                          tooltip: 'Edit Item',
+                          onPressed: () => _showEditProductBottomSheet(context, ref, product),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 2),
@@ -568,4 +576,227 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
       },
     );
   }
+
+  void _showEditProductBottomSheet(BuildContext context, WidgetRef ref, dynamic product) {
+    final nameController = TextEditingController(text: product.itemName);
+    final priceController = TextEditingController(text: product.price.toStringAsFixed(2));
+    String selectedCategory = product.category.isNotEmpty ? product.category.first : 'Veg';
+    String selectedStatus = product.status.toUpperCase();
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: EdgeInsets.only(
+                left: AppSpacing.md,
+                right: AppSpacing.md,
+                top: AppSpacing.md,
+                bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.md,
+              ),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.borderLight,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Edit Menu Item',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimaryLight,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: selectedStatus == 'ACTIVE' ? AppColors.successLight : AppColors.surfaceLight,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: selectedStatus == 'ACTIVE' ? AppColors.success.withValues(alpha: 0.3) : AppColors.borderLight,
+                            ),
+                          ),
+                          child: Text(
+                            selectedStatus,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: selectedStatus == 'ACTIVE' ? AppColors.primaryDark : AppColors.textSecondaryLight,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Item Name',
+                        prefixIcon: const Icon(Icons.restaurant_menu),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    TextField(
+                      controller: priceController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'Price (₹)',
+                        prefixIcon: const Icon(Icons.currency_rupee),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    const Text(
+                      'Category',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Wrap(
+                      spacing: 8,
+                      children: ['Veg', 'Non-Veg', 'Beverages', 'Snacks', 'Meals'].map((cat) {
+                        final isSel = selectedCategory == cat;
+                        return ChoiceChip(
+                          label: Text(cat),
+                          selected: isSel,
+                          onSelected: (_) => setModalState(() => selectedCategory = cat),
+                          selectedColor: AppColors.primaryLight,
+                          labelStyle: TextStyle(
+                            fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
+                            color: isSel ? AppColors.primaryDark : AppColors.textPrimaryLight,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    const Text(
+                      'Availability Status',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Row(
+                      children: [
+                        ChoiceChip(
+                          label: const Text('ACTIVE (Available)'),
+                          selected: selectedStatus == 'ACTIVE',
+                          onSelected: (_) => setModalState(() => selectedStatus = 'ACTIVE'),
+                          selectedColor: AppColors.successLight,
+                          labelStyle: TextStyle(
+                            fontWeight: selectedStatus == 'ACTIVE' ? FontWeight.bold : FontWeight.normal,
+                            color: selectedStatus == 'ACTIVE' ? AppColors.primaryDark : AppColors.textPrimaryLight,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ChoiceChip(
+                          label: const Text('INACTIVE (Hidden)'),
+                          selected: selectedStatus == 'INACTIVE',
+                          onSelected: (_) => setModalState(() => selectedStatus = 'INACTIVE'),
+                          selectedColor: AppColors.surfaceLight,
+                          labelStyle: TextStyle(
+                            fontWeight: selectedStatus == 'INACTIVE' ? FontWeight.bold : FontWeight.normal,
+                            color: selectedStatus == 'INACTIVE' ? AppColors.textPrimaryLight : AppColors.textSecondaryLight,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        onPressed: isSaving
+                            ? null
+                            : () async {
+                                final name = nameController.text.trim();
+                                final price = double.tryParse(priceController.text.trim());
+                                if (name.isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Please enter an item name')),
+                                  );
+                                  return;
+                                }
+                                if (price == null || price <= 0) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Please enter a valid price')),
+                                  );
+                                  return;
+                                }
+
+                                setModalState(() => isSaving = true);
+                                try {
+                                  await ref.read(productRepositoryProvider).updateProduct(
+                                        id: product.id,
+                                        itemName: name,
+                                        category: [selectedCategory],
+                                        price: price,
+                                        status: selectedStatus,
+                                      );
+                                  if (context.mounted) {
+                                    Navigator.pop(ctx);
+                                    ref.read(posCatalogNotifierProvider.notifier).loadProducts(force: true);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Updated "$name" successfully!'),
+                                        backgroundColor: AppColors.success,
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  setModalState(() => isSaving = false);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Failed to update item: $e'),
+                                        backgroundColor: AppColors.error,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                        child: isSaving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              )
+                            : const Text('Save Changes', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 }
+

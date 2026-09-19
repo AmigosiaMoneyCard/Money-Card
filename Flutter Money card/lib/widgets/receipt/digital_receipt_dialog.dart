@@ -1,12 +1,9 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:printing/printing.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../models/receipt_bill.dart';
-import '../../services/digital_receipt_service.dart';
 import '../common/app_button.dart';
 import '../common/app_card.dart';
 
@@ -108,145 +105,10 @@ class DigitalReceiptDialog extends StatefulWidget {
 }
 
 class _DigitalReceiptDialogState extends State<DigitalReceiptDialog> {
-  final DigitalReceiptService _receiptService = const DigitalReceiptService();
-  Uint8List? _generatedPdfBytes;
-  bool _isGeneratingAndViewing = false;
-  bool _isDownloading = false;
-
-  /// Action 1: [ Generate & View PDF ]
-  Future<void> _handleGenerateAndViewPdf() async {
-    setState(() => _isGeneratingAndViewing = true);
-    try {
-      if (_generatedPdfBytes == null) {
-        final bytes = await _receiptService.buildBillPdf(widget.bill);
-        if (!mounted) return;
-        setState(() {
-          _generatedPdfBytes = bytes;
-        });
-      }
-
-      if (!mounted) return;
-      setState(() => _isGeneratingAndViewing = false);
-
-      _openPdfViewerModal(_generatedPdfBytes!);
-    } catch (e, st) {
-      debugPrint('BILL PDF GENERATE ERROR: $e');
-      debugPrintStack(stackTrace: st);
-      if (mounted) {
-        setState(() => _isGeneratingAndViewing = false);
-        ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Unable to generate bill PDF.'),
-            backgroundColor: AppColors.error,
-            duration: const Duration(seconds: 4),
-            action: SnackBarAction(
-              label: 'Retry',
-              textColor: Colors.white,
-              onPressed: _handleGenerateAndViewPdf,
-            ),
-          ),
-        );
-      }
-    }
-  }
-
-  /// Action 2: [ Download PDF ]
-  Future<void> _handleDownloadPdf() async {
-    setState(() => _isDownloading = true);
-    try {
-      debugPrint('===> [Download PDF] Initiated for transaction: ${widget.bill.transactionId}');
-      if (_generatedPdfBytes == null) {
-        debugPrint('===> [Download PDF] _generatedPdfBytes is null. Calling buildBillPdf...');
-        final bytes = await _receiptService.buildBillPdf(widget.bill);
-        debugPrint('===> [Download PDF] buildBillPdf returned ${bytes.length} bytes');
-        if (!mounted) return;
-        setState(() {
-          _generatedPdfBytes = bytes;
-        });
-      } else {
-        debugPrint('===> [Download PDF] Reusing existing _generatedPdfBytes (${_generatedPdfBytes!.length} bytes)');
-      }
-
-      await _receiptService.savePdfToDevice(
-        pdfBytes: _generatedPdfBytes!,
-        transactionId: widget.bill.transactionId,
-        targetDirectory: widget.targetDownloadDirectory,
-      );
-
-      if (!mounted) return;
-      setState(() => _isDownloading = false);
-
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Bill PDF downloaded successfully.'),
-          backgroundColor: AppColors.success,
-          duration: Duration(seconds: 3),
-        ),
-      );
-    } catch (e, st) {
-      debugPrint('========== BILL PDF ERROR ==========');
-      debugPrint('ERROR TYPE: ${e.runtimeType}');
-      debugPrint('ERROR: $e');
-      debugPrint('STACK TRACE: $st');
-      debugPrint('====================================');
-      if (mounted) {
-        setState(() => _isDownloading = false);
-        ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Unable to save bill PDF: $e'),
-            backgroundColor: AppColors.error,
-            duration: const Duration(seconds: 5),
-            action: SnackBarAction(
-              label: 'Retry',
-              textColor: Colors.white,
-              onPressed: _handleDownloadPdf,
-            ),
-          ),
-        );
-      }
-    }
-  }
-
-  /// Action 3: [ Done ]
+  /// Action: [ Done ]
   void _handleDone() {
     Navigator.of(context).pop();
     widget.onDone();
-  }
-
-  void _openPdfViewerModal(Uint8List pdfBytes) {
-    showDialog<void>(
-      context: context,
-      builder: (context) => Dialog(
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          children: [
-            AppBar(
-              title: const Text('Bill PDF'),
-              leading: IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ),
-            Expanded(
-              child: PdfPreview(
-                build: (format) async => pdfBytes,
-                canChangeOrientation: false,
-                canChangePageFormat: false,
-                canDebug: false,
-                allowPrinting: false,
-                allowSharing: false,
-                pdfFileName: 'MoneyCard_${widget.bill.transactionId}.pdf',
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   @override
