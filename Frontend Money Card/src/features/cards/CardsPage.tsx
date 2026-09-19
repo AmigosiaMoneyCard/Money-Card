@@ -1,25 +1,15 @@
-import { formatCurrency, formatDate, cn, buildCardBlockReason, formatBlockedCardMessage, countWords } from '@/utils';
-import { toast } from 'sonner';
-// ─── Cards Management Page (M7) ──────────────────────────────
-// External Bulk QR Import & Organization Card Number Management.
-// Uses apiService abstraction strictly — does NOT import mock handlers directly.
-
+import { formatCurrency, formatDate } from '@/utils';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { apiService } from '@/services/api';
-import { usePermissions, useAuth, useBranch } from '@/hooks';
+import { usePermissions } from '@/hooks';
 import { SessionsPage } from '@/features/sessions';
 import type {
   Card as CardEntity,
-  CardStatus,
   Branch,
-  CardSession,
-  Transaction,
 } from '@/types';
 import {
   Button,
-  Select,
-  Card,
   Badge,
   Modal,
   ModalFooter,
@@ -27,38 +17,24 @@ import {
   EmptyState,
   ErrorState,
 } from '@/components/ui';
-import { DataTable } from '@/components/tables';
 import { UnauthorizedPage } from '@/features/auth';
 import {
   CreditCard,
   Search,
-  Lock,
-  Unlock,
-  Eye,
   RefreshCw,
-  AlertCircle,
   CheckCircle2,
-  QrCode,
-  Copy,
-  Check,
-  Zap,
   ShieldAlert,
-  Trash2,
   X,
-  ArrowDown,
-  Phone,
-  User,
   Building2,
   History,
+  BarChart2,
+  Wallet,
+  ShoppingBag,
+  DollarSign,
 } from 'lucide-react';
-import { QRCodeCanvas } from 'qrcode.react';
-import { getPublicCustomerPortalUrl } from '@/utils';
-import { filterCards } from './cardsFilter';
 
 export function CardsPage() {
   const { hasPermission } = usePermissions();
-  const { user } = useAuth();
-  const { currentBranch, selectBranch } = useBranch();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const topTab = searchParams.get('tab') === 'history' ? 'history' : 'cards';
@@ -73,17 +49,7 @@ export function CardsPage() {
     setSearchParams(next);
   };
 
-  const [blockReasonCategory, setBlockReasonCategory] = useState('Lost or Stolen Card');
-  const [additionalBlockReason, setAdditionalBlockReason] = useState('');
-
-  const blockReasonWordCount = useMemo(() => {
-    return countWords(additionalBlockReason);
-  }, [additionalBlockReason]);
-  const isBlockReasonOverLimit = blockReasonWordCount > 30;
-
   const canView = hasPermission('CARD_VIEW');
-  const canBlock = hasPermission('CARD_BLOCK');
-  const canUnblock = hasPermission('CARD_UNBLOCK');
 
   const [allCards, setAllCards] = useState<CardEntity[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -91,29 +57,74 @@ export function CardsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filters
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<CardStatus | 'ALL'>('ALL');
-  const [branchFilter, setBranchFilter] = useState<string>(currentBranch?.id || 'ALL');
+  // ─── Counter Pattern & Modal States ──────────────────────────────
+  const [counterSearchQuery, setCounterSearchQuery] = useState('');
+  const [selectedBranchForDetails, setSelectedBranchForDetails] = useState<Branch | { id: string; name: string } | null>(null);
+  const [selectedBranchForAnalytics, setSelectedBranchForAnalytics] = useState<Branch | { id: string; name: string } | null>(null);
+  const [modalSearchQuery, setModalSearchQuery] = useState('');
 
-  useEffect(() => {
-    setBranchFilter(currentBranch ? currentBranch.id : 'ALL');
-  }, [currentBranch]);
+  // Analytics Custom Range Date States (Strictly Custom Range)
+  const [customStartDate, setCustomStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  });
+  const [customEndDate, setCustomEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [appliedStartDate, setAppliedStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  });
+  const [appliedEndDate, setAppliedEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [counterAnalyticsData, setCounterAnalyticsData] = useState<any>(null);
+  const [isLoadingCounterAnalytics, setIsLoadingCounterAnalytics] = useState(false);
+  const [counterRecentActivities, setCounterRecentActivities] = useState<any[]>([]);
 
-  // Modals
-  const [showDeleteCardModal, setShowDeleteCardModal] = useState(false);
-  const [deleteCardApiError, setDeleteCardApiError] = useState<string | null>(null);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [showBlockModal, setShowBlockModal] = useState(false);
-  const [showUnblockModal, setShowUnblockModal] = useState(false);
-  const [selectedQrCard, setSelectedQrCard] = useState<CardEntity | null>(null);
-  const [isCopiedToken, setIsCopiedToken] = useState(false);
+  const fetchCounterAnalytics = useCallback(async (branchId: string, start: string, end: string) => {
+    setIsLoadingCounterAnalytics(true);
+    try {
+      const [res, sessionsRes] = await Promise.all([
+        branchId === '__unassigned__'
+          ? apiService.analytics.getOverview({ startDate: start, endDate: end })
+          : apiService.analytics.getOverview({ branchId, startDate: start, endDate: end }),
+        branchId === '__unassigned__'
+          ? apiService.sessions.getSessions({ limit: 15 })
+          : apiService.sessions.getSessions({ branchId, limit: 15 }),
+      ]);
 
-  // Selected Card for Details or Block
-  const [selectedCard, setSelectedCard] = useState<CardEntity | null>(null);
-  const [_cardTransactions, setCardTransactions] = useState<Transaction[]>([]);
-  const [cardHistorySessions, setCardHistorySessions] = useState<CardSession[]>([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+      if (res.success) {
+        setCounterAnalyticsData(res.data);
+      } else {
+        setCounterAnalyticsData(null);
+      }
+
+      if (sessionsRes.success) {
+        const sData = Array.isArray(sessionsRes.data)
+          ? sessionsRes.data
+          : (sessionsRes.data?.items || []);
+        setCounterRecentActivities(sData);
+      } else {
+        setCounterRecentActivities([]);
+      }
+    } catch {
+      setCounterAnalyticsData(null);
+      setCounterRecentActivities([]);
+    } finally {
+      setIsLoadingCounterAnalytics(false);
+    }
+  }, []);
+
+  const handleOpenAnalytics = useCallback((branch: Branch | { id: string; name: string }) => {
+    setSelectedBranchForAnalytics(branch);
+    fetchCounterAnalytics(branch.id, appliedStartDate, appliedEndDate);
+  }, [fetchCounterAnalytics, appliedStartDate, appliedEndDate]);
+
+  const handleApplyCustomDates = useCallback(() => {
+    if (!selectedBranchForAnalytics) return;
+    setAppliedStartDate(customStartDate);
+    setAppliedEndDate(customEndDate);
+    fetchCounterAnalytics(selectedBranchForAnalytics.id, customStartDate, customEndDate);
+  }, [selectedBranchForAnalytics, customStartDate, customEndDate, fetchCounterAnalytics]);
 
   // ─── Fetch Cards Data ─────────────────────────────────────────────
   const fetchCardsData = useCallback(async () => {
@@ -146,448 +157,40 @@ export function CardsPage() {
     fetchCardsData();
   }, [fetchCardsData]);
 
-  // ─── Filtered Cards ────────────────────────────────────────────────
-  const filteredCards = useMemo(() => {
-    return filterCards(allCards, {
-      searchQuery,
-      statusFilter,
-      branchFilter,
-    });
-  }, [allCards, searchQuery, statusFilter, branchFilter]);
+  // ─── Filtered Counters ───────────────────────────────────────────
+  const filteredBranches = useMemo(() => {
+    if (!counterSearchQuery.trim()) return branches;
+    const q = counterSearchQuery.toLowerCase().trim();
+    return branches.filter((b) => b.name.toLowerCase().includes(q));
+  }, [branches, counterSearchQuery]);
 
-  const isFiltered = useMemo(() => {
-    return Boolean(
-      searchQuery.trim() ||
-      statusFilter !== 'ALL' ||
-      branchFilter !== 'ALL'
-    );
-  }, [searchQuery, statusFilter, branchFilter]);
-
-  const handleClearFilters = useCallback(() => {
-    setSearchQuery('');
-    setStatusFilter('ALL');
-    setBranchFilter('ALL');
-  }, []);
-
-  // Tabs & Views
-  const [activeTab, setActiveTab] = useState<'all' | 'blocked'>('all');
-
-  // Summary Metrics
-  const totalCardsCount = allCards.length;
-  const activeCardsList = useMemo(() => {
-    return allCards.filter((c) => c.status === 'ACTIVE');
+  const unassignedCards = useMemo(() => {
+    return allCards.filter((c) => !c.currentBranchId);
   }, [allCards]);
-  const activeCardsCount = activeCardsList.length;
-  const availableCardsCount = allCards.filter((c) => c.status === 'AVAILABLE').length;
-  const blockedCardsList = useMemo(() => {
-    return allCards.filter((c) => c.status === 'BLOCKED');
+
+  const getBranchCards = useCallback((branchId: string) => {
+    if (branchId === '__unassigned__') {
+      return allCards.filter((c) => !c.currentBranchId);
+    }
+    return allCards.filter((c) => c.currentBranchId === branchId);
   }, [allCards]);
-  const blockedCardsCount = blockedCardsList.length;
 
-  // Filtered Blocked Cards for the Merged Blocked Cards View
-  const filteredBlockedCards = useMemo(() => {
-    return blockedCardsList.filter((card) => {
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const matchesCard =
-          (card.physicalCardNumber || '').toLowerCase().includes(q) ||
-          card.qrToken.toLowerCase().includes(q);
-        const matchesCustomer =
-          card.activeSession?.customerName?.toLowerCase().includes(q) ?? false;
-        const matchesPhone =
-          card.activeSession?.customerPhone?.toLowerCase().includes(q) ?? false;
-        const matchesReason =
-          card.blockedReason?.toLowerCase().includes(q) ?? false;
-        const matchesStaff =
-          card.blockedBy?.toLowerCase().includes(q) ?? false;
-        if (!matchesCard && !matchesCustomer && !matchesPhone && !matchesReason && !matchesStaff) {
-          return false;
-        }
-      }
-      if (branchFilter !== 'ALL' && card.currentBranchId && card.currentBranchId !== branchFilter) {
-        return false;
-      }
-      return true;
+  const branchCardsForDetails = useMemo(() => {
+    if (!selectedBranchForDetails) return [];
+    const cards = getBranchCards(selectedBranchForDetails.id);
+    if (!modalSearchQuery.trim()) return cards;
+    const q = modalSearchQuery.toLowerCase().trim();
+    return cards.filter((c) => {
+      const couponId = (c.physicalCardNumber || c.qrToken || '').toLowerCase();
+      const customer = (c.activeSession?.customerName || '').toLowerCase();
+      const phone = (c.activeSession?.customerPhone || '').toLowerCase();
+      return couponId.includes(q) || customer.includes(q) || phone.includes(q);
     });
-  }, [blockedCardsList, searchQuery, branchFilter]);
-
-  const handleViewAllInMainTable = () => {
-    setActiveTab('all');
-    setStatusFilter('ACTIVE');
-    const tableEl = document.getElementById('cards-table-container');
-    if (tableEl) {
-      tableEl.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
-  const currentCycleSession = useMemo(() => {
-    if (!selectedCard) return null;
-    const activeFromHistory = cardHistorySessions.find((s) => s.status === 'ACTIVE');
-    if (activeFromHistory) return activeFromHistory;
-    if (selectedCard.activeSession) {
-      return {
-        id: selectedCard.activeSession.id,
-        cycleNumber: selectedCard.activeSession.cycleNumber || 1,
-        customerName: selectedCard.activeSession.customerName || null,
-        customerPhone: selectedCard.activeSession.customerPhone || null,
-        balance: selectedCard.activeSession.balance ?? 0,
-        status: 'ACTIVE' as const,
-        startedAt:
-          (selectedCard.activeSession as any).issuedAt ||
-          (selectedCard.activeSession as any).startedAt ||
-          selectedCard.updatedAt,
-      };
-    }
-    return null;
-  }, [cardHistorySessions, selectedCard]);
-
-
-
-  // ─── Inspect Card Details ─────────────────────────────────────────
-  const handleOpenDetails = async (card: CardEntity) => {
-    setSelectedCard(card);
-    setShowDetailsModal(true);
-    setIsLoadingHistory(true);
-    setCardHistorySessions([]);
-    setCardTransactions([]);
-
-    try {
-      const sessionsRes = await apiService.sessions.getSessions({ cardId: card.id, limit: 20 });
-      if (sessionsRes.success) {
-        const sItems = Array.isArray(sessionsRes.data) ? sessionsRes.data : (sessionsRes.data?.items || []);
-        setCardHistorySessions(sItems);
-      }
-    } catch {
-      // Ignore background load error
-    } finally {
-      setIsLoadingHistory(false);
-    }
-  };
-
-  // ─── Delete Card Action ───────────────────────────────────────────
-  const handleOpenDeleteCard = (card: CardEntity) => {
-    setSelectedCard(card);
-    setDeleteCardApiError(null);
-    setShowDeleteCardModal(true);
-  };
-
-  const handleDeleteCardSubmit = async () => {
-    if (!selectedCard) return;
-    setDeleteCardApiError(null);
-    try {
-      const res = await apiService.cards.deleteCard(selectedCard.id);
-      if (!res.success) {
-        setDeleteCardApiError(res.error.message || 'Failed to delete card');
-        return;
-      }
-
-      toast.success(
-        res.data?.message || `Card ${selectedCard.physicalCardNumber || selectedCard.qrToken} permanently deleted. Record preserved in customer history.`,
-      );
-      setShowDeleteCardModal(false);
-      fetchCardsData();
-    } catch {
-      setDeleteCardApiError('Network error while deleting card');
-    }
-  };
-
-  // ─── Block / Unblock Actions ──────────────────────────────────────
-  const handleConfirmBlock = async () => {
-    if (!selectedCard) return;
-    if (isBlockReasonOverLimit) {
-      toast.error('Additional reason / notes cannot exceed 30 words.');
-      return;
-    }
-    try {
-      const notes = additionalBlockReason.trim();
-      const fullReason = buildCardBlockReason(
-        blockReasonCategory,
-        notes,
-        user?.name,
-        user?.role,
-      );
-
-      const res = await apiService.cards.blockCard(selectedCard.id, fullReason);
-      if (res.success) {
-        toast.success(`Card ${selectedCard.physicalCardNumber || selectedCard.qrToken} has been blocked.`);
-        setShowBlockModal(false);
-        setAdditionalBlockReason('');
-        setBlockReasonCategory('Lost or Stolen Card');
-        fetchCardsData();
-        window.dispatchEvent(new CustomEvent('cards-updated'));
-      } else {
-        toast.error(res.error.message || 'Failed to block card');
-      }
-    } catch {
-      toast.error('Network error while blocking card');
-    }
-  };
-
-  const handleConfirmUnblock = async () => {
-    if (!selectedCard) return;
-    try {
-      const res = await apiService.cards.unblockCard(selectedCard.id);
-      if (res.success) {
-        toast.success(`Card ${selectedCard.physicalCardNumber || selectedCard.qrToken} has been unblocked.`);
-        setShowUnblockModal(false);
-        fetchCardsData();
-        window.dispatchEvent(new CustomEvent('cards-updated'));
-      } else {
-        toast.error(res.error.message || 'Failed to unblock card');
-      }
-    } catch {
-      toast.error('Network error while unblocking card');
-    }
-  };
+  }, [selectedBranchForDetails, getBranchCards, modalSearchQuery]);
 
   if (!canView) {
     return <UnauthorizedPage />;
   }
-
-  // ─── Table Columns ────────────────────────────────────────────────
-  const cardColumns = [
-    {
-      key: 'physicalCardNumber',
-      header: 'Card & QR',
-      render: (card: CardEntity) => {
-        const displayName = card.physicalCardNumber || card.qrToken;
-        return (
-          <div className="flex items-center gap-2.5">
-            <button
-              onClick={() => setSelectedQrCard(card)}
-              className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors border border-slate-200 shrink-0"
-              title="Click to view QR code"
-            >
-              <QrCode className="h-4 w-4 text-emerald-600" />
-            </button>
-            <div className="flex items-center gap-2">
-              <span className="font-mono font-bold text-slate-900 text-sm">
-                {displayName}
-              </span>
-              <button
-                type="button"
-                onClick={() => handleOpenDetails(card)}
-                className={cn(
-                  'p-1 rounded-md border transition-colors cursor-pointer',
-                  card.status === 'BLOCKED'
-                    ? 'text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200'
-                    : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-slate-200 hover:border-emerald-300',
-                )}
-                title={card.status === 'BLOCKED' ? 'View detailed blocked card audit' : 'View card details & actions'}
-                aria-label={`View card ${displayName}`}
-              >
-                <Eye className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (card: CardEntity) => {
-        if (card.status === 'BLOCKED') {
-          const displayReason = formatBlockedCardMessage(card.blockedReason, card.blockedBy);
-          return (
-            <div className="flex flex-col gap-0.5">
-              <Badge variant="danger">Blocked</Badge>
-              {card.blockedReason && (
-                <span className="text-[10px] text-rose-300 max-w-[180px] truncate" title={displayReason}>
-                  {displayReason}
-                </span>
-              )}
-            </div>
-          );
-        }
-        if (card.status === 'ACTIVE') {
-          return (
-            <Badge variant="success" className="gap-1 font-semibold text-xs">
-              <CheckCircle2 className="h-3 w-3" />
-              In Use
-            </Badge>
-          );
-        }
-        return <Badge variant="outline">Ready</Badge>;
-      },
-    },
-    {
-      key: 'activeSession',
-      header: 'Current User & Balance',
-      render: (card: CardEntity) => {
-        if (card.activeSession) {
-          return (
-            <div>
-              <p className="font-semibold text-slate-900 text-xs sm:text-sm">
-                {card.activeSession.customerName || 'Walk-in Customer'}
-              </p>
-              <p className="text-xs text-emerald-600 font-mono font-bold">
-                {formatCurrency(card.activeSession.balance)}
-              </p>
-            </div>
-          );
-        }
-        return <span className="text-xs text-slate-500">—</span>;
-      },
-    },
-    {
-      key: 'currentBranchId',
-      header: 'Counter',
-      render: (card: CardEntity) => {
-        const branch = branches.find((b) => b.id === card.currentBranchId);
-        return (
-          <span className="text-xs font-medium text-slate-700 flex items-center gap-1">
-            <Building2 className="h-3.5 w-3.5 text-slate-500" />
-            {branch ? branch.name : 'All Counters'}
-          </span>
-        );
-      },
-    },
-  ];
-
-  // ─── Blocked Cards Table Columns (Merged from Customer History) ───
-  const blockedCardColumns = [
-    {
-      key: 'physicalCardNumber',
-      header: 'Card Number',
-      render: (card: CardEntity) => (
-        <div className="flex items-center gap-2">
-          <ShieldAlert className="h-4 w-4 text-rose-500 shrink-0" />
-          <span className="font-mono font-bold text-slate-900">
-            {card.physicalCardNumber || card.qrToken}
-          </span>
-          <button
-            type="button"
-            onClick={() => handleOpenDetails(card)}
-            className="p-1 rounded-md text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 transition-colors cursor-pointer"
-            title="View detailed blocked card audit"
-            aria-label={`View blocked card details for ${card.physicalCardNumber || card.qrToken}`}
-          >
-            <Eye className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      ),
-    },
-    {
-      key: 'customerName',
-      header: 'Customer / Holder',
-      render: (card: CardEntity) => (
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-700 font-bold text-xs border border-rose-200 shrink-0">
-            {card.activeSession?.customerName ? card.activeSession.customerName.charAt(0).toUpperCase() : <User className="h-3.5 w-3.5" />}
-          </div>
-          <div>
-            <p className="font-bold text-slate-900 text-xs sm:text-sm">
-              {card.activeSession?.customerName || 'Unassigned / General Card'}
-            </p>
-            {card.activeSession?.customerPhone && (
-              <p className="text-xs text-slate-500 flex items-center gap-1">
-                <Phone className="h-3 w-3 text-slate-400" />
-                <span>{card.activeSession.customerPhone}</span>
-              </p>
-            )}
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: 'balance',
-      header: 'Frozen Balance',
-      render: (card: CardEntity) => (
-        <span className="font-mono font-bold text-slate-900 text-sm">
-          {formatCurrency(card.activeSession?.balance || 0)}
-        </span>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: () => (
-        <Badge variant="danger" className="gap-1 font-semibold text-xs">
-          <Lock className="h-3 w-3" />
-          Blocked
-        </Badge>
-      ),
-    },
-    {
-      key: 'blockedReason',
-      header: 'Blocked Reason',
-      render: (card: CardEntity) => {
-        const displayReason = formatBlockedCardMessage(card.blockedReason, card.blockedBy);
-        return (
-          <span
-            className="text-xs text-rose-700 font-medium max-w-xs truncate block"
-            title={displayReason}
-          >
-            {displayReason || 'Card Blocked'}
-          </span>
-        );
-      },
-    },
-    {
-      key: 'blockedBy',
-      header: 'Blocked By',
-      render: (card: CardEntity) => (
-        <span className="text-sm font-semibold text-slate-900">
-          {card.blockedBy || 'Staff Member'}
-        </span>
-      ),
-    },
-    {
-      key: 'branch',
-      header: 'Counter',
-      render: (card: CardEntity) => {
-        const branch = branches.find((b) => b.id === card.currentBranchId);
-        return (
-          <span className="text-xs font-medium text-slate-700 flex items-center gap-1">
-            <Building2 className="h-3.5 w-3.5 text-slate-500" />
-            {branch ? branch.name : 'All Counters'}
-          </span>
-        );
-      },
-    },
-    {
-      key: 'blockedAt',
-      header: 'Blocked At',
-      render: (card: CardEntity) => (
-        <span className="text-xs font-medium text-slate-500">
-          {card.blockedAt ? formatDate(card.blockedAt) : formatDate(card.updatedAt)}
-        </span>
-      ),
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
-      className: 'text-right whitespace-nowrap',
-      render: (card: CardEntity) => (
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-xs py-1 px-2.5 border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50"
-            onClick={() => handleOpenDetails(card)}
-            leftIcon={<Eye className="h-3.5 w-3.5" />}
-          >
-            Details
-          </Button>
-          {canUnblock && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs py-1 px-2.5 border-slate-300 text-emerald-700 hover:border-emerald-500 hover:text-emerald-800 hover:bg-emerald-50 transition-colors"
-              onClick={() => {
-                setSelectedCard(card);
-                setShowUnblockModal(true);
-              }}
-              leftIcon={<Unlock className="h-3.5 w-3.5" />}
-            >
-              Unblock
-            </Button>
-          )}
-        </div>
-      ),
-    },
-  ];
 
   return (
     <div className="space-y-5 max-w-6xl mx-auto pb-10">
@@ -598,9 +201,6 @@ export function CardsPage() {
             <CreditCard className="h-6 w-6 text-emerald-600" />
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">Cards & Customer History</h1>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Manage customer card registry, real-time card balances, and security lock statuses.
-          </p>
         </div>
 
         {topTab === 'cards' && (
@@ -608,7 +208,7 @@ export function CardsPage() {
             <Button
               variant="outline"
               size="sm"
-              className="text-xs h-8 px-3 rounded-xl border-slate-200 text-slate-700 hover:border-emerald-500 font-medium"
+              className="text-xs h-8 px-3 rounded-xl border-slate-200 text-slate-700 hover:border-emerald-500 font-medium cursor-pointer"
               onClick={fetchCardsData}
               leftIcon={<RefreshCw className="h-3.5 w-3.5 text-slate-500" />}
             >
@@ -654,652 +254,492 @@ export function CardsPage() {
         <SessionsPage hideHeader />
       ) : (
         <>
-
-      {/* ─── Auto-Registration Information Banner ─────────────────────── */}
-      <div className="flex items-center gap-3.5 p-4 rounded-xl border border-emerald-200 bg-emerald-50/70 text-emerald-950 shadow-sm">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
-          <Zap className="h-5 w-5" />
-        </div>
-        <div>
-          <p className="text-sm font-bold text-slate-900">Card Auto-Registration Active</p>
-          <p className="text-xs text-slate-600 mt-0.5">
-            Cards are automatically registered when staff scans them at any cafeteria. The scanned QR code UID is used directly as the card name. No manual registration needed.
-          </p>
-        </div>
-      </div>
-
-      {/* ─── Metric Summary Cards ────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="flex items-start gap-4 p-4 sm:p-5">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600">
-            <CreditCard className="h-6 w-6" />
-          </div>
-          <div>
-            <p className="text-xs sm:text-sm font-medium text-slate-500">Total Registered Cards</p>
-            <p className="mt-1 text-2xl sm:text-3xl font-extrabold text-slate-900">{totalCardsCount}</p>
-          </div>
-        </Card>
-
-        <Card className="flex items-start gap-4 p-4 sm:p-5">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-sky-50 border border-sky-100 text-sky-600">
-            <Zap className="h-6 w-6" />
-          </div>
-          <div>
-            <p className="text-xs sm:text-sm font-medium text-slate-500">Cards In Use</p>
-            <p className="mt-1 text-2xl sm:text-3xl font-extrabold text-slate-900">{activeCardsCount}</p>
-          </div>
-        </Card>
-
-        <Card className="flex items-start gap-4 p-4 sm:p-5">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-50 border border-amber-100 text-amber-600">
-            <CheckCircle2 className="h-6 w-6" />
-          </div>
-          <div>
-            <p className="text-xs sm:text-sm font-medium text-slate-500">Ready to Issue</p>
-            <p className="mt-1 text-2xl sm:text-3xl font-extrabold text-slate-900">{availableCardsCount}</p>
-          </div>
-        </Card>
-
-        <Card className="flex items-start gap-4 p-4 sm:p-5">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-rose-50 border border-rose-100 text-rose-600">
-            <ShieldAlert className="h-6 w-6" />
-          </div>
-          <div>
-            <p className="text-xs sm:text-sm font-medium text-slate-500">Blocked / Disabled</p>
-            <p className="mt-1 text-2xl sm:text-3xl font-extrabold text-slate-900">{blockedCardsCount}</p>
-          </div>
-        </Card>
-      </div>
-
-      {/* ─── Cards In Use Right Now Summary Banner ───────────────────── */}
-      {!isLoading && activeCardsList.length > 0 && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-xl border border-emerald-200 bg-emerald-50/70 shadow-sm">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-            <span className="text-sm font-bold text-slate-900">
-              Cards in use rn — <span className="text-emerald-600 font-mono">{activeCardsList.length}</span>
-            </span>
-            <span className="text-slate-400">—</span>
-            <span className="text-sm font-semibold text-emerald-700">
-              {formatCurrency(activeCardsList.reduce((sum, c) => sum + (c.activeSession?.balance || 0), 0))} active balance
-            </span>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleViewAllInMainTable}
-            className="self-start sm:self-auto flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800 px-3 py-1.5 rounded-lg bg-emerald-100/70 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer"
-          >
-            <span>View active cards in table</span>
-            <ArrowDown className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      )}
-
-      {/* ─── Search & Filter Bar ─────────────────────────────────────── */}
-      <Card padding="md">
-        <div id="cards-table-container" className="flex flex-col gap-3">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search card number, customer name, or phone..."
-                value={searchQuery}
-                maxLength={30}
-                onChange={(e) => setSearchQuery(e.target.value.slice(0, 30))}
-                className="w-full rounded-lg border border-slate-300 bg-white pl-9 pr-8 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none shadow-sm"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 transition-colors"
-                  title="Clear search"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-
-            <Select
-              id="card-status-filter"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as CardStatus | 'ALL')}
-              options={[
-                { value: 'ALL', label: 'All Statuses' },
-                { value: 'AVAILABLE', label: 'Ready to Use' },
-                { value: 'ACTIVE', label: 'In Use (Active Session)' },
-                { value: 'BLOCKED', label: 'Blocked / Locked' },
-              ]}
+          {/* ─── ONLY Search Bar: Search by counter name ─────────────────── */}
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search by counter name..."
+              value={counterSearchQuery}
+              onChange={(e) => setCounterSearchQuery(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-8 py-2 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none"
             />
-
-            <Select
-              id="card-branch-filter"
-              value={branchFilter}
-              onChange={(e) => {
-                setBranchFilter(e.target.value);
-                selectBranch(e.target.value);
-              }}
-              options={[
-                { value: 'ALL', label: 'All Counters' },
-                ...branches.map((b) => ({ value: b.id, label: b.name })),
-              ]}
-            />
-          </div>
-
-          {/* Active Filter Summary & Clear Action */}
-          {isFiltered && (
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-2.5 text-xs text-slate-600">
-              <div className="flex items-center gap-1.5">
-                <span>Showing</span>
-                <span className="font-semibold text-emerald-600">
-                  {activeTab === 'blocked' ? filteredBlockedCards.length : filteredCards.length}
-                </span>
-                <span>
-                  of {activeTab === 'blocked' ? blockedCardsCount : allCards.length}{' '}
-                  {activeTab === 'blocked' ? 'blocked cards' : 'cards'} matching criteria
-                </span>
-              </div>
+            {counterSearchQuery && (
               <button
                 type="button"
-                onClick={handleClearFilters}
-                className="inline-flex items-center gap-1.5 rounded-md bg-white border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
+                onClick={() => setCounterSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                title="Clear search"
               >
-                <X className="h-3.5 w-3.5 text-slate-500" />
-                <span>Clear All Filters</span>
+                <X className="h-3.5 w-3.5" />
               </button>
+            )}
+          </div>
+
+          {/* ─── Counter-Wise Table ─────────────────────────────────────── */}
+          {error ? (
+            <div className="py-12 bg-white rounded-2xl border border-rose-200">
+              <ErrorState message={error} onRetry={fetchCardsData} />
+            </div>
+          ) : isLoading ? (
+            <div className="py-12 bg-white rounded-2xl border border-slate-200/80">
+              <LoadingState message="Loading cafeteria counters..." />
+            </div>
+          ) : filteredBranches.length === 0 && unassignedCards.length === 0 ? (
+            <div className="py-12 bg-white rounded-2xl border border-slate-200/80">
+              <EmptyState
+                title={counterSearchQuery ? 'No matching counters' : 'No counters found'}
+                description={
+                  counterSearchQuery
+                    ? 'Try adjusting your search query.'
+                    : 'Counters configured in your organization will appear here.'
+                }
+              />
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      <th className="py-3 px-4 min-w-[220px]">Counter Name</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredBranches.map((branch) => {
+                      const count = getBranchCards(branch.id).length;
+                      return (
+                        <tr key={branch.id} className="hover:bg-slate-50/60 transition-colors">
+                          {/* Counter Name */}
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="h-8 w-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
+                                <Building2 className="h-4 w-4" />
+                              </div>
+                              <span className="font-semibold text-sm text-slate-900">
+                                {branch.name}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Far Right Action Buttons */}
+                          <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                            <div className="inline-flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenAnalytics(branch)}
+                                className="text-xs h-8 px-3 rounded-lg border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
+                                leftIcon={<BarChart2 className="h-3.5 w-3.5 text-emerald-600" />}
+                              >
+                                Card Analytics
+                              </Button>
+
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedBranchForDetails(branch);
+                                  setModalSearchQuery('');
+                                }}
+                                className="text-xs h-8 px-3.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold cursor-pointer"
+                                leftIcon={<CreditCard className="h-3.5 w-3.5" />}
+                              >
+                                Card Details ({count})
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+
+                    {/* Unassigned / General Pool row if cards exist */}
+                    {unassignedCards.length > 0 && (!counterSearchQuery || 'general pool unassigned'.includes(counterSearchQuery.toLowerCase())) && (
+                      <tr className="hover:bg-slate-50/60 transition-colors bg-slate-50/30">
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 shrink-0">
+                              <CreditCard className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <span className="font-semibold text-sm text-slate-900">
+                                General Pool / Unassigned Cards
+                              </span>
+                              <span className="ml-2 text-[11px] text-slate-400 font-normal">
+                                (Not tied to a specific counter)
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                          <div className="inline-flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenAnalytics({ id: '__unassigned__', name: 'General Pool / Unassigned' })}
+                              className="text-xs h-8 px-3 rounded-lg border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
+                              leftIcon={<BarChart2 className="h-3.5 w-3.5 text-emerald-600" />}
+                            >
+                              Card Analytics
+                            </Button>
+
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedBranchForDetails({ id: '__unassigned__', name: 'General Pool / Unassigned' });
+                                setModalSearchQuery('');
+                              }}
+                              className="text-xs h-8 px-3.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold cursor-pointer"
+                              leftIcon={<CreditCard className="h-3.5 w-3.5" />}
+                            >
+                              Card Details ({unassignedCards.length})
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
-        </div>
-      </Card>
 
-      {/* ─── Navigation Tabs ─────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 border-b border-slate-200">
-        <button
-          type="button"
-          onClick={() => setActiveTab('all')}
-          className={cn(
-            'flex items-center gap-2 border-b-2 py-3 px-4 text-sm font-semibold transition-colors cursor-pointer',
-            activeTab === 'all'
-              ? 'border-emerald-600 text-emerald-600'
-              : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700',
-          )}
-        >
-          <CreditCard className="h-4 w-4" />
-          <span>Cards Registry</span>
-          <span
-            className={cn(
-              'rounded-full px-2 py-0.5 text-xs font-bold',
-              activeTab === 'all'
-                ? 'bg-emerald-100 text-emerald-700'
-                : 'bg-slate-100 text-slate-600',
-            )}
-          >
-            {allCards.length}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('blocked')}
-          className={cn(
-            'flex items-center gap-2 border-b-2 py-3 px-4 text-sm font-semibold transition-colors cursor-pointer',
-            activeTab === 'blocked'
-              ? 'border-rose-600 text-rose-600'
-              : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700',
-          )}
-        >
-          <ShieldAlert className="h-4 w-4" />
-          <span>Blocked Cards</span>
-          {blockedCardsCount > 0 && (
-            <span
-              className={cn(
-                'rounded-full px-2 py-0.5 text-xs font-bold',
-                activeTab === 'blocked'
-                  ? 'bg-rose-100 text-rose-700'
-                  : 'bg-rose-50 text-rose-600 border border-rose-200',
-              )}
+          {/* ─── MODAL 1: Card Details Modal (NO Card QR, Strict 3 Columns) ─ */}
+          {selectedBranchForDetails && (
+            <Modal
+              isOpen={!!selectedBranchForDetails}
+              onClose={() => setSelectedBranchForDetails(null)}
+              title={`Card Details — ${selectedBranchForDetails.name}`}
+              size="lg"
             >
-              {blockedCardsCount}
-            </span>
-          )}
-        </button>
-      </div>
+              <div className="space-y-4">
+                {/* Search Bar inside Details Modal */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Search by coupon ID or customer name..."
+                      value={modalSearchQuery}
+                      onChange={(e) => setModalSearchQuery(e.target.value)}
+                      className="w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:outline-none"
+                    />
+                  </div>
+                  <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold text-xs px-2.5 py-0.5">
+                    {branchCardsForDetails.length} Cards
+                  </Badge>
+                </div>
 
-      {/* ─── Cards Data Table / Blocked Cards Table ─────────────────────── */}
-      {isLoading ? (
-        <LoadingState message="Loading card registry..." />
-      ) : error ? (
-        <ErrorState title="Error Loading Cards" message={error} onRetry={fetchCardsData} />
-      ) : activeTab === 'blocked' ? (
-        filteredBlockedCards.length === 0 ? (
-          <EmptyState
-            icon={<ShieldAlert className="h-8 w-8 text-slate-400" />}
-            title={isFiltered ? "No matching blocked cards" : "No Blocked Cards"}
-            description={
-              isFiltered
-                ? "No blocked cards match your current search or counter filter."
-                : "All registered smart cards are active or ready to issue. Any card locked due to loss or security reasons will appear here."
-            }
-            action={
-              isFiltered ? (
+                {branchCardsForDetails.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-slate-500 border border-slate-200 rounded-xl bg-slate-50/50">
+                    <p className="font-semibold text-slate-700">No cards found</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      {modalSearchQuery ? 'No cards match your search.' : 'No cards have been registered for this counter yet.'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-slate-200 overflow-hidden shadow-2xs max-h-[60vh] overflow-y-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500 sticky top-0">
+                        <tr>
+                          <th className="py-2.5 px-4">Coupon ID</th>
+                          <th className="py-2.5 px-4">Status</th>
+                          <th className="py-2.5 px-4">Current User & Balance</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {branchCardsForDetails.map((card) => {
+                          const couponId = `#${card.physicalCardNumber || card.qrToken}`;
+                          return (
+                            <tr key={card.id} className="hover:bg-slate-50/70 transition-colors">
+                              {/* 1. Coupon ID */}
+                              <td className="py-3 px-4 font-mono font-bold text-slate-900 text-xs">
+                                {couponId}
+                              </td>
+
+                              {/* 2. Status */}
+                              <td className="py-3 px-4">
+                                {card.status === 'BLOCKED' ? (
+                                  <Badge variant="danger">Blocked</Badge>
+                                ) : card.status === 'ACTIVE' ? (
+                                  <Badge variant="success" className="gap-1 font-semibold text-xs">
+                                    <CheckCircle2 className="h-3 w-3" />
+                                    Active
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="border-sky-300 bg-sky-50 text-sky-700">
+                                    Available
+                                  </Badge>
+                                )}
+                              </td>
+
+                              {/* 3. Current User & Balance */}
+                              <td className="py-3 px-4">
+                                {card.activeSession ? (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-semibold text-slate-800">
+                                      {card.activeSession.customerName || 'Walk-in Customer'}
+                                    </span>
+                                    <span className="text-slate-400">—</span>
+                                    <span className="font-mono font-bold text-emerald-600">
+                                      {formatCurrency(card.activeSession.balance)}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-400 font-medium">— (Ready)</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+              <ModalFooter>
                 <Button
                   variant="outline"
-                  onClick={handleClearFilters}
-                  className="gap-2 border-slate-300 text-slate-700 hover:bg-slate-50"
+                  size="sm"
+                  onClick={() => setSelectedBranchForDetails(null)}
+                  className="text-xs px-4 cursor-pointer"
                 >
-                  <RefreshCw className="h-4 w-4" />
-                  <span>Clear Filters</span>
+                  Close
                 </Button>
-              ) : undefined
-            }
-          />
-        ) : (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-            <DataTable
-              data={filteredBlockedCards}
-              columns={blockedCardColumns}
-              keyExtractor={(c) => c.id}
-            />
-          </div>
-        )
-      ) : filteredCards.length === 0 ? (
-        <EmptyState
-          icon={<CreditCard className="h-8 w-8 text-slate-500" />}
-          title={isFiltered ? "No matching cards found" : "No cards registered yet"}
-          description={
-            isFiltered
-              ? 'No cards match your current search. Try clearing filters.'
-              : 'Add or import your first batch of smart cards to get started.'
-          }
-          action={
-            isFiltered ? (
-              <Button
-                variant="outline"
-                onClick={handleClearFilters}
-                className="gap-2 border-slate-300 text-slate-700 hover:bg-slate-50"
-              >
-                <RefreshCw className="h-4 w-4" />
-                <span>Clear Filters</span>
-              </Button>
-            ) : undefined
-          }
-        />
-      ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-          <DataTable data={filteredCards} columns={cardColumns} keyExtractor={(c) => c.id} />
-        </div>
-      )}
-        </>
-      )}
-
-
-
-      {/* ─── MODAL 5: Single QR Code View Modal ──────────────────────── */}
-      {selectedQrCard && (
-        <Modal
-          isOpen={!!selectedQrCard}
-          onClose={() => setSelectedQrCard(null)}
-          title={`QR Code — Card ${selectedQrCard.physicalCardNumber || 'Unassigned'}`}
-          size="sm"
-        >
-          <div className="flex flex-col items-center p-4 text-center space-y-4">
-            <div className="p-4 bg-white rounded-2xl shadow-xl">
-              <QRCodeCanvas
-                value={getPublicCustomerPortalUrl(selectedQrCard.qrToken)}
-                size={200}
-                level="H"
-                includeMargin={false}
-              />
-            </div>
-
-            <div>
-              <p className="font-mono font-bold text-lg text-slate-900">
-                {selectedCard?.physicalCardNumber || selectedQrCard.physicalCardNumber || 'Unassigned QR Code'}
-              </p>
-              <p className="font-mono text-xs text-slate-500 break-all max-w-xs mt-1">
-                {selectedQrCard.qrToken}
-              </p>
-              <p className="text-[11px] text-emerald-600 font-medium mt-1">
-                Scan with any smartphone camera to view live balance
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-2 justify-center">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => {
-                  const url = getPublicCustomerPortalUrl(selectedQrCard.qrToken);
-                  navigator.clipboard.writeText(url);
-                  setIsCopiedToken(true);
-                  setTimeout(() => setIsCopiedToken(false), 2000);
-                }}
-              >
-                {isCopiedToken ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
-                <span>{isCopiedToken ? 'Copied Scan Link' : 'Copy Customer Scan Link'}</span>
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* ─── MODAL 6: Card Details & History ─────────────────────────── */}
-      {showDetailsModal && selectedCard && (
-        <Modal
-          isOpen={showDetailsModal}
-          onClose={() => {
-            setShowDetailsModal(false);
-            setSelectedCard(null);
-          }}
-          title={`Card Details — ${selectedCard.physicalCardNumber || 'Unassigned QR'}`}
-          size="lg"
-        >
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-              <div>
-                <p className="text-slate-500">Card Number</p>
-                <p className="font-bold text-slate-900 text-sm">{selectedCard.physicalCardNumber || 'Not Assigned'}</p>
-              </div>
-              <div>
-                <p className="text-slate-500">Assignment Status</p>
-                <p className="font-bold text-slate-900 text-sm">{selectedCard.assignmentStatus || 'UNASSIGNED'}</p>
-              </div>
-              <div>
-                <p className="text-slate-500">Card Status</p>
-                <p className="font-bold text-slate-900 text-sm">{selectedCard.status}</p>
-              </div>
-              <div>
-                <p className="text-slate-500">QR Identifier</p>
-                <p className="font-mono text-slate-700 truncate font-semibold">{selectedCard.qrToken}</p>
-              </div>
-
-              {selectedCard.status === 'BLOCKED' && (
-                <div className="col-span-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
-                  <p className="font-semibold text-rose-600">Card is Blocked</p>
-                  <p className="mt-1 font-medium leading-relaxed">
-                    {formatBlockedCardMessage(selectedCard.blockedReason, selectedCard.blockedBy)}
-                  </p>
-                  {selectedCard.blockedBy && (
-                    <p className="mt-1 text-slate-600">Authorized By: {selectedCard.blockedBy}</p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-600">
-                  Active customer
-                </h4>
-                <span className="text-[11px] text-slate-400">
-                  Older sessions stored in Customer History
-                </span>
-              </div>
-
-              {isLoadingHistory && !currentCycleSession ? (
-                <LoadingState message="Loading active customer session..." />
-              ) : !currentCycleSession ? (
-                <div className="p-4 text-center text-xs text-slate-500 border border-slate-200 rounded-lg bg-slate-50/50">
-                  <p className="font-semibold text-slate-700">No active customer session</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    This card is not currently in use. Older cycles are preserved in Customer History.
-                  </p>
-                </div>
-              ) : (
-                <div className="border border-slate-200 rounded-lg overflow-hidden">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
-                      <tr>
-                        <th className="p-2.5">Customer Name</th>
-                        <th className="p-2.5">Phone</th>
-                        <th className="p-2.5">Current Balance</th>
-                        <th className="p-2.5">Status</th>
-                        <th className="p-2.5">Started At</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white">
-                      <tr>
-                        <td className="p-2.5 font-semibold text-slate-900">
-                          {currentCycleSession.customerName || 'Walk-in Customer'}
-                        </td>
-                        <td className="p-2.5 text-slate-600 font-mono">
-                          {currentCycleSession.customerPhone || '—'}
-                        </td>
-                        <td className="p-2.5 font-mono font-bold text-emerald-600 text-sm">
-                          {formatCurrency(currentCycleSession.balance)}
-                        </td>
-                        <td className="p-2.5">
-                          <Badge variant="success">In Use</Badge>
-                        </td>
-                        <td className="p-2.5 text-slate-500">
-                          {formatDate(currentCycleSession.startedAt)}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <ModalFooter>
-            <div className="flex w-full flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-2">
-                {canBlock && selectedCard.status !== 'BLOCKED' && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5 text-rose-600 border-rose-200 hover:bg-rose-50"
-                    onClick={() => {
-                      setShowDetailsModal(false);
-                      setBlockReasonCategory('Lost or Stolen Card');
-                      setAdditionalBlockReason('');
-                      setShowBlockModal(true);
-                    }}
-                  >
-                    <Lock className="h-3.5 w-3.5" />
-                    <span>Block Card</span>
-                  </Button>
-                )}
-
-                {canUnblock && selectedCard.status === 'BLOCKED' && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
-                    onClick={() => {
-                      setShowDetailsModal(false);
-                      setShowUnblockModal(true);
-                    }}
-                  >
-                    <Unlock className="h-3.5 w-3.5" />
-                    <span>Unblock Card</span>
-                  </Button>
-                )}
-
-                {canBlock && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5 text-slate-600 border-slate-300 hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50"
-                    onClick={() => {
-                      setShowDetailsModal(false);
-                      handleOpenDeleteCard(selectedCard);
-                    }}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    <span>Delete Card</span>
-                  </Button>
-                )}
-              </div>
-
-              <Button variant="outline" onClick={() => setShowDetailsModal(false)}>
-                Close
-              </Button>
-            </div>
-          </ModalFooter>
-        </Modal>
-      )}
-
-      {/* ─── MODAL 7: Block Card Modal ───────────────────────────────── */}
-      {showBlockModal && selectedCard && (
-        <Modal
-          isOpen={showBlockModal}
-          onClose={() => setShowBlockModal(false)}
-          title={`Block Card — ${selectedCard.physicalCardNumber || selectedCard.qrToken}`}
-          size="md"
-        >
-          <div className="space-y-4">
-            <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 flex items-start gap-2">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
-              <p>
-                Are you sure you want to block this card? It will immediately prevent all purchases, recharges, and session operations across all cafeteria counters.
-              </p>
-            </div>
-
-            {/* Default Reason Category */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">
-                Primary Reason <span className="text-rose-500">*</span>
-              </label>
-              <select
-                value={blockReasonCategory}
-                onChange={(e) => setBlockReasonCategory(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-rose-500 focus:outline-none shadow-sm"
-              >
-                <option value="Lost or Stolen Card">Lost or Stolen Card</option>
-                <option value="Damaged / Hardware Fault">Damaged / Hardware Fault</option>
-                <option value="Suspicious Activity / Fraud">Suspicious Activity / Fraud</option>
-                <option value="Customer Request">Customer Request</option>
-                <option value="Administrative Block">Administrative Block</option>
-                <option value="Staff Discretion">Staff Discretion</option>
-                <option value="Other Reason">Other Reason</option>
-              </select>
-            </div>
-
-            {/* Additional Reason Option */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-slate-700">
-                  Additional Reason / Notes (Optional)
-                </label>
-                <span
-                  className={`text-[11px] font-medium transition-colors ${
-                    isBlockReasonOverLimit ? 'text-rose-600 font-semibold' : 'text-slate-400'
-                  }`}
-                >
-                  {blockReasonWordCount} / 30 words
-                </span>
-              </div>
-              <textarea
-                value={additionalBlockReason}
-                onChange={(e) => setAdditionalBlockReason(e.target.value)}
-                placeholder="Type additional reason, remarks, or context (e.g. customer misplaced wallet at cafeteria, reported via phone)..."
-                rows={2}
-                className={`w-full rounded-lg border px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none shadow-sm resize-none transition-colors ${
-                  isBlockReasonOverLimit
-                    ? 'border-rose-400 bg-rose-50/40 focus:border-rose-500 focus:ring-1 focus:ring-rose-500'
-                    : 'border-slate-300 bg-white focus:border-rose-500'
-                }`}
-              />
-              {isBlockReasonOverLimit && (
-                <p className="text-xs text-rose-600 font-medium">
-                  Additional notes cannot exceed 30 words (currently {blockReasonWordCount} words).
-                </p>
-              )}
-            </div>
-
-            {/* Live Business Logic Message Preview */}
-            <div className="rounded-lg border border-rose-200 bg-rose-50/50 p-2.5 text-xs text-slate-700 space-y-1">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-rose-600 block">
-                Recorded Business Reason & Policy:
-              </span>
-              <p className="text-rose-800 italic font-medium leading-relaxed">
-                {buildCardBlockReason(blockReasonCategory, additionalBlockReason, user?.name, user?.role)}
-              </p>
-            </div>
-          </div>
-
-          <ModalFooter>
-            <Button variant="outline" onClick={() => setShowBlockModal(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="danger"
-              onClick={handleConfirmBlock}
-              disabled={isBlockReasonOverLimit}
-              className="bg-rose-600 hover:bg-rose-500 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Confirm Block
-            </Button>
-          </ModalFooter>
-        </Modal>
-      )}
-
-      {/* ─── MODAL 8: Unblock Card Modal ─────────────────────────────── */}
-      {showUnblockModal && selectedCard && (
-        <Modal
-          isOpen={showUnblockModal}
-          onClose={() => setShowUnblockModal(false)}
-          title={`Unblock Card — ${selectedCard.physicalCardNumber || selectedCard.qrToken}`}
-          size="sm"
-        >
-          <p className="text-sm text-slate-700">
-            Are you sure you want to unblock this card? It will restore normal active/available operational status in the cafeteria registry.
-          </p>
-          <ModalFooter>
-            <Button variant="outline" onClick={() => setShowUnblockModal(false)}>Cancel</Button>
-            <Button variant="primary" onClick={handleConfirmUnblock} className="bg-emerald-600 hover:bg-emerald-500 font-bold">
-              Confirm Unblock
-            </Button>
-          </ModalFooter>
-        </Modal>
-      )}
-      {/* ── Delete Card Confirmation Modal ──────────────────────── */}
-      <Modal
-        isOpen={showDeleteCardModal}
-        onClose={() => setShowDeleteCardModal(false)}
-        title="Delete Card"
-        description="Permanently delete unassigned card or safely deactivate"
-        size="md"
-      >
-        <div className="space-y-4">
-          {deleteCardApiError && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
-              <div className="space-y-1">
-                <p className="font-semibold">Action Blocked</p>
-                <p>{deleteCardApiError}</p>
-              </div>
-            </div>
+              </ModalFooter>
+            </Modal>
           )}
 
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-2">
-            <p className="text-sm text-slate-900 font-medium">
-              Are you sure you want to remove card{' '}
-              <span className="text-emerald-600 font-mono font-bold">
-                {selectedCard?.physicalCardNumber || selectedCard?.qrToken}
-              </span>
-              ?
-            </p>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              This card will be permanently deleted from the active card registry, freeing its physical card number and organization quota. A permanent deletion record and all historical audit logs will remain preserved in Customer History.
-            </p>
-          </div>
+          {/* ─── MODAL 2: Card Analytics Modal (Strictly Custom Range & 7 Easy Metrics) ─ */}
+          {selectedBranchForAnalytics && (
+            <Modal
+              isOpen={!!selectedBranchForAnalytics}
+              onClose={() => setSelectedBranchForAnalytics(null)}
+              title={`Card Analytics — ${selectedBranchForAnalytics.name}`}
+              size="lg"
+            >
+              <div className="space-y-4">
+                {/* Strictly Custom Date Range Filtering */}
+                <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <span className="text-xs font-semibold text-slate-700">Date Range:</span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs">
+                      <span className="text-slate-400 text-[11px] font-medium">From</span>
+                      <input
+                        type="date"
+                        value={customStartDate}
+                        onChange={(e) => setCustomStartDate(e.target.value)}
+                        className="text-xs font-medium text-slate-800 border-none outline-none bg-transparent cursor-pointer"
+                      />
+                    </div>
+                    <span className="text-slate-400 text-xs">to</span>
+                    <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs">
+                      <span className="text-slate-400 text-[11px] font-medium">To</span>
+                      <input
+                        type="date"
+                        value={customEndDate}
+                        onChange={(e) => setCustomEndDate(e.target.value)}
+                        className="text-xs font-medium text-slate-800 border-none outline-none bg-transparent cursor-pointer"
+                      />
+                    </div>
+                  </div>
 
-          <ModalFooter>
-            <Button variant="ghost" onClick={() => setShowDeleteCardModal(false)}>
-              Cancel
-            </Button>
-            <Button variant="danger" onClick={handleDeleteCardSubmit}>
-              Confirm Deletion
-            </Button>
-          </ModalFooter>
-        </div>
-      </Modal>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleApplyCustomDates}
+                    className="text-xs h-7 px-3 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold cursor-pointer rounded-lg"
+                  >
+                    Apply
+                  </Button>
+                </div>
+
+                {isLoadingCounterAnalytics ? (
+                  <div className="py-10">
+                    <LoadingState message="Loading card analytics..." />
+                  </div>
+                ) : (
+                  <>
+                    {/* 7 Simplified Metrics Grid (NO Avg. Balance) */}
+                    {(() => {
+                      const branchCards = getBranchCards(selectedBranchForAnalytics.id);
+                      const activeCards = branchCards.filter((c) => c.status === 'ACTIVE').length;
+                      const readyCards = branchCards.filter((c) => c.status === 'AVAILABLE').length;
+                      const blockedCards = branchCards.filter((c) => c.status === 'BLOCKED').length;
+
+                      const totalBalance = branchCards.reduce(
+                        (acc, c) => acc + (c.activeSession?.balance || 0),
+                        0
+                      );
+
+                      const moneyAdded = counterAnalyticsData?.rechargeVolume ?? 0;
+                      const rechargeOrders = counterAnalyticsData?.rechargeCount ?? 0;
+                      const foodSales = counterAnalyticsData?.salesVolume ?? 0;
+                      const salesOrders = counterAnalyticsData?.salesCount ?? 0;
+                      const totalRefunds = counterAnalyticsData?.refundVolume ?? 0;
+                      const refundOrders = counterAnalyticsData?.refundCount ?? 0;
+
+                      return (
+                        <div className="space-y-3">
+                          {/* Row 1: 4 Financial Metrics */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            {/* 1. Cards in Use */}
+                            <div className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-semibold text-slate-500">Cards in Use</span>
+                                <div className="h-7 w-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+                                  <CreditCard className="h-3.5 w-3.5" />
+                                </div>
+                              </div>
+                              <p className="mt-1.5 text-xl font-bold text-slate-900">{activeCards}</p>
+                              <p className="text-[11px] text-slate-400 mt-0.5">Active cards</p>
+                            </div>
+
+                            {/* 2. Money Added */}
+                            <div className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-semibold text-slate-500">Money Added</span>
+                                <div className="h-7 w-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+                                  <Wallet className="h-3.5 w-3.5" />
+                                </div>
+                              </div>
+                              <p className="mt-1.5 text-xl font-bold text-slate-900">{formatCurrency(moneyAdded)}</p>
+                              <p className="text-[11px] text-slate-400 mt-0.5">{rechargeOrders} recharges</p>
+                            </div>
+
+                            {/* 3. Food Sales */}
+                            <div className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-semibold text-slate-500">Food Sales</span>
+                                <div className="h-7 w-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+                                  <ShoppingBag className="h-3.5 w-3.5" />
+                                </div>
+                              </div>
+                              <p className="mt-1.5 text-xl font-bold text-slate-900">{formatCurrency(foodSales)}</p>
+                              <p className="text-[11px] text-slate-400 mt-0.5">{salesOrders} orders</p>
+                            </div>
+
+                            {/* 4. Remaining Balance */}
+                            <div className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-semibold text-slate-500">Remaining Balance</span>
+                                <div className="h-7 w-7 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
+                                  <DollarSign className="h-3.5 w-3.5" />
+                                </div>
+                              </div>
+                              <p className="mt-1.5 text-xl font-bold text-slate-900">{formatCurrency(totalBalance)}</p>
+                              <p className="text-[11px] text-slate-400 mt-0.5">Money on cards</p>
+                            </div>
+                          </div>
+
+                          {/* Row 2: 3 Operational Metrics */}
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {/* 5. Ready Cards */}
+                            <div className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-semibold text-slate-500">Ready Cards</span>
+                                <div className="h-7 w-7 rounded-lg bg-sky-50 flex items-center justify-center text-sky-600">
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                </div>
+                              </div>
+                              <p className="mt-1.5 text-xl font-bold text-slate-900">{readyCards}</p>
+                              <p className="text-[11px] text-slate-400 mt-0.5">Ready to issue</p>
+                            </div>
+
+                            {/* 6. Blocked Cards */}
+                            <div className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-semibold text-slate-500">Blocked Cards</span>
+                                <div className="h-7 w-7 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600">
+                                  <ShieldAlert className="h-3.5 w-3.5" />
+                                </div>
+                              </div>
+                              <p className="mt-1.5 text-xl font-bold text-slate-900">{blockedCards}</p>
+                              <p className="text-[11px] text-slate-400 mt-0.5">Security locked</p>
+                            </div>
+
+                            {/* 7. Refunds */}
+                            <div className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-semibold text-slate-500">Refunds</span>
+                                <div className="h-7 w-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
+                                  <RefreshCw className="h-3.5 w-3.5" />
+                                </div>
+                              </div>
+                              <p className="mt-1.5 text-xl font-bold text-slate-900">{formatCurrency(totalRefunds)}</p>
+                              <p className="text-[11px] text-slate-400 mt-0.5">{refundOrders} refunds</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Recent Activity Table */}
+                    <div className="space-y-2 pt-1">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Recent Activity</h4>
+                      {counterRecentActivities.length === 0 ? (
+                        <div className="p-4 text-center text-xs text-slate-400 border border-slate-200 rounded-xl bg-slate-50/50">
+                          No card activity recorded for this counter in selected date range.
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto rounded-xl border border-slate-200">
+                          <table className="w-full text-left text-xs border-collapse">
+                            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px]">
+                              <tr>
+                                <th className="py-2.5 px-3">Coupon ID</th>
+                                <th className="py-2.5 px-3">Customer</th>
+                                <th className="py-2.5 px-3">Action</th>
+                                <th className="py-2.5 px-3 text-right">Amount</th>
+                                <th className="py-2.5 px-3 text-right">Date</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {counterRecentActivities.map((item: any) => (
+                                <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
+                                  <td className="py-2.5 px-3 font-mono font-bold text-slate-900">
+                                    #{item.sessionCardNumber || item.card?.physicalCardNumber || item.card?.qrToken || 'CPN'}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-slate-700">
+                                    {item.customerName || 'Walk-in Customer'}
+                                  </td>
+                                  <td className="py-2.5 px-3">
+                                    <span className="inline-flex items-center gap-1 font-semibold text-slate-800">
+                                      {item.status === 'ACTIVE' ? 'Active Session' : 'Completed Cycle'}
+                                    </span>
+                                  </td>
+                                  <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-600">
+                                    {formatCurrency(item.balance ?? 0)}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-right text-slate-500">
+                                    {formatDate(item.createdAt || item.startedAt)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+              <ModalFooter>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedBranchForAnalytics(null)}
+                  className="text-xs px-4 cursor-pointer"
+                >
+                  Close
+                </Button>
+              </ModalFooter>
+            </Modal>
+          )}
+        </>
+      )}
     </div>
   );
 }

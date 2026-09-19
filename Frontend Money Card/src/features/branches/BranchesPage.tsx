@@ -969,14 +969,9 @@ export function BranchesPage() {
           <form onSubmit={handleViewEditSubmit} noValidate className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label htmlFor="edit-branch-name" className="block text-sm font-medium text-slate-700">
-                    Counter Name <span className="text-rose-500">*</span>
-                  </label>
-                  <span className="text-[11px] text-slate-400 font-mono">
-                    {editNameInput.trim().length}/20
-                  </span>
-                </div>
+                <label htmlFor="edit-branch-name" className="block text-sm font-medium text-slate-700 mb-1">
+                  Counter Name <span className="text-rose-500">*</span>
+                </label>
                 <Input
                   id="edit-branch-name"
                   placeholder="e.g. South Indian Express"

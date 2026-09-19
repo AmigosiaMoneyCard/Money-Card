@@ -14,6 +14,28 @@
 
 ---
 
+## Mandatory Agent Workflow Rules
+
+1. **Automatic Implementation Plan & Visual Image Sketch**:
+   - Whenever the user requests **ANY changes in the project**, the agent **MUST automatically create an implementation plan** (`implementation_plan.md`) containing:
+     - Clear technical design, component breakdown, and step-by-step changes.
+     - **Visual Image Sketch** generated via `generate_image` tool (high-fidelity, realistic SaaS UI design).
+     - Clean, detailed **ASCII wireframes** of the UI layout, tables, modals, and buttons.
+   - **Obtain user approval** before executing any source code edits.
+
+2. **Web App ↔ Mobile App Parity Check**:
+   - Whenever changes are made to the **Web App (`Frontend Money Card`)**, the agent **MUST actively check whether the Mobile POS App (`Flutter Money card`) also requires corresponding updates**.
+   - Review Flutter models (`lib/models/`), providers (`lib/providers/`), services (`lib/services/`), and UI screens (`lib/features/`) to maintain functional, data, and operational parity between Web and Mobile.
+
+3. **PDF Export Parity & Consistency Check (Web & Mobile)**:
+   - Whenever any changes are made in the **Web App (`Frontend Money Card`)** (such as analytics, reports, metrics, card/session data, or receipt details), the agent **MUST actively check whether the View PDF / PDF export functionality also requires corresponding updates in both Web and Mobile apps**.
+   - Inspect and verify:
+     - **Web PDF Exports**: `src/features/analytics/analyticsPdfExport.ts`, PDF customization modals, and related report generators.
+     - **Mobile PDF Services**: `Flutter Money card/lib/services/analytics_pdf_service.dart`, `digital_receipt_service.dart`, and receipt providers.
+   - Maintain 100% consistency across metrics, labels, layout structures, and calculations between the screens and their exported PDFs.
+
+---
+
 ## Project Overview
 
 **Money Card** is a prepaid cafeteria card management system with 3 sub-projects:
@@ -306,7 +328,7 @@ Files to change:
 - Always use `apiService.<domain>.<method>()` — never raw fetch/axios
 - Use `requirePermission(PermissionCode.X)` for permission-based route guards (works for all roles including STAFF with that permission)
 - Use `requireRole(Role.SUPER_ADMIN, Role.ORG_ADMIN)` only when you want to exclude STAFF entirely regardless of permissions
-- Run `npm test -- --run` in `Frontend Money Card/` before any commit — all 234 tests must pass
+- Run `npm test -- --run` in `Frontend Money Card/` before any commit — all tests (currently 253+) must pass
 - Use `notify.success()` / `notify.error()` for toast messages in frontend
 
 ### DON'T
