@@ -34,7 +34,7 @@
 |---|---|---|
 | `SUPER_ADMIN` | Platform owner | All orgs, plans, subscriptions, platform settings |
 | `ORG_ADMIN` | Cafeteria business owner | Full control of their org (staff, branches, cards, analytics) |
-| `STAFF` | Counter manager (assigned to a branch) | Scoped to their branch — cards, sessions, products, staff at their counter |
+| `STAFF` | Counter manager (assigned to a branch) | Scoped to their counter (branch) — Counter Dashboard, cards, sessions, products, staff at their counter |
 
 **Permission codes (M0 permission set)** — defined in `Backend/src/controllers/staff.controller.ts` (`FROZEN_M0_PERMISSIONS`):
 - `CARD_VIEW`, `CARD_ISSUE`, `CARD_RETURN`, `CARD_BLOCK`, `CARD_UNBLOCK`
@@ -45,6 +45,8 @@
 - `BRANCH_VIEW`, `BRANCH_MANAGE`
 
 **Counter Manager**: A `STAFF`-role user with a `UserBranch` DB entry linking them to a specific branch.
+- **Counter Dashboard**: Dedicated dashboard view (`isCounterAdmin` mode) scoped strictly to their assigned counter. Displays counter operational metrics, quick actions (View Cards, Team Members, Menu, Analytics), and custom date range filtering (with cafeteria-switching dropdown removed).
+- **Branch Scoping**: Cards, customer sessions, product catalog, and staff management are strictly isolated to their assigned counter.
 
 ---
 
@@ -138,7 +140,7 @@ Route guards:
 
 | Path | Roles | Page |
 |---|---|---|
-| `/dashboard` | ALL | `DashboardPage` |
+| `/dashboard` | ALL | `DashboardPage` (SUPER_ADMIN → SaaS metrics, ORG_ADMIN → Org Dashboard, STAFF → Counter Dashboard) |
 | `/branches` | ORG_ADMIN | `BranchesPage` |
 | `/staff` | ORG_ADMIN, STAFF | `StaffPage` |
 | `/cards` | ORG_ADMIN, STAFF | `CardsPage` |
@@ -186,7 +188,7 @@ Key `apiService` namespaces:
 | Feature | Key Files | Notes |
 |---|---|---|
 | `auth` | `LoginPage`, `ChangePasswordForm`, `UnauthorizedPage`, `MandatoryChangePasswordPage` | |
-| `dashboard` | `DashboardPage` | Role-aware stats |
+| `dashboard` | `DashboardPage.tsx`, `OrgAdminDashboard.tsx`, `SuperAdminDashboard.tsx` | Role-aware stats: `SUPER_ADMIN` → SaaS metrics, `ORG_ADMIN` → Org Admin Dashboard, `STAFF` → Counter Dashboard (`isCounterAdmin` mode scoped to counter) |
 | `staff` | `StaffPage.tsx` (2824 lines), `PermissionMatrix.tsx`, `constants.ts` | Unified staff detail/edit modal; `canManage = hasPermission('STAFF_MANAGE')` |
 | `cards` | `CardsPage` | Issue, return, block, unblock |
 | `sessions` | `SessionsPage` | Customer history + active sessions |

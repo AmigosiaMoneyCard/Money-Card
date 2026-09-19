@@ -405,26 +405,11 @@ function OrgAdminSubscriptionsView() {
           <Card>
             <CardHeader
               title={`Current Plan: ${currentPlan?.name || 'Active Subscription'}`}
-              description="Active subscription and billing details"
-              action={
-                <Badge
-                  variant={
-                    subscription?.status === 'ACTIVE'
-                      ? 'success'
-                      : subscription?.status === 'PENDING_PAYMENT'
-                        ? 'warning'
-                        : 'danger'
-                  }
-                  className="text-xs px-3 py-1"
-                >
-                  {subscription?.status || 'ACTIVE'}
-                </Badge>
-              }
             />
 
             <CardContent className="space-y-6">
               {/* Dates & Status Metadata */}
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 rounded-xl bg-slate-50 p-4 border border-slate-200 text-xs">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 rounded-xl bg-slate-50 p-4 border border-slate-200 text-xs">
                 <div>
                   <span className="text-slate-500 font-medium">Plan Price:</span>
                   <p className="font-mono text-sm font-bold text-emerald-700">
@@ -441,12 +426,6 @@ function OrgAdminSubscriptionsView() {
                   <span className="text-slate-500 font-medium">Renewal / End Date:</span>
                   <p className="font-semibold text-slate-900">
                     {subscription ? formatDate(subscription.renewalDate) : '—'}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-slate-500 font-medium">Payment Status:</span>
-                  <p className="font-semibold text-emerald-700">
-                    {subscription?.paymentStatus || 'SUCCESS'}
                   </p>
                 </div>
               </div>

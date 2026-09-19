@@ -7,8 +7,6 @@ import { useNavigate } from 'react-router-dom';
 import { apiService } from '@/services/api';
 import { useBranch, usePermissions, useAuth } from '@/hooks';
 import type {
-  Plan,
-  Subscription,
   Branch,
   Staff,
   Card as CardEntity,
@@ -93,8 +91,6 @@ export function OrgAdminDashboard() {
     return storage.get<boolean>(setupDismissedKey) === true;
   });
 
-  const [currentPlan, setCurrentPlan] = useState<Plan | null>(null);
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [cardsList, setCardsList] = useState<CardEntity[]>([]);
@@ -114,10 +110,8 @@ export function OrgAdminDashboard() {
     setIsRefreshing(true);
     setError(null);
     try {
-      const [plansRes, subRes, branchRes, staffRes, cardRes, invRes, analyticsRes] =
+      const [branchRes, staffRes, cardRes, invRes, analyticsRes] =
         await Promise.all([
-          apiService.plans.getPlans(),
-          apiService.subscriptions.getSubscription(),
           apiService.branches.getBranches(),
           apiService.staff.getStaff(),
           apiService.cards.getCards(),
@@ -128,18 +122,6 @@ export function OrgAdminDashboard() {
             endDate: endDate || undefined,
           }),
         ]);
-
-      if (!subRes.success) {
-        setError(subRes.error.message || 'Failed to load organization data');
-        return;
-      }
-
-      setSubscription(subRes.data);
-
-      if (plansRes.success && subRes.data) {
-        const foundPlan = plansRes.data.find((p) => p.id === subRes.data.planId) || plansRes.data[0];
-        setCurrentPlan(foundPlan);
-      }
 
       if (branchRes.success) {
         setBranches(branchRes.data.items);
@@ -162,10 +144,8 @@ export function OrgAdminDashboard() {
     const load = async () => {
       setError(null);
       try {
-        const [plansRes, subRes, branchRes, staffRes, cardRes, invRes, analyticsRes] =
+        const [branchRes, staffRes, cardRes, invRes, analyticsRes] =
           await Promise.all([
-            apiService.plans.getPlans(),
-            apiService.subscriptions.getSubscription(),
             apiService.branches.getBranches(),
             apiService.staff.getStaff(),
             apiService.cards.getCards(),
@@ -177,18 +157,6 @@ export function OrgAdminDashboard() {
             }),
           ]);
         if (isCancelled) return;
-
-        if (!subRes.success) {
-          setError(subRes.error.message || 'Failed to load organization data');
-          return;
-        }
-
-        setSubscription(subRes.data);
-
-        if (plansRes.success && subRes.data) {
-          const foundPlan = plansRes.data.find((p) => p.id === subRes.data.planId) || plansRes.data[0];
-          setCurrentPlan(foundPlan);
-        }
 
         if (branchRes.success) {
           setBranches(branchRes.data.items);
@@ -211,29 +179,7 @@ export function OrgAdminDashboard() {
     };
   }, [currentBranch, startDate, endDate]);
 
-  // Authoritative Effective Limits: Custom Override > Plan Default
-  const branchUsage = branches.length;
-  const branchLimit =
-    subscription?.overrides?.branchLimit ??
-    (subscription as any)?.branchLimitOverride ??
-    currentPlan?.branchLimit ??
-    1;
 
-  const staffUsage = staffList.length;
-  const staffLimit =
-    subscription?.overrides?.staffLimit ??
-    (subscription as any)?.staffLimitOverride ??
-    currentPlan?.staffLimit ??
-    10;
-
-  const cardUsage = cardsList.length;
-  const cardLimit =
-    subscription?.overrides?.cardLimit ??
-    (subscription as any)?.cardLimitOverride ??
-    currentPlan?.cardLimit ??
-    250;
-
-  const txnUsage = analytics?.totalTransactions || 0;
 
   // Filter Cards by Date Range
   const filteredCardsIssuedCount = useMemo(() => {
@@ -337,7 +283,7 @@ export function OrgAdminDashboard() {
             </div>
             <div>
               <h3 className="font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
-                Smart Cards Directory
+                View Cards
               </h3>
             </div>
           </button>
@@ -402,7 +348,7 @@ export function OrgAdminDashboard() {
           </div>
           <div>
             <h3 className="font-bold text-slate-900 group-hover:text-amber-600 transition-colors">
-              Today's Activity & Sales
+              Analytics
             </h3>
           </div>
         </button>
@@ -532,107 +478,10 @@ export function OrgAdminDashboard() {
         <ErrorState title="Failed to load dashboard" message={error} onRetry={() => fetchOrgDashboardData(false)} />
       ) : (
         <div className="space-y-6">
-          {/* Active Plan & Resource Utilization Limits */}
-          <Card>
-            <CardHeader
-              title={`Active Plan: ${currentPlan?.name || 'Standard Plan'}`}
-              action={
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant={subscription?.status === 'ACTIVE' ? 'success' : 'warning'}>
-                    {subscription?.status || 'ACTIVE'}
-                  </Badge>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate('/subscriptions')}
-                    rightIcon={<ArrowRight className="h-3.5 w-3.5" />}
-                  >
-                    Manage Plan
-                  </Button>
-                </div>
-              }
-            />
-
-            <CardContent className="space-y-6">
-              {/* Progress bars */}
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {/* Branches */}
-                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1.5 text-slate-600">
-                      <Building2 className="h-4 w-4 text-emerald-600" />
-                      Branches
-                    </span>
-                    <span className="font-mono font-bold text-slate-900">
-                      {branchUsage} / {branchLimit}
-                    </span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className="h-full bg-emerald-600 transition-all duration-300"
-                      style={{ width: `${Math.min((branchUsage / branchLimit) * 100, 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Staff Accounts */}
-                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1.5 text-slate-600">
-                      <Users className="h-4 w-4 text-teal-600" />
-                      Staff Accounts
-                    </span>
-                    <span className="font-mono font-bold text-slate-900">
-                      {staffUsage} / {staffLimit}
-                    </span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className="h-full bg-teal-600 transition-all duration-300"
-                      style={{ width: `${Math.min((staffUsage / staffLimit) * 100, 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Active Cards Fleet Total */}
-                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1.5 text-slate-600">
-                      <CreditCard className="h-4 w-4 text-sky-600" />
-                      Active Cards
-                    </span>
-                    <span className="font-mono font-bold text-slate-900">
-                      {cardUsage} / {cardLimit}
-                    </span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className="h-full bg-sky-500 transition-all duration-300"
-                      style={{ width: `${Math.min((cardUsage / cardLimit) * 100, 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Monthly Transactions */}
-                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1.5 text-slate-600">
-                      <BarChart3 className="h-4 w-4 text-emerald-600" />
-                      Monthly Transactions
-                    </span>
-                    <span className="font-mono font-bold text-emerald-700">
-                      {txnUsage.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* ── UNIFIED FILTERED METRICS BOX (Date Filter Toolbar + 4 Operational Stat Cards) ── */}
           <Card>
             <CardHeader
-              title="Sales & Operations Overview"
+              title="Overview"
             />
 
             <CardContent className="space-y-5">
