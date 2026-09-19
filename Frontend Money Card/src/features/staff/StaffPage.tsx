@@ -324,7 +324,13 @@ export function StaffPage() {
 
   // ── Unified Staff Details/Edit Modal State ─────────────────
   const [showStaffModal, setShowStaffModal] = useState(false);
+  const [showStaffDetailsModal, setShowStaffDetailsModal] = useState(false);
   const [staffTab, setStaffTab] = useState<'overview' | 'permissions' | 'branches' | 'security'>('overview');
+
+  const handleOpenStaffDetails = (staff: Staff) => {
+    setSelectedStaff(staff);
+    setShowStaffDetailsModal(true);
+  };
 
   // ── Staff Password Change State ─────────────────────────────
   const [formNewPassword, setFormNewPassword] = useState('');
@@ -1125,101 +1131,65 @@ export function StaffPage() {
   // ── Table Columns ─────────────────────────────────────────
   const columns = [
     {
-      key: 'name',
-      header: 'Staff Member',
-      render: (staff: Staff) => (
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 font-bold text-sm border border-emerald-200">
-            {staff.name.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <p className="font-semibold text-slate-900">{staff.name}</p>
-              <button
-                type="button"
-                onClick={() => handleOpenStaffAudit(staff)}
-                className="p-1 rounded-md border text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-slate-200 hover:border-emerald-300 transition-colors cursor-pointer"
-                title="View staff performance & operational audit"
-                aria-label={`View performance for ${staff.name}`}
-              >
-                <Eye className="h-3.5 w-3.5" />
-              </button>
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-slate-500">
-              {staff.phone && (
-                <span className="font-mono text-slate-700 font-medium flex items-center gap-1">
-                  <Phone className="h-3 w-3 text-slate-400" />
-                  {staff.phone}
-                </span>
-              )}
-              {staff.phone && staff.email && <span>•</span>}
-              {staff.email && <span className="text-slate-400 truncate">{staff.email}</span>}
-            </div>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (staff: Staff) => (
-        staff.status === 'PENDING_ACTIVATION' ? (
-          <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 border border-amber-200">
-            Pending Activation
-          </span>
-        ) : (
-          <Badge variant={staff.status === 'ACTIVE' ? 'success' : 'danger'}>
-            {staff.status === 'ACTIVE' ? 'Active' : 'Inactive'}
-          </Badge>
-        )
-      ),
-    },
-    {
-      key: 'branches',
-      header: 'Assigned Cafeterias',
+      key: 'counterName',
+      header: 'Counter Name',
       render: (staff: Staff) => {
         const assignedNames = branches
           .filter((b) => staff.assignedBranchIds.includes(b.id))
           .map((b) => b.name);
+        const displayName = assignedNames.length > 0 ? assignedNames.join(', ') : 'All Counters';
 
         return (
-          <div className="space-y-1">
-            <span className="text-xs font-semibold text-slate-700">
-              {staff.assignedBranchIds.length} cafeteria(s)
-            </span>
-            {assignedNames.length > 0 && (
-              <p className="max-w-[180px] truncate text-[11px] text-slate-500">
-                {assignedNames.join(', ')}
-              </p>
-            )}
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <Building2 className="h-4 w-4" />
+            </div>
+            <span className="font-semibold text-slate-900 text-sm">{displayName}</span>
           </div>
         );
       },
     },
     {
-      key: 'permissions',
-      header: 'Role & Access',
-      render: (staff: Staff) => {
-        const isManager = staff.permissions.includes('STAFF_MANAGE');
-        const roleLabel = isManager ? 'Manager / Admin' : 'Cashier / POS';
-        return (
-          <span className="font-semibold text-xs text-slate-700">{roleLabel}</span>
-        );
-      },
-    },
-    {
-      key: 'createdAt',
-      header: 'Created',
+      key: 'staffDetails',
+      header: 'Staff Details',
       render: (staff: Staff) => (
-        <span className="text-xs text-slate-500">{formatDate(staff.createdAt)}</span>
+        <button
+          type="button"
+          onClick={() => handleOpenStaffDetails(staff)}
+          className="group inline-flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 -ml-2 text-left transition-colors hover:bg-emerald-50 cursor-pointer"
+          title="Click to view full staff details"
+        >
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100/80 text-emerald-800 font-bold text-xs border border-emerald-300 group-hover:bg-emerald-200 transition-colors">
+            {staff.name.charAt(0).toUpperCase()}
+          </div>
+          <div className="flex flex-col">
+            <span className="font-semibold text-slate-900 text-sm group-hover:text-emerald-700 transition-colors">
+              {staff.name}
+            </span>
+            <span className="text-[11px] text-emerald-600 font-medium">
+              Click for full details
+            </span>
+          </div>
+        </button>
       ),
     },
     {
       key: 'actions',
-      header: 'Actions',
+      header: 'Edit',
       className: 'text-right',
       render: (staff: Staff) => (
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-end gap-2">
+          {canManage && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleOpenStaffModal(staff, 'overview')}
+              leftIcon={<Edit2 className="h-3.5 w-3.5 text-emerald-600" />}
+              className="text-xs py-1 px-3 border-slate-300 hover:border-emerald-500 hover:bg-emerald-50 text-slate-700"
+            >
+              Edit
+            </Button>
+          )}
           <StaffActionMenu
             staff={staff}
             canManage={canManage}
@@ -1270,28 +1240,11 @@ export function StaffPage() {
 
       {/* Plan Resource Usage Indicator */}
       {orgOverview?.usage && (
-        <Card padding="sm" className="bg-slate-50 border border-slate-200">
-          <div className="flex items-center justify-between text-xs font-medium">
-            <span className="text-slate-600">
-              Staff Usage ({orgOverview.plan?.name || 'Active Plan'}):
-            </span>
-            <span className="text-slate-800">
-              <strong className="text-emerald-600">{orgOverview.usage.staffCount}</strong> /{' '}
-              {orgOverview.usage.staffLimit} staff accounts created
-            </span>
-          </div>
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
-            <div
-              className="h-full bg-emerald-600 transition-all duration-300"
-              style={{
-                width: `${Math.min(
-                  (orgOverview.usage.staffCount / orgOverview.usage.staffLimit) * 100,
-                  100,
-                )}%`,
-              }}
-            />
-          </div>
-        </Card>
+        <div className="text-xs text-slate-600 font-medium">
+          Staff Usage:{' '}
+          <strong className="text-slate-900">{orgOverview.usage.staffCount}</strong> /{' '}
+          {orgOverview.usage.staffLimit} staff accounts created
+        </div>
       )}
 
       {/* Search & Refresh */}
@@ -1843,6 +1796,107 @@ export function StaffPage() {
             )}
           </ModalFooter>
         </form>
+      </Modal>
+
+      {/* ── STAFF DETAILS POPUP MODAL (MINIMAL & SLEEK) ── */}
+      <Modal
+        isOpen={showStaffDetailsModal}
+        onClose={() => setShowStaffDetailsModal(false)}
+        title="Staff Details"
+        size="md"
+      >
+        {selectedStaff && (
+          <div className="space-y-6">
+            {/* Header / Avatar Profile Block */}
+            <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-xl font-bold text-white shadow-xs">
+                {selectedStaff.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-lg font-bold text-slate-900 truncate">{selectedStaff.name}</h3>
+                  {selectedStaff.status === 'PENDING_ACTIVATION' ? (
+                    <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 border border-amber-200">
+                      Pending Activation
+                    </span>
+                  ) : (
+                    <Badge variant={selectedStaff.status === 'ACTIVE' ? 'success' : 'danger'}>
+                      {selectedStaff.status === 'ACTIVE' ? 'Active' : 'Inactive'}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {selectedStaff.permissions.includes('STAFF_MANAGE') ? 'Manager / Admin' : 'Cashier / POS'}
+                </p>
+              </div>
+            </div>
+
+            {/* Information Grid */}
+            <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
+              <div className="flex items-center justify-between p-3.5 text-xs">
+                <span className="text-slate-500 font-medium">Assigned Counter</span>
+                <span className="font-semibold text-slate-900">
+                  {branches
+                    .filter((b) => selectedStaff.assignedBranchIds.includes(b.id))
+                    .map((b) => b.name)
+                    .join(', ') || 'All Counters'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-3.5 text-xs">
+                <span className="text-slate-500 font-medium">Phone Number</span>
+                <span className="font-mono font-medium text-slate-900">
+                  {selectedStaff.phone || 'Not provided'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-3.5 text-xs">
+                <span className="text-slate-500 font-medium">Email Address</span>
+                <span className="font-mono text-slate-700">
+                  {selectedStaff.email || 'Not provided'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-3.5 text-xs">
+                <span className="text-slate-500 font-medium">Role & Position</span>
+                <span className="font-semibold text-slate-800">
+                  {selectedStaff.permissions.includes('STAFF_MANAGE') ? 'Manager / Admin' : 'Cashier / POS'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-3.5 text-xs">
+                <span className="text-slate-500 font-medium">Created Date</span>
+                <span className="text-slate-700">
+                  {formatDate(selectedStaff.createdAt)}
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Action Footer */}
+            <ModalFooter>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowStaffDetailsModal(false)}
+              >
+                Close
+              </Button>
+              {canManage && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  leftIcon={<Edit2 className="h-4 w-4" />}
+                  onClick={() => {
+                    setShowStaffDetailsModal(false);
+                    handleOpenStaffModal(selectedStaff, 'overview');
+                  }}
+                >
+                  Edit Staff
+                </Button>
+              )}
+            </ModalFooter>
+          </div>
+        )}
       </Modal>
 
       {/* ── 2. ADD STAFF MEMBER MODAL (TABBED STEPPER UX) ── */}
