@@ -24,7 +24,6 @@ import {
   Plus,
   Search,
   AlertCircle,
-  AlertTriangle,
   RefreshCw,
   Trash2,
   X,
@@ -567,36 +566,32 @@ export function BranchesPage() {
     {
       key: 'name',
       header: 'Counter Name',
+      className: 'w-full',
       render: (branch: Branch) => (
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
             <Building2 className="h-4 w-4" />
           </div>
-          <div className="min-w-0">
-            <p className="font-bold text-slate-900 leading-tight">
-              {branch.name}
-            </p>
-            {branch.manager?.phone ? (
-              <p className="text-[11px] text-slate-500 font-mono mt-0.5">
-                +91 {branch.manager.phone}
-              </p>
-            ) : null}
-          </div>
+          <p className="font-bold text-slate-900 leading-tight">
+            {branch.name}
+          </p>
         </div>
       ),
     },
     {
       key: 'createdAt',
       header: 'Created Date',
+      className: 'text-right whitespace-nowrap w-36',
       render: (branch: Branch) => (
-        <span className="text-xs text-slate-500">{formatDate(branch.createdAt)}</span>
+        <div className="text-right text-xs text-slate-500">{formatDate(branch.createdAt)}</div>
       ),
     },
     {
       key: 'actions',
       header: 'Actions',
+      className: 'text-right whitespace-nowrap w-44',
       render: (branch: Branch) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end">
           {canManage && (
             <Button
               variant="outline"
@@ -614,7 +609,7 @@ export function BranchesPage() {
     {
       key: 'status',
       header: 'Status',
-      className: 'text-right',
+      className: 'text-right whitespace-nowrap w-36',
       render: (branch: Branch) => (
         <div className="flex items-center justify-end gap-2.5">
           {canManage && (
@@ -757,15 +752,9 @@ export function BranchesPage() {
                       <h3 className="font-bold text-slate-900 text-sm truncate">
                         {branch.name}
                       </h3>
-                      {branch.manager?.phone ? (
-                        <p className="text-xs text-slate-500 font-mono mt-0.5">
-                          +91 {branch.manager.phone}
-                        </p>
-                      ) : (
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          Created: {formatDate(branch.createdAt)}
-                        </p>
-                      )}
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Created: {formatDate(branch.createdAt)}
+                      </p>
                     </div>
                   </div>
 
@@ -1004,7 +993,7 @@ export function BranchesPage() {
 
               <div>
                 <label htmlFor="edit-branch-phone" className="block text-sm font-medium text-slate-700 mb-1">
-                  Mobile Number (Login ID) <span className="text-rose-500">*</span>
+                  Mobile Number <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500 select-none">
@@ -1036,18 +1025,13 @@ export function BranchesPage() {
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label htmlFor="edit-branch-password" className="block text-sm font-medium text-slate-700">
-                  Reset Password <span className="text-xs text-slate-400 font-normal">(Optional)</span>
-                </label>
-                <span className="text-[11px] text-slate-400">
-                  Leave blank to retain current password
-                </span>
-              </div>
+              <label htmlFor="edit-branch-password" className="block text-sm font-medium text-slate-700 mb-1">
+                Reset Password
+              </label>
               <Input
                 id="edit-branch-password"
                 type={showEditPassword ? 'text' : 'password'}
-                placeholder="Enter new password (min 6 chars) or leave blank"
+                placeholder="Enter new password (min 6 chars)"
                 maxLength={30}
                 value={editPasswordInput}
                 onChange={(e) => {
@@ -1072,12 +1056,7 @@ export function BranchesPage() {
 
             {/* Quick Sharing Actions Bar */}
             <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-700">Quick Credentials Sharing</span>
-                <span className="text-[11px] text-slate-500 font-mono">
-                  Portal: {window.location.origin}/login
-                </span>
-              </div>
+              <span className="text-xs font-semibold text-slate-700 block">Quick Credentials Sharing</span>
               <div className="flex flex-col sm:flex-row gap-2">
                 <Button
                   type="button"
@@ -1101,50 +1080,40 @@ export function BranchesPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => setShowViewEditModal(false)}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                isLoading={isSubmitting}
-                disabled={isSubmitting}
-              >
-                Save Changes
-              </Button>
-            </div>
-          </form>
-
-          {/* Danger Zone: Delete Counter */}
-          <div className="pt-4 mt-4 border-t border-slate-200">
-            <div className="rounded-xl border border-rose-200 bg-rose-50/40 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-1.5 text-rose-700 font-semibold text-xs">
-                  <AlertTriangle className="h-4 w-4" />
-                  <span>Danger Zone</span>
-                </div>
-                <p className="text-xs text-slate-600">
-                  Permanently delete or safely archive this counter and remove it from operations.
-                </p>
-              </div>
+            <div className="flex items-center justify-between pt-4 mt-2 border-t border-slate-200">
+              {/* Far Left Side: Delete Counter */}
               <Button
                 type="button"
                 variant="danger"
-                size="sm"
+                size="md"
                 onClick={handleDeleteFromViewEdit}
-                leftIcon={<Trash2 className="h-3.5 w-3.5" />}
-                className="shrink-0"
+                leftIcon={<Trash2 className="h-4 w-4" />}
+                className="cursor-pointer"
               >
                 Delete Counter
               </Button>
+
+              {/* Far Right Side: Cancel & Save Changes */}
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={() => setShowViewEditModal(false)}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  isLoading={isSubmitting}
+                  disabled={isSubmitting}
+                >
+                  Save Changes
+                </Button>
+              </div>
             </div>
-          </div>
+          </form>
         </div>
       </Modal>
 
