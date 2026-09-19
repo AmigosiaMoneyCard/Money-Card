@@ -665,7 +665,7 @@ export function BranchesPage() {
         <div className="text-xs text-slate-600 font-medium">
           Counter Usage:{' '}
           <strong className="text-slate-900">{orgOverview.usage.branchCount}</strong> /{' '}
-          {orgOverview.usage.branchLimit} branches created
+          {orgOverview.usage.branchLimit} counters created
         </div>
       )}
 

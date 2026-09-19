@@ -1311,7 +1311,7 @@ export function StaffPage() {
             </span>
             <span className="text-slate-800">
               <strong className="text-emerald-600">{orgOverview.usage.branchCount}</strong> /{' '}
-              {orgOverview.usage.branchLimit} branches created
+              {orgOverview.usage.branchLimit} counters created
             </span>
           </div>
           <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
