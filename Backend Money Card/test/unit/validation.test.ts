@@ -46,24 +46,14 @@ describe('Server-Side Validation & Sanitization Layer', () => {
       expect(strongPasswordSchema.parse(valid)).toBe(valid);
     });
 
-    it('should reject password shorter than 8 characters', () => {
-      expect(() => strongPasswordSchema.parse('Pass@1')).toThrow(/at least 8 characters/);
+    it('should reject password shorter than 4 characters', () => {
+      expect(() => strongPasswordSchema.parse('123')).toThrow(/at least 4 characters/i);
     });
 
-    it('should reject password missing uppercase letter', () => {
-      expect(() => strongPasswordSchema.parse('pass@word123')).toThrow(/uppercase letter/);
-    });
-
-    it('should reject password missing lowercase letter', () => {
-      expect(() => strongPasswordSchema.parse('PASS@WORD123')).toThrow(/lowercase letter/);
-    });
-
-    it('should reject password missing numeric digit', () => {
-      expect(() => strongPasswordSchema.parse('Password@Special')).toThrow(/number/);
-    });
-
-    it('should reject password missing special character', () => {
-      expect(() => strongPasswordSchema.parse('Password12345')).toThrow(/special character/);
+    it('should accept easy passwords without complex uppercase, numbers or special characters', () => {
+      expect(strongPasswordSchema.parse('pass')).toBe('pass');
+      expect(strongPasswordSchema.parse('1234')).toBe('1234');
+      expect(strongPasswordSchema.parse('admin')).toBe('admin');
     });
 
     it('should reject excessively long passwords to prevent DoS attacks (>128 chars)', () => {

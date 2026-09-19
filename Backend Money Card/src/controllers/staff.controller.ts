@@ -42,6 +42,20 @@ export async function getStaffList(req: Request, res: Response) {
     role: Role.STAFF,
   };
 
+  // If the user is STAFF (counter manager), restrict to staff sharing their assigned branch(es)
+  if (req.user?.role === Role.STAFF) {
+    const counterBranches = await prisma.userBranch.findMany({
+      where: { userId: req.user.id },
+      select: { branchId: true },
+    });
+    const branchIds = counterBranches.map((b) => b.branchId);
+    where.assignedBranches = {
+      some: {
+        branchId: { in: branchIds },
+      },
+    };
+  }
+
   const { search } = req.query;
   if (typeof search === 'string' && search.trim()) {
     const q = search.trim();
@@ -90,8 +104,29 @@ export async function createStaffMember(req: Request, res: Response) {
   }
 
   const { name, phone, email, password, assignedBranchIds, branchIds, permissions, permissionCodes } = req.body;
-  const resolvedBranchIds = assignedBranchIds ?? branchIds;
+  let resolvedBranchIds = assignedBranchIds ?? branchIds;
   const resolvedPermissions = permissions ?? permissionCodes;
+
+  if (req.user?.role === Role.STAFF) {
+    const myBranches = await prisma.userBranch.findMany({
+      where: { userId: req.user.id },
+      select: { branchId: true },
+    });
+    const myBranchIds = myBranches.map((b) => b.branchId);
+
+    if (myBranchIds.length === 0) {
+      return sendError(res, 403, 'FORBIDDEN', 'No branch assigned to your counter account');
+    }
+
+    if (!resolvedBranchIds || !Array.isArray(resolvedBranchIds) || resolvedBranchIds.length === 0) {
+      resolvedBranchIds = myBranchIds;
+    } else {
+      const invalidBranch = resolvedBranchIds.some((bId: string) => !myBranchIds.includes(bId));
+      if (invalidBranch) {
+        return sendError(res, 403, 'FORBIDDEN', 'Cannot assign staff to branches outside your counter scope');
+      }
+    }
+  }
 
   if (!name || !name.trim()) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'Staff name is required');
@@ -249,6 +284,18 @@ export async function getStaffById(req: Request, res: Response) {
     return sendError(res, 404, 'NOT_FOUND', 'Staff member not found');
   }
 
+  if (req.user?.role === Role.STAFF) {
+    const myBranches = await prisma.userBranch.findMany({
+      where: { userId: req.user.id },
+      select: { branchId: true },
+    });
+    const myBranchIds = new Set(myBranches.map((b) => b.branchId));
+    const sharesBranch = staff.assignedBranches.some((b) => myBranchIds.has(b.branchId));
+    if (!sharesBranch && staff.id !== req.user.id) {
+      return sendError(res, 403, 'FORBIDDEN', 'Cannot access staff member outside your counter scope');
+    }
+  }
+
   return sendSuccess(res, {
     id: staff.id,
     name: staff.name,
@@ -271,6 +318,7 @@ export async function updateStaffMember(req: Request, res: Response) {
 
   const staff = await prisma.user.findFirst({
     where: { id, organizationId: orgId || undefined },
+    include: { assignedBranches: true },
   });
 
   if (!staff) {
@@ -288,6 +336,25 @@ export async function updateStaffMember(req: Request, res: Response) {
 
   const cleanPhone = phone ? String(phone).trim().replace(/\D/g, '') : undefined;
   const targetBranches = assignedBranchIds || branchIds;
+
+  if (req.user?.role === Role.STAFF) {
+    const myBranches = await prisma.userBranch.findMany({
+      where: { userId: req.user.id },
+      select: { branchId: true },
+    });
+    const myBranchIds = myBranches.map((b) => b.branchId);
+    const sharesBranch = staff.assignedBranches.some((b) => myBranchIds.includes(b.branchId));
+    if (!sharesBranch && staff.id !== req.user.id) {
+      return sendError(res, 403, 'FORBIDDEN', 'Cannot manage staff member outside your counter scope');
+    }
+
+    if (Array.isArray(targetBranches)) {
+      const invalidBranch = targetBranches.some((bId: string) => !myBranchIds.includes(bId));
+      if (invalidBranch) {
+        return sendError(res, 403, 'FORBIDDEN', 'Cannot assign staff to branches outside your counter scope');
+      }
+    }
+  }
 
   await prisma.$transaction(async (tx) => {
     await tx.user.update({
@@ -360,10 +427,27 @@ export async function updateStaffBranches(req: Request, res: Response) {
 
   const staff = await prisma.user.findFirst({
     where: { id, organizationId: orgId || undefined },
+    include: { assignedBranches: true },
   });
 
   if (!staff) {
     return sendError(res, 404, 'NOT_FOUND', 'Staff member not found');
+  }
+
+  if (req.user?.role === Role.STAFF) {
+    const myBranches = await prisma.userBranch.findMany({
+      where: { userId: req.user.id },
+      select: { branchId: true },
+    });
+    const myBranchIds = myBranches.map((b) => b.branchId);
+    const sharesBranch = staff.assignedBranches.some((b) => myBranchIds.includes(b.branchId));
+    if (!sharesBranch) {
+      return sendError(res, 403, 'FORBIDDEN', 'Cannot manage staff member outside your counter scope');
+    }
+    const invalidBranch = targetBranchIds.some((bId: string) => !myBranchIds.includes(bId));
+    if (invalidBranch) {
+      return sendError(res, 403, 'FORBIDDEN', 'Cannot assign staff to branches outside your counter scope');
+    }
   }
 
   await prisma.$transaction(async (tx) => {
@@ -405,10 +489,23 @@ export async function updateStaffPermissions(req: Request, res: Response) {
       ...(orgId && req.user?.role !== Role.SUPER_ADMIN ? { organizationId: orgId } : {}),
       role: Role.STAFF,
     },
+    include: { assignedBranches: true },
   });
 
   if (!staff) {
     return sendError(res, 404, 'NOT_FOUND', 'Staff member not found');
+  }
+
+  if (req.user?.role === Role.STAFF) {
+    const myBranches = await prisma.userBranch.findMany({
+      where: { userId: req.user.id },
+      select: { branchId: true },
+    });
+    const myBranchIds = myBranches.map((b) => b.branchId);
+    const sharesBranch = staff.assignedBranches.some((b) => myBranchIds.includes(b.branchId));
+    if (!sharesBranch) {
+      return sendError(res, 403, 'FORBIDDEN', 'Cannot manage staff member outside your counter scope');
+    }
   }
 
   const validPermissions = Object.values(PermissionCode);
@@ -459,6 +556,7 @@ export async function deleteStaffMember(req: Request, res: Response) {
       ...(orgId ? { organizationId: orgId } : {}),
     },
     include: {
+      assignedBranches: true,
       _count: {
         select: {
           recordedTransactions: true,
@@ -480,6 +578,21 @@ export async function deleteStaffMember(req: Request, res: Response) {
       'FORBIDDEN',
       'Super Admin accounts cannot be deleted.',
     );
+  }
+
+  if (req.user?.role === Role.STAFF) {
+    if (user.id === req.user.id) {
+      return sendError(res, 400, 'CANNOT_DELETE_SELF', 'Counter managers cannot delete their own account.');
+    }
+    const myBranches = await prisma.userBranch.findMany({
+      where: { userId: req.user.id },
+      select: { branchId: true },
+    });
+    const myBranchIds = myBranches.map((b) => b.branchId);
+    const sharesBranch = user.assignedBranches.some((b) => myBranchIds.includes(b.branchId));
+    if (!sharesBranch) {
+      return sendError(res, 403, 'FORBIDDEN', 'Cannot delete staff member outside your counter scope');
+    }
   }
 
   const activeSessionsCount = await prisma.cardSession.count({
@@ -569,6 +682,18 @@ export async function changeStaffPassword(req: Request, res: Response) {
         'FORBIDDEN',
         'You do not have permission to manage staff in another organization',
       );
+    }
+  }
+
+  if (req.user.role === Role.STAFF) {
+    const myBranches = await prisma.userBranch.findMany({
+      where: { userId: req.user.id },
+      select: { branchId: true },
+    });
+    const myBranchIds = myBranches.map((b) => b.branchId);
+    const sharesBranch = staff.assignedBranches.some((b) => myBranchIds.includes(b.branchId));
+    if (!sharesBranch && staff.id !== req.user.id) {
+      return sendError(res, 403, 'FORBIDDEN', 'Cannot change password for staff member outside your counter scope');
     }
   }
 

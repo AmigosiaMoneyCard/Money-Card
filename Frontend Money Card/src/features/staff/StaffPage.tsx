@@ -2,10 +2,9 @@
 // Unified Staff Details, Permissions, Branches, and Add Staff UX for ORG_ADMIN.
 // Uses apiService abstraction strictly — does NOT call mock handlers directly.
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiService } from '@/services/api';
-import { usePermissions, useBranch } from '@/hooks';
+import { usePermissions, useBranch, useAuth } from '@/hooks';
 import type {
   Staff,
   Branch,
@@ -18,7 +17,6 @@ import {
   Button,
   Input,
   Select,
-  Card,
   Badge,
   Modal,
   ModalFooter,
@@ -27,16 +25,16 @@ import {
   ErrorState,
 } from '@/components/ui';
 import { DataTable } from '@/components/tables';
-import { notify, formatDate, formatCurrency } from '@/utils';
+import { notify, formatCurrency } from '@/utils';
 import { filterStaffActivities, calculateScopedStaffMetrics } from '@/features/analytics/staffActivityFilter';
 import { PermissionMatrix } from './PermissionMatrix';
+import { MANAGER_PERMISSIONS, STAFF_PERMISSIONS } from './constants';
 import { UnauthorizedPage } from '@/features/auth';
 import {
   Users,
   UserPlus,
   Search,
   Edit2,
-  Power,
   Building2,
   ShieldCheck,
   RefreshCw,
@@ -46,12 +44,9 @@ import {
   ArrowRight,
   ArrowLeft,
   User,
-  Trash2,
   Lock,
   Key,
   X,
-  MoreVertical,
-  ChevronDown,
   FileSpreadsheet,
   Smartphone,
   Copy,
@@ -61,238 +56,18 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 
-interface StaffActionMenuProps {
-  staff: Staff;
-  canManage: boolean;
-  onEditOrView: () => void;
-  onViewAudit?: () => void;
-  onPermissions: () => void;
-  onBranches: () => void;
-  onSecurity: () => void;
-  onToggleStatus: () => void;
-  onDelete: () => void;
-}
-
-function StaffActionMenu({
-  staff,
-  canManage,
-  onEditOrView,
-  onViewAudit,
-  onPermissions,
-  onBranches,
-  onSecurity,
-  onToggleStatus,
-  onDelete,
-}: StaffActionMenuProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number }>({
-    top: 0,
-    left: 0,
-  });
-  const containerRef = useRef<HTMLDivElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  const updatePosition = useCallback(() => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const menuWidth = 210;
-    const menuHeight = 250;
-
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const openUpwards = spaceBelow < menuHeight && rect.top > menuHeight;
-
-    const top = openUpwards ? rect.top - menuHeight - 6 : rect.bottom + 6;
-    const left = Math.max(8, rect.right - menuWidth);
-
-    setMenuPosition({ top, left });
-  }, []);
-
-  const handleToggle = () => {
-    if (!isOpen) {
-      updatePosition();
-      setIsOpen(true);
-    } else {
-      setIsOpen(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(event.target as Node) &&
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    };
-
-    const handleScrollOrResize = () => {
-      setIsOpen(false);
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    window.addEventListener('scroll', handleScrollOrResize, true);
-    window.addEventListener('resize', handleScrollOrResize);
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      window.removeEventListener('scroll', handleScrollOrResize, true);
-      window.removeEventListener('resize', handleScrollOrResize);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen]);
-
-  return (
-    <div ref={containerRef} className="inline-block text-left">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleToggle}
-        className="flex items-center gap-1.5 text-xs py-1 px-2.5 bg-white border border-slate-300 hover:border-emerald-500 text-slate-700 shadow-xs"
-      >
-        <MoreVertical className="h-3.5 w-3.5 text-slate-400" />
-        <span>Actions</span>
-        <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
-      </Button>
-
-      {isOpen &&
-        createPortal(
-          <div
-            ref={menuRef}
-            style={{
-              position: 'fixed',
-              top: `${menuPosition.top}px`,
-              left: `${menuPosition.left}px`,
-              zIndex: 9999,
-            }}
-            className="w-52 rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
-          >
-            {/* Performance & Operational Audit */}
-            {onViewAudit && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsOpen(false);
-                  onViewAudit();
-                }}
-                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors cursor-pointer text-left"
-              >
-                <Eye className="h-4 w-4 text-emerald-600" />
-                <span>Performance & Audit</span>
-              </button>
-            )}
-
-            {/* Profile / Details */}
-            <button
-              type="button"
-              onClick={() => {
-                setIsOpen(false);
-                onEditOrView();
-              }}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer text-left"
-            >
-              {canManage ? <Edit2 className="h-4 w-4 text-emerald-600" /> : <Eye className="h-4 w-4 text-emerald-600" />}
-              <span>{canManage ? 'Edit / Details' : 'View Details'}</span>
-            </button>
-
-            {/* Manage / View Permissions */}
-            <button
-              type="button"
-              onClick={() => {
-                setIsOpen(false);
-                onPermissions();
-              }}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer text-left"
-            >
-              <ShieldCheck className="h-4 w-4 text-teal-600" />
-              <span>{canManage ? 'Permissions' : 'View Permissions'}</span>
-            </button>
-
-            {/* Branch Assignments */}
-            <button
-              type="button"
-              onClick={() => {
-                setIsOpen(false);
-                onBranches();
-              }}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer text-left"
-            >
-              <Building2 className="h-4 w-4 text-sky-600" />
-              <span>Counter Access</span>
-            </button>
-
-            {/* Change Password */}
-            {canManage && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsOpen(false);
-                  onSecurity();
-                }}
-                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer text-left"
-              >
-                <Key className="h-4 w-4 text-amber-500" />
-                <span>Change Password</span>
-              </button>
-            )}
-
-            {canManage && <div className="my-1 border-t border-slate-200" />}
-
-            {/* Status Toggle */}
-            {canManage && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsOpen(false);
-                  onToggleStatus();
-                }}
-                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors cursor-pointer text-left ${
-                  staff.status === 'ACTIVE'
-                    ? 'text-rose-400 hover:bg-rose-500/10 hover:text-rose-300'
-                    : 'text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300'
-                }`}
-              >
-                <Power className="h-4 w-4" />
-                <span>{staff.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}</span>
-              </button>
-            )}
-
-            {/* Delete Staff */}
-            {canManage && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsOpen(false);
-                  onDelete();
-                }}
-                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors cursor-pointer text-left"
-              >
-                <Trash2 className="h-4 w-4 text-rose-600" />
-                <span>Delete Staff</span>
-              </button>
-            )}
-          </div>,
-          document.body,
-        )}
-    </div>
-  );
+export interface CounterStaffGroup {
+  id: string;
+  counterName: string;
+  staff: Staff[];
 }
 
 export function StaffPage() {
   const { hasPermission } = usePermissions();
   const { currentBranch } = useBranch();
+  const { user } = useAuth();
 
+  const isCounterView = user?.role === 'STAFF';
   const canView = hasPermission('STAFF_VIEW');
   const canManage = hasPermission('STAFF_MANAGE');
 
@@ -304,9 +79,92 @@ export function StaffPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // ── Scoped Branches for Counter Manager ─────────────────────
+  const scopedBranches = useMemo(() => {
+    if (!isCounterView) return branches;
+    if (currentBranch && currentBranch.id && currentBranch.id !== 'ALL') {
+      return branches.filter((b) => b.id === currentBranch.id);
+    }
+    if (user?.assignedBranchIds && user.assignedBranchIds.length > 0) {
+      return branches.filter((b) => user.assignedBranchIds.includes(b.id));
+    }
+    return branches;
+  }, [branches, isCounterView, currentBranch, user]);
+
   // ── Unified Staff Details/Edit Modal State ─────────────────
   const [showStaffModal, setShowStaffModal] = useState(false);
-  const [staffTab, setStaffTab] = useState<'overview' | 'permissions' | 'branches' | 'security'>('overview');
+  const [showStaffDetailsModal, setShowStaffDetailsModal] = useState(false);
+  const [staffTab, setStaffTab] = useState<'overview' | 'permissions' | 'branches'>('overview');
+
+  // ── Counter Staff Grouping State ───────────────────────────
+  const [selectedCounterGroup, setSelectedCounterGroup] = useState<CounterStaffGroup | null>(null);
+  const [showCounterStaffModal, setShowCounterStaffModal] = useState(false);
+  const [modalCounterSearch, setModalCounterSearch] = useState('');
+  const [togglingStaffId, setTogglingStaffId] = useState<string | null>(null);
+
+  const handleOpenStaffDetails = (staff: Staff) => {
+    setSelectedStaff(staff);
+    setShowStaffDetailsModal(true);
+  };
+
+  const handleOpenCounterStaff = (group: CounterStaffGroup) => {
+    setSelectedCounterGroup(group);
+    setModalCounterSearch('');
+    setShowCounterStaffModal(true);
+  };
+
+  const handleToggleStaffStatus = async (staff: Staff) => {
+    if (!canManage) return;
+    const newStatus = staff.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+    setTogglingStaffId(staff.id);
+
+    // Optimistic UI update
+    setStaffList((prev) =>
+      prev.map((s) => (s.id === staff.id ? { ...s, status: newStatus } : s)),
+    );
+    if (selectedCounterGroup) {
+      setSelectedCounterGroup((prev) =>
+        prev
+          ? {
+              ...prev,
+              staff: prev.staff.map((s) => (s.id === staff.id ? { ...s, status: newStatus } : s)),
+            }
+          : null,
+      );
+    }
+
+    try {
+      const res = await apiService.staff.updateStaff(staff.id, { status: newStatus });
+      if (!res.success) {
+        setStaffList((prev) =>
+          prev.map((s) => (s.id === staff.id ? { ...s, status: staff.status } : s)),
+        );
+        if (selectedCounterGroup) {
+          setSelectedCounterGroup((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  staff: prev.staff.map((s) => (s.id === staff.id ? { ...s, status: staff.status } : s)),
+                }
+              : null,
+          );
+        }
+        notify.error(res.error.message || 'Failed to change staff status');
+        return;
+      }
+
+      notify.success(
+        `Staff member ${staff.name} is now ${newStatus === 'ACTIVE' ? 'Active' : 'Inactive'}`,
+      );
+    } catch {
+      setStaffList((prev) =>
+        prev.map((s) => (s.id === staff.id ? { ...s, status: staff.status } : s)),
+      );
+      notify.error('An unexpected error occurred while updating status.');
+    } finally {
+      setTogglingStaffId(null);
+    }
+  };
 
   // ── Staff Password Change State ─────────────────────────────
   const [formNewPassword, setFormNewPassword] = useState('');
@@ -321,15 +179,17 @@ export function StaffPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [addTab, setAddTab] = useState<'basic' | 'branches' | 'permissions'>('basic');
 
-  // ── Status Toggle Modal ───────────────────────────────────
-  const [showStatusModal, setShowStatusModal] = useState(false);
-  const [showDeleteStaffModal, setShowDeleteStaffModal] = useState(false);
   const [showStaffCreatedModal, setShowStaffCreatedModal] = useState(false);
   const [createdStaffCredentials, setCreatedStaffCredentials] = useState<{
     name: string;
     phone: string;
     password: string;
+    branchIds?: string[];
   } | null>(null);
+
+  // Status & Counter Filters matching Menu design pattern
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [staffBranchFilter, setStaffBranchFilter] = useState<string>('ALL');
 
   // ── Form & Selection State ────────────────────────────────
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
@@ -431,10 +291,21 @@ export function StaffPage() {
   // ── Instant Client-Side Filtered Staff ────────────────────
   const filteredStaff = useMemo(() => {
     let result = staffList;
-    if (currentBranch && currentBranch.id && currentBranch.id !== 'ALL') {
+    const activeBranchId = isCounterView
+      ? currentBranch?.id
+      : staffBranchFilter !== 'ALL'
+      ? staffBranchFilter
+      : currentBranch && currentBranch.id && currentBranch.id !== 'ALL'
+      ? currentBranch.id
+      : 'ALL';
+
+    if (activeBranchId && activeBranchId !== 'ALL') {
       result = result.filter(
-        (s) => Array.isArray(s.assignedBranchIds) && s.assignedBranchIds.includes(currentBranch.id),
+        (s) => Array.isArray(s.assignedBranchIds) && s.assignedBranchIds.includes(activeBranchId),
       );
+    }
+    if (statusFilter !== 'ALL') {
+      result = result.filter((s) => s.status === statusFilter);
     }
     if (!searchQuery.trim()) return result;
     const q = searchQuery.toLowerCase().trim();
@@ -444,7 +315,67 @@ export function StaffPage() {
         (s.phone && s.phone.includes(q)) ||
         (s.email && s.email.toLowerCase().includes(q)),
     );
-  }, [staffList, currentBranch, searchQuery]);
+  }, [staffList, currentBranch, staffBranchFilter, statusFilter, searchQuery, isCounterView]);
+
+  // ── Group Filtered Staff by Counter (Minimal & Clean) ─────
+  const counterStaffGroups = useMemo<CounterStaffGroup[]>(() => {
+    const targetBranches = isCounterView
+      ? scopedBranches
+      : staffBranchFilter !== 'ALL'
+      ? branches.filter((b) => b.id === staffBranchFilter)
+      : branches;
+
+    const groups: CounterStaffGroup[] = [];
+    const q = searchQuery.toLowerCase().trim();
+
+    targetBranches.forEach((branch) => {
+      const isBranchNameMatch = q ? branch.name.toLowerCase().includes(q) : false;
+      const assigned = filteredStaff.filter(
+        (s) => Array.isArray(s.assignedBranchIds) && s.assignedBranchIds.includes(branch.id),
+      );
+      if (isBranchNameMatch) {
+        const branchStaff = staffList.filter(
+          (s) =>
+            Array.isArray(s.assignedBranchIds) &&
+            s.assignedBranchIds.includes(branch.id) &&
+            (statusFilter === 'ALL' || s.status === statusFilter),
+        );
+        groups.push({
+          id: branch.id,
+          counterName: branch.name,
+          staff: branchStaff,
+        });
+      } else if (!q && statusFilter === 'ALL') {
+        groups.push({
+          id: branch.id,
+          counterName: branch.name,
+          staff: assigned,
+        });
+      } else if (assigned.length > 0) {
+        groups.push({
+          id: branch.id,
+          counterName: branch.name,
+          staff: assigned,
+        });
+      }
+    });
+
+    const unassigned = filteredStaff.filter(
+      (s) =>
+        !s.assignedBranchIds ||
+        !s.assignedBranchIds.length ||
+        !s.assignedBranchIds.some((bId) => branches.some((b) => b.id === bId)),
+    );
+    if (unassigned.length > 0 && (staffBranchFilter === 'ALL' || !isCounterView)) {
+      groups.push({
+        id: 'unassigned-all',
+        counterName: 'All Counters / General Staff',
+        staff: unassigned,
+      });
+    }
+
+    return groups;
+  }, [branches, scopedBranches, filteredStaff, staffList, isCounterView, staffBranchFilter, searchQuery, statusFilter]);
 
   // If user lacks STAFF_VIEW permission, block access
   if (!canView) {
@@ -458,15 +389,11 @@ export function StaffPage() {
     setFormEmail('');
     setFormPassword('');
     setShowAddPassword(false);
-    setFormBranchIds(branches.map((b) => b.id)); // Default assign all active branches
-    setFormPermissions([
-      'CARD_VIEW',
-      'CARD_ISSUE',
-      'CARD_RETURN',
-      'RECHARGE',
-      'PURCHASE',
-      'SESSION_VIEW',
-    ]);
+    const defaultBranchIds = isCounterView
+      ? scopedBranches.map((b) => b.id)
+      : branches.map((b) => b.id);
+    setFormBranchIds(defaultBranchIds);
+    setFormPermissions([...STAFF_PERMISSIONS]);
     setFormErrors({});
     setModalApiError(null);
     setAddTab('basic');
@@ -493,8 +420,8 @@ export function StaffPage() {
 
     if (!formPassword.trim()) {
       errors.password = 'Initial password is required for POS login';
-    } else if (formPassword.trim().length < 6) {
-      errors.password = 'Password must be at least 6 characters';
+    } else if (formPassword.trim().length < 4) {
+      errors.password = 'Password must be at least 4 characters';
     }
 
     const trimmedEmail = formEmail.trim().toLowerCase();
@@ -577,6 +504,7 @@ export function StaffPage() {
         name: res.data.name,
         phone: formPhone.trim().replace(/\D/g, ''),
         password: formPassword.trim(),
+        branchIds: formBranchIds,
       });
       setShowStaffCreatedModal(true);
       setShowAddModal(false);
@@ -591,7 +519,7 @@ export function StaffPage() {
   // ── Open Unified Staff Details/Edit Modal ─────────────────
   const handleOpenStaffModal = (
     staff: Staff,
-    initialTab: 'overview' | 'permissions' | 'branches' | 'security' = 'overview',
+    initialTab: 'overview' | 'permissions' | 'branches' = 'overview',
   ) => {
     setSelectedStaff(staff);
     setFormName(staff.name);
@@ -614,14 +542,8 @@ export function StaffPage() {
   // ── Handle Staff Password Change ──────────────────────────
   const validateStaffPassword = (): string | null => {
     if (!formNewPassword) return 'New password is required';
-    if (formNewPassword.length < 8) return 'Password must be at least 8 characters long';
+    if (formNewPassword.length < 4) return 'Password must be at least 4 characters long';
     if (formNewPassword.length > 128) return 'Password cannot exceed 128 characters';
-    if (!/[A-Z]/.test(formNewPassword)) return 'Password must contain at least one uppercase letter [A-Z]';
-    if (!/[a-z]/.test(formNewPassword)) return 'Password must contain at least one lowercase letter [a-z]';
-    if (!/[0-9]/.test(formNewPassword)) return 'Password must contain at least one number [0-9]';
-    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(formNewPassword)) {
-      return 'Password must contain at least one special character (!@#$%^&*...)';
-    }
     if (formNewPassword !== formConfirmPassword) {
       return 'Passwords do not match';
     }
@@ -664,6 +586,60 @@ export function StaffPage() {
     }
   };
 
+  // ── Share & Copy Staff Credentials from Edit Modal ────────
+  const handleCopyCredentialsFromEdit = () => {
+    if (!selectedStaff) return;
+    const pwdText = formNewPassword.trim() || '[Your Existing Password]';
+    const cleanPhone = (formPhone || selectedStaff.phone || '').replace(/\D/g, '').slice(-10);
+    const assignedBranchesText =
+      branches
+        .filter((b) => formBranchIds.includes(b.id))
+        .map((b) => b.name)
+        .join(', ') || 'All Counters';
+    const loginUrl = `${window.location.origin}/login`;
+
+    const text =
+      `Staff Login Credentials:\n` +
+      `Name: ${formName.trim() || selectedStaff.name}\n` +
+      `Phone: ${cleanPhone}\n` +
+      `Password: ${pwdText}\n` +
+      `Counter: ${assignedBranchesText}\n` +
+      `Login URL: ${loginUrl}`;
+
+    navigator.clipboard.writeText(text);
+    notify.success('Staff credentials copied to clipboard!');
+  };
+
+  const handleSendWhatsAppFromEdit = () => {
+    if (!selectedStaff) return;
+    const cleanPhone = (formPhone || selectedStaff.phone || '').replace(/\D/g, '').slice(-10);
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      notify.error('Please enter a valid 10-digit mobile number to send via WhatsApp');
+      return;
+    }
+
+    const pwdText = formNewPassword.trim() || '[Your Existing Password]';
+    const assignedBranchesText =
+      branches
+        .filter((b) => formBranchIds.includes(b.id))
+        .map((b) => b.name)
+        .join(', ') || 'All Counters';
+    const loginUrl = `${window.location.origin}/login`;
+
+    const message =
+      `🍽️ *Money Card Staff Credentials*\n\n` +
+      `Hello ${formName.trim() || selectedStaff.name},\n\n` +
+      `Here are your updated staff login credentials:\n\n` +
+      `• *Counter:* ${assignedBranchesText}\n` +
+      `• *Mobile Number:* ${cleanPhone}\n` +
+      `• *Password:* ${pwdText}\n\n` +
+      `🌐 *POS Login Link:* ${loginUrl}\n\n` +
+      `_Log in using your Mobile Number and Password to access your counter POS._`;
+
+    const waUrl = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(message)}`;
+    window.open(waUrl, '_blank', 'noopener,noreferrer');
+  };
+
   // ── Save Unified Staff Details & Permissions & Branches ───
   //  Save Staff Profile Information
   const handleSaveProfile = async (e?: React.FormEvent) => {
@@ -671,21 +647,33 @@ export function StaffPage() {
     if (!selectedStaff) return;
 
     const errors: Record<string, string> = {};
-    if (!formName.trim()) errors.name = 'Staff name is required';
-    if (formPhone.trim()) {
-      const cleanPhone = formPhone.trim().replace(/\D/g, '');
-      if (cleanPhone.length < 10 || cleanPhone.length > 15) {
-        errors.phone = 'Please provide a valid 10-digit phone number';
-      }
+    if (!formName.trim()) {
+      errors.name = 'Staff name is required';
+    } else if (formName.trim().length > 20) {
+      errors.name = 'Staff name cannot exceed 20 characters';
     }
-    if (formEmail.trim() && !/\S+@\S+\.\S+/.test(formEmail)) {
-      errors.email = 'Enter a valid email address';
+
+    const cleanPhone = formPhone.trim().replace(/\D/g, '');
+    if (!cleanPhone) {
+      errors.phone = 'Phone number is required';
+    } else if (cleanPhone.length !== 10) {
+      errors.phone = 'Please provide a valid 10-digit phone number';
     }
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       setStaffTab('overview');
       return;
+    }
+
+    // If new password is entered, validate it before saving
+    if (formNewPassword) {
+      const pwdErr = validateStaffPassword();
+      if (pwdErr) {
+        setPasswordChangeError(pwdErr);
+        setStaffTab('overview');
+        return;
+      }
     }
 
     setFormErrors({});
@@ -695,13 +683,24 @@ export function StaffPage() {
     try {
       const res = await apiService.staff.updateStaff(selectedStaff.id, {
         name: formName.trim(),
-        phone: formPhone.trim().replace(/\D/g, '') || undefined,
-        email: formEmail.trim() || undefined,
+        phone: cleanPhone || undefined,
       });
 
       if (!res.success) {
         setModalApiError(res.error.message || 'Failed to update staff profile');
         return;
+      }
+
+      if (formNewPassword) {
+        const pwdRes = await apiService.staff.changePassword(selectedStaff.id, {
+          newPassword: formNewPassword,
+          confirmPassword: formConfirmPassword,
+        });
+        if (!pwdRes.success) {
+          setPasswordChangeError(pwdRes.error?.message || 'Profile saved, but failed to update password');
+        } else {
+          setPasswordChangeSuccess('Password updated successfully.');
+        }
       }
 
       notify.success('Staff profile updated successfully.');
@@ -710,8 +709,7 @@ export function StaffPage() {
           ? {
               ...prev,
               name: formName.trim(),
-              phone: formPhone.trim().replace(/\D/g, '') || prev.phone,
-              email: formEmail.trim() || prev.email,
+              phone: cleanPhone || prev.phone,
             }
           : null,
       );
@@ -860,82 +858,12 @@ export function StaffPage() {
     }
   };
 
-  // ── Toggle Status Modal ───────────────────────────────────
-  const handleOpenStatus = (staff: Staff) => {
-    setSelectedStaff(staff);
-    setModalApiError(null);
-    setShowStatusModal(true);
-  };
-
-  const handleStatusSubmit = async () => {
-    if (!selectedStaff) return;
-    if (selectedStaff.status === 'PENDING_ACTIVATION') {
-      setModalApiError('This staff account is pending email activation. Please ask the staff member to activate via the email link, or click Resend Invite.');
-      return;
-    }
-    const newStatus = selectedStaff.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    setIsSubmitting(true);
-    setModalApiError(null);
-
-    try {
-      const res = await apiService.staff.updateStaff(selectedStaff.id, { status: newStatus });
-      if (!res.success) {
-        setModalApiError(res.error.message || 'Failed to change staff status');
-        return;
-      }
-
-      notify.success(
-        `Staff member ${selectedStaff.name} is now ${newStatus === 'ACTIVE' ? 'Active' : 'Inactive'}`,
-      );
-      setShowStatusModal(false);
-      fetchStaffData();
-    } catch {
-      setModalApiError('An unexpected error occurred.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // ── Delete / Deactivate Staff ──────────────────────────────
-  const handleOpenDeleteStaff = (staff: Staff) => {
-    setSelectedStaff(staff);
-    setModalApiError(null);
-    setShowDeleteStaffModal(true);
-  };
-
-  const handleDeleteStaffSubmit = async () => {
-    if (!selectedStaff) return;
-    setIsSubmitting(true);
-    setModalApiError(null);
-
-    try {
-      const res = await apiService.staff.deleteStaff(selectedStaff.id);
-      if (!res.success) {
-        setModalApiError(res.error.message || 'Failed to delete staff member');
-        return;
-      }
-
-      notify.success(
-        res.data?.deactivated
-          ? 'Staff member deactivated to preserve historical transaction records'
-          : 'Staff member deleted successfully',
-      );
-      setShowDeleteStaffModal(false);
-      fetchStaffData();
-    } catch {
-      setModalApiError('An unexpected error occurred. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   // ── Staff Performance & Operational Audit Helpers ────────
   const getStaffRoleLabel = (staff: Staff): string => {
-    if (staff.permissions.includes('STAFF_MANAGE')) return 'Manager / Admin';
-    if (staff.permissions.includes('INVENTORY_MANAGE') || staff.permissions.includes('PRODUCT_MANAGE')) {
-      return 'Counter Supervisor';
+    if (staff.permissions.includes('RECHARGE') || staff.permissions.includes('STAFF_MANAGE')) {
+      return 'Manager';
     }
-    return 'Cashier / POS';
+    return 'Staff';
   };
 
   const getAuditPresetDates = (preset: string): { startDate: string; endDate: string } => {
@@ -1101,196 +1029,148 @@ export function StaffPage() {
     notify.success(`Activity log for ${selectedStaffForAudit.name} exported as CSV.`);
   };
 
-  // ── Table Columns ─────────────────────────────────────────
+  // ── Modal Filtered Staff & Counter Matching ────────────────
+  const displayedModalStaff = useMemo(() => {
+    if (!selectedCounterGroup) return [];
+    if (!modalCounterSearch.trim()) return selectedCounterGroup.staff;
+    const q = modalCounterSearch.toLowerCase().trim();
+    return selectedCounterGroup.staff.filter(
+      (st) =>
+        st.name.toLowerCase().includes(q) ||
+        (st.phone && st.phone.includes(q)) ||
+        (st.permissions.includes('STAFF_MANAGE') && 'manager admin'.includes(q)) ||
+        'cashier pos'.includes(q),
+    );
+  }, [selectedCounterGroup, modalCounterSearch]);
+
+  const otherMatchingCounters = useMemo(() => {
+    if (!modalCounterSearch.trim() || !selectedCounterGroup) return [];
+    const q = modalCounterSearch.toLowerCase().trim();
+    return counterStaffGroups.filter(
+      (g) => g.id !== selectedCounterGroup.id && g.counterName.toLowerCase().includes(q),
+    );
+  }, [counterStaffGroups, selectedCounterGroup, modalCounterSearch]);
+
+  // ── Table Columns (Counter-First & Minimal) ────────────────
   const columns = [
     {
-      key: 'name',
-      header: 'Staff Member',
-      render: (staff: Staff) => (
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 font-bold text-sm border border-emerald-200">
-            {staff.name.charAt(0).toUpperCase()}
+      key: 'counterName',
+      header: 'Counter Name',
+      render: (group: CounterStaffGroup) => (
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <Building2 className="h-4 w-4" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <p className="font-semibold text-slate-900">{staff.name}</p>
-              <button
-                type="button"
-                onClick={() => handleOpenStaffAudit(staff)}
-                className="p-1 rounded-md border text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-slate-200 hover:border-emerald-300 transition-colors cursor-pointer"
-                title="View staff performance & operational audit"
-                aria-label={`View performance for ${staff.name}`}
-              >
-                <Eye className="h-3.5 w-3.5" />
-              </button>
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-slate-500">
-              {staff.phone && (
-                <span className="font-mono text-slate-700 font-medium flex items-center gap-1">
-                  <Phone className="h-3 w-3 text-slate-400" />
-                  {staff.phone}
-                </span>
-              )}
-              {staff.phone && staff.email && <span>•</span>}
-              {staff.email && <span className="text-slate-400 truncate">{staff.email}</span>}
-            </div>
-          </div>
+          <span className="font-semibold text-slate-900 text-sm">{group.counterName}</span>
         </div>
       ),
     },
     {
-      key: 'status',
-      header: 'Status',
-      render: (staff: Staff) => (
-        staff.status === 'PENDING_ACTIVATION' ? (
-          <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 border border-amber-200">
-            Pending Activation
-          </span>
-        ) : (
-          <Badge variant={staff.status === 'ACTIVE' ? 'success' : 'danger'}>
-            {staff.status === 'ACTIVE' ? 'Active' : 'Inactive'}
-          </Badge>
-        )
-      ),
-    },
-    {
-      key: 'branches',
-      header: 'Assigned Cafeterias',
-      render: (staff: Staff) => {
-        const assignedNames = branches
-          .filter((b) => staff.assignedBranchIds.includes(b.id))
-          .map((b) => b.name);
-
-        return (
-          <div className="space-y-1">
-            <span className="text-xs font-semibold text-slate-700">
-              {staff.assignedBranchIds.length} cafeteria(s)
-            </span>
-            {assignedNames.length > 0 && (
-              <p className="max-w-[180px] truncate text-[11px] text-slate-500">
-                {assignedNames.join(', ')}
-              </p>
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      key: 'permissions',
-      header: 'Role & Access',
-      render: (staff: Staff) => {
-        const isManager = staff.permissions.includes('STAFF_MANAGE');
-        const roleLabel = isManager ? 'Manager / Admin' : 'Cashier / POS';
-        return (
-          <span className="font-semibold text-xs text-slate-700">{roleLabel}</span>
-        );
-      },
-    },
-    {
-      key: 'createdAt',
-      header: 'Created',
-      render: (staff: Staff) => (
-        <span className="text-xs text-slate-500">{formatDate(staff.createdAt)}</span>
-      ),
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
+      key: 'staffDetails',
+      header: 'Staff Details',
       className: 'text-right',
-      render: (staff: Staff) => (
-        <div className="flex items-center justify-end">
-          <StaffActionMenu
-            staff={staff}
-            canManage={canManage}
-            onEditOrView={() => handleOpenStaffModal(staff, 'overview')}
-            onViewAudit={() => handleOpenStaffAudit(staff)}
-            onPermissions={() => handleOpenStaffModal(staff, 'permissions')}
-            onBranches={() => handleOpenStaffModal(staff, 'branches')}
-            onSecurity={() => handleOpenStaffModal(staff, 'security')}
-            onToggleStatus={() => handleOpenStatus(staff)}
-            onDelete={() => handleOpenDeleteStaff(staff)}
-          />
+      render: (group: CounterStaffGroup) => (
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleOpenCounterStaff(group)}
+            className="text-xs font-semibold py-1.5 px-3 rounded-lg border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 transition-all shadow-2xs cursor-pointer"
+            leftIcon={<Users className="h-3.5 w-3.5 text-emerald-600" />}
+          >
+            Staff Details {group.staff.length > 0 ? `(${group.staff.length})` : ''}
+          </Button>
         </div>
       ),
     },
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Header Bar */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-5 max-w-6xl mx-auto pb-10">
+      {/* ─── Minimal Header ─── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Staff Management</h1>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Staff Management</h1>
+            {isCounterView && (
+              <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold px-2.5 py-0.5 text-xs">
+                Counter Scope
+              </Badge>
+            )}
+          </div>
+          {isCounterView && (
+            <p className="text-xs text-slate-500 mt-0.5">
+              Showing staff at your counter only. New staff are automatically assigned to your counter.
+            </p>
+          )}
         </div>
 
         {canManage && (
-          <Button
-            variant="primary"
-            onClick={handleOpenAdd}
-            leftIcon={<UserPlus className="h-4 w-4" />}
-          >
-            Add Staff Member
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleOpenAdd}
+              leftIcon={<UserPlus className="h-3.5 w-3.5" />}
+              className="text-xs h-8 px-3.5 font-semibold"
+            >
+              Add Staff Member
+            </Button>
+          </div>
         )}
       </div>
 
       {/* Plan Resource Usage Indicator */}
       {orgOverview?.usage && (
-        <Card padding="sm" className="bg-slate-50 border border-slate-200">
-          <div className="flex items-center justify-between text-xs font-medium">
-            <span className="text-slate-600">
-              Staff Usage ({orgOverview.plan?.name || 'Active Plan'}):
-            </span>
-            <span className="text-slate-800">
-              <strong className="text-emerald-600">{orgOverview.usage.staffCount}</strong> /{' '}
-              {orgOverview.usage.staffLimit} staff accounts created
-            </span>
-          </div>
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
-            <div
-              className="h-full bg-emerald-600 transition-all duration-300"
-              style={{
-                width: `${Math.min(
-                  (orgOverview.usage.staffCount / orgOverview.usage.staffLimit) * 100,
-                  100,
-                )}%`,
-              }}
-            />
-          </div>
-        </Card>
+        <div className="text-xs text-slate-600 font-medium">
+          Staff Usage:{' '}
+          <strong className="text-slate-900">{orgOverview.usage.staffCount}</strong> /{' '}
+          {orgOverview.usage.staffLimit} staff accounts created
+        </div>
       )}
 
-      {/* Search & Refresh */}
-      <div className="flex items-center gap-3">
+      {/* ─── Search & Status Filters ─── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           <input
             type="text"
-            placeholder="Search staff by name, phone or email..."
+            placeholder="Search counters or staff by name, phone..."
             value={searchQuery}
             maxLength={30}
             onChange={(e) => setSearchQuery(e.target.value.slice(0, 30))}
-            className="w-full rounded-lg border border-slate-300 bg-white pl-10 pr-10 py-2 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-8 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
               aria-label="Clear search"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </button>
           )}
         </div>
-        <Button variant="outline" size="md" onClick={fetchStaffData} leftIcon={<RefreshCw className="h-4 w-4" />}>
-          Refresh
-        </Button>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchStaffData}
+            leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
+            className="text-xs h-8 px-2.5 rounded-xl border-slate-200 text-slate-700 hover:border-emerald-500"
+          >
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Main Content */}
       {isLoading ? (
-        <LoadingState message="Loading staff accounts..." />
+        <div className="py-12 bg-white rounded-2xl border border-slate-200/80">
+          <LoadingState message="Loading staff accounts..." />
+        </div>
       ) : error ? (
         <ErrorState title="Failed to load staff" message={error} onRetry={fetchStaffData} />
       ) : staffList.length === 0 ? (
@@ -1306,27 +1186,39 @@ export function StaffPage() {
             ) : undefined
           }
         />
-      ) : filteredStaff.length === 0 ? (
+      ) : counterStaffGroups.length === 0 ? (
         <EmptyState
           icon={<Users className="h-8 w-8 text-slate-500" />}
           title="No staff members found"
           description={
-            searchQuery
-              ? `No staff match "${searchQuery}". Try a different name or clear search.`
+            searchQuery || statusFilter !== 'ALL' || staffBranchFilter !== 'ALL'
+              ? 'No staff members match the selected filters. Try adjusting your search query or filters.'
               : `No staff members assigned to ${currentBranch ? currentBranch.name : 'this counter'}.`
           }
           action={
-            searchQuery ? (
-              <Button variant="outline" onClick={() => setSearchQuery('')} leftIcon={<X className="h-4 w-4" />}>
-                Clear Search
+            searchQuery || statusFilter !== 'ALL' || staffBranchFilter !== 'ALL' ? (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchQuery('');
+                  setStatusFilter('ALL');
+                  setStaffBranchFilter('ALL');
+                }}
+                leftIcon={<X className="h-4 w-4" />}
+              >
+                Clear Filters
               </Button>
             ) : undefined
           }
         />
       ) : (
-        <Card padding="none" className="min-h-[220px]">
-          <DataTable<Staff> data={filteredStaff} columns={columns} keyExtractor={(item: Staff) => item.id} />
-        </Card>
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+          <DataTable<CounterStaffGroup>
+            data={counterStaffGroups}
+            columns={columns}
+            keyExtractor={(item: CounterStaffGroup) => item.id}
+          />
+        </div>
       )}
 
       {/* ── 1. UNIFIED STAFF DETAILS & EDIT MODAL (WITH HORIZONTAL TABS) ── */}
@@ -1375,76 +1267,33 @@ export function StaffPage() {
               </Badge>
             </button>
 
-            <button
-              type="button"
-              onClick={() => setStaffTab('branches')}
-              className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
-                staffTab === 'branches'
-                  ? 'border-emerald-600 text-emerald-700 font-semibold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <Building2 className="h-4 w-4" />
-              <span>Counters</span>
-              <Badge variant="outline" className="text-[10px] ml-1">
-                {formBranchIds.length}
-              </Badge>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setStaffTab('security')}
-              className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
-                staffTab === 'security'
-                  ? 'border-emerald-600 text-emerald-700 font-semibold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <Lock className="h-4 w-4" />
-              <span>Security</span>
-            </button>
+            {!isCounterView && (
+              <button
+                type="button"
+                onClick={() => setStaffTab('branches')}
+                className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
+                  staffTab === 'branches'
+                    ? 'border-emerald-600 text-emerald-700 font-semibold'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Building2 className="h-4 w-4" />
+                <span>Counters</span>
+                <Badge variant="outline" className="text-[10px] ml-1">
+                  {formBranchIds.length}
+                </Badge>
+              </button>
+            )}
           </div>
 
-          {/* Tab Content Panes (Natural scrolling without nested scroll trapping) */}
+          {/* Tab Content Panes */}
           <div className="max-h-[64vh] overflow-y-auto pr-1">
-            {/* ── TAB 1: OVERVIEW ── */}
+            {/* ── TAB 1: OVERVIEW (PROFILE & INTEGRATED SECURITY) ── */}
             {staffTab === 'overview' && (
-              <div className="space-y-6">
-                {/* Metric Summary Cards */}
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1">
-                    <span className="text-xs text-slate-500">Account Status</span>
-                    <div className="flex items-center gap-2 pt-1">
-                      {selectedStaff?.status === 'PENDING_ACTIVATION' ? (
-                        <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 border border-amber-200">
-                          Pending Activation
-                        </span>
-                      ) : (
-                        <Badge variant={selectedStaff?.status === 'ACTIVE' ? 'success' : 'danger'}>
-                          {selectedStaff?.status === 'ACTIVE' ? 'Active' : 'Inactive'}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1">
-                    <span className="text-xs text-slate-500">Assigned Counters</span>
-                    <p className="font-mono text-sm font-bold text-slate-800 pt-1">
-                      {formBranchIds.length} branch(es)
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1">
-                    <span className="text-xs text-slate-500">Granted Permissions</span>
-                    <p className="font-mono text-sm font-bold text-emerald-700 pt-1">
-                      {formPermissions.length} / 20 permissions
-                    </p>
-                  </div>
-                </div>
-
+              <div className="space-y-4">
                 {/* Account Details & Edit Fields */}
                 <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
                     Staff Profile Information
                   </h4>
 
@@ -1453,7 +1302,11 @@ export function StaffPage() {
                       id="staff-edit-name"
                       label="Full Name"
                       value={formName}
-                      onChange={(e) => setFormName(e.target.value)}
+                      maxLength={20}
+                      onChange={(e) => {
+                        setFormName(e.target.value.slice(0, 20));
+                        if (formErrors.name) setFormErrors((prev) => ({ ...prev, name: '' }));
+                      }}
                       error={formErrors.name}
                       disabled={!canManage || isSubmitting}
                     />
@@ -1463,219 +1316,47 @@ export function StaffPage() {
                       label="Phone Number"
                       placeholder="e.g. 9876543210"
                       value={formPhone}
-                      onChange={(e) => setFormPhone(e.target.value)}
+                      maxLength={10}
+                      onChange={(e) => {
+                        const clean = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setFormPhone(clean);
+                        if (formErrors.phone) setFormErrors((prev) => ({ ...prev, phone: '' }));
+                      }}
                       error={formErrors.phone}
                       disabled={!canManage || isSubmitting}
                     />
                   </div>
-
-                  <div>
-                    <Input
-                      id="staff-edit-email"
-                      type="email"
-                      label="Email Address (Optional)"
-                      value={formEmail}
-                      onChange={(e) => setFormEmail(e.target.value)}
-                      error={formErrors.email}
-                      disabled={!canManage || isSubmitting}
-                    />
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t border-slate-200 text-xs">
-                    <div>
-                      <span className="text-slate-500">Staff ID:</span>
-                      <p className="font-mono font-semibold text-slate-700">STAFF-#{selectedStaff?.id.slice(0, 8).toUpperCase()}</p>
-                    </div>
-                    <div>
-                      <span className="text-slate-500">Created Date:</span>
-                      <p className="font-semibold text-slate-700">
-                        {selectedStaff?.createdAt ? formatDate(selectedStaff.createdAt) : 'N/A'}
-                      </p>
-                    </div>
-                  </div>
                 </div>
 
-                {/* Quick Security & Password Summary */}
-                <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-4">
+                {/* Unified Security & Change Password Section */}
+                <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Lock className="h-4 w-4 text-emerald-600" />
-                      <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                        Security & Credentials
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
+                        Password & Credentials
                       </h4>
                     </div>
-                    {canManage && (
-                      <button
-                        type="button"
-                        onClick={() => setStaffTab('security')}
-                        className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
-                      >
-                        Change Password →
-                      </button>
+                    {formNewPassword && (
+                      <span className="text-[11px] text-amber-600 font-medium">Unsaved password changes</span>
                     )}
                   </div>
-                </div>
-              </div>
-            )}
 
-            {/* ── TAB 2: PERMISSIONS ── */}
-            {staffTab === 'permissions' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-end pb-2">
-                  {canManage && (
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setFormPermissions([
-                            'CARD_VIEW',
-                            'CARD_ISSUE',
-                            'CARD_RETURN',
-                            'CARD_BLOCK',
-                            'CARD_UNBLOCK',
-                            'RECHARGE',
-                            'PURCHASE',
-                            'REFUND',
-                            'SESSION_VIEW',
-                            'PRODUCT_VIEW',
-                            'PRODUCT_MANAGE',
-                            'INVENTORY_VIEW',
-                            'INVENTORY_MANAGE',
-                            'INVENTORY_IMPORT',
-                            'VIEW_ANALYTICS',
-                            'VIEW_REPORTS',
-                            'STAFF_VIEW',
-                            'STAFF_MANAGE',
-                            'BRANCH_VIEW',
-                            'BRANCH_MANAGE',
-                          ])
-                        }
-                        className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
-                      >
-                        Select All (20)
-                      </button>
-                      <span className="text-slate-300">|</span>
-                      <button
-                        type="button"
-                        onClick={() => setFormPermissions([])}
-                        className="text-xs text-slate-500 hover:text-slate-700 font-medium"
-                      >
-                        Clear All
-                      </button>
+                  {passwordChangeError && (
+                    <div className="flex items-start gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-700">
+                      <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-500" />
+                      <span>{passwordChangeError}</span>
                     </div>
                   )}
-                </div>
 
-                <PermissionMatrix
-                  selectedPermissions={formPermissions}
-                  onChange={canManage ? setFormPermissions : undefined}
-                  readOnly={!canManage}
-                />
-
-
-              </div>
-            )}
-
-            {/* ── TAB 3: BRANCHES ── */}
-            {staffTab === 'branches' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-end pb-2">
-                  {canManage && (
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setFormBranchIds(branches.map((b) => b.id))}
-                        className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
-                      >
-                        Select All
-                      </button>
-                      <span className="text-slate-300">|</span>
-                      <button
-                        type="button"
-                        onClick={() => setFormBranchIds([])}
-                        className="text-xs text-slate-500 hover:text-slate-700 font-medium"
-                      >
-                        Clear All
-                      </button>
+                  {passwordChangeSuccess && (
+                    <div className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700">
+                      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                      <span>{passwordChangeSuccess}</span>
                     </div>
                   )}
-                </div>
 
-                <div className="grid gap-2.5 sm:grid-cols-2">
-                  {branches.map((b) => {
-                    const isAssigned = formBranchIds.includes(b.id);
-                    return (
-                      <button
-                        type="button"
-                        key={b.id}
-                        onClick={() => {
-                          if (isAssigned) {
-                            setFormBranchIds(formBranchIds.filter((id) => id !== b.id));
-                          } else {
-                            setFormBranchIds([...formBranchIds, b.id]);
-                          }
-                        }}
-                        role="checkbox"
-                        aria-checked={isAssigned}
-                        disabled={!canManage}
-                        className={`flex w-full cursor-pointer items-center justify-between rounded-xl border p-3.5 text-xs text-left transition-all select-none ${!canManage ? "pointer-events-none opacity-80" : ""} ${
-                          isAssigned
-                            ? 'border-emerald-500 bg-emerald-50 text-slate-900'
-                            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${
-                              isAssigned
-                                ? 'border-emerald-600 bg-emerald-600 text-white'
-                                : 'border-slate-300 bg-slate-100'
-                            }`}
-                          >
-                            {isAssigned && <Check className="h-3.5 w-3.5" />}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-slate-800">{b.name}</p>
-                            <span className="text-[11px] text-slate-500">{b.name}</span>
-                          </div>
-                        </div>
-
-                        <Badge variant={b.status === 'ACTIVE' ? 'success' : 'outline'} className="text-[10px]">
-                          {b.status}
-                        </Badge>
-                      </button>
-                    );
-                  })}
-                </div>
-
-
-              </div>
-            )}
-
-            {/* ── TAB 4: SECURITY & CHANGE PASSWORD ── */}
-            {staffTab === 'security' && (
-              <div className="space-y-5">
-
-                {passwordChangeError && (
-                  <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
-                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
-                    <span>{passwordChangeError}</span>
-                  </div>
-                )}
-
-                {passwordChangeSuccess && (
-                  <div className="flex items-start gap-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                    <span>{passwordChangeSuccess}</span>
-                  </div>
-                )}
-
-                <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Change Password
-                  </h4>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-3 sm:grid-cols-2">
                     <Input
                       id="staff-new-password"
                       type={showNewPassword ? 'text' : 'password'}
@@ -1693,7 +1374,6 @@ export function StaffPage() {
                           type="button"
                           onClick={() => setShowNewPassword(!showNewPassword)}
                           className="text-slate-400 hover:text-slate-600 focus:outline-none p-1 flex items-center justify-center cursor-pointer"
-                          title={showNewPassword ? 'Hide password' : 'Show password'}
                           tabIndex={-1}
                         >
                           {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -1718,7 +1398,6 @@ export function StaffPage() {
                           type="button"
                           onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                           className="text-slate-400 hover:text-slate-600 focus:outline-none p-1 flex items-center justify-center cursor-pointer"
-                          title={showConfirmPassword ? 'Hide password' : 'Show password'}
                           tabIndex={-1}
                         >
                           {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -1727,66 +1406,139 @@ export function StaffPage() {
                     />
                   </div>
 
-                  {/* Password requirements checklist */}
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs space-y-1.5">
-                    <span className="font-semibold text-slate-600">Password Requirements:</span>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-slate-600">
-                      <div className={`flex items-center gap-1.5 ${formNewPassword.length >= 8 ? 'text-emerald-600 font-medium' : ''}`}>
-                        <span className="text-xs">•</span> At least 8 characters
-                      </div>
-                      <div className={`flex items-center gap-1.5 ${/[A-Z]/.test(formNewPassword) ? 'text-emerald-600 font-medium' : ''}`}>
-                        <span className="text-xs">•</span> One uppercase letter [A-Z]
-                      </div>
-                      <div className={`flex items-center gap-1.5 ${/[a-z]/.test(formNewPassword) ? 'text-emerald-600 font-medium' : ''}`}>
-                        <span className="text-xs">•</span> One lowercase letter [a-z]
-                      </div>
-                      <div className={`flex items-center gap-1.5 ${/[0-9]/.test(formNewPassword) ? 'text-emerald-600 font-medium' : ''}`}>
-                        <span className="text-xs">•</span> One number [0-9]
-                      </div>
-                      <div className={`flex items-center gap-1.5 ${/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(formNewPassword) ? 'text-emerald-600 font-medium' : ''}`}>
-                        <span className="text-xs">•</span> One special character (!@#$)
-                      </div>
-                      <div className={`flex items-center gap-1.5 ${formNewPassword && formNewPassword === formConfirmPassword ? 'text-emerald-600 font-medium' : ''}`}>
-                        <span className="text-xs">•</span> Passwords match
-                      </div>
-                    </div>
-                  </div>
-
-
-                  {canManage && (
-                    <div className="pt-2 flex justify-end">
+                  {/* Action & Credentials Buttons */}
+                  <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
+                    {canManage && (
                       <Button
                         type="button"
-                        variant="primary"
+                        variant="outline"
+                        size="sm"
                         onClick={handleChangeStaffPassword}
-                        isLoading={isChangingPassword}
                         disabled={isChangingPassword || !formNewPassword || !formConfirmPassword}
-                        leftIcon={<Key className="h-4 w-4" />}
+                        isLoading={isChangingPassword}
+                        leftIcon={<Key className="h-3.5 w-3.5" />}
+                        className="text-xs h-8"
                       >
-                        Change Password
+                        Update Password
                       </Button>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopyCredentialsFromEdit}
+                      className="flex-1 justify-center gap-1.5 text-xs h-8 bg-white border-slate-200 hover:border-slate-300 text-slate-700 cursor-pointer"
+                      leftIcon={<Copy className="h-3.5 w-3.5 text-slate-500" />}
+                    >
+                      Copy Credentials
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleSendWhatsAppFromEdit}
+                      className="flex-1 justify-center gap-1.5 text-xs h-8 bg-[#25D366] hover:bg-[#20bd5a] text-white border-transparent cursor-pointer font-medium"
+                      leftIcon={<ExternalLink className="h-3.5 w-3.5" />}
+                    >
+                      Send via WhatsApp
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── TAB 2: PERMISSIONS ── */}
+            {staffTab === 'permissions' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-end pb-2">
+                  {canManage && (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFormPermissions([...MANAGER_PERMISSIONS])}
+                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                      >
+                        Manager (Recharge)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormPermissions([...STAFF_PERMISSIONS])}
+                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                      >
+                        Staff (Deduct)
+                      </button>
                     </div>
                   )}
+                </div>
+
+                <PermissionMatrix
+                  selectedPermissions={formPermissions}
+                  onChange={(perms) => setFormPermissions(perms)}
+                  readOnly={!canManage}
+                />
+              </div>
+            )}
+
+            {/* ── TAB 3: COUNTERS ── */}
+            {!isCounterView && staffTab === 'branches' && (
+              <div className="space-y-4">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                    Cafeteria Counter Assignments
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    Assign which cafeteria counters this staff member is authorized to access and operate.
+                  </p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {branches.map((branch) => {
+                    const isSelected = formBranchIds.includes(branch.id);
+                    return (
+                      <button
+                        key={branch.id}
+                        type="button"
+                        disabled={!canManage}
+                        onClick={() => {
+                          if (isSelected) {
+                            setFormBranchIds(formBranchIds.filter((id) => id !== branch.id));
+                          } else {
+                            setFormBranchIds([...formBranchIds, branch.id]);
+                          }
+                        }}
+                        className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-emerald-500 bg-emerald-50/40 text-emerald-950 ring-1 ring-emerald-500'
+                            : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
+                        } ${!canManage ? 'cursor-not-allowed opacity-70' : ''}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                              isSelected ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500'
+                            }`}
+                          >
+                            <Building2 className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold">{branch.name}</p>
+                            <p className="text-[10px] text-slate-400">ID: {branch.id.slice(0, 8)}</p>
+                          </div>
+                        </div>
+                        <Badge
+                          variant={isSelected ? 'success' : 'outline'}
+                          className="text-[10px]"
+                        >
+                          {isSelected ? 'Assigned' : 'Unassigned'}
+                        </Badge>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
           </div>
 
           <ModalFooter>
-            {canManage && (
-              <Button
-                type="button"
-                variant="danger"
-                className="mr-auto text-xs"
-                leftIcon={<Trash2 className="h-4 w-4" />}
-                onClick={() => {
-                  setShowStaffModal(false);
-                  if (selectedStaff) handleOpenDeleteStaff(selectedStaff);
-                }}
-              >
-                Delete Staff
-              </Button>
-            )}
             <Button variant="outline" onClick={() => setShowStaffModal(false)} disabled={isSubmitting}>
               Close
             </Button>
@@ -1800,13 +1552,348 @@ export function StaffPage() {
                 Save Permissions
               </Button>
             )}
-            {canManage && staffTab === 'branches' && (
+            {canManage && !isCounterView && staffTab === 'branches' && (
               <Button type="button" variant="primary" onClick={handleSaveBranches} isLoading={isSubmitting} disabled={isSubmitting} leftIcon={<Building2 className="h-4 w-4" />}>
                 Save Branches
               </Button>
             )}
           </ModalFooter>
         </form>
+      </Modal>
+
+      {/* ── STAFF DETAILS POPUP MODAL (MINIMAL & SLEEK) ── */}
+      <Modal
+        isOpen={showStaffDetailsModal}
+        onClose={() => setShowStaffDetailsModal(false)}
+        title="Staff Details"
+        size="md"
+      >
+        {selectedStaff && (
+          <div className="space-y-6">
+            {/* Header / Avatar Profile Block */}
+            <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-xl font-bold text-white shadow-xs">
+                {selectedStaff.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-lg font-bold text-slate-900 truncate">{selectedStaff.name}</h3>
+                  {selectedStaff.status === 'PENDING_ACTIVATION' ? (
+                    <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 border border-amber-200">
+                      Pending Activation
+                    </span>
+                  ) : (
+                    <Badge variant={selectedStaff.status === 'ACTIVE' ? 'success' : 'danger'}>
+                      {selectedStaff.status === 'ACTIVE' ? 'Active' : 'Inactive'}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {getStaffRoleLabel(selectedStaff)}
+                </p>
+              </div>
+            </div>
+
+            {/* Information Grid */}
+            <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
+              <div className="flex items-center justify-between p-3.5 text-xs">
+                <span className="text-slate-500 font-medium">Assigned Counter</span>
+                <span className="font-semibold text-slate-900">
+                  {branches
+                    .filter((b) => selectedStaff.assignedBranchIds.includes(b.id))
+                    .map((b) => b.name)
+                    .join(', ') || 'All Counters'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-3.5 text-xs">
+                <span className="text-slate-500 font-medium">Phone Number</span>
+                <span className="font-mono font-medium text-slate-900">
+                  {selectedStaff.phone || 'Not provided'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-3.5 text-xs">
+                <span className="text-slate-500 font-medium">Role & Position</span>
+                <span className="font-semibold text-slate-800">
+                  {getStaffRoleLabel(selectedStaff)}
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Action Footer */}
+            <ModalFooter>
+              {selectedCounterGroup && selectedCounterGroup.staff.length > 1 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowStaffDetailsModal(false);
+                    setShowCounterStaffModal(true);
+                  }}
+                  leftIcon={<ArrowLeft className="h-3.5 w-3.5" />}
+                  className="mr-auto text-xs"
+                >
+                  Back to {selectedCounterGroup.counterName}
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowStaffDetailsModal(false)}
+              >
+                Close
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowStaffDetailsModal(false);
+                  handleOpenStaffAudit(selectedStaff);
+                }}
+                leftIcon={<FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />}
+                className="text-xs font-medium border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 cursor-pointer"
+              >
+                Performance & Audit
+              </Button>
+              {canManage && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  leftIcon={<Edit2 className="h-4 w-4" />}
+                  onClick={() => {
+                    setShowStaffDetailsModal(false);
+                    handleOpenStaffModal(selectedStaff, 'overview');
+                  }}
+                >
+                  Edit Staff
+                </Button>
+              )}
+            </ModalFooter>
+          </div>
+        )}
+      </Modal>
+
+      {/* ── COUNTER STAFF LIST MODAL (EXPANDED & UNCLUTTERED UX) ── */}
+      <Modal
+        isOpen={showCounterStaffModal}
+        onClose={() => {
+          setShowCounterStaffModal(false);
+          setModalCounterSearch('');
+        }}
+        title={selectedCounterGroup ? `${selectedCounterGroup.counterName} — Staff Details` : 'Staff Details'}
+        size="2xl"
+      >
+        {selectedCounterGroup && (
+          <div className="space-y-4">
+            {/* Top Search Bar for Searching Counters and Filtering Staff */}
+            <div className="space-y-2">
+              <div className="relative w-full">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search counters (e.g. Main Cafeteria, Executive Lounge)..."
+                  value={modalCounterSearch}
+                  maxLength={35}
+                  onChange={(e) => setModalCounterSearch(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/70 pl-10 pr-9 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-emerald-600 focus:outline-none transition-all shadow-xs"
+                />
+                {modalCounterSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setModalCounterSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-0.5 rounded-full hover:bg-slate-200/50"
+                    aria-label="Clear search"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
+              {otherMatchingCounters.length > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap px-1 text-[11px] text-slate-500">
+                  <span className="font-medium">Switch to counter:</span>
+                  {otherMatchingCounters.map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCounterGroup(g);
+                        setModalCounterSearch('');
+                      }}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 font-medium cursor-pointer transition-colors"
+                    >
+                      <Building2 className="h-3 w-3" />
+                      <span>{g.counterName} ({g.staff.length})</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {selectedCounterGroup.staff.length === 0 ? (
+              <div className="text-center py-8 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                <Users className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+                <p className="text-xs font-semibold text-slate-700">No staff accounts assigned to this counter</p>
+                <p className="text-[11px] text-slate-500 mt-1">You can add staff members or assign existing staff to this counter.</p>
+                {canManage && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => {
+                      setShowCounterStaffModal(false);
+                      setModalCounterSearch('');
+                      handleOpenAdd();
+                    }}
+                    leftIcon={<UserPlus className="h-3.5 w-3.5" />}
+                    className="mt-3 text-xs"
+                  >
+                    Add Staff Member
+                  </Button>
+                )}
+              </div>
+            ) : displayedModalStaff.length === 0 ? (
+              <div className="text-center py-8 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                <Search className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+                <p className="text-xs font-semibold text-slate-700">No staff accounts match "{modalCounterSearch}"</p>
+                <button
+                  type="button"
+                  onClick={() => setModalCounterSearch('')}
+                  className="mt-2 text-xs font-medium text-emerald-600 hover:text-emerald-700 underline cursor-pointer"
+                >
+                  Clear search filter
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[58vh] overflow-y-auto pr-1">
+                {displayedModalStaff.map((st) => (
+                  <div
+                    key={st.id}
+                    className="flex flex-col md:flex-row md:items-center justify-between p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/20 transition-all gap-3.5"
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                      <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-sm sm:text-base font-bold text-white shadow-2xs">
+                        {st.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-slate-900 text-sm sm:text-base">{st.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2.5 text-xs text-slate-500 mt-0.5 flex-wrap">
+                          <span className="font-medium text-slate-600">
+                            {getStaffRoleLabel(st)}
+                          </span>
+                          {st.phone && <span className="font-mono text-slate-500">• {st.phone}</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-end md:self-center shrink-0 flex-wrap sm:flex-nowrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setShowCounterStaffModal(false);
+                          handleOpenStaffDetails(st);
+                        }}
+                        className="text-xs h-7.5 px-2.5 font-medium border-slate-300 text-slate-700 hover:border-emerald-500 hover:bg-emerald-50 cursor-pointer"
+                      >
+                        View Details
+                      </Button>
+                      {canManage && (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => {
+                            setShowCounterStaffModal(false);
+                            handleOpenStaffModal(st, 'overview');
+                          }}
+                          leftIcon={<Edit2 className="h-3 w-3" />}
+                          className="text-xs h-7.5 px-2.5 font-medium cursor-pointer"
+                        >
+                          Edit
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setShowCounterStaffModal(false);
+                          handleOpenStaffAudit(st);
+                        }}
+                        leftIcon={<FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />}
+                        className="text-xs h-7.5 px-2.5 font-medium border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 cursor-pointer"
+                      >
+                        Performance & Audit
+                      </Button>
+
+                      {/* Active / Inactive Slide Switch */}
+                      <div className="flex items-center gap-2 pl-2.5 border-l border-slate-200">
+                        <span
+                          className={`text-xs font-semibold select-none ${
+                            st.status === 'ACTIVE' ? 'text-emerald-700' : 'text-slate-400'
+                          }`}
+                        >
+                          {st.status === 'ACTIVE' ? 'Active' : 'Inactive'}
+                        </span>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={st.status === 'ACTIVE'}
+                          disabled={!canManage || togglingStaffId === st.id}
+                          onClick={() => handleToggleStaffStatus(st)}
+                          className={`relative inline-flex h-5.5 w-10 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500/40 disabled:opacity-50 disabled:cursor-not-allowed ${
+                            st.status === 'ACTIVE' ? 'bg-emerald-600' : 'bg-slate-300'
+                          }`}
+                          title={
+                            st.status === 'ACTIVE'
+                              ? 'Click to slide Inactive'
+                              : 'Click to slide Active'
+                          }
+                        >
+                          <span
+                            aria-hidden="true"
+                            className={`pointer-events-none inline-block h-4 w-4 mt-[3px] rounded-full bg-white shadow-md transform ring-0 transition duration-200 ease-in-out ${
+                              st.status === 'ACTIVE' ? 'translate-x-[21px]' : 'translate-x-[3px]'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <ModalFooter>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowCounterStaffModal(false);
+                  setModalCounterSearch('');
+                }}
+              >
+                Close
+              </Button>
+              {canManage && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  leftIcon={<UserPlus className="h-3.5 w-3.5" />}
+                  onClick={() => {
+                    setShowCounterStaffModal(false);
+                    setModalCounterSearch('');
+                    handleOpenAdd();
+                  }}
+                >
+                  Add Staff Member
+                </Button>
+              )}
+            </ModalFooter>
+          </div>
+        )}
       </Modal>
 
       {/* ── 2. ADD STAFF MEMBER MODAL (TABBED STEPPER UX) ── */}
@@ -1943,7 +2030,7 @@ export function StaffPage() {
                   id="add-staff-password"
                   type={showAddPassword ? 'text' : 'password'}
                   label="Login Password *"
-                  placeholder="Min 6 characters"
+                  placeholder="Min 4 characters"
                   maxLength={50}
                   value={formPassword}
                   onChange={(e) => {
@@ -1964,50 +2051,48 @@ export function StaffPage() {
                     </button>
                   }
                 />
-
-                {orgOverview?.usage && (
-                  <p className="text-xs text-slate-500 pt-2">
-                    Active subscription allows up to {orgOverview.usage.staffLimit} staff accounts (
-                    {orgOverview.usage.staffLimit - orgOverview.usage.staffCount} slots available).
-                  </p>
-                )}
               </div>
             )}
 
-            {/* ── STEP 2: BRANCHES ── */}
+            {/* ── STEP 2: COUNTERS ── */}
             {addTab === 'branches' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between pb-2">
                   <p className="text-xs text-slate-500">
-                    Assign this staff member to one or more physical branches.
+                    {isCounterView
+                      ? 'Staff member will be automatically assigned to your counter terminal.'
+                      : 'Assign this staff member to one or more counters.'}
                   </p>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setFormBranchIds(branches.map((b) => b.id))}
-                      className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
-                    >
-                      Select All ({branches.length})
-                    </button>
-                    <span className="text-slate-300">•</span>
-                    <button
-                      type="button"
-                      onClick={() => setFormBranchIds([])}
-                      className="text-xs text-slate-500 hover:text-slate-700 font-medium"
-                    >
-                      Clear All
-                    </button>
-                  </div>
+                  {!isCounterView && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFormBranchIds(scopedBranches.map((b) => b.id))}
+                        className="text-xs text-emerald-600 hover:text-emerald-700 font-medium cursor-pointer"
+                      >
+                        Select All ({scopedBranches.length})
+                      </button>
+                      <span className="text-slate-300">•</span>
+                      <button
+                        type="button"
+                        onClick={() => setFormBranchIds([])}
+                        className="text-xs text-slate-500 hover:text-slate-700 font-medium cursor-pointer"
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid gap-2.5 sm:grid-cols-2">
-                  {branches.map((b) => {
+                  {scopedBranches.map((b) => {
                     const isAssigned = formBranchIds.includes(b.id);
                     return (
                       <button
                         type="button"
                         key={b.id}
                         onClick={() => {
+                          if (isCounterView) return;
                           if (isAssigned) {
                             setFormBranchIds(formBranchIds.filter((id) => id !== b.id));
                           } else {
@@ -2016,9 +2101,10 @@ export function StaffPage() {
                         }}
                         role="checkbox"
                         aria-checked={isAssigned}
-                        className={`flex w-full cursor-pointer items-center justify-between rounded-xl border p-3.5 text-xs text-left transition-all select-none ${
+                        disabled={isCounterView}
+                        className={`flex w-full ${isCounterView ? 'cursor-default' : 'cursor-pointer'} items-center justify-between rounded-xl border p-3.5 text-xs text-left transition-all select-none ${
                           isAssigned
-                            ? 'border-emerald-500 bg-emerald-50 text-slate-900'
+                            ? 'border-emerald-500 bg-emerald-50 text-slate-900 shadow-2xs'
                             : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
                         }`}
                       >
@@ -2032,9 +2118,14 @@ export function StaffPage() {
                           >
                             {isAssigned && <Check className="h-3.5 w-3.5" />}
                           </div>
-                          <div>
-                            <p className="font-semibold text-slate-800">{b.name}</p>
-                            <span className="text-[11px] text-slate-500">{b.name}</span>
+                          <div className="flex items-center gap-2.5">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">
+                              <Building2 className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-slate-800 text-xs">{b.name}</p>
+                              <span className="text-[10px] text-slate-400">Counter Terminal</span>
+                            </div>
                           </div>
                         </div>
 
@@ -2057,145 +2148,63 @@ export function StaffPage() {
                     </p>
                   </div>
 
-                  {/* 3 Large Role Preset Cards */}
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    {/* Preset 1: Cashier */}
+                  {/* 2 Large Role Preset Cards: Manager & Staff */}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {/* Manager: Recharge Cards */}
                     <button
                       type="button"
-                      onClick={() => {
-                        setFormPermissions([
-                          'CARD_VIEW',
-                          'CARD_ISSUE',
-                          'CARD_RETURN',
-                          'RECHARGE',
-                          'PURCHASE',
-                          'SESSION_VIEW',
-                          'PRODUCT_VIEW',
-                          'INVENTORY_VIEW',
-                        ]);
-                      }}
+                      onClick={() => setFormPermissions([...MANAGER_PERMISSIONS])}
                       className={`flex flex-col justify-between p-4 rounded-xl border text-left transition-all cursor-pointer select-none ${
-                        formPermissions.length === 8 && formPermissions.includes('PURCHASE') && !formPermissions.includes('PRODUCT_MANAGE')
-                          ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500'
+                        formPermissions.includes('RECHARGE')
+                          ? 'border-emerald-500 bg-emerald-50/80 ring-1 ring-emerald-500'
                           : 'border-slate-200 bg-white hover:border-slate-300'
                       }`}
                     >
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            Recommended
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            Recharge Cards
                           </span>
-                          {formPermissions.length === 8 && formPermissions.includes('PURCHASE') && !formPermissions.includes('PRODUCT_MANAGE') && (
+                          {formPermissions.includes('RECHARGE') && (
                             <Check className="h-4 w-4 text-emerald-600" />
                           )}
                         </div>
-                        <h5 className="font-bold text-sm text-slate-900">Cashier / POS</h5>
+                        <h5 className="font-bold text-sm text-slate-900">Manager</h5>
                         <p className="text-[11px] text-slate-500 mt-1">
-                          Card issuing, recharge, customer checkout, and sales at counter.
+                          Full counter management, card issuing/settlement, balance recharge, and reports.
                         </p>
                       </div>
                       <span className="text-[11px] font-mono text-emerald-600 font-semibold mt-3">
-                        8 permissions
+                        Recharge & Full Management
                       </span>
                     </button>
 
-                    {/* Preset 2: Supervisor */}
+                    {/* Staff: Deduct Amount */}
                     <button
                       type="button"
-                      onClick={() => {
-                        setFormPermissions([
-                          'CARD_VIEW',
-                          'CARD_ISSUE',
-                          'CARD_RETURN',
-                          'CARD_BLOCK',
-                          'CARD_UNBLOCK',
-                          'RECHARGE',
-                          'PURCHASE',
-                          'REFUND',
-                          'SESSION_VIEW',
-                          'PRODUCT_VIEW',
-                          'PRODUCT_MANAGE',
-                          'INVENTORY_VIEW',
-                          'INVENTORY_MANAGE',
-                          'INVENTORY_IMPORT',
-                          'BRANCH_VIEW',
-                          'STAFF_VIEW',
-                        ]);
-                      }}
+                      onClick={() => setFormPermissions([...STAFF_PERMISSIONS])}
                       className={`flex flex-col justify-between p-4 rounded-xl border text-left transition-all cursor-pointer select-none ${
-                        formPermissions.length === 16 && formPermissions.includes('INVENTORY_MANAGE') && !formPermissions.includes('STAFF_MANAGE')
-                          ? 'border-amber-500 bg-amber-50 ring-1 ring-amber-500'
+                        !formPermissions.includes('RECHARGE')
+                          ? 'border-emerald-500 bg-emerald-50/80 ring-1 ring-emerald-500'
                           : 'border-slate-200 bg-white hover:border-slate-300'
                       }`}
                     >
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                            Counter Lead
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                            Deduct Amount
                           </span>
-                          {formPermissions.length === 16 && formPermissions.includes('INVENTORY_MANAGE') && !formPermissions.includes('STAFF_MANAGE') && (
-                            <Check className="h-4 w-4 text-amber-600" />
-                          )}
-                        </div>
-                        <h5 className="font-bold text-sm text-slate-900">Supervisor</h5>
-                        <p className="text-[11px] text-slate-500 mt-1">
-                          Cashier duties + stock counting, menu pricing, and team directory view.
-                        </p>
-                      </div>
-                      <span className="text-[11px] font-mono text-amber-600 font-semibold mt-3">
-                        16 permissions
-                      </span>
-                    </button>
-
-                    {/* Preset 3: Manager / Admin */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormPermissions([
-                          'CARD_VIEW',
-                          'CARD_ISSUE',
-                          'CARD_RETURN',
-                          'CARD_BLOCK',
-                          'CARD_UNBLOCK',
-                          'RECHARGE',
-                          'PURCHASE',
-                          'REFUND',
-                          'SESSION_VIEW',
-                          'PRODUCT_VIEW',
-                          'PRODUCT_MANAGE',
-                          'INVENTORY_VIEW',
-                          'INVENTORY_MANAGE',
-                          'INVENTORY_IMPORT',
-                          'VIEW_ANALYTICS',
-                          'VIEW_REPORTS',
-                          'STAFF_VIEW',
-                          'STAFF_MANAGE',
-                          'BRANCH_VIEW',
-                          'BRANCH_MANAGE',
-                        ]);
-                      }}
-                      className={`flex flex-col justify-between p-4 rounded-xl border text-left transition-all cursor-pointer select-none ${
-                        formPermissions.length === 20
-                          ? 'border-emerald-600 bg-emerald-50 ring-1 ring-emerald-600'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
-                      }`}
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                            Full Access
-                          </span>
-                          {formPermissions.length === 20 && (
+                          {!formPermissions.includes('RECHARGE') && (
                             <Check className="h-4 w-4 text-emerald-600" />
                           )}
                         </div>
-                        <h5 className="font-bold text-sm text-slate-900">Manager / Admin</h5>
+                        <h5 className="font-bold text-sm text-slate-900">Staff</h5>
                         <p className="text-[11px] text-slate-500 mt-1">
-                          Full access to manage team members, counter settings, and all operations.
+                          POS billing, menu item selection, balance deduction, and customer order handling.
                         </p>
                       </div>
-                      <span className="text-[11px] font-mono text-emerald-700 font-semibold mt-3">
-                        All 20 permissions
+                      <span className="text-[11px] font-mono text-slate-600 font-semibold mt-3">
+                        Deduct Only (No Recharge)
                       </span>
                     </button>
                   </div>
@@ -2245,8 +2254,9 @@ export function StaffPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                     <div className="p-3 rounded-lg border border-slate-200 bg-white">
-                      <span className="text-slate-500 font-medium block mb-1">Assigned Counters</span>
-                      <p className="font-semibold text-slate-900">
+                      <span className="text-slate-500 font-medium block mb-1">Assigned Counter(s)</span>
+                      <p className="font-semibold text-slate-900 flex items-center gap-1.5">
+                        <Building2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                         {formBranchIds.length === 0
                           ? 'No counters selected'
                           : branches
@@ -2348,43 +2358,7 @@ export function StaffPage() {
         </div>
       </Modal>
 
-      {/* ── 3. ACTIVATE / DEACTIVATE CONFIRMATION MODAL ── */}
-      <Modal
-        isOpen={showStatusModal}
-        onClose={() => setShowStatusModal(false)}
-        title={selectedStaff?.status === 'ACTIVE' ? 'Deactivate Staff Account' : 'Activate Staff Account'}
-      >
-        <div className="space-y-4 py-2">
-          {modalApiError && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
-              <span>{modalApiError}</span>
-            </div>
-          )}
 
-          <p className="text-sm text-slate-700">
-            Are you sure you want to{' '}
-            <strong className="text-slate-900">
-              {selectedStaff?.status === 'ACTIVE' ? 'deactivate' : 'activate'}
-            </strong>{' '}
-            the staff member <span className="text-emerald-700 font-semibold">{selectedStaff?.name}</span>?
-          </p>
-
-          <ModalFooter>
-            <Button variant="outline" onClick={() => setShowStatusModal(false)} disabled={isSubmitting}>
-              Close
-            </Button>
-            <Button
-              variant={selectedStaff?.status === 'ACTIVE' ? 'danger' : 'primary'}
-              onClick={handleStatusSubmit}
-              isLoading={isSubmitting}
-              disabled={isSubmitting}
-            >
-              Confirm {selectedStaff?.status === 'ACTIVE' ? 'Deactivation' : 'Activation'}
-            </Button>
-          </ModalFooter>
-        </div>
-      </Modal>
 
       {/* ── WhatsApp & Staff Credentials Popup Modal (Opens right after creating staff member) ── */}
       <Modal
@@ -2411,6 +2385,13 @@ export function StaffPage() {
 
           <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3">
             <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-500 font-medium">Assigned Counter:</span>
+              <span className="font-semibold text-slate-900 text-sm flex items-center gap-1.5">
+                <Building2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                {branches.filter((b) => createdStaffCredentials?.branchIds?.includes(b.id)).map((b) => b.name).join(', ') || 'Unassigned'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-xs border-t border-slate-200/80 pt-2.5">
               <span className="text-slate-500 font-medium">Login Phone Number:</span>
               <span className="font-mono font-bold text-slate-900 text-sm">{createdStaffCredentials?.phone}</span>
             </div>
@@ -2436,7 +2417,8 @@ export function StaffPage() {
               size="sm"
               onClick={() => {
                 if (!createdStaffCredentials) return;
-                const text = `Staff Login Credentials:\nName: ${createdStaffCredentials.name}\nPhone: ${createdStaffCredentials.phone}\nPassword: ${createdStaffCredentials.password}`;
+                const assignedCounter = branches.filter((b) => createdStaffCredentials?.branchIds?.includes(b.id)).map((b) => b.name).join(', ') || 'Unassigned';
+                const text = `Staff Login Credentials:\nName: ${createdStaffCredentials.name}\nCounter: ${assignedCounter}\nPhone: ${createdStaffCredentials.phone}\nPassword: ${createdStaffCredentials.password}`;
                 navigator.clipboard.writeText(text);
                 notify.success('Credentials copied to clipboard!');
               }}
@@ -2451,12 +2433,13 @@ export function StaffPage() {
                 if (!createdStaffCredentials) return;
                 const cleanPhone = createdStaffCredentials.phone.replace(/\D/g, '');
                 const targetPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
-                const message = `Hello ${createdStaffCredentials.name},\n\nYour staff account for Money Card POS has been created!\n\nLogin Phone: ${createdStaffCredentials.phone}\nPassword: ${createdStaffCredentials.password}\n\nPlease open the Money Card POS App on your phone and log in with your phone number and password.`;
+                const assignedCounter = branches.filter((b) => createdStaffCredentials?.branchIds?.includes(b.id)).map((b) => b.name).join(', ') || 'Unassigned';
+                const message = `Hello ${createdStaffCredentials.name},\n\nYour staff account for Money Card POS has been created!\n\n• Assigned Counter: ${assignedCounter}\n• Login Phone: ${createdStaffCredentials.phone}\n• Password: ${createdStaffCredentials.password}\n\nPlease open the Money Card POS App on your phone and log in with your phone number and password.`;
                 const waUrl = `https://wa.me/${targetPhone}?text=${encodeURIComponent(message)}`;
                 window.open(waUrl, '_blank');
               }}
               leftIcon={<ExternalLink className="h-4 w-4" />}
-              className="bg-[#25D366] hover:bg-[#20bd5a] text-white border-none"
+              className="bg-[#25D366] hover:bg-[#20bd5a] text-white border-none cursor-pointer"
             >
               Send via WhatsApp
             </Button>
@@ -2470,63 +2453,7 @@ export function StaffPage() {
           </ModalFooter>
         </div>
       </Modal>
-      {/* ── Delete Staff Confirmation Modal ───────────────────────── */}
-      <Modal
-        isOpen={showDeleteStaffModal}
-        onClose={() => !isSubmitting && setShowDeleteStaffModal(false)}
-        title="Delete Staff Account"
-        description="Safely remove staff access while preserving 100% of historical records"
-        size="md"
-      >
-        <div className="space-y-4">
-          {modalApiError && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-700">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-500 mt-0.5" />
-              <div className="space-y-1">
-                <p className="font-semibold">Action Blocked</p>
-                <p>{modalApiError}</p>
-              </div>
-            </div>
-          )}
 
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
-            <p className="text-sm text-slate-800 font-medium">
-              Are you sure you want to delete staff account <span className="text-emerald-700 font-bold font-mono">{selectedStaff?.name}</span> ({selectedStaff?.phone || selectedStaff?.email})?
-            </p>
-
-            <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800 space-y-1">
-              <p className="font-semibold flex items-center gap-1.5 text-emerald-900">
-                <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
-                100% Data Preservation Guarantee
-              </p>
-              <p className="leading-relaxed">
-                All historical sales transactions, card issuances, refunds, and audit trail records will remain intact with <strong>{selectedStaff?.name}</strong> attributed permanently.
-              </p>
-            </div>
-
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Login access will be immediately terminated, security tokens revoked, and their seat in your subscription plan will be freed for new staff members.
-            </p>
-          </div>
-
-          <ModalFooter>
-            <Button
-              variant="ghost"
-              onClick={() => setShowDeleteStaffModal(false)}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="danger"
-              onClick={handleDeleteStaffSubmit}
-              isLoading={isSubmitting}
-            >
-              Confirm Deletion
-            </Button>
-          </ModalFooter>
-        </div>
-      </Modal>
 
       {/* ── 5. STAFF PERFORMANCE & OPERATIONAL AUDIT MODAL ── */}
       {selectedStaffForAudit && (

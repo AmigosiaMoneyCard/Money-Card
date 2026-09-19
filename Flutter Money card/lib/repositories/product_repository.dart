@@ -41,4 +41,22 @@ class ProductRepository {
       status: status,
     );
   }
+
+  Future<Product> updateProduct({
+    required String id,
+    String? itemName,
+    List<String>? category,
+    double? price,
+    String? status,
+  }) async {
+    return _productService.updateProduct(
+      id: id,
+      itemName: itemName,
+      category: category,
+      price: price,
+      status: status,
+    );
+  }
 }
+
+

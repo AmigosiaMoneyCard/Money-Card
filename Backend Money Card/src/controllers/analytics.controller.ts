@@ -113,6 +113,26 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     }
   }
 
+  let effectiveBranchId = branchId && branchId !== 'ALL' ? branchId : undefined;
+  let staffBranchIds: string[] | undefined;
+
+  if (req.user?.role === Role.STAFF) {
+    const userBranches = await prisma.userBranch.findMany({
+      where: { userId: req.user.id },
+      select: { branchId: true },
+    });
+    staffBranchIds = userBranches.map((b) => b.branchId);
+
+    if (staffBranchIds.length === 0) {
+      return sendError(res, 403, 'FORBIDDEN', 'Staff member is not assigned to any counter');
+    }
+
+    // Always constrain staff to their assigned counter — never deny access if a stale/mismatched branchId was passed
+    if (!effectiveBranchId || !staffBranchIds.includes(effectiveBranchId)) {
+      effectiveBranchId = staffBranchIds[0];
+    }
+  }
+
   const dateFilter: any = {};
   if (fromDate) dateFilter.gte = fromDate;
   if (toDate) dateFilter.lte = toDate;
@@ -126,7 +146,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           ],
         }
       : {}),
-    ...(branchId && branchId !== 'ALL' ? { branchId } : {}),
+    ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
     ...(fromDate || toDate ? { createdAt: dateFilter } : {}),
   };
 
@@ -172,12 +192,15 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     prisma.cardSession.count({
       where: {
         ...(orgId ? { organizationId: orgId } : {}),
-        ...(branchId && branchId !== 'ALL' ? { branchId } : {}),
+        ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
         status: 'ACTIVE',
       },
     }),
     prisma.branch.findMany({
-      where: orgId ? { organizationId: orgId } : {},
+      where: {
+        ...(orgId ? { organizationId: orgId } : {}),
+        ...(staffBranchIds ? { id: { in: staffBranchIds } } : {}),
+      },
       include: {
         inventoryItems: { include: { product: true } },
         cardSessions: true,
@@ -186,14 +209,14 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     prisma.branchInventory.count({
       where: {
         ...(orgId ? { branch: { organizationId: orgId } } : {}),
-        ...(branchId && branchId !== 'ALL' ? { branchId } : {}),
+        ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
         quantity: { lte: 5 },
       },
     }),
     prisma.cardSession.findMany({
       where: {
         ...(orgId ? { organizationId: orgId } : {}),
-        ...(branchId && branchId !== 'ALL' ? { branchId } : {}),
+        ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
         status: 'ACTIVE',
       },
       select: {
@@ -211,7 +234,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     prisma.cardSession.count({
       where: {
         ...(orgId ? { organizationId: orgId } : {}),
-        ...(branchId && branchId !== 'ALL' ? { branchId } : {}),
+        ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
         status: 'SETTLED',
       },
     }),
@@ -219,10 +242,10 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       where: {
         ...(orgId ? { organizationId: orgId } : {}),
         role: Role.STAFF,
-        ...(branchId && branchId !== 'ALL'
+        ...(effectiveBranchId
           ? {
               assignedBranches: {
-                some: { branchId },
+                some: { branchId: effectiveBranchId },
               },
             }
           : {}),
@@ -244,7 +267,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     prisma.customerHistoryEvent.findMany({
       where: {
         ...(orgId ? { organizationId: orgId } : {}),
-        ...(branchId && branchId !== 'ALL' ? { branchId } : {}),
+        ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
         ...(fromDate || toDate ? { createdAt: dateFilter } : {}),
       },
       orderBy: { createdAt: 'desc' },
@@ -253,7 +276,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     prisma.cardSession.findMany({
       where: {
         ...(orgId ? { organizationId: orgId } : {}),
-        ...(branchId && branchId !== 'ALL' ? { branchId } : {}),
+        ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
         ...(fromDate || toDate ? { issuedAt: dateFilter } : {}),
       },
       include: {
@@ -493,7 +516,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
   const totalFloatBalance = Number(
     activeSessionsList.reduce((acc, s) => acc + (s.balance || 0), 0).toFixed(2),
   );
-  const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+  const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
 
   const cardItems = activeSessionsList.map((s) => {
     const cardNum =
@@ -519,7 +542,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       }
     });
 
-    const isDormant = s.balance > 0 && lastUsedAt && new Date(lastUsedAt) < fourteenDaysAgo;
+    const isDormant = s.balance > 0 && lastUsedAt && new Date(lastUsedAt) < twoDaysAgo;
 
     return {
       id: s.id,
@@ -749,6 +772,26 @@ export async function getPeakAnalytics(req: Request, res: Response) {
   const { branchId, startDate, endDate, category, categoryId, timezone } = req.query as Record<string, string>;
   const clientTimezone = normalizeTimezone(timezone || (req.headers['x-timezone'] as string) || process.env.APP_TIMEZONE);
 
+  let effectiveBranchId = branchId && branchId !== 'ALL' ? branchId : undefined;
+  let staffBranchIds: string[] | undefined;
+
+  if (req.user?.role === Role.STAFF) {
+    const userBranches = await prisma.userBranch.findMany({
+      where: { userId: req.user.id },
+      select: { branchId: true },
+    });
+    staffBranchIds = userBranches.map((b) => b.branchId);
+
+    if (staffBranchIds.length === 0) {
+      return sendError(res, 403, 'FORBIDDEN', 'Staff member is not assigned to any counter');
+    }
+
+    // Always constrain staff to their assigned counter — never deny access if a stale/mismatched branchId was passed
+    if (!effectiveBranchId || !staffBranchIds.includes(effectiveBranchId)) {
+      effectiveBranchId = staffBranchIds[0];
+    }
+  }
+
   const dateFilter: any = {};
   if (startDate) dateFilter.gte = new Date(startDate.includes('T') ? startDate : `${startDate}T00:00:00.000Z`);
   if (endDate) dateFilter.lte = new Date(endDate.includes('T') ? endDate : `${endDate}T23:59:59.999Z`);
@@ -762,7 +805,7 @@ export async function getPeakAnalytics(req: Request, res: Response) {
           ],
         }
       : {}),
-    ...(branchId && branchId !== 'ALL' ? { branchId } : {}),
+    ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
     ...(startDate || endDate ? { createdAt: dateFilter } : {}),
   };
 
@@ -780,7 +823,10 @@ export async function getPeakAnalytics(req: Request, res: Response) {
       include: { inventoryItems: true },
     }),
     prisma.branch.findMany({
-      where: orgId ? { organizationId: orgId } : {},
+      where: {
+        ...(orgId ? { organizationId: orgId } : {}),
+        ...(staffBranchIds ? { id: { in: staffBranchIds } } : {}),
+      },
     }),
   ]);
 
@@ -865,7 +911,7 @@ export async function getPeakAnalytics(req: Request, res: Response) {
   // 2. Product Demand
   let productDemand = products.map((p) => {
     const totalStock = p.inventoryItems
-      .filter((inv) => (!branchId || branchId === 'ALL' || inv.branchId === branchId))
+      .filter((inv) => (!effectiveBranchId || inv.branchId === effectiveBranchId))
       .reduce((sum, inv) => sum + inv.quantity, 0);
     const stockStatus = totalStock <= 0 ? 'OUT_OF_STOCK' : totalStock <= 10 ? 'LOW' : 'NORMAL';
 

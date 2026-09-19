@@ -16,18 +16,20 @@ export interface SelectGroup {
   options: SelectOption[];
 }
 
-export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'children'> {
+export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'children' | 'size'> {
   label?: string;
   error?: string;
   hint?: string;
   options?: SelectOption[];
   groups?: SelectGroup[];
   placeholder?: string;
+  size?: 'sm' | 'md';
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ label, error, hint, options = [], groups, placeholder, className, id, ...props }, ref) => {
+  ({ label, error, hint, options = [], groups, placeholder, size = 'md', className, id, ...props }, ref) => {
     const selectId = id || label?.toLowerCase().replace(/\s+/g, '-');
+    const isSmall = size === 'sm' || className?.includes('text-xs');
 
     return (
       <div className="flex flex-col gap-1.5">
@@ -41,7 +43,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             ref={ref}
             id={selectId}
             className={cn(
-              'w-full appearance-none rounded-lg border bg-white px-3.5 py-2.5 pr-10 text-sm text-slate-900 transition-all duration-200 shadow-xs',
+              'w-full appearance-none rounded-lg border bg-white pr-10 text-slate-900 transition-all duration-200 shadow-xs leading-normal',
+              isSmall ? 'px-3 py-1.5 text-xs min-h-[36px]' : 'px-3.5 py-2 text-sm min-h-[40px]',
               'border-slate-300 focus:border-emerald-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20',
               'hover:border-slate-400',
               error && 'border-rose-500 focus:border-rose-500 focus:ring-rose-500/20',

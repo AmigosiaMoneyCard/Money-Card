@@ -40,11 +40,37 @@ export interface OrganizationOverview extends Organization {
 
 // ─── Branch (M0 Section 4) ─────────────────────────────────
 
+export interface CreateBranchRequest {
+  name: string;
+  phone?: string;
+  password?: string;
+  location?: string;
+}
+
+export interface UpdateBranchRequest {
+  name?: string;
+  phone?: string;
+  password?: string;
+  status?: 'ACTIVE' | 'INACTIVE' | 'PENDING_ACTIVATION';
+  location?: string;
+}
+
 export interface Branch {
   id: string;
   organizationId: string;
   name: string;
   status: 'ACTIVE' | 'INACTIVE' | 'PENDING_ACTIVATION';
+  location?: string;
+  credentials?: {
+    name: string;
+    phone: string;
+    password?: string;
+  };
+  manager?: {
+    id?: string;
+    name?: string;
+    phone?: string;
+  } | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -11,8 +11,8 @@ import {
   changeStaffPassword,
 } from '../controllers/staff.controller.js';
 import { requireAuth } from '../middlewares/auth.middleware.js';
-import { requireRole } from '../middlewares/role.middleware.js';
-import { Role } from '@prisma/client';
+import { requirePermission } from '../middlewares/permission.middleware.js';
+import { PermissionCode } from '@prisma/client';
 import { validateRequest } from '../middlewares/validate.middleware.js';
 import {
   createStaffMemberSchema,
@@ -30,26 +30,26 @@ staffRouter.use(requireAuth);
 staffRouter.get('/', getStaffList);
 staffRouter.post(
   '/',
-  requireRole(Role.SUPER_ADMIN, Role.ORG_ADMIN),
+  requirePermission(PermissionCode.STAFF_MANAGE),
   validateRequest({ body: createStaffMemberSchema }),
   createStaffMember,
 );
 staffRouter.get('/:id', getStaffById);
 staffRouter.patch(
   '/:id',
-  requireRole(Role.SUPER_ADMIN, Role.ORG_ADMIN),
+  requirePermission(PermissionCode.STAFF_MANAGE),
   validateRequest({ body: updateStaffMemberSchema }),
   updateStaffMember,
 );
 staffRouter.put(
   '/:id/branches',
-  requireRole(Role.SUPER_ADMIN, Role.ORG_ADMIN),
+  requirePermission(PermissionCode.STAFF_MANAGE),
   validateRequest({ body: updateStaffBranchesSchema }),
   updateStaffBranches,
 );
 staffRouter.put(
   '/:id/permissions',
-  requireRole(Role.SUPER_ADMIN, Role.ORG_ADMIN),
+  requirePermission(PermissionCode.STAFF_MANAGE),
   validateRequest({ body: updateStaffPermissionsSchema }),
   updateStaffPermissions,
 );
@@ -57,9 +57,9 @@ staffRouter.put(
 
 staffRouter.patch(
   '/:id/password',
-  requireRole(Role.SUPER_ADMIN, Role.ORG_ADMIN),
+  requirePermission(PermissionCode.STAFF_MANAGE),
   validateRequest({ body: changeStaffPasswordSchema }),
   changeStaffPassword,
 );
 
-staffRouter.delete('/:id', requireRole(Role.SUPER_ADMIN, Role.ORG_ADMIN), deleteStaffMember);
+staffRouter.delete('/:id', requirePermission(PermissionCode.STAFF_MANAGE), deleteStaffMember);

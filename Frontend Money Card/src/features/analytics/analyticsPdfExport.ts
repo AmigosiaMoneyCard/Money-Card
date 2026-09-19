@@ -113,33 +113,29 @@ export function buildOrgAnalyticsJsPdf({
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.setTextColor(51, 65, 85);
-  doc.text(`Counter Scope: ${selectedBranchName}`, margin + 4, 44.5);
-  doc.text(`Date Range: ${dateRangeLabel}`, margin + 68, 44.5);
-
-  const ledgerStatus = (analytics.activeSessionsCount ?? 0) > 0
-    ? 'Status: Live Operating & Reconciled'
-    : 'Status: Fully Settled & Audited';
-  doc.text(ledgerStatus, margin + 126, 44.5);
+  doc.text(`Cafeteria Scope: ${selectedBranchName}`, margin + 4, 44.5);
+  doc.text(`Date Range: ${dateRangeLabel}`, margin + 80, 44.5);
 
   let curY = 54;
   let hasAnySection = false;
   let sectionCounter = 1;
 
-  // ── Section 1: Executive Financial KPIs ──
+  // ── Section 1: Financial Overview (Core Metrics) ──
   if (effectiveSections.includeExecutiveKpis) {
     hasAnySection = true;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(15, 23, 42);
-    doc.text(`${sectionCounter}. Executive Financial & Operational Metrics`, margin, curY);
+    doc.text(`${sectionCounter}. Financial Overview`, margin, curY);
     sectionCounter++;
 
-    // Primary KPIs (4 cards)
+    // Primary Financial Metrics (4 cards)
+    const floatBal = analytics.cardFleetAnalytics?.totalFloatBalance ?? 0;
     const kpis = [
-      { label: 'POS Revenue', val: formatPdfCurrency(analytics.totalPurchaseVolume) },
-      { label: 'Wallet Recharges', val: formatPdfCurrency(analytics.totalRechargeVolume) },
-      { label: 'Total Txns', val: (analytics.totalTransactions ?? (analytics as any).transactionCount ?? 0).toLocaleString() },
-      { label: 'Active Sessions', val: `${analytics.activeSessionsCount ?? 0} active` },
+      { label: 'Food Sales (POS)', val: formatPdfCurrency(analytics.totalPurchaseVolume), sub: 'Gross cafeteria sales' },
+      { label: 'Total Recharges', val: formatPdfCurrency(analytics.totalRechargeVolume), sub: 'Total card deposits' },
+      { label: 'Total Card Balance', val: formatPdfCurrency(floatBal), sub: 'Money remaining on cards' },
+      { label: 'Total Transactions', val: (analytics.totalTransactions ?? (analytics as any).transactionCount ?? 0).toLocaleString(), sub: 'Total cafeteria activity' },
     ];
 
     const cardW = (contentWidth - 9) / 4;
@@ -147,23 +143,28 @@ export function buildOrgAnalyticsJsPdf({
       const x = margin + idx * (cardW + 3);
       doc.setFillColor(248, 250, 252);
       doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(x, curY + 4, cardW, 18, 2, 2, 'FD');
+      doc.roundedRect(x, curY + 4, cardW, 20, 2, 2, 'FD');
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
+      doc.setFontSize(7);
       doc.setTextColor(100, 116, 139);
-      doc.text(kpi.label, x + 3, curY + 10);
+      doc.text(kpi.label, x + 3, curY + 9.5);
 
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9.5);
+      doc.setFontSize(9);
       doc.setTextColor(15, 23, 42);
-      doc.text(kpi.val, x + 3, curY + 17);
+      doc.text(kpi.val, x + 3, curY + 15.5);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(kpi.sub, x + 3, curY + 20);
     });
 
-    curY += 27;
+    curY += 28;
   }
 
-  // ── Section 2: Card Lifecycle & Activity ──
+  // ── Section 2: Card Analytics ──
   if (effectiveSections.includeCardLifecycle) {
     hasAnySection = true;
     if (curY > 230) {
@@ -172,48 +173,59 @@ export function buildOrgAnalyticsJsPdf({
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(15, 23, 42);
-    doc.text(`${sectionCounter}. Card Lifecycle & Activity`, margin, curY);
+    doc.text(`${sectionCounter}. Card Analytics`, margin, curY);
     sectionCounter++;
 
+    const fleet = analytics.cardFleetAnalytics;
     const lifecycleKpis = [
       {
-        label: 'Active Card Recharges',
-        val: `${analytics.activeCardsRechargeCount ?? 0} Recharges`,
-        sub: `${analytics.reRechargedCardsCount ?? 0} repeat top-up on active cards`,
+        label: 'Active Cards',
+        val: `${fleet?.totalCardsInCirculation ?? analytics.activeSessionsCount ?? 0} Cards`,
+        sub: 'In customer hands',
       },
       {
-        label: 'Closed Cards',
+        label: 'Settled Cards',
         val: `${analytics.closedCardsCount ?? 0} Cards`,
-        sub: 'Completed & settled card sessions',
+        sub: 'Completed card sessions',
       },
       {
-        label: 'Active Cards (Zero Balance)',
+        label: 'Blocked Cards',
+        val: `${fleet?.blockedCardsCount ?? 0} Cards`,
+        sub: 'Locked due to security / loss',
+      },
+      {
+        label: 'Zero Balance',
         val: `${analytics.zeroBalanceActiveCardsCount ?? 0} Cards`,
-        sub: 'Currently in use with Rs. 0 unspent balance',
+        sub: 'In use with Rs. 0 balance',
+      },
+      {
+        label: 'Inactive Cards',
+        val: `${fleet?.dormantCardsCount ?? 0} Cards`,
+        sub: 'Inactive cards but have balance in it',
       },
     ];
 
-    const cardW3 = (contentWidth - 6) / 3;
+    const cardW5 = (contentWidth - 12) / 5;
     lifecycleKpis.forEach((card, idx) => {
-      const x = margin + idx * (cardW3 + 3);
+      const x = margin + idx * (cardW5 + 3);
       doc.setFillColor(248, 250, 252);
       doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(x, curY + 3, cardW3, 16, 2, 2, 'FD');
+      doc.roundedRect(x, curY + 3, cardW5, 16, 2, 2, 'FD');
 
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7);
+      doc.setFontSize(6.5);
       doc.setTextColor(71, 85, 105);
-      doc.text(card.label, x + 3, curY + 8);
+      doc.text(card.label, x + 2.5, curY + 7.5);
 
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8.5);
+      doc.setFontSize(8);
       doc.setTextColor(15, 23, 42);
-      doc.text(card.val, x + 3, curY + 13.5);
+      doc.text(card.val, x + 2.5, curY + 12.5);
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(6.5);
+      doc.setFontSize(5.5);
       doc.setTextColor(100, 116, 139);
-      doc.text(card.sub, x + 3, curY + 17);
+      doc.text(card.sub, x + 2.5, curY + 16);
     });
 
     curY += 24;
@@ -234,11 +246,27 @@ export function buildOrgAnalyticsJsPdf({
     const cashRecharge = analytics.cashRechargeVolume ?? 0;
     const upiRecharge = analytics.upiRechargeVolume ?? 0;
     const totalRefund = analytics.totalRefundVolume ?? 0;
+    const totalRechargeVol = cashRecharge + upiRecharge;
+
+    const cashPct = totalRechargeVol > 0 ? Math.round((cashRecharge / totalRechargeVol) * 100) : (totalRechargeVol === 0 && cashRecharge > 0 ? 100 : 0);
+    const upiPct = totalRechargeVol > 0 ? 100 - cashPct : 0;
 
     const paymentCards = [
-      { label: 'Cash Recharges', val: formatPdfCurrency(cashRecharge) },
-      { label: 'UPI Recharges', val: formatPdfCurrency(upiRecharge) },
-      { label: 'Total Returns / Refunds', val: formatPdfCurrency(totalRefund) },
+      {
+        label: 'Cash Recharges',
+        val: formatPdfCurrency(cashRecharge),
+        sub: `${cashPct}% of total recharges`,
+      },
+      {
+        label: 'UPI Recharges',
+        val: formatPdfCurrency(upiRecharge),
+        sub: `${upiPct}% of total recharges`,
+      },
+      {
+        label: 'Cash Returned',
+        val: formatPdfCurrency(totalRefund),
+        sub: 'Total refunded / returned to customers',
+      },
     ];
 
     const cardW3 = (contentWidth - 6) / 3;
@@ -246,7 +274,7 @@ export function buildOrgAnalyticsJsPdf({
       const x = margin + idx * (cardW3 + 3);
       doc.setFillColor(248, 250, 252);
       doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(x, curY + 3, cardW3, 15, 2, 2, 'FD');
+      doc.roundedRect(x, curY + 3, cardW3, 19, 2, 2, 'FD');
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(7);
@@ -257,9 +285,14 @@ export function buildOrgAnalyticsJsPdf({
       doc.setFontSize(9);
       doc.setTextColor(15, 23, 42);
       doc.text(card.val, x + 3, curY + 14);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(card.sub, x + 3, curY + 18.5);
     });
 
-    curY += 23;
+    curY += 27;
   }
 
   // ── Section 4: Counter Performance Comparison ──
@@ -753,6 +786,53 @@ export function generateAnalyticsPdfBlob(options: GenerateOrgPdfOptions): Blob {
 export function downloadOrgAnalyticsPdf(options: GenerateOrgPdfOptions, filename: string): void {
   const safeFilename = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
   const doc = buildOrgAnalyticsJsPdf(options);
+  doc.save(safeFilename);
+}
+
+// ─── Section-Specific PDF Downloads ───────────────────────────────────────
+
+/**
+ * Downloads a PDF containing ONLY the Financial Overview section
+ * (Food Sales, Total Recharges, Total Card Balance, Total Transactions,
+ *  Cash Recharges, UPI Recharges, Cash Returned).
+ */
+export function downloadFinancialOverviewPdf(options: GenerateOrgPdfOptions, filename: string): void {
+  const doc = buildOrgAnalyticsJsPdf({
+    ...options,
+    sections: {
+      includeExecutiveKpis: true,
+      includeCardLifecycle: false,
+      includePaymentBreakdown: true,
+      includeRushKpis: false,
+      includeTrafficDistribution: false,
+      includeFoodDemand: false,
+      includeBranchComparison: false,
+      includeStaffPerformance: false,
+    },
+  });
+  const safeFilename = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
+  doc.save(safeFilename);
+}
+
+/**
+ * Downloads a PDF containing ONLY the Card Analytics section
+ * (Active Cards, Settled Cards, Blocked Cards, Zero Balance, Inactive Cards).
+ */
+export function downloadCardAnalyticsPdf(options: GenerateOrgPdfOptions, filename: string): void {
+  const doc = buildOrgAnalyticsJsPdf({
+    ...options,
+    sections: {
+      includeExecutiveKpis: false,
+      includeCardLifecycle: true,
+      includePaymentBreakdown: false,
+      includeRushKpis: false,
+      includeTrafficDistribution: false,
+      includeFoodDemand: false,
+      includeBranchComparison: false,
+      includeStaffPerformance: false,
+    },
+  });
+  const safeFilename = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
   doc.save(safeFilename);
 }
 

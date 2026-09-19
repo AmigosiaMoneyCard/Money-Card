@@ -21,6 +21,7 @@ productsRouter.use(requireAuth);
 productsRouter.get('/', requirePermission(PermissionCode.PRODUCT_VIEW), getProducts);
 productsRouter.post('/', requirePermission(PermissionCode.PRODUCT_MANAGE), createProduct);
 productsRouter.patch('/:id', requirePermission(PermissionCode.PRODUCT_MANAGE), updateProduct);
+productsRouter.put('/:id', requirePermission(PermissionCode.PRODUCT_MANAGE), updateProduct);
 productsRouter.delete('/:id', requirePermission(PermissionCode.PRODUCT_MANAGE), deleteProduct);
 
 export const inventoryRouter = Router();

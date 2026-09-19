@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { apiService } from '@/services/api';
-import { useAuth } from '@/hooks';
+import { useAuth, useBranch } from '@/hooks';
 import type { OrganizationOverview } from '@/types';
 import {
   Button,
@@ -26,6 +26,9 @@ import {
   AlertCircle,
   KeyRound,
   UserCheck,
+  Store,
+  Phone,
+  Building2,
 } from 'lucide-react';
 
 export function SettingsPage() {
@@ -41,6 +44,10 @@ export function SettingsPage() {
 
   if (user?.role === 'ORG_ADMIN') {
     return <OrgAdminSettingsView />;
+  }
+
+  if (user?.role === 'STAFF') {
+    return <CounterSettingsView user={user} />;
   }
 
   return <UnauthorizedPage />;
@@ -295,3 +302,108 @@ function OrgAdminSettingsView() {
     </div>
   );
 }
+
+// ─── Counter Manager Settings (Branch Terminal Scope) ──────
+function CounterSettingsView({
+  user,
+}: {
+  user: { name: string; email: string; phone?: string; role: string; organizationName?: string | null; assignedBranchIds?: string[] } | null;
+}) {
+  const { currentBranch, branches } = useBranch();
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadProfile() {
+      try {
+        const res = await apiService.auth.getMe();
+        if (mounted && res.success && res.data) {
+          setProfile(res.data);
+        }
+      } catch {
+        // fallback to user prop
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+    loadProfile();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const assignedBranch =
+    currentBranch ||
+    profile?.assignedBranches?.[0] ||
+    branches.find((b) => profile?.assignedBranchIds?.includes(b.id) || user?.assignedBranchIds?.includes(b.id)) ||
+    null;
+
+  const counterName = assignedBranch?.name || 'Assigned Counter';
+  const phone = profile?.phone || user?.phone || assignedBranch?.phone || 'N/A';
+  const orgName = profile?.organizationName || user?.organizationName || 'Cafeteria';
+
+  if (loading && !profile) {
+    return <LoadingState message="Loading counter settings..." />;
+  }
+
+  return (
+    <div className="space-y-8 max-w-4xl">
+      {/* Header */}
+      <div>
+        <div className="flex items-center gap-3">
+          <SettingsIcon className="h-7 w-7 text-emerald-600" />
+          <h1 className="text-2xl font-bold text-slate-900">Counter Account Settings</h1>
+        </div>
+        <p className="mt-1 text-sm text-slate-500">
+          Manage your counter profile and login credentials
+        </p>
+      </div>
+
+      {/* Counter Profile Card */}
+      <Card>
+        <CardHeader
+          title="Counter Profile"
+        />
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+            <div className="flex items-center gap-2 text-sm text-slate-600">
+              <Store className="h-4 w-4 text-emerald-600" />
+              <span className="font-medium">Counter Name</span>
+            </div>
+            <span className="text-sm font-bold text-slate-900">{counterName}</span>
+          </div>
+
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+            <div className="flex items-center gap-2 text-sm text-slate-600">
+              <Phone className="h-4 w-4 text-emerald-600" />
+              <span className="font-medium">Phone Number</span>
+            </div>
+            <span className="text-sm font-mono font-medium text-slate-800">{phone}</span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-slate-600">
+              <Building2 className="h-4 w-4 text-emerald-600" />
+              <span className="font-medium">Organization</span>
+            </div>
+            <span className="text-sm font-medium text-slate-800">{orgName}</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Account Security */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <KeyRound className="h-5 w-5 text-emerald-600" />
+          <h2 className="text-lg font-semibold text-slate-900">Account Security</h2>
+        </div>
+        <p className="text-sm text-slate-500">
+          Update your counter manager login password below.
+        </p>
+        <ChangePasswordForm />
+      </div>
+    </div>
+  );
+}
+

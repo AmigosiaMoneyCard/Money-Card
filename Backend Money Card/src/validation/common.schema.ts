@@ -91,20 +91,8 @@ export const safePhone = z
  */
 export const strongPasswordSchema = z
   .string({ required_error: 'Password is required' })
-  .min(8, 'Password must be at least 8 characters long')
-  .max(128, 'Password cannot exceed 128 characters')
-  .refine((val) => /[A-Z]/.test(val), {
-    message: 'Password must contain at least one uppercase letter',
-  })
-  .refine((val) => /[a-z]/.test(val), {
-    message: 'Password must contain at least one lowercase letter',
-  })
-  .refine((val) => /[0-9]/.test(val), {
-    message: 'Password must contain at least one number',
-  })
-  .refine((val) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(val), {
-    message: 'Password must contain at least one special character (!@#$%^&*...)',
-  });
+  .min(4, 'Password must be at least 4 characters long')
+  .max(128, 'Password cannot exceed 128 characters');
 
 /**
  * Login password schema:

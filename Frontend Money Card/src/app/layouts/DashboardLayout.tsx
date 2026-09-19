@@ -3,10 +3,10 @@ import { ErrorBoundary } from '@/components/ui';
 // Reusable shell layout for SUPER_ADMIN & ORG_ADMIN.
 // Staff operational UI and User Portal auth are strictly separate.
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { cn } from '@/utils';
-import { useAuth, useBranch, usePermissions } from '@/hooks';
+import { useAuth, usePermissions } from '@/hooks';
 import { Breadcrumbs, ProfileMenu, LoadingState, PullToRefresh } from '@/components/ui';
 import { NAVIGATION_ITEMS } from '@/config/navigation';
 import {
@@ -26,7 +26,6 @@ import {
   Flame,
   Menu,
   X,
-  ChevronDown,
   PanelLeftClose,
   PanelLeftOpen,
   Shield,
@@ -54,31 +53,10 @@ const ICON_MAP: Record<string, React.ReactNode> = {
 export function DashboardLayout() {
   const navigate = useNavigate();
   const { user, isLoading } = useAuth();
-  const { currentBranch, branches, selectBranch, clearBranch } = useBranch();
   const { hasPermission } = usePermissions();
 
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [branchDropdownOpen, setBranchDropdownOpen] = useState(false);
-  const branchDropdownRef = useRef<HTMLDivElement>(null);
-
-  // Close branch dropdown on outside click
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        branchDropdownRef.current &&
-        !branchDropdownRef.current.contains(event.target as Node)
-      ) {
-        setBranchDropdownOpen(false);
-      }
-    }
-    if (branchDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [branchDropdownOpen]);
 
   const userRole = user?.role;
 
@@ -149,79 +127,6 @@ export function DashboardLayout() {
             <X className="h-5 w-5" />
           </button>
         </div>
-
-        {/* Organization / Branch Context in Sidebar (Expanded view) */}
-        {(!sidebarCollapsed || mobileDrawerOpen) && userRole === 'ORG_ADMIN' && (
-          <div className="border-b border-slate-100 px-3 py-3">
-            <div className="relative" ref={branchDropdownRef}>
-              <button
-                type="button"
-                id="sidebar-branch-selector"
-                onClick={() => setBranchDropdownOpen(!branchDropdownOpen)}
-                aria-expanded={branchDropdownOpen}
-                aria-label="Counter selector"
-                className="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-              >
-                <Building2 className="h-4 w-4 shrink-0 text-emerald-600" />
-                <span className="flex-1 truncate text-left font-semibold text-slate-800">
-                  {currentBranch?.name || 'All Counters'}
-                </span>
-                <ChevronDown
-                  className={cn(
-                    'h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200',
-                    branchDropdownOpen && 'rotate-180',
-                  )}
-                />
-              </button>
-
-              {branchDropdownOpen && (
-                <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-60 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-xl">
-                  {/* All Branches option */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      clearBranch();
-                      setBranchDropdownOpen(false);
-                    }}
-                    className={cn(
-                      'flex w-full items-center justify-between px-3 py-2 text-xs font-medium transition-colors',
-                      !currentBranch
-                        ? 'bg-emerald-50 text-emerald-700 font-semibold'
-                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
-                    )}
-                  >
-                    <span className="truncate">All Counters</span>
-                    {!currentBranch && (
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 shrink-0" />
-                    )}
-                  </button>
-
-                  {branches.map((branch) => (
-                    <button
-                      type="button"
-                      key={branch.id}
-                      onClick={() => {
-                        selectBranch(branch);
-                        setBranchDropdownOpen(false);
-                      }}
-                      className={cn(
-                        'flex w-full items-center justify-between px-3 py-2 text-xs font-medium transition-colors',
-                        currentBranch?.id === branch.id
-                          ? 'bg-emerald-50 text-emerald-700 font-semibold'
-                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
-                      )}
-                    >
-                      <span className="truncate">{branch.name}</span>
-                      {currentBranch?.id === branch.id && (
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 shrink-0" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Navigation Items */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">

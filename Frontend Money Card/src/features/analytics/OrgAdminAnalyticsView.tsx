@@ -1,4 +1,5 @@
-import { Eye, RefreshCw, BarChart3, CreditCard } from 'lucide-react';
+import { Eye, RefreshCw, BarChart3, CreditCard, Store } from 'lucide-react';
+import { useAuth } from '@/hooks';
 import { Button, Select, LoadingState, ErrorState } from '@/components/ui';
 import {
   OrgAdminFinancialSection,
@@ -24,8 +25,13 @@ export type StaffSortMetric =
   | 'name';
 
 export function OrgAdminAnalyticsView() {
+  const { user } = useAuth();
+  const isCounterStaff = user?.role === 'STAFF';
+
   const {
     branches,
+    branchFilter,
+    handleBranchChange,
     analytics,
     activeTab,
     handleTabChange,
@@ -36,90 +42,84 @@ export function OrgAdminAnalyticsView() {
     setShowPdfModal,
     pdfPreviewUrl,
     setPdfPreviewUrl,
-    branchFilter,
-    datePreset,
     startDate,
     endDate,
     setStartDate,
     setEndDate,
     fetchAnalytics,
-    handleBranchChange,
-    handlePresetChange,
     handleCustomDateApply,
     handleViewPdf,
-    handleDownloadPdf,
+    handleDownloadFinancialPdf,
+    handleDownloadCardAnalyticsPdf,
+    handleDownloadBothPdf,
+    handleUpdatePreviewSections,
     cashRechargeAmount,
     upiRechargeAmount,
   } = useOrgAdminAnalytics();
+
+  const assignedBranchName =
+    branches.find((b) => b.id === branchFilter)?.name ||
+    (branches.length > 0 ? branches[0].name : 'Assigned Counter');
 
   return (
     <div className="space-y-6">
       {/* ─── Header Bar: Title on Left, Filter Options & Actions on Right ─── */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-200 pb-5">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">Analytics</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+            {isCounterStaff ? 'Counter Analytics' : 'Analytics'}
+          </h1>
         </div>
 
-        {/* Filter Controls Directly Beside Headline */}
+        {/* Filter Controls: Cafeteria Filter + Custom Date Range + Actions */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Counter Scope Selector */}
-          <div className="w-36 sm:w-44">
-            <Select
-              id="analytics-branch-filter"
-              value={branchFilter}
-              onChange={(e) => handleBranchChange(e.target.value)}
-              options={[
-                { value: 'ALL', label: 'All Counters' },
-                ...branches.map((b) => ({ value: b.id, label: b.name })),
-              ]}
-            />
-          </div>
-
-          {/* Time Window Selector */}
-          <div className="w-36 sm:w-40">
-            <Select
-              id="analytics-preset-filter"
-              value={datePreset}
-              onChange={(e) => handlePresetChange(e.target.value as DatePreset)}
-              options={[
-                { value: 'thisMonth', label: 'This Month' },
-                { value: 'today', label: 'Today' },
-                { value: 'yesterday', label: 'Yesterday' },
-                { value: 'last7', label: 'Last 7 Days' },
-                { value: 'last30', label: 'Last 30 Days' },
-                { value: 'custom', label: 'Custom Range' },
-              ]}
-            />
-          </div>
-
-          {/* Custom Date Pickers (Shown when custom is selected) */}
-          {datePreset === 'custom' && (
-            <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-lg border border-slate-200">
-              <input
-                id="org-analytics-start-date"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 focus:border-emerald-500 focus:outline-none"
+          {/* Cafeteria Filter */}
+          {!isCounterStaff ? (
+            <div className="w-44 sm:w-52">
+              <Select
+                id="analytics-cafeteria-filter"
+                value={branchFilter}
+                onChange={(e) => handleBranchChange(e.target.value)}
+                options={[
+                  { value: 'ALL', label: 'All Cafeterias' },
+                  ...branches.map((b) => ({ value: b.id, label: b.name })),
+                ]}
+                className="h-9 py-1.5 pl-3 pr-8 text-xs leading-normal font-medium"
               />
-              <span className="text-xs text-slate-400">to</span>
-              <input
-                id="org-analytics-end-date"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 focus:border-emerald-500 focus:outline-none"
-              />
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleCustomDateApply(startDate, endDate)}
-                className="h-7 px-2.5 text-xs font-semibold"
-              >
-                Apply
-              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800 shadow-2xs">
+              <Store className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+              <span className="truncate max-w-[160px]">{assignedBranchName}</span>
             </div>
           )}
+
+          {/* Custom Date Pickers — always visible */}
+          <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-lg border border-slate-200">
+            <input
+              id="org-analytics-start-date"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 focus:border-emerald-500 focus:outline-none"
+            />
+            <span className="text-xs text-slate-400">to</span>
+            <input
+              id="org-analytics-end-date"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 focus:border-emerald-500 focus:outline-none"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleCustomDateApply(startDate, endDate)}
+              className="h-7 px-2.5 text-xs font-semibold"
+            >
+              Apply
+            </Button>
+          </div>
 
           {/* Refresh Data */}
           <Button
@@ -209,7 +209,11 @@ export function OrgAdminAnalyticsView() {
           }
         }}
         pdfPreviewUrl={pdfPreviewUrl}
-        onDownloadPdf={handleDownloadPdf}
+        onDownloadPdf={handleDownloadFinancialPdf}
+        onDownloadFinancial={handleDownloadFinancialPdf}
+        onDownloadCardAnalytics={handleDownloadCardAnalyticsPdf}
+        onDownloadBoth={handleDownloadBothPdf}
+        onPreviewSectionsChange={handleUpdatePreviewSections}
       />
     </div>
   );

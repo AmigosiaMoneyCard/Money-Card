@@ -135,7 +135,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
-                        user.role,
+                        user.role == 'STAFF'
+                            ? (permissionChecker.hasPermission(AppPermission.recharge)
+                                ? 'Manager'
+                                : 'Staff')
+                            : user.role,
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -145,6 +149,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                 ],
               ),
+              const SizedBox(height: AppSpacing.sm),
+
+              // 1.5 Prominent Role Specification Banner (Manager vs Staff)
+              _buildRoleSpecificationBanner(context, user, permissionChecker),
+
               const SizedBox(height: AppSpacing.md),
 
               // 2. Primary Action: Large Prominent SCAN CARD Box
@@ -717,4 +726,170 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }).toList(),
     );
   }
+
+  Widget _buildRoleSpecificationBanner(
+    BuildContext context,
+    dynamic user,
+    dynamic permissionChecker,
+  ) {
+    if (user == null) return const SizedBox.shrink();
+
+    final isManager = user.role == 'STAFF'
+        ? permissionChecker.hasPermission(AppPermission.recharge)
+        : (user.role == 'ORG_ADMIN' || user.role == 'SUPER_ADMIN');
+
+    if (isManager) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: AppColors.successLight,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.success.withValues(alpha: 0.35), width: 1.5),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryDark,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.admin_panel_settings,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        'Logged in as Counter Manager',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primaryDark,
+                        ),
+                      ),
+                      Text(
+                        'Full Control: Card Recharge, Refunds, Menu & Analytics',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textSecondaryLight,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                _buildRoleCapabilityChip('💳 Recharge & Issue', AppColors.primaryDark, AppColors.successLight),
+                _buildRoleCapabilityChip('↩️ Refunds', AppColors.primaryDark, AppColors.successLight),
+                _buildRoleCapabilityChip('📋 Menu Management', AppColors.primaryDark, AppColors.successLight),
+                _buildRoleCapabilityChip('📊 Analytics', AppColors.primaryDark, AppColors.successLight),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Counter Staff
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F9FF), // Sky blue 50
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF0284C7).withValues(alpha: 0.35), width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0284C7),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.badge_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Logged in as Counter Staff',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0369A1),
+                      ),
+                    ),
+                    Text(
+                      'POS Billing, Amount Deduction & Menu Catalog',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textSecondaryLight,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              _buildRoleCapabilityChip('🛒 POS Billing', const Color(0xFF0369A1), const Color(0xFFE0F2FE)),
+              _buildRoleCapabilityChip('💳 Deduct Amount', const Color(0xFF0369A1), const Color(0xFFE0F2FE)),
+              _buildRoleCapabilityChip('📋 Menu Catalog', const Color(0xFF0369A1), const Color(0xFFE0F2FE)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRoleCapabilityChip(String label, Color textColor, Color bgColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: textColor.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10.5,
+          fontWeight: FontWeight.w600,
+          color: textColor,
+        ),
+      ),
+    );
+  }
 }
+

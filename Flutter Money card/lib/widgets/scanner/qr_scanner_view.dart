@@ -160,6 +160,11 @@ class _QrScannerViewState extends State<QrScannerView>
         title: Text(widget.title),
         actions: [
           IconButton(
+            icon: const Icon(Icons.keyboard_outlined),
+            tooltip: 'Enter Coupon ID Manually',
+            onPressed: _showManualEntryDialog,
+          ),
+          IconButton(
             icon: Icon(
               _isTorchOn ? Icons.flash_on : Icons.flash_off,
               color: _isTorchOn ? AppColors.warning : Colors.white,
@@ -317,14 +322,47 @@ class _QrScannerViewState extends State<QrScannerView>
                 color: Colors.black.withValues(alpha: 0.5),
                 padding: AppSpacing.paddingMd,
                 alignment: Alignment.topCenter,
-                child: Text(
-                  widget.prompt,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  textAlign: TextAlign.center,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      widget.prompt,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 14),
+                    InkWell(
+                      onTap: _showManualEntryDialog,
+                      borderRadius: BorderRadius.circular(24),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: Colors.white38),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.keyboard_outlined, size: 18, color: Colors.white),
+                            SizedBox(width: 8),
+                            Text(
+                              'Enter Coupon ID Manually',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -398,4 +436,106 @@ class _QrScannerViewState extends State<QrScannerView>
       ),
     );
   }
+
+  void _showManualEntryDialog() {
+    final textController = TextEditingController();
+    String? errorText;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Row(
+                children: const [
+                  Icon(Icons.confirmation_number_outlined, color: AppColors.primary, size: 22),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Enter Coupon ID',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'If the QR code cannot be scanned, manually enter the Coupon ID or Card Number:',
+                    style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: textController,
+                    autofocus: true,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: InputDecoration(
+                      labelText: 'Coupon ID / Card Number',
+                      hintText: 'e.g. CRD-101 or Coupon ID',
+                      errorText: errorText,
+                      prefixIcon: const Icon(Icons.credit_card),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.clear, size: 18),
+                        onPressed: () => textController.clear(),
+                      ),
+                    ),
+                    onChanged: (val) {
+                      if (errorText != null) {
+                        setDialogState(() => errorText = null);
+                      }
+                    },
+                    onSubmitted: (val) {
+                      final input = val.trim();
+                      if (input.isNotEmpty) {
+                        Navigator.pop(ctx);
+                        _handleManualInput(input);
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: () {
+                    final input = textController.text.trim();
+                    if (input.isEmpty) {
+                      setDialogState(() => errorText = 'Please enter a coupon ID or card number');
+                      return;
+                    }
+                    Navigator.pop(ctx);
+                    _handleManualInput(input);
+                  },
+                  child: const Text('Proceed', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _handleManualInput(String input) {
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _isProcessingScan = true;
+      _invalidQrMessage = null;
+    });
+    widget.onQrScanned(input);
+  }
 }
+

@@ -8,6 +8,8 @@ import type { OrgPdfSectionOptions } from './analyticsPdfExport';
 import {
   generateAnalyticsPdfBlob,
   downloadOrgAnalyticsPdf,
+  downloadFinancialOverviewPdf,
+  downloadCardAnalyticsPdf,
 } from './analyticsPdfExport';
 import type { SortMetric } from './OrgAdminAnalyticsComponents';
 
@@ -165,16 +167,26 @@ export function useOrgAdminAnalytics() {
   const [sortBy, setSortBy] = useState<SortMetric>('revenue');
   const [selectedBranchDetail, setSelectedBranchDetail] = useState<BranchPerformanceMetric | null>(null);
 
-  const [branchFilter, setBranchFilter] = useState<string>(
-    searchParams.get('branchId') || currentBranch?.id || 'ALL',
-  );
+  const isStaff = user?.role === 'STAFF';
+
+  const [branchFilter, setBranchFilter] = useState<string>(() => {
+    if (isStaff) {
+      return currentBranch?.id || user?.assignedBranchIds?.[0] || searchParams.get('branchId') || '';
+    }
+    return searchParams.get('branchId') || currentBranch?.id || 'ALL';
+  });
 
   useEffect(() => {
-    setBranchFilter(currentBranch ? currentBranch.id : 'ALL');
-  }, [currentBranch]);
+    if (isStaff) {
+      const bId = currentBranch?.id || user?.assignedBranchIds?.[0] || '';
+      if (bId) setBranchFilter(bId);
+    } else {
+      setBranchFilter(currentBranch ? currentBranch.id : 'ALL');
+    }
+  }, [currentBranch, isStaff, user?.assignedBranchIds]);
 
   const [datePreset, setDatePreset] = useState<DatePreset>(
-    (searchParams.get('preset') as DatePreset) || 'today',
+    (searchParams.get('preset') as DatePreset) || 'custom',
   );
   const [startDate, setStartDate] = useState<string>(() => {
     return searchParams.get('startDate') || getPresetDates('today').startDate;
@@ -322,7 +334,7 @@ export function useOrgAdminAnalytics() {
     [branches, branchFilter],
   );
   const selectedBranchName =
-    branchFilter === 'ALL' ? 'All Counters' : selectedBranchObj?.name || branchFilter;
+    branchFilter === 'ALL' ? 'All Cafeterias' : selectedBranchObj?.name || branchFilter;
 
   const dateRangeLabel = useMemo(
     () => formatDateRangeLabel(datePreset, startDate, endDate),
@@ -418,18 +430,24 @@ export function useOrgAdminAnalytics() {
   const handleViewPdf = () => {
     setIsExportingPdf(true);
     try {
-      const options = getOrgReportOptions(pdfSections);
+      const defaultSections: OrgPdfSectionOptions = {
+        includeExecutiveKpis: true,
+        includeCardLifecycle: true,
+        includePaymentBreakdown: true,
+        includeRushKpis: false,
+        includeTrafficDistribution: false,
+        includeFoodDemand: false,
+        includeBranchComparison: false,
+        includeStaffPerformance: false,
+      };
+      setPdfSections(defaultSections);
+      const options = getOrgReportOptions(defaultSections);
       if (!options) {
         notify.error('No analytics data available to render PDF.');
         return;
       }
 
       const blob = generateAnalyticsPdfBlob(options);
-      const dateStr = new Date().toISOString().split('T')[0];
-      const filename = `MoneyCard_OrgAdmin_Analytics_${dateStr}.pdf`;
-
-      console.log('[Org Admin] PDF Preview Ready:', { size: blob.size, type: blob.type, filename });
-
       if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
       const url = URL.createObjectURL(blob);
       setPdfPreviewUrl(url);
@@ -439,6 +457,22 @@ export function useOrgAdminAnalytics() {
     } finally {
       setIsExportingPdf(false);
     }
+  };
+
+  const handleUpdatePreviewSections = (selected: { financial: boolean; cards: boolean }) => {
+    const updated: OrgPdfSectionOptions = {
+      ...pdfSections,
+      includeExecutiveKpis: selected.financial,
+      includePaymentBreakdown: selected.financial,
+      includeCardLifecycle: selected.cards,
+      includeRushKpis: false,
+      includeTrafficDistribution: false,
+      includeFoodDemand: false,
+      includeBranchComparison: false,
+      includeStaffPerformance: false,
+    };
+    setPdfSections(updated);
+    refreshPdfPreview(updated);
   };
 
   const handleDownloadPdf = () => {
@@ -459,6 +493,61 @@ export function useOrgAdminAnalytics() {
       notify.error('Failed to download Analytics PDF');
     } finally {
       setIsExportingPdf(false);
+    }
+  };
+
+  const handleDownloadBothPdf = () => {
+    try {
+      const options = getOrgReportOptions({
+        includeExecutiveKpis: true,
+        includeCardLifecycle: true,
+        includePaymentBreakdown: true,
+        includeRushKpis: false,
+        includeTrafficDistribution: false,
+        includeFoodDemand: false,
+        includeBranchComparison: false,
+        includeStaffPerformance: false,
+      });
+      if (!options) {
+        notify.error('No analytics data available to download.');
+        return;
+      }
+      const dateStr = new Date().toISOString().split('T')[0];
+      const filename = `MoneyCard_Analytics_${dateStr}.pdf`;
+      downloadOrgAnalyticsPdf(options, filename);
+      notify.success(`Analytics report downloaded: ${filename}`);
+    } catch {
+      notify.error('Failed to download Analytics PDF.');
+    }
+  };
+
+  const handleDownloadFinancialPdf = () => {
+    try {
+      const options = getOrgReportOptions(pdfSections);
+      if (!options) {
+        notify.error('No analytics data available to download.');
+        return;
+      }
+      const dateStr = new Date().toISOString().split('T')[0];
+      downloadFinancialOverviewPdf(options, `MoneyCard_Financial_Overview_${dateStr}.pdf`);
+      notify.success('Financial Overview PDF downloaded.');
+    } catch {
+      notify.error('Failed to download Financial Overview PDF.');
+    }
+  };
+
+  const handleDownloadCardAnalyticsPdf = () => {
+    try {
+      const options = getOrgReportOptions(pdfSections);
+      if (!options) {
+        notify.error('No analytics data available to download.');
+        return;
+      }
+      const dateStr = new Date().toISOString().split('T')[0];
+      downloadCardAnalyticsPdf(options, `MoneyCard_Card_Analytics_${dateStr}.pdf`);
+      notify.success('Card Analytics PDF downloaded.');
+    } catch {
+      notify.error('Failed to download Card Analytics PDF.');
     }
   };
 
@@ -548,6 +637,10 @@ export function useOrgAdminAnalytics() {
     handleSetAllSections,
     handleViewPdf,
     handleDownloadPdf,
+    handleDownloadFinancialPdf,
+    handleDownloadCardAnalyticsPdf,
+    handleDownloadBothPdf,
+    handleUpdatePreviewSections,
     cashRechargeAmount,
     upiRechargeAmount,
     sortedBranchComparison,

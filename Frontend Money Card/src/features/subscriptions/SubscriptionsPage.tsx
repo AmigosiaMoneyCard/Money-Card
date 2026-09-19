@@ -26,20 +26,15 @@ import {
   Modal,
   ModalFooter,
   LoadingState,
-  EmptyState,
   ErrorState,
 } from '@/components/ui';
-import { DataTable } from '@/components/tables';
 import { notify, formatDate, formatCurrency } from '@/utils';
 import { AdminPlansSubscriptionsView } from './AdminPlansSubscriptionsView';
 import { UnauthorizedPage } from '@/features/auth';
 import {
-  CreditCard,
   Check,
   RefreshCw,
   AlertCircle,
-  Building2,
-  Users,
   Send,
   Clock,
   ChevronDown,
@@ -113,8 +108,7 @@ function OrgAdminSubscriptionsView() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Collapsible Dropdown Sections
-  const [isPlansOpen, setIsPlansOpen] = useState(false);
-  const [isPlanRequestsOpen, setIsPlanRequestsOpen] = useState(false);
+  const [isPlansOpen, setIsPlansOpen] = useState(true);
 
   // ── Fetch Organization Subscription Data ───────────────────
   const fetchOrgSubscriptionData = useCallback(async () => {
@@ -342,71 +336,6 @@ function OrgAdminSubscriptionsView() {
     }
   };
 
-  // ── Plan Requests Columns ─────────────────────────────────
-  const requestColumns = [
-    {
-      key: 'requestedPlanName',
-      header: 'Requested Plan',
-      render: (req: PlanChangeRequest) => (
-        <div>
-          <span className="font-bold text-slate-900">{req.requestedPlanName}</span>
-          <p className="text-[11px] text-slate-500">From {req.currentPlanName}</p>
-        </div>
-      ),
-    },
-    {
-      key: 'requestType',
-      header: 'Type',
-      render: (req: PlanChangeRequest) => {
-        if (req.requestType === 'RENEWAL') {
-          return (
-            <Badge variant="success" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold">
-              Subscription Renewal
-            </Badge>
-          );
-        }
-        return (
-          <Badge variant="outline" className="text-emerald-700 border-emerald-200 bg-emerald-50">
-            {req.requestType.replace('_', ' ')}
-          </Badge>
-        );
-      },
-    },
-    {
-      key: 'reason',
-      header: 'Notes / Reason',
-      render: (req: PlanChangeRequest) => (
-        <span className="text-xs text-slate-700 font-medium max-w-xs truncate block">
-          {req.reason || '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (req: PlanChangeRequest) => (
-        <Badge
-          variant={
-            req.status === 'APPROVED' || req.status === 'COMPLETED'
-              ? 'success'
-              : req.status === 'PENDING'
-                ? 'warning'
-                : 'danger'
-          }
-        >
-          {req.status}
-        </Badge>
-      ),
-    },
-    {
-      key: 'createdAt',
-      header: 'Submitted Date',
-      render: (req: PlanChangeRequest) => (
-        <span className="text-xs text-slate-600 font-medium">{formatDate(req.createdAt)}</span>
-      ),
-    },
-  ];
-
   return (
     <div className="space-y-8">
       {/* Header Bar */}
@@ -476,26 +405,11 @@ function OrgAdminSubscriptionsView() {
           <Card>
             <CardHeader
               title={`Current Plan: ${currentPlan?.name || 'Active Subscription'}`}
-              description={`${branchLimit} Counters • ${staffLimit} Staff • ${cardLimit} Cards`}
-              action={
-                <Badge
-                  variant={
-                    subscription?.status === 'ACTIVE'
-                      ? 'success'
-                      : subscription?.status === 'PENDING_PAYMENT'
-                        ? 'warning'
-                        : 'danger'
-                  }
-                  className="text-xs px-3 py-1"
-                >
-                  {subscription?.status || 'ACTIVE'}
-                </Badge>
-              }
             />
 
             <CardContent className="space-y-6">
               {/* Dates & Status Metadata */}
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 rounded-xl bg-slate-50 p-4 border border-slate-200 text-xs">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 rounded-xl bg-slate-50 p-4 border border-slate-200 text-xs">
                 <div>
                   <span className="text-slate-500 font-medium">Plan Price:</span>
                   <p className="font-mono text-sm font-bold text-emerald-700">
@@ -513,72 +427,6 @@ function OrgAdminSubscriptionsView() {
                   <p className="font-semibold text-slate-900">
                     {subscription ? formatDate(subscription.renewalDate) : '—'}
                   </p>
-                </div>
-                <div>
-                  <span className="text-slate-500 font-medium">Payment Status:</span>
-                  <p className="font-semibold text-emerald-700">
-                    {subscription?.paymentStatus || 'SUCCESS'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Real-Time Usage Bars */}
-              <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
-                {/* Branches */}
-                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1.5 text-slate-600">
-                      <Building2 className="h-4 w-4 text-emerald-600" />
-                      Branch Locations
-                    </span>
-                    <span className="font-mono font-bold text-slate-900">
-                      {branchUsage} / {branchLimit}
-                    </span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className="h-full bg-emerald-600 transition-all duration-300"
-                      style={{ width: `${Math.min((branchUsage / branchLimit) * 100, 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Staff Accounts */}
-                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1.5 text-slate-600">
-                      <Users className="h-4 w-4 text-teal-600" />
-                      Staff Accounts
-                    </span>
-                    <span className="font-mono font-bold text-slate-900">
-                      {staffUsage} / {staffLimit}
-                    </span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className="h-full bg-teal-600 transition-all duration-300"
-                      style={{ width: `${Math.min((staffUsage / staffLimit) * 100, 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Active Cards */}
-                <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1.5 text-slate-600">
-                      <CreditCard className="h-4 w-4 text-sky-600" />
-                      Active Cards
-                    </span>
-                    <span className="font-mono font-bold text-slate-900">
-                      {cardUsage} / {cardLimit}
-                    </span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className="h-full bg-sky-500 transition-all duration-300"
-                      style={{ width: `${Math.min((cardUsage / cardLimit) * 100, 100)}%` }}
-                    />
-                  </div>
                 </div>
               </div>
             </CardContent>
@@ -623,21 +471,23 @@ function OrgAdminSubscriptionsView() {
                     return (
                       <div
                         key={plan.id}
-                        className={`relative flex flex-col justify-between rounded-xl border p-5 transition-all ${
+                        className={`relative flex flex-col justify-between rounded-xl border-2 p-5 transition-all ${
                           isCurrent
-                            ? 'border-emerald-500 bg-emerald-50/40 shadow-md shadow-emerald-500/10'
+                            ? 'border-emerald-500 bg-emerald-50/50 shadow-md ring-2 ring-emerald-500/20'
                             : 'border-slate-200 bg-white hover:border-slate-300 shadow-xs'
                         }`}
                       >
-                        {isCurrent && (
-                          <Badge variant="success" className="absolute -top-3 right-4 text-[10px]">
-                            Active Plan
-                          </Badge>
-                        )}
-
                         <div className="space-y-4">
                           <div>
-                            <h3 className="text-lg font-bold text-slate-900">{plan.name}</h3>
+                            <div className="flex items-center justify-between gap-2">
+                              <h3 className="text-lg font-bold text-slate-900">{plan.name}</h3>
+                              {isCurrent && (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                  ACTIVE PLAN
+                                </span>
+                              )}
+                            </div>
                             <p className="mt-1 font-mono text-2xl font-bold text-emerald-700">
                               {formatCurrency(plan.price)}{' '}
                               <span className="text-xs font-normal text-slate-500">
@@ -650,15 +500,33 @@ function OrgAdminSubscriptionsView() {
                           <div className="space-y-2 border-t border-b border-slate-200 py-3 text-xs">
                             <div className="flex items-center justify-between text-slate-700">
                               <span>Counters:</span>
-                              <strong className="font-mono text-slate-900 font-bold">{plan.branchLimit}</strong>
+                              {isCurrent ? (
+                                <span className="font-mono text-sm font-bold text-slate-900">
+                                  {branchUsage} / <span className="text-emerald-700 font-extrabold">{branchLimit}</span>
+                                </span>
+                              ) : (
+                                <strong className="font-mono text-slate-900 font-bold">{plan.branchLimit}</strong>
+                              )}
                             </div>
                             <div className="flex items-center justify-between text-slate-700">
                               <span>Staff Accounts:</span>
-                              <strong className="font-mono text-slate-900 font-bold">{plan.staffLimit}</strong>
+                              {isCurrent ? (
+                                <span className="font-mono text-sm font-bold text-slate-900">
+                                  {staffUsage} / <span className="text-emerald-700 font-extrabold">{staffLimit}</span>
+                                </span>
+                              ) : (
+                                <strong className="font-mono text-slate-900 font-bold">{plan.staffLimit}</strong>
+                              )}
                             </div>
                             <div className="flex items-center justify-between text-slate-700">
                               <span>Active Cards:</span>
-                              <strong className="font-mono text-slate-900 font-bold">{plan.cardLimit}</strong>
+                              {isCurrent ? (
+                                <span className="font-mono text-sm font-bold text-slate-900">
+                                  {cardUsage} / <span className="text-emerald-700 font-extrabold">{cardLimit}</span>
+                                </span>
+                              ) : (
+                                <strong className="font-mono text-slate-900 font-bold">{plan.cardLimit}</strong>
+                              )}
                             </div>
                           </div>
 
@@ -682,8 +550,8 @@ function OrgAdminSubscriptionsView() {
                         {/* Action CTA: [ Request Upgrade / Request Downgrade ] */}
                         <div className="mt-6">
                           {isCurrent ? (
-                            <Button variant="outline" size="sm" className="w-full" disabled>
-                              Current Plan
+                            <Button variant="outline" size="sm" className="w-full bg-emerald-50 text-emerald-800 border-emerald-300 font-bold cursor-default" disabled>
+                              Current Active Plan
                             </Button>
                           ) : pendingRequest ? (
                             <Button
@@ -721,59 +589,6 @@ function OrgAdminSubscriptionsView() {
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Collapsible Section: Plan Change Requests History */}
-          <div className="space-y-4">
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
-              <button
-                type="button"
-                id="toggle-plan-requests-dropdown"
-                onClick={() => setIsPlanRequestsOpen((prev) => !prev)}
-                className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-slate-50 cursor-pointer"
-                aria-expanded={isPlanRequestsOpen}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-                    <Clock className="h-5 w-5" />
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <h3 className="text-base font-bold text-slate-900">Plan Change Requests History</h3>
-                    <Badge variant="outline" className="font-mono text-xs">
-                      {planRequests.length} {planRequests.length === 1 ? 'Request' : 'Requests'}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600">
-                  <span>{isPlanRequestsOpen ? 'Collapse' : 'Drop down to view'}</span>
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform duration-200 ${
-                      isPlanRequestsOpen ? 'rotate-180' : ''
-                    }`}
-                  />
-                </div>
-              </button>
-
-              {isPlanRequestsOpen && (
-                <div className="border-t border-slate-200">
-                  {planRequests.length === 0 ? (
-                    <div className="p-4">
-                      <EmptyState
-                        icon={<Clock className="h-8 w-8 text-slate-400" />}
-                        title="No plan change requests recorded"
-                        description="Pending and approved plan change requests will appear here."
-                      />
-                    </div>
-                  ) : (
-                    <DataTable<PlanChangeRequest>
-                      data={planRequests}
-                      columns={requestColumns}
-                      keyExtractor={(item: PlanChangeRequest) => item.id}
-                    />
-                  )}
-                </div>
-              )}
-            </div>
           </div>
         </div>
       )}

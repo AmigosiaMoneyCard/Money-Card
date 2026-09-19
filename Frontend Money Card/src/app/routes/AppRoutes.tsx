@@ -18,7 +18,6 @@ import { DashboardPage } from '@/features/dashboard';
 import { BranchesPage } from '@/features/branches';
 import { StaffPage } from '@/features/staff';
 import { CardsPage } from '@/features/cards';
-import { SessionsPage } from '@/features/sessions';
 import { ProductsPage } from '@/features/products';
 import { InventoryPage } from '@/features/inventory';
 import { AnalyticsPage } from '@/features/analytics';
@@ -87,7 +86,7 @@ export function AppRoutes() {
         <Route
           path="/staff"
           element={
-            <PermissionGuard roles={['ORG_ADMIN']}>
+            <PermissionGuard roles={['ORG_ADMIN', 'STAFF']}>
               <StaffPage />
             </PermissionGuard>
           }
@@ -95,23 +94,19 @@ export function AppRoutes() {
         <Route
           path="/cards"
           element={
-            <PermissionGuard roles={['ORG_ADMIN']}>
+            <PermissionGuard roles={['ORG_ADMIN', 'STAFF']}>
               <CardsPage />
             </PermissionGuard>
           }
         />
         <Route
           path="/sessions"
-          element={
-            <PermissionGuard roles={['ORG_ADMIN']}>
-              <SessionsPage />
-            </PermissionGuard>
-          }
+          element={<Navigate to="/cards" replace />}
         />
         <Route
           path="/products"
           element={
-            <PermissionGuard roles={['ORG_ADMIN']}>
+            <PermissionGuard roles={['ORG_ADMIN', 'STAFF']}>
               <ProductsPage />
             </PermissionGuard>
           }
@@ -119,7 +114,7 @@ export function AppRoutes() {
         <Route
           path="/inventory"
           element={
-            <PermissionGuard roles={['ORG_ADMIN']}>
+            <PermissionGuard roles={['ORG_ADMIN', 'STAFF']}>
               <InventoryPage />
             </PermissionGuard>
           }
