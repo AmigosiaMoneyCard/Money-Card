@@ -18,6 +18,7 @@ import {
   Button,
   Input,
   Select,
+  CustomSelect,
   Badge,
   Modal,
   ModalFooter,
@@ -1190,38 +1191,6 @@ export function StaffPage() {
         </button>
       ),
     },
-    {
-      key: 'actions',
-      header: 'Edit',
-      className: 'text-right',
-      render: (staff: Staff) => (
-        <div className="flex items-center justify-end gap-2">
-          {canManage && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleOpenStaffModal(staff, 'overview')}
-              leftIcon={<Edit2 className="h-3.5 w-3.5 text-emerald-600" />}
-              className="text-xs py-1 px-3 border-slate-300 hover:border-emerald-500 hover:bg-emerald-50 text-slate-700"
-            >
-              Edit
-            </Button>
-          )}
-          <StaffActionMenu
-            staff={staff}
-            canManage={canManage}
-            isCounterView={isCounterView}
-            onEditOrView={() => handleOpenStaffModal(staff, 'overview')}
-            onViewAudit={() => handleOpenStaffAudit(staff)}
-            onPermissions={() => handleOpenStaffModal(staff, 'permissions')}
-            onBranches={() => handleOpenStaffModal(staff, 'branches')}
-            onSecurity={() => handleOpenStaffModal(staff, 'security')}
-            onToggleStatus={() => handleOpenStatus(staff)}
-            onDelete={() => handleOpenDeleteStaff(staff)}
-          />
-        </div>
-      ),
-    },
   ];
 
   return (
@@ -1294,13 +1263,22 @@ export function StaffPage() {
 
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           {!isCounterView && branches.length > 0 && (
-            <Select
+            <CustomSelect
               value={staffBranchFilter}
-              onChange={(e) => setStaffBranchFilter(e.target.value)}
-              className="text-xs h-8 py-1 px-3 rounded-xl border-slate-200 bg-white min-w-[180px]"
+              onChange={(val) => setStaffBranchFilter(val)}
+              size="sm"
+              className="min-w-[170px]"
               options={[
-                { value: 'ALL', label: 'All Counters' },
-                ...branches.map((b) => ({ value: b.id, label: b.name })),
+                {
+                  value: 'ALL',
+                  label: 'All Counters',
+                  icon: <Building2 className="h-3.5 w-3.5 text-emerald-600" />,
+                },
+                ...branches.map((b) => ({
+                  value: b.id,
+                  label: b.name,
+                  icon: <Building2 className="h-3.5 w-3.5 text-emerald-600" />,
+                })),
               ]}
             />
           )}
@@ -1951,6 +1929,39 @@ export function StaffPage() {
               >
                 Close
               </Button>
+              <StaffActionMenu
+                staff={selectedStaff}
+                canManage={canManage}
+                isCounterView={isCounterView}
+                onEditOrView={() => {
+                  setShowStaffDetailsModal(false);
+                  handleOpenStaffModal(selectedStaff, 'overview');
+                }}
+                onViewAudit={() => {
+                  setShowStaffDetailsModal(false);
+                  handleOpenStaffAudit(selectedStaff);
+                }}
+                onPermissions={() => {
+                  setShowStaffDetailsModal(false);
+                  handleOpenStaffModal(selectedStaff, 'permissions');
+                }}
+                onBranches={() => {
+                  setShowStaffDetailsModal(false);
+                  handleOpenStaffModal(selectedStaff, 'branches');
+                }}
+                onSecurity={() => {
+                  setShowStaffDetailsModal(false);
+                  handleOpenStaffModal(selectedStaff, 'security');
+                }}
+                onToggleStatus={() => {
+                  setShowStaffDetailsModal(false);
+                  handleOpenStatus(selectedStaff);
+                }}
+                onDelete={() => {
+                  setShowStaffDetailsModal(false);
+                  handleOpenDeleteStaff(selectedStaff);
+                }}
+              />
               {canManage && (
                 <Button
                   variant="primary"

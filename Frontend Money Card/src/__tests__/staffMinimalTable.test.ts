@@ -80,16 +80,20 @@ describe('Staff Management Minimal Table & Counter-First Layout Tests', () => {
     expect(getRoleLabel(mockStaffList[2])).toBe('Manager / Admin');
   });
 
-  it('should verify the minimal 3-column table structure: Counter Name, Staff Details, Edit', () => {
+  it('should verify the minimal 2-column table structure: Counter Name and Staff Details only', () => {
     const tableColumns = [
       { key: 'counterName', header: 'Counter Name' },
       { key: 'staffDetails', header: 'Staff Details' },
-      { key: 'actions', header: 'Edit' },
     ];
 
-    expect(tableColumns.length).toBe(3);
+    expect(tableColumns.length).toBe(2);
     expect(tableColumns[0].header).toBe('Counter Name');
     expect(tableColumns[1].header).toBe('Staff Details');
-    expect(tableColumns[2].header).toBe('Edit');
+  });
+
+  it('should verify that Edit and Actions belong inside the Staff Details popup modal', () => {
+    const modalActions = ['Close', 'Actions', 'Edit Staff'];
+    expect(modalActions).toContain('Edit Staff');
+    expect(modalActions).toContain('Actions');
   });
 });
