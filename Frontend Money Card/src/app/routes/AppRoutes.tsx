@@ -18,7 +18,6 @@ import { DashboardPage } from '@/features/dashboard';
 import { BranchesPage } from '@/features/branches';
 import { StaffPage } from '@/features/staff';
 import { CardsPage } from '@/features/cards';
-import { SessionsPage } from '@/features/sessions';
 import { ProductsPage } from '@/features/products';
 import { InventoryPage } from '@/features/inventory';
 import { AnalyticsPage } from '@/features/analytics';
@@ -102,11 +101,7 @@ export function AppRoutes() {
         />
         <Route
           path="/sessions"
-          element={
-            <PermissionGuard roles={['STAFF']}>
-              <SessionsPage />
-            </PermissionGuard>
-          }
+          element={<Navigate to="/cards?tab=history" replace />}
         />
         <Route
           path="/products"

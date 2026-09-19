@@ -341,7 +341,6 @@ function CounterSettingsView({
 
   const counterName = assignedBranch?.name || 'Assigned Counter';
   const phone = profile?.phone || user?.phone || assignedBranch?.phone || 'N/A';
-  const branchId = assignedBranch?.id || profile?.assignedBranchIds?.[0] || user?.assignedBranchIds?.[0] || 'N/A';
   const orgName = profile?.organizationName || user?.organizationName || 'Cafeteria';
 
   if (loading && !profile) {
@@ -381,13 +380,6 @@ function CounterSettingsView({
               <span className="font-medium">Phone Number</span>
             </div>
             <span className="text-sm font-mono font-medium text-slate-800">{phone}</span>
-          </div>
-
-          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-            <span className="text-sm font-medium text-slate-600">Counter Branch ID</span>
-            <code className="rounded bg-slate-100 px-2 py-0.5 text-xs text-emerald-700 border border-slate-200">
-              {branchId.length > 12 ? `BR-${branchId.slice(0, 8).toUpperCase()}` : branchId}
-            </code>
           </div>
 
           <div className="flex items-center justify-between">

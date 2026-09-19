@@ -347,7 +347,12 @@ export function StaffPage() {
     name: string;
     phone: string;
     password: string;
+    branchIds?: string[];
   } | null>(null);
+
+  // Status & Counter Filters matching Menu design pattern
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [staffBranchFilter, setStaffBranchFilter] = useState<string>('ALL');
 
   // ── Form & Selection State ────────────────────────────────
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
@@ -449,10 +454,21 @@ export function StaffPage() {
   // ── Instant Client-Side Filtered Staff ────────────────────
   const filteredStaff = useMemo(() => {
     let result = staffList;
-    if (currentBranch && currentBranch.id && currentBranch.id !== 'ALL') {
+    const activeBranchId = isCounterView
+      ? currentBranch?.id
+      : staffBranchFilter !== 'ALL'
+      ? staffBranchFilter
+      : currentBranch && currentBranch.id && currentBranch.id !== 'ALL'
+      ? currentBranch.id
+      : 'ALL';
+
+    if (activeBranchId && activeBranchId !== 'ALL') {
       result = result.filter(
-        (s) => Array.isArray(s.assignedBranchIds) && s.assignedBranchIds.includes(currentBranch.id),
+        (s) => Array.isArray(s.assignedBranchIds) && s.assignedBranchIds.includes(activeBranchId),
       );
+    }
+    if (statusFilter !== 'ALL') {
+      result = result.filter((s) => s.status === statusFilter);
     }
     if (!searchQuery.trim()) return result;
     const q = searchQuery.toLowerCase().trim();
@@ -462,7 +478,7 @@ export function StaffPage() {
         (s.phone && s.phone.includes(q)) ||
         (s.email && s.email.toLowerCase().includes(q)),
     );
-  }, [staffList, currentBranch, searchQuery]);
+  }, [staffList, currentBranch, staffBranchFilter, statusFilter, searchQuery, isCounterView]);
 
   // If user lacks STAFF_VIEW permission, block access
   if (!canView) {
@@ -598,6 +614,7 @@ export function StaffPage() {
         name: res.data.name,
         phone: formPhone.trim().replace(/\D/g, ''),
         password: formPassword.trim(),
+        branchIds: formBranchIds,
       });
       setShowStaffCreatedModal(true);
       setShowAddModal(false);
@@ -1176,22 +1193,35 @@ export function StaffPage() {
     },
     {
       key: 'branches',
-      header: 'Assigned Cafeterias',
+      header: 'Counter',
       render: (staff: Staff) => {
-        const assignedNames = branches
-          .filter((b) => staff.assignedBranchIds.includes(b.id))
-          .map((b) => b.name);
+        const assignedBranches = branches.filter((b) => staff.assignedBranchIds.includes(b.id));
+
+        if (assignedBranches.length === 0) {
+          return <span className="text-xs text-slate-400 italic">Unassigned</span>;
+        }
+
+        if (assignedBranches.length === 1) {
+          return (
+            <span className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+              <Building2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+              {assignedBranches[0].name}
+            </span>
+          );
+        }
 
         return (
-          <div className="space-y-1">
-            <span className="text-xs font-semibold text-slate-700">
-              {staff.assignedBranchIds.length} cafeteria(s)
+          <div className="space-y-0.5">
+            <span className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+              <Building2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+              {assignedBranches[0].name}
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded-full">
+                +{assignedBranches.length - 1}
+              </span>
             </span>
-            {assignedNames.length > 0 && (
-              <p className="max-w-[180px] truncate text-[11px] text-slate-500">
-                {assignedNames.join(', ')}
-              </p>
-            )}
+            <p className="max-w-[180px] truncate text-[11px] text-slate-500" title={assignedBranches.map((b) => b.name).join(', ')}>
+              {assignedBranches.map((b) => b.name).join(', ')}
+            </p>
           </div>
         );
       },
@@ -1238,46 +1268,50 @@ export function StaffPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Header Bar */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-5 max-w-6xl mx-auto pb-10">
+      {/* ─── Minimal Header matching Menu page pattern ─── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-4">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-slate-900">Staff Management</h1>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Staff Management</h1>
             {isCounterView && (
-              <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold px-2.5 py-0.5">
+              <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold px-2.5 py-0.5 text-xs">
                 Counter Scope
               </Badge>
             )}
           </div>
-          {isCounterView && (
-            <p className="mt-1 text-xs text-slate-500">
-              Showing staff at your counter only. New staff are automatically assigned to your counter.
-            </p>
-          )}
+          <p className="text-xs text-slate-500 mt-0.5">
+            {isCounterView
+              ? 'Showing staff at your counter only. New staff are automatically assigned to your counter.'
+              : 'Manage staff accounts, counter assignments, access permissions, and account security.'}
+          </p>
         </div>
 
         {canManage && (
-          <Button
-            variant="primary"
-            onClick={handleOpenAdd}
-            leftIcon={<UserPlus className="h-4 w-4" />}
-          >
-            Add Staff Member
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleOpenAdd}
+              leftIcon={<UserPlus className="h-3.5 w-3.5" />}
+              className="text-xs h-8 px-3.5 font-semibold"
+            >
+              Add Staff Member
+            </Button>
+          </div>
         )}
       </div>
 
-      {/* Plan Resource Usage Indicator */}
+      {/* Counter Resource Usage Indicator */}
       {orgOverview?.usage && (
         <Card padding="sm" className="bg-slate-50 border border-slate-200">
           <div className="flex items-center justify-between text-xs font-medium">
             <span className="text-slate-600">
-              Staff Usage ({orgOverview.plan?.name || 'Active Plan'}):
+              Counter Usage ({orgOverview.plan?.name || 'Active Plan'}):
             </span>
             <span className="text-slate-800">
-              <strong className="text-emerald-600">{orgOverview.usage.staffCount}</strong> /{' '}
-              {orgOverview.usage.staffLimit} staff accounts created
+              <strong className="text-emerald-600">{orgOverview.usage.branchCount}</strong> /{' '}
+              {orgOverview.usage.branchLimit} branches created
             </span>
           </div>
           <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
@@ -1285,7 +1319,7 @@ export function StaffPage() {
               className="h-full bg-emerald-600 transition-all duration-300"
               style={{
                 width: `${Math.min(
-                  (orgOverview.usage.staffCount / orgOverview.usage.staffLimit) * 100,
+                  (orgOverview.usage.branchCount / orgOverview.usage.branchLimit) * 100,
                   100,
                 )}%`,
               }}
@@ -1294,37 +1328,78 @@ export function StaffPage() {
         </Card>
       )}
 
-      {/* Search & Refresh */}
-      <div className="flex items-center gap-3">
+      {/* ─── Search & Status Filters matching Menu page ─── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           <input
             type="text"
             placeholder="Search staff by name, phone or email..."
             value={searchQuery}
             maxLength={30}
             onChange={(e) => setSearchQuery(e.target.value.slice(0, 30))}
-            className="w-full rounded-lg border border-slate-300 bg-white pl-10 pr-10 py-2 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-8 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
               aria-label="Clear search"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </button>
           )}
         </div>
-        <Button variant="outline" size="md" onClick={fetchStaffData} leftIcon={<RefreshCw className="h-4 w-4" />}>
-          Refresh
-        </Button>
+
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          {!isCounterView && branches.length > 0 && (
+            <Select
+              value={staffBranchFilter}
+              onChange={(e) => setStaffBranchFilter(e.target.value)}
+              className="text-xs h-8 py-1 px-2.5 rounded-xl border-slate-200 bg-white min-w-[140px]"
+              options={[
+                { value: 'ALL', label: 'All Counters' },
+                ...branches.map((b) => ({ value: b.id, label: b.name })),
+              ]}
+            />
+          )}
+
+          {/* Filter pills */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200/60 self-start sm:self-auto">
+            {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setStatusFilter(s)}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  statusFilter === s
+                    ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {s === 'ALL' ? 'All Staff' : s === 'ACTIVE' ? 'Active' : 'Inactive'}
+              </button>
+            ))}
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchStaffData}
+            leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
+            className="text-xs h-8 px-2.5 rounded-xl border-slate-200 text-slate-700 hover:border-emerald-500"
+          >
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Main Content */}
       {isLoading ? (
-        <LoadingState message="Loading staff accounts..." />
+        <div className="py-12 bg-white rounded-2xl border border-slate-200/80">
+          <LoadingState message="Loading staff accounts..." />
+        </div>
       ) : error ? (
         <ErrorState title="Failed to load staff" message={error} onRetry={fetchStaffData} />
       ) : staffList.length === 0 ? (
@@ -1345,22 +1420,30 @@ export function StaffPage() {
           icon={<Users className="h-8 w-8 text-slate-500" />}
           title="No staff members found"
           description={
-            searchQuery
-              ? `No staff match "${searchQuery}". Try a different name or clear search.`
+            searchQuery || statusFilter !== 'ALL' || staffBranchFilter !== 'ALL'
+              ? 'No staff members match the selected filters. Try adjusting your search query or filters.'
               : `No staff members assigned to ${currentBranch ? currentBranch.name : 'this counter'}.`
           }
           action={
-            searchQuery ? (
-              <Button variant="outline" onClick={() => setSearchQuery('')} leftIcon={<X className="h-4 w-4" />}>
-                Clear Search
+            searchQuery || statusFilter !== 'ALL' || staffBranchFilter !== 'ALL' ? (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchQuery('');
+                  setStatusFilter('ALL');
+                  setStaffBranchFilter('ALL');
+                }}
+                leftIcon={<X className="h-4 w-4" />}
+              >
+                Clear Filters
               </Button>
             ) : undefined
           }
         />
       ) : (
-        <Card padding="none" className="min-h-[220px]">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
           <DataTable<Staff> data={filteredStaff} columns={columns} keyExtractor={(item: Staff) => item.id} />
-        </Card>
+        </div>
       )}
 
       {/* ── 1. UNIFIED STAFF DETAILS & EDIT MODAL (WITH HORIZONTAL TABS) ── */}
@@ -2000,31 +2083,24 @@ export function StaffPage() {
                     </button>
                   }
                 />
-
-                {orgOverview?.usage && (
-                  <p className="text-xs text-slate-500 pt-2">
-                    Active subscription allows up to {orgOverview.usage.staffLimit} staff accounts (
-                    {orgOverview.usage.staffLimit - orgOverview.usage.staffCount} slots available).
-                  </p>
-                )}
               </div>
             )}
 
-            {/* ── STEP 2: BRANCHES ── */}
+            {/* ── STEP 2: COUNTERS ── */}
             {addTab === 'branches' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between pb-2">
                   <p className="text-xs text-slate-500">
                     {isCounterView
                       ? 'Staff member will be automatically assigned to your counter terminal.'
-                      : 'Assign this staff member to one or more physical branches.'}
+                      : 'Assign this staff member to one or more counters.'}
                   </p>
                   {!isCounterView && (
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => setFormBranchIds(scopedBranches.map((b) => b.id))}
-                        className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
+                        className="text-xs text-emerald-600 hover:text-emerald-700 font-medium cursor-pointer"
                       >
                         Select All ({scopedBranches.length})
                       </button>
@@ -2032,7 +2108,7 @@ export function StaffPage() {
                       <button
                         type="button"
                         onClick={() => setFormBranchIds([])}
-                        className="text-xs text-slate-500 hover:text-slate-700 font-medium"
+                        className="text-xs text-slate-500 hover:text-slate-700 font-medium cursor-pointer"
                       >
                         Clear All
                       </button>
@@ -2060,7 +2136,7 @@ export function StaffPage() {
                         disabled={isCounterView}
                         className={`flex w-full ${isCounterView ? 'cursor-default' : 'cursor-pointer'} items-center justify-between rounded-xl border p-3.5 text-xs text-left transition-all select-none ${
                           isAssigned
-                            ? 'border-emerald-500 bg-emerald-50 text-slate-900'
+                            ? 'border-emerald-500 bg-emerald-50 text-slate-900 shadow-2xs'
                             : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
                         }`}
                       >
@@ -2074,9 +2150,14 @@ export function StaffPage() {
                           >
                             {isAssigned && <Check className="h-3.5 w-3.5" />}
                           </div>
-                          <div>
-                            <p className="font-semibold text-slate-800">{b.name}</p>
-                            <span className="text-[11px] text-slate-500">{b.name}</span>
+                          <div className="flex items-center gap-2.5">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">
+                              <Building2 className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-slate-800 text-xs">{b.name}</p>
+                              <span className="text-[10px] text-slate-400">Counter Terminal</span>
+                            </div>
                           </div>
                         </div>
 
@@ -2287,8 +2368,9 @@ export function StaffPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                     <div className="p-3 rounded-lg border border-slate-200 bg-white">
-                      <span className="text-slate-500 font-medium block mb-1">Assigned Counters</span>
-                      <p className="font-semibold text-slate-900">
+                      <span className="text-slate-500 font-medium block mb-1">Assigned Counter(s)</span>
+                      <p className="font-semibold text-slate-900 flex items-center gap-1.5">
+                        <Building2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                         {formBranchIds.length === 0
                           ? 'No counters selected'
                           : branches
@@ -2453,6 +2535,13 @@ export function StaffPage() {
 
           <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3">
             <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-500 font-medium">Assigned Counter:</span>
+              <span className="font-semibold text-slate-900 text-sm flex items-center gap-1.5">
+                <Building2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                {branches.filter((b) => createdStaffCredentials?.branchIds?.includes(b.id)).map((b) => b.name).join(', ') || 'Unassigned'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-xs border-t border-slate-200/80 pt-2.5">
               <span className="text-slate-500 font-medium">Login Phone Number:</span>
               <span className="font-mono font-bold text-slate-900 text-sm">{createdStaffCredentials?.phone}</span>
             </div>
@@ -2478,7 +2567,8 @@ export function StaffPage() {
               size="sm"
               onClick={() => {
                 if (!createdStaffCredentials) return;
-                const text = `Staff Login Credentials:\nName: ${createdStaffCredentials.name}\nPhone: ${createdStaffCredentials.phone}\nPassword: ${createdStaffCredentials.password}`;
+                const assignedCounter = branches.filter((b) => createdStaffCredentials?.branchIds?.includes(b.id)).map((b) => b.name).join(', ') || 'Unassigned';
+                const text = `Staff Login Credentials:\nName: ${createdStaffCredentials.name}\nCounter: ${assignedCounter}\nPhone: ${createdStaffCredentials.phone}\nPassword: ${createdStaffCredentials.password}`;
                 navigator.clipboard.writeText(text);
                 notify.success('Credentials copied to clipboard!');
               }}
@@ -2493,12 +2583,13 @@ export function StaffPage() {
                 if (!createdStaffCredentials) return;
                 const cleanPhone = createdStaffCredentials.phone.replace(/\D/g, '');
                 const targetPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
-                const message = `Hello ${createdStaffCredentials.name},\n\nYour staff account for Money Card POS has been created!\n\nLogin Phone: ${createdStaffCredentials.phone}\nPassword: ${createdStaffCredentials.password}\n\nPlease open the Money Card POS App on your phone and log in with your phone number and password.`;
+                const assignedCounter = branches.filter((b) => createdStaffCredentials?.branchIds?.includes(b.id)).map((b) => b.name).join(', ') || 'Unassigned';
+                const message = `Hello ${createdStaffCredentials.name},\n\nYour staff account for Money Card POS has been created!\n\n• Assigned Counter: ${assignedCounter}\n• Login Phone: ${createdStaffCredentials.phone}\n• Password: ${createdStaffCredentials.password}\n\nPlease open the Money Card POS App on your phone and log in with your phone number and password.`;
                 const waUrl = `https://wa.me/${targetPhone}?text=${encodeURIComponent(message)}`;
                 window.open(waUrl, '_blank');
               }}
               leftIcon={<ExternalLink className="h-4 w-4" />}
-              className="bg-[#25D366] hover:bg-[#20bd5a] text-white border-none"
+              className="bg-[#25D366] hover:bg-[#20bd5a] text-white border-none cursor-pointer"
             >
               Send via WhatsApp
             </Button>

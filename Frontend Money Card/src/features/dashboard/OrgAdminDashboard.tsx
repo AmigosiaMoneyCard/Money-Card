@@ -80,6 +80,7 @@ export function OrgAdminDashboard() {
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
   const { currentBranch, selectBranch, clearBranch, setBranches: updateBranchContext } = useBranch();
+  const isCounterAdmin = user?.role === 'STAFF';
 
   const setupStorageKey = `org_setup_complete_${user?.organizationId || 'default'}`;
   const setupDismissedKey = `org_setup_dismissed_${user?.organizationId || 'default'}`;
@@ -322,8 +323,12 @@ export function OrgAdminDashboard() {
       {/* Header Bar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Organization Dashboard</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Real-time overview of counter operations and sales.</p>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {isCounterAdmin ? 'Counter Dashboard' : 'Organization Dashboard'}
+          </h1>
+          {!isCounterAdmin && (
+            <p className="text-sm text-slate-500 mt-0.5">Real-time overview of counter operations and sales.</p>
+          )}
         </div>
       </div>
 
@@ -662,68 +667,101 @@ export function OrgAdminDashboard() {
               {/* Filter Toolbar (Branch Scope, Time Window, Refresh Data) */}
               <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-wrap items-center gap-3">
-                  {/* Branch Scope Filter */}
-                  <div className="w-full sm:w-52">
-                    <label className="mb-1 block text-[11px] font-medium text-slate-600">Cafeteria Scope</label>
-                    <Select
-                      id="dashboard-branch-filter"
-                      value={currentBranch?.id || ''}
-                      onChange={(e) => {
-                        const bId = e.target.value;
-                        if (!bId) {
-                          clearBranch();
-                        } else {
-                          const target = branches.find((b) => b.id === bId);
-                          if (target) selectBranch(target);
-                        }
-                      }}
-                      options={[
-                        { value: '', label: 'All Cafeterias' },
-                        ...branches.map((b) => ({ value: b.id, label: b.name })),
-                      ]}
-                    />
-                  </div>
+                  {/* Branch Scope Filter (Org Admin only) */}
+                  {!isCounterAdmin && (
+                    <div className="w-full sm:w-52">
+                      <label className="mb-1 block text-[11px] font-medium text-slate-600">Cafeteria Scope</label>
+                      <Select
+                        id="dashboard-branch-filter"
+                        value={currentBranch?.id || ''}
+                        onChange={(e) => {
+                          const bId = e.target.value;
+                          if (!bId) {
+                            clearBranch();
+                          } else {
+                            const target = branches.find((b) => b.id === bId);
+                            if (target) selectBranch(target);
+                          }
+                        }}
+                        options={[
+                          { value: '', label: 'All Cafeterias' },
+                          ...branches.map((b) => ({ value: b.id, label: b.name })),
+                        ]}
+                      />
+                    </div>
+                  )}
 
                   {/* Time Window Filter */}
-                  <div className="w-full sm:w-44">
-                    <label className="mb-1 block text-[11px] font-medium text-slate-600">Time Window</label>
-                    <Select
-                      id="dashboard-preset-filter"
-                      value={datePreset}
-                      onChange={(e) => handlePresetChange(e.target.value as DatePreset)}
-                      options={[
-                        { value: 'today', label: 'Today' },
-                        { value: 'yesterday', label: 'Yesterday' },
-                        { value: 'last7', label: 'Last 7 Days' },
-                        { value: 'last30', label: 'Last 30 Days' },
-                        { value: 'all', label: 'All Time' },
-                        { value: 'custom', label: 'Custom Range' },
-                      ]}
-                    />
-                  </div>
-
-                  {/* Custom Date Inputs (if selected) */}
-                  {datePreset === 'custom' && (
-                    <div className="flex items-end gap-2">
-                      <div>
-                        <label className="mb-1 block text-[11px] font-medium text-slate-600">Start Date</label>
+                  {isCounterAdmin ? (
+                    <div>
+                      <label className="mb-1 block text-[11px] font-medium text-slate-600">Time Window</label>
+                      <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 shadow-2xs">
                         <input
+                          id="counter-dashboard-start-date"
                           type="date"
                           value={startDate}
-                          onChange={(e) => setStartDate(e.target.value)}
-                          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
+                          onChange={(e) => {
+                            setStartDate(e.target.value);
+                            setDatePreset('custom');
+                          }}
+                          className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-800 focus:border-emerald-500 focus:bg-white focus:outline-none"
                         />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-[11px] font-medium text-slate-600">End Date</label>
+                        <span className="text-xs text-slate-400">to</span>
                         <input
+                          id="counter-dashboard-end-date"
                           type="date"
                           value={endDate}
-                          onChange={(e) => setEndDate(e.target.value)}
-                          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
+                          onChange={(e) => {
+                            setEndDate(e.target.value);
+                            setDatePreset('custom');
+                          }}
+                          className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-800 focus:border-emerald-500 focus:bg-white focus:outline-none"
                         />
                       </div>
                     </div>
+                  ) : (
+                    <>
+                      <div className="w-full sm:w-44">
+                        <label className="mb-1 block text-[11px] font-medium text-slate-600">Time Window</label>
+                        <Select
+                          id="dashboard-preset-filter"
+                          value={datePreset}
+                          onChange={(e) => handlePresetChange(e.target.value as DatePreset)}
+                          options={[
+                            { value: 'today', label: 'Today' },
+                            { value: 'yesterday', label: 'Yesterday' },
+                            { value: 'last7', label: 'Last 7 Days' },
+                            { value: 'last30', label: 'Last 30 Days' },
+                            { value: 'all', label: 'All Time' },
+                            { value: 'custom', label: 'Custom Range' },
+                          ]}
+                        />
+                      </div>
+
+                      {/* Custom Date Inputs (if selected) */}
+                      {datePreset === 'custom' && (
+                        <div className="flex items-end gap-2">
+                          <div>
+                            <label className="mb-1 block text-[11px] font-medium text-slate-600">Start Date</label>
+                            <input
+                              type="date"
+                              value={startDate}
+                              onChange={(e) => setStartDate(e.target.value)}
+                              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-[11px] font-medium text-slate-600">End Date</label>
+                            <input
+                              type="date"
+                              value={endDate}
+                              onChange={(e) => setEndDate(e.target.value)}
+                              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
 
