@@ -1827,53 +1827,26 @@ export function StaffPage() {
           <div className="space-y-4">
             {/* Top Search Bar for Searching Counters and Filtering Staff */}
             <div className="space-y-2">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-slate-50 p-2.5 sm:p-3 rounded-xl border border-slate-200">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                  <input
-                    type="text"
-                    placeholder="Search counters (e.g. Main Cafeteria, Executive Lounge)..."
-                    value={modalCounterSearch}
-                    maxLength={35}
-                    onChange={(e) => setModalCounterSearch(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-white pl-9 pr-8 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none"
-                  />
-                  {modalCounterSearch && (
-                    <button
-                      type="button"
-                      onClick={() => setModalCounterSearch('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                      aria-label="Clear search"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  {branches.length > 1 && (
-                    <CustomSelect
-                      value={selectedCounterGroup.id}
-                      onChange={(branchId) => {
-                        const targetGroup = counterStaffGroups.find((g) => g.id === branchId);
-                        if (targetGroup) {
-                          setSelectedCounterGroup(targetGroup);
-                          setModalCounterSearch('');
-                        }
-                      }}
-                      size="sm"
-                      className="min-w-[160px]"
-                      options={branches.map((b) => ({
-                        value: b.id,
-                        label: b.name,
-                        icon: <Building2 className="h-3.5 w-3.5 text-emerald-600" />,
-                      }))}
-                    />
-                  )}
-                  <Badge variant="outline" className="text-xs bg-white text-emerald-700 border-emerald-300 font-bold whitespace-nowrap">
-                    {displayedModalStaff.length} {displayedModalStaff.length === 1 ? 'Staff Account' : 'Staff Accounts'}
-                  </Badge>
-                </div>
+              <div className="relative w-full">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search counters (e.g. Main Cafeteria, Executive Lounge)..."
+                  value={modalCounterSearch}
+                  maxLength={35}
+                  onChange={(e) => setModalCounterSearch(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/70 pl-10 pr-9 py-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-emerald-600 focus:outline-none transition-all shadow-xs"
+                />
+                {modalCounterSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setModalCounterSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-0.5 rounded-full hover:bg-slate-200/50"
+                    aria-label="Clear search"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
 
               {otherMatchingCounters.length > 0 && (
