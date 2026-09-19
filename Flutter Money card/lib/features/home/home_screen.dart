@@ -135,7 +135,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
-                        user.role,
+                        user.role == 'STAFF'
+                            ? (permissionChecker.hasPermission(AppPermission.recharge)
+                                ? 'Manager'
+                                : 'Staff')
+                            : user.role,
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,

@@ -17,7 +17,6 @@ import {
   Button,
   Input,
   Select,
-  CustomSelect,
   Badge,
   Modal,
   ModalFooter,
@@ -29,6 +28,7 @@ import { DataTable } from '@/components/tables';
 import { notify, formatCurrency } from '@/utils';
 import { filterStaffActivities, calculateScopedStaffMetrics } from '@/features/analytics/staffActivityFilter';
 import { PermissionMatrix } from './PermissionMatrix';
+import { MANAGER_PERMISSIONS, STAFF_PERMISSIONS } from './constants';
 import { UnauthorizedPage } from '@/features/auth';
 import {
   Users,
@@ -393,14 +393,7 @@ export function StaffPage() {
       ? scopedBranches.map((b) => b.id)
       : branches.map((b) => b.id);
     setFormBranchIds(defaultBranchIds);
-    setFormPermissions([
-      'CARD_VIEW',
-      'CARD_ISSUE',
-      'CARD_RETURN',
-      'RECHARGE',
-      'PURCHASE',
-      'SESSION_VIEW',
-    ]);
+    setFormPermissions([...STAFF_PERMISSIONS]);
     setFormErrors({});
     setModalApiError(null);
     setAddTab('basic');
@@ -427,8 +420,8 @@ export function StaffPage() {
 
     if (!formPassword.trim()) {
       errors.password = 'Initial password is required for POS login';
-    } else if (formPassword.trim().length < 6) {
-      errors.password = 'Password must be at least 6 characters';
+    } else if (formPassword.trim().length < 4) {
+      errors.password = 'Password must be at least 4 characters';
     }
 
     const trimmedEmail = formEmail.trim().toLowerCase();
@@ -549,14 +542,8 @@ export function StaffPage() {
   // ── Handle Staff Password Change ──────────────────────────
   const validateStaffPassword = (): string | null => {
     if (!formNewPassword) return 'New password is required';
-    if (formNewPassword.length < 8) return 'Password must be at least 8 characters long';
+    if (formNewPassword.length < 4) return 'Password must be at least 4 characters long';
     if (formNewPassword.length > 128) return 'Password cannot exceed 128 characters';
-    if (!/[A-Z]/.test(formNewPassword)) return 'Password must contain at least one uppercase letter [A-Z]';
-    if (!/[a-z]/.test(formNewPassword)) return 'Password must contain at least one lowercase letter [a-z]';
-    if (!/[0-9]/.test(formNewPassword)) return 'Password must contain at least one number [0-9]';
-    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(formNewPassword)) {
-      return 'Password must contain at least one special character (!@#$%^&*...)';
-    }
     if (formNewPassword !== formConfirmPassword) {
       return 'Passwords do not match';
     }
@@ -873,11 +860,10 @@ export function StaffPage() {
 
   // ── Staff Performance & Operational Audit Helpers ────────
   const getStaffRoleLabel = (staff: Staff): string => {
-    if (staff.permissions.includes('STAFF_MANAGE')) return 'Manager / Admin';
-    if (staff.permissions.includes('INVENTORY_MANAGE') || staff.permissions.includes('PRODUCT_MANAGE')) {
-      return 'Counter Supervisor';
+    if (staff.permissions.includes('RECHARGE') || staff.permissions.includes('STAFF_MANAGE')) {
+      return 'Manager';
     }
-    return 'Cashier / POS';
+    return 'Staff';
   };
 
   const getAuditPresetDates = (preset: string): { startDate: string; endDate: string } => {
@@ -1167,46 +1153,7 @@ export function StaffPage() {
           )}
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-          {!isCounterView && branches.length > 0 && (
-            <CustomSelect
-              value={staffBranchFilter}
-              onChange={(val) => setStaffBranchFilter(val)}
-              size="sm"
-              className="min-w-[170px]"
-              options={[
-                {
-                  value: 'ALL',
-                  label: 'All Counters',
-                  icon: <Building2 className="h-3.5 w-3.5 text-emerald-600" />,
-                },
-                ...branches.map((b) => ({
-                  value: b.id,
-                  label: b.name,
-                  icon: <Building2 className="h-3.5 w-3.5 text-emerald-600" />,
-                })),
-              ]}
-            />
-          )}
-
-          {/* Filter pills */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200/60 self-start sm:self-auto">
-            {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setStatusFilter(s)}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  statusFilter === s
-                    ? 'bg-white text-slate-900 shadow-2xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                {s === 'ALL' ? 'All Staff' : s === 'ACTIVE' ? 'Active' : 'Inactive'}
-              </button>
-            ))}
-          </div>
-
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -1353,7 +1300,7 @@ export function StaffPage() {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Input
                       id="staff-edit-name"
-                      label="Full Name (Max 20 chars)"
+                      label="Full Name"
                       value={formName}
                       maxLength={20}
                       onChange={(e) => {
@@ -1366,7 +1313,7 @@ export function StaffPage() {
 
                     <Input
                       id="staff-edit-phone"
-                      label="Phone Number (10 digits)"
+                      label="Phone Number"
                       placeholder="e.g. 9876543210"
                       value={formPhone}
                       maxLength={10}
@@ -1459,31 +1406,6 @@ export function StaffPage() {
                     />
                   </div>
 
-                  {/* Minimal Password Requirements Checklist */}
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-[11px] text-slate-600">
-                    <div className="font-semibold text-slate-700 mb-1">Password Requirements:</div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-1">
-                      <span className={formNewPassword.length >= 8 ? 'text-emerald-600 font-medium' : 'text-slate-500'}>
-                        • 8+ characters
-                      </span>
-                      <span className={/[A-Z]/.test(formNewPassword) ? 'text-emerald-600 font-medium' : 'text-slate-500'}>
-                        • One uppercase [A-Z]
-                      </span>
-                      <span className={/[a-z]/.test(formNewPassword) ? 'text-emerald-600 font-medium' : 'text-slate-500'}>
-                        • One lowercase [a-z]
-                      </span>
-                      <span className={/[0-9]/.test(formNewPassword) ? 'text-emerald-600 font-medium' : 'text-slate-500'}>
-                        • One number [0-9]
-                      </span>
-                      <span className={/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(formNewPassword) ? 'text-emerald-600 font-medium' : 'text-slate-500'}>
-                        • One special (!@#$)
-                      </span>
-                      <span className={formNewPassword && formNewPassword === formConfirmPassword ? 'text-emerald-600 font-medium' : 'text-slate-500'}>
-                        • Passwords match
-                      </span>
-                    </div>
-                  </div>
-
                   {/* Action & Credentials Buttons */}
                   <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
                     {canManage && (
@@ -1532,77 +1454,17 @@ export function StaffPage() {
                     <div className="flex gap-2">
                       <button
                         type="button"
-                        onClick={() =>
-                          setFormPermissions([
-                            'CARD_VIEW',
-                            'CARD_ISSUE',
-                            'CARD_RETURN',
-                            'RECHARGE',
-                            'PURCHASE',
-                            'SESSION_VIEW',
-                            'PRODUCT_VIEW',
-                            'INVENTORY_VIEW',
-                          ])
-                        }
+                        onClick={() => setFormPermissions([...MANAGER_PERMISSIONS])}
                         className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
                       >
-                        Cashier Preset
+                        Manager (Recharge)
                       </button>
                       <button
                         type="button"
-                        onClick={() =>
-                          setFormPermissions([
-                            'CARD_VIEW',
-                            'CARD_ISSUE',
-                            'CARD_RETURN',
-                            'CARD_BLOCK',
-                            'CARD_UNBLOCK',
-                            'RECHARGE',
-                            'PURCHASE',
-                            'REFUND',
-                            'SESSION_VIEW',
-                            'PRODUCT_VIEW',
-                            'PRODUCT_MANAGE',
-                            'INVENTORY_VIEW',
-                            'INVENTORY_MANAGE',
-                            'INVENTORY_IMPORT',
-                            'BRANCH_VIEW',
-                            'STAFF_VIEW',
-                          ])
-                        }
+                        onClick={() => setFormPermissions([...STAFF_PERMISSIONS])}
                         className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
                       >
-                        Supervisor Preset
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setFormPermissions([
-                            'CARD_VIEW',
-                            'CARD_ISSUE',
-                            'CARD_RETURN',
-                            'CARD_BLOCK',
-                            'CARD_UNBLOCK',
-                            'RECHARGE',
-                            'PURCHASE',
-                            'REFUND',
-                            'SESSION_VIEW',
-                            'PRODUCT_VIEW',
-                            'PRODUCT_MANAGE',
-                            'INVENTORY_VIEW',
-                            'INVENTORY_MANAGE',
-                            'INVENTORY_IMPORT',
-                            'VIEW_ANALYTICS',
-                            'VIEW_REPORTS',
-                            'STAFF_VIEW',
-                            'STAFF_MANAGE',
-                            'BRANCH_VIEW',
-                            'BRANCH_MANAGE',
-                          ])
-                        }
-                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
-                      >
-                        Manager Preset
+                        Staff (Deduct)
                       </button>
                     </div>
                   )}
@@ -1727,7 +1589,7 @@ export function StaffPage() {
                   )}
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  {selectedStaff.permissions.includes('STAFF_MANAGE') ? 'Manager / Admin' : 'Cashier / POS'}
+                  {getStaffRoleLabel(selectedStaff)}
                 </p>
               </div>
             </div>
@@ -1754,7 +1616,7 @@ export function StaffPage() {
               <div className="flex items-center justify-between p-3.5 text-xs">
                 <span className="text-slate-500 font-medium">Role & Position</span>
                 <span className="font-semibold text-slate-800">
-                  {selectedStaff.permissions.includes('STAFF_MANAGE') ? 'Manager / Admin' : 'Cashier / POS'}
+                  {getStaffRoleLabel(selectedStaff)}
                 </span>
               </div>
             </div>
@@ -1920,7 +1782,7 @@ export function StaffPage() {
                         </div>
                         <div className="flex items-center gap-2.5 text-xs text-slate-500 mt-0.5 flex-wrap">
                           <span className="font-medium text-slate-600">
-                            {st.permissions.includes('STAFF_MANAGE') ? 'Manager / Admin' : 'Cashier / POS'}
+                            {getStaffRoleLabel(st)}
                           </span>
                           {st.phone && <span className="font-mono text-slate-500">• {st.phone}</span>}
                         </div>
@@ -2168,7 +2030,7 @@ export function StaffPage() {
                   id="add-staff-password"
                   type={showAddPassword ? 'text' : 'password'}
                   label="Login Password *"
-                  placeholder="Min 6 characters"
+                  placeholder="Min 4 characters"
                   maxLength={50}
                   value={formPassword}
                   onChange={(e) => {
@@ -2286,145 +2148,63 @@ export function StaffPage() {
                     </p>
                   </div>
 
-                  {/* 3 Large Role Preset Cards */}
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    {/* Preset 1: Cashier */}
+                  {/* 2 Large Role Preset Cards: Manager & Staff */}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {/* Manager: Recharge Cards */}
                     <button
                       type="button"
-                      onClick={() => {
-                        setFormPermissions([
-                          'CARD_VIEW',
-                          'CARD_ISSUE',
-                          'CARD_RETURN',
-                          'RECHARGE',
-                          'PURCHASE',
-                          'SESSION_VIEW',
-                          'PRODUCT_VIEW',
-                          'INVENTORY_VIEW',
-                        ]);
-                      }}
+                      onClick={() => setFormPermissions([...MANAGER_PERMISSIONS])}
                       className={`flex flex-col justify-between p-4 rounded-xl border text-left transition-all cursor-pointer select-none ${
-                        formPermissions.length === 8 && formPermissions.includes('PURCHASE') && !formPermissions.includes('PRODUCT_MANAGE')
-                          ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500'
+                        formPermissions.includes('RECHARGE')
+                          ? 'border-emerald-500 bg-emerald-50/80 ring-1 ring-emerald-500'
                           : 'border-slate-200 bg-white hover:border-slate-300'
                       }`}
                     >
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            Recommended
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            Recharge Cards
                           </span>
-                          {formPermissions.length === 8 && formPermissions.includes('PURCHASE') && !formPermissions.includes('PRODUCT_MANAGE') && (
+                          {formPermissions.includes('RECHARGE') && (
                             <Check className="h-4 w-4 text-emerald-600" />
                           )}
                         </div>
-                        <h5 className="font-bold text-sm text-slate-900">Cashier / POS</h5>
+                        <h5 className="font-bold text-sm text-slate-900">Manager</h5>
                         <p className="text-[11px] text-slate-500 mt-1">
-                          Card issuing, recharge, customer checkout, and sales at counter.
+                          Full counter management, card issuing/settlement, balance recharge, and reports.
                         </p>
                       </div>
                       <span className="text-[11px] font-mono text-emerald-600 font-semibold mt-3">
-                        8 permissions
+                        Recharge & Full Management
                       </span>
                     </button>
 
-                    {/* Preset 2: Supervisor */}
+                    {/* Staff: Deduct Amount */}
                     <button
                       type="button"
-                      onClick={() => {
-                        setFormPermissions([
-                          'CARD_VIEW',
-                          'CARD_ISSUE',
-                          'CARD_RETURN',
-                          'CARD_BLOCK',
-                          'CARD_UNBLOCK',
-                          'RECHARGE',
-                          'PURCHASE',
-                          'REFUND',
-                          'SESSION_VIEW',
-                          'PRODUCT_VIEW',
-                          'PRODUCT_MANAGE',
-                          'INVENTORY_VIEW',
-                          'INVENTORY_MANAGE',
-                          'INVENTORY_IMPORT',
-                          'BRANCH_VIEW',
-                          'STAFF_VIEW',
-                        ]);
-                      }}
+                      onClick={() => setFormPermissions([...STAFF_PERMISSIONS])}
                       className={`flex flex-col justify-between p-4 rounded-xl border text-left transition-all cursor-pointer select-none ${
-                        formPermissions.length === 16 && formPermissions.includes('INVENTORY_MANAGE') && !formPermissions.includes('STAFF_MANAGE')
-                          ? 'border-amber-500 bg-amber-50 ring-1 ring-amber-500'
+                        !formPermissions.includes('RECHARGE')
+                          ? 'border-emerald-500 bg-emerald-50/80 ring-1 ring-emerald-500'
                           : 'border-slate-200 bg-white hover:border-slate-300'
                       }`}
                     >
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                            Counter Lead
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                            Deduct Amount
                           </span>
-                          {formPermissions.length === 16 && formPermissions.includes('INVENTORY_MANAGE') && !formPermissions.includes('STAFF_MANAGE') && (
-                            <Check className="h-4 w-4 text-amber-600" />
-                          )}
-                        </div>
-                        <h5 className="font-bold text-sm text-slate-900">Supervisor</h5>
-                        <p className="text-[11px] text-slate-500 mt-1">
-                          Cashier duties + stock counting, menu pricing, and team directory view.
-                        </p>
-                      </div>
-                      <span className="text-[11px] font-mono text-amber-600 font-semibold mt-3">
-                        16 permissions
-                      </span>
-                    </button>
-
-                    {/* Preset 3: Manager / Admin */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormPermissions([
-                          'CARD_VIEW',
-                          'CARD_ISSUE',
-                          'CARD_RETURN',
-                          'CARD_BLOCK',
-                          'CARD_UNBLOCK',
-                          'RECHARGE',
-                          'PURCHASE',
-                          'REFUND',
-                          'SESSION_VIEW',
-                          'PRODUCT_VIEW',
-                          'PRODUCT_MANAGE',
-                          'INVENTORY_VIEW',
-                          'INVENTORY_MANAGE',
-                          'INVENTORY_IMPORT',
-                          'VIEW_ANALYTICS',
-                          'VIEW_REPORTS',
-                          'STAFF_VIEW',
-                          'STAFF_MANAGE',
-                          'BRANCH_VIEW',
-                          'BRANCH_MANAGE',
-                        ]);
-                      }}
-                      className={`flex flex-col justify-between p-4 rounded-xl border text-left transition-all cursor-pointer select-none ${
-                        formPermissions.length === 20
-                          ? 'border-emerald-600 bg-emerald-50 ring-1 ring-emerald-600'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
-                      }`}
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                            Full Access
-                          </span>
-                          {formPermissions.length === 20 && (
+                          {!formPermissions.includes('RECHARGE') && (
                             <Check className="h-4 w-4 text-emerald-600" />
                           )}
                         </div>
-                        <h5 className="font-bold text-sm text-slate-900">Manager / Admin</h5>
+                        <h5 className="font-bold text-sm text-slate-900">Staff</h5>
                         <p className="text-[11px] text-slate-500 mt-1">
-                          Full access to manage team members, counter settings, and all operations.
+                          POS billing, menu item selection, balance deduction, and customer order handling.
                         </p>
                       </div>
-                      <span className="text-[11px] font-mono text-emerald-700 font-semibold mt-3">
-                        All 20 permissions
+                      <span className="text-[11px] font-mono text-slate-600 font-semibold mt-3">
+                        Deduct Only (No Recharge)
                       </span>
                     </button>
                   </div>

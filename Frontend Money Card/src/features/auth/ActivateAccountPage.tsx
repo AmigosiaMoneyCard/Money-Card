@@ -11,8 +11,6 @@ import {
   Building2,
   ArrowRight,
   Loader2,
-  Check,
-  X,
   Smartphone,
   Eye,
   EyeOff,
@@ -72,12 +70,7 @@ export function ActivateAccountPage() {
   }, [token]);
 
   // Password complexity checks
-  const hasMinLength = password.length >= 8;
-  const hasUppercase = /[A-Z]/.test(password);
-  const hasLowercase = /[a-z]/.test(password);
-  const hasNumber = /[0-9]/.test(password);
-  const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(password);
-  const isPasswordValid = hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecial;
+  const isPasswordValid = password.length >= 4;
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -92,7 +85,7 @@ export function ActivateAccountPage() {
         setPasswordError('Password is required');
         hasErrors = true;
       } else if (!isPasswordValid) {
-        setPasswordError('Please satisfy all password security requirements');
+        setPasswordError('Password must be at least 4 characters');
         hasErrors = true;
       }
 
@@ -322,33 +315,6 @@ export function ActivateAccountPage() {
             disabled={isSubmitting}
             aria-required="true"
           />
-
-          {/* Realtime password requirements checklist */}
-          <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3.5 space-y-2 text-xs">
-            <p className="font-semibold text-slate-800">Password Security Requirements:</p>
-            <div className="grid grid-cols-2 gap-2 text-slate-600">
-              <div className={`flex items-center gap-1.5 ${hasMinLength ? 'text-emerald-700 font-medium' : ''}`}>
-                {hasMinLength ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <X className="h-3.5 w-3.5 text-slate-400" />}
-                <span>8+ Characters</span>
-              </div>
-              <div className={`flex items-center gap-1.5 ${hasUppercase ? 'text-emerald-700 font-medium' : ''}`}>
-                {hasUppercase ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <X className="h-3.5 w-3.5 text-slate-400" />}
-                <span>Uppercase Letter</span>
-              </div>
-              <div className={`flex items-center gap-1.5 ${hasLowercase ? 'text-emerald-700 font-medium' : ''}`}>
-                {hasLowercase ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <X className="h-3.5 w-3.5 text-slate-400" />}
-                <span>Lowercase Letter</span>
-              </div>
-              <div className={`flex items-center gap-1.5 ${hasNumber ? 'text-emerald-700 font-medium' : ''}`}>
-                {hasNumber ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <X className="h-3.5 w-3.5 text-slate-400" />}
-                <span>Number (0-9)</span>
-              </div>
-              <div className={`flex items-center gap-1.5 col-span-2 ${hasSpecial ? 'text-emerald-700 font-medium' : ''}`}>
-                {hasSpecial ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <X className="h-3.5 w-3.5 text-slate-400" />}
-                <span>Special Symbol (!@#$%^&*...)</span>
-              </div>
-            </div>
-          </div>
 
           <Input
             id="activate-confirm-password"

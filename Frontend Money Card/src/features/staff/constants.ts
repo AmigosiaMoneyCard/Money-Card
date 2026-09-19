@@ -117,3 +117,30 @@ export const PERMISSION_GROUPS: PermissionCategoryConfig[] = [
     ],
   },
 ];
+
+// ── Role Constants: Manager (Recharge Cards) vs Staff (Deduct Amount) ──
+export const MANAGER_PERMISSIONS: Permission[] = [
+  'CARD_VIEW',
+  'CARD_ISSUE',
+  'CARD_RETURN',
+  'CARD_BLOCK',
+  'CARD_UNBLOCK',
+  'RECHARGE',
+  'SESSION_VIEW',
+  'REFUND',
+  'PRODUCT_VIEW',
+  'PRODUCT_MANAGE',
+  'STAFF_VIEW',
+  'STAFF_MANAGE',
+  'BRANCH_VIEW',
+  'VIEW_ANALYTICS',
+  'VIEW_REPORTS',
+];
+
+export const STAFF_PERMISSIONS: Permission[] = [
+  'CARD_VIEW',
+  'PURCHASE',
+  'PRODUCT_VIEW',
+  'SESSION_VIEW',
+];
+

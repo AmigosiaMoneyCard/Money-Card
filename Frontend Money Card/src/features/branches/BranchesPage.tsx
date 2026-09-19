@@ -33,8 +33,6 @@ import {
   Eye,
   EyeOff,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { BranchDetailsModal } from './BranchDetailsModal';
 
 // ─── Slide Switch Component (Far Right End) ─────────────────
 interface SlideSwitchProps {
@@ -129,7 +127,6 @@ export const validatePassword = (password: string, isRequired = false): string |
 };
 
 export function BranchesPage() {
-  const navigate = useNavigate();
   const { currentBranch, selectBranch, setBranches: updateBranchContext } = useBranch();
   const { hasPermission } = usePermissions();
 
@@ -149,15 +146,6 @@ export function BranchesPage() {
 
   // Status toggle loading state
   const [isTogglingStatus, setIsTogglingStatus] = useState<string | null>(null);
-
-  // Individual Branch 360 End-to-End Details Modal state
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [selectedDetailsBranch, setSelectedDetailsBranch] = useState<Branch | null>(null);
-
-  const handleOpenBranchDetails = (branch: Branch) => {
-    setSelectedDetailsBranch(branch);
-    setShowDetailsModal(true);
-  };
 
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
 
@@ -776,15 +764,7 @@ export function BranchesPage() {
                 </div>
 
                 {/* Bottom Action: View/Edit Details */}
-                <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-slate-100">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleOpenBranchDetails(branch)}
-                    className="text-xs text-slate-500 hover:text-emerald-700 py-1 px-2 cursor-pointer"
-                  >
-                    360° Stats
-                  </Button>
+                <div className="flex items-center justify-end gap-2 pt-2.5 border-t border-slate-100">
                   {canManage && (
                     <Button
                       variant="outline"
@@ -1174,21 +1154,6 @@ export function BranchesPage() {
           </ModalFooter>
         </div>
       </Modal>
-
-      {/* ── Individual Branch 360° End-to-End Details Modal ──────── */}
-      <BranchDetailsModal
-        branch={selectedDetailsBranch}
-        isOpen={showDetailsModal}
-        onClose={() => setShowDetailsModal(false)}
-        onOpenMenu={(_branch) => {
-          setShowDetailsModal(false);
-          navigate('/products');
-        }}
-        onEditBranch={(branch) => {
-          setShowDetailsModal(false);
-          handleOpenViewEdit(branch);
-        }}
-      />
     </div>
   );
 }

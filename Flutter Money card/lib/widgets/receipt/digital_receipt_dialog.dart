@@ -403,29 +403,11 @@ class _DigitalReceiptDialogState extends State<DigitalReceiptDialog> {
 
             const SizedBox(height: AppSpacing.lg),
 
-            // Button 1: [ Generate & View PDF ]
+            // Button: [ Done ]
             AppButton(
-              label: _isGeneratingAndViewing ? 'Generating PDF...' : 'Generate & View PDF',
-              icon: _isGeneratingAndViewing ? null : Icons.picture_as_pdf_outlined,
-              isLoading: _isGeneratingAndViewing,
-              onPressed: (_isGeneratingAndViewing || _isDownloading) ? null : _handleGenerateAndViewPdf,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-
-            // Button 2: [ Download PDF ]
-            AppOutlinedButton(
-              label: _isDownloading ? 'Downloading PDF...' : 'Download PDF',
-              icon: _isDownloading ? null : Icons.download_outlined,
-              isLoading: _isDownloading,
-              onPressed: (_isGeneratingAndViewing || _isDownloading) ? null : _handleDownloadPdf,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-
-            // Button 3: [ Done ]
-            AppOutlinedButton(
               label: 'Done',
               icon: Icons.check,
-              onPressed: (_isGeneratingAndViewing || _isDownloading) ? null : _handleDone,
+              onPressed: _handleDone,
             ),
           ],
         ),

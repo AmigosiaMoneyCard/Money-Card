@@ -41,13 +41,6 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
     super.dispose();
   }
 
-  // Password policy checks
-  bool get _hasMinLength => _newPasswordController.text.length >= 8;
-  bool get _hasMaxLength => _newPasswordController.text.length <= 128;
-  bool get _hasUppercase => _newPasswordController.text.contains(RegExp(r'[A-Z]'));
-  bool get _hasLowercase => _newPasswordController.text.contains(RegExp(r'[a-z]'));
-  bool get _hasNumber => _newPasswordController.text.contains(RegExp(r'[0-9]'));
-  bool get _hasSpecialChar => _newPasswordController.text.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
   bool get _passwordsMatch =>
       _newPasswordController.text.isNotEmpty &&
       _newPasswordController.text == _confirmPasswordController.text;
@@ -62,9 +55,9 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
 
     if (!_formKey.currentState!.validate()) return;
 
-    if (!_hasMinLength || !_hasMaxLength || !_hasUppercase || !_hasLowercase || !_hasNumber || !_hasSpecialChar) {
+    if (_newPasswordController.text.trim().length < 4) {
       setState(() {
-        _localError = 'Please ensure your new password meets all security requirements.';
+        _localError = 'Password must be at least 4 characters long.';
       });
       return;
     }
@@ -265,8 +258,8 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                         if (val == null || val.isEmpty) {
                           return 'New password is required';
                         }
-                        if (val.length < 8) {
-                          return 'Password must be at least 8 characters';
+                        if (val.length < 4) {
+                          return 'Password must be at least 4 characters';
                         }
                         return null;
                       },
@@ -312,36 +305,6 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: AppSpacing.md),
-
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Password Requirements:',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondaryLight,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          _buildRequirementItem('At least 8 characters', _hasMinLength),
-                          _buildRequirementItem('At least 1 uppercase letter (A-Z)', _hasUppercase),
-                          _buildRequirementItem('At least 1 lowercase letter (a-z)', _hasLowercase),
-                          _buildRequirementItem('At least 1 number (0-9)', _hasNumber),
-                          _buildRequirementItem(r'At least 1 special character (!@#$%^&*...)', _hasSpecialChar),
-                          _buildRequirementItem('Passwords match', _passwordsMatch),
-                        ],
-                      ),
-                    ),
                     const SizedBox(height: AppSpacing.lg),
 
                     AppButton(
@@ -357,30 +320,6 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildRequirementItem(String text, bool met) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2.5),
-      child: Row(
-        children: [
-          Icon(
-            met ? Icons.check_circle : Icons.radio_button_unchecked,
-            size: 14,
-            color: met ? AppColors.success : const Color(0xFF94A3B8),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 12,
-              color: met ? const Color(0xFF0F172A) : const Color(0xFF64748B),
-              fontWeight: met ? FontWeight.w600 : FontWeight.w400,
-            ),
-          ),
-        ],
       ),
     );
   }
