@@ -134,6 +134,8 @@ void main() {
     });
 
     testWidgets('HomeScreen derives exact count of ACTIVE sessions and excludes SETTLED sessions', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 1600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
       // Seed: 2 ACTIVE sessions and 2 SETTLED sessions
       fakeSessionRepo.sessions = [
         CardSession(
@@ -198,7 +200,7 @@ void main() {
 
       // Verify Greeting and Branch info
       expect(find.text('Hello, Alex'), findsOneWidget);
-      expect(find.text('Branch: Main Cafeteria'), findsOneWidget);
+      expect(find.text('Counter: Main Cafeteria'), findsOneWidget);
 
       // Verify Active Sessions Counter is EXACTLY 2 (Not 4!)
       expect(find.text('2'), findsOneWidget);
@@ -216,6 +218,8 @@ void main() {
     });
 
     testWidgets('HomeScreen updates count in real-time when new session is created and when session is settled', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 1600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
       fakeSessionRepo.sessions = [
         CardSession(
           id: 'sess-001',
@@ -273,6 +277,8 @@ void main() {
     });
 
     testWidgets('HomeScreen renders Empty State when branch has 0 active sessions', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 1600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
       fakeSessionRepo.sessions = []; // No sessions
 
       final sessionNotifier = SessionListNotifier(fakeSessionRepo, 'branch-001');
@@ -298,10 +304,12 @@ void main() {
       // Count is 0
       expect(find.text('0'), findsOneWidget);
       expect(find.text('No Active Sessions'), findsOneWidget);
-      expect(find.text('There are no active customer sessions in this branch right now.'), findsOneWidget);
+      expect(find.text('There are no active customer sessions in this counter right now.'), findsOneWidget);
     });
 
     testWidgets('HomeScreen renders Error State when API fails without showing fake data', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 1600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
       fakeSessionRepo.shouldThrowError = true;
 
       final sessionNotifier = SessionListNotifier(fakeSessionRepo, 'branch-001');
@@ -331,6 +339,8 @@ void main() {
     });
 
     testWidgets('HomeScreen respects branch isolation and does not show sessions from other branches', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 1600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
       fakeSessionRepo.sessions = [
         CardSession(
           id: 'sess-branch-1',

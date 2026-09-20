@@ -32,6 +32,9 @@ class ApiEndpoints {
   static String returnCardSession(String id) => '/card-sessions/$id/return';
   static String returnSession(String id) => '/card-sessions/$id/return';
   static String refundCardSession(String id) => '/card-sessions/$id/refund';
+  static const String recharges = '/card-sessions/transactions/recharges';
+  static String cancelRecharge(String id) => '/card-sessions/transactions/$id/cancel-recharge';
+  static String cancelOrder(String id) => '/card-sessions/transactions/$id/cancel-order';
 
   // Products & Inventory endpoints (M0 V10 Section 7)
   static const String products = '/products';

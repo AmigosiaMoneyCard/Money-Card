@@ -237,10 +237,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                           const SizedBox(height: 2),
                           analyticsState.isLoading
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                              ? const Text(
+                                  '···',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary,
+                                  ),
                                 )
                               : Text(
                                   todayMetric != null
@@ -276,10 +279,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                           const SizedBox(height: 2),
                           analyticsState.isLoading
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                              ? const Text(
+                                  '···',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textPrimaryLight,
+                                  ),
                                 )
                               : Text(
                                   todayMetric != null
@@ -305,15 +311,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
-                  if (canIssueCard)
+                  if (canIssueCard) ...[
                     Expanded(
                       child: _buildQuickActionCard(
                         icon: Icons.add_card,
-                        label: 'Issue New Card',
+                        label: 'Issue Card',
                         onTap: () => _safePush('/app/cards/issue'),
                       ),
                     ),
-                  if (canIssueCard) const SizedBox(width: AppSpacing.sm),
+                    const SizedBox(width: AppSpacing.sm),
+                  ],
+                  Expanded(
+                    child: _buildQuickActionCard(
+                      icon: Icons.receipt_long_outlined,
+                      label: 'Recharges',
+                      onTap: () => _safePush('/app/recharges'),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: _buildQuickActionCard(
                       icon: Icons.credit_card,

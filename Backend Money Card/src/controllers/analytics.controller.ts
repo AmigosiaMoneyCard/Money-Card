@@ -291,6 +291,16 @@ export async function getOrgAnalytics(req: Request, res: Response) {
   let totalRechargeVolume = 0;
   let totalPurchaseVolume = 0;
   let totalRefundVolume = 0;
+  let totalRechargeCount = 0;
+  let totalRefundCount = 0;
+  let cashRechargeCount = 0;
+  let upiRechargeCount = 0;
+  let cancelledTopUpsCount = 0;
+  let cancelledTopUpsVolume = 0;
+  let cancelledCashTopUpsVolume = 0;
+  let cancelledUpiTopUpsVolume = 0;
+  let cancelledOrdersCount = 0;
+  let cancelledOrdersVolume = 0;
 
   const branchMetricsMap = new Map<string, {
     branchId: string;
@@ -309,6 +319,11 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     upiRechargeVolume: number;
     refundCount: number;
     refundVolume: number;
+    cancelledTopUpsCount: number;
+    cancelledTopUpsVolume: number;
+    cancelledCashTopUpsVolume: number;
+    cancelledOrdersCount: number;
+    cancelledOrdersVolume: number;
     totalRevenue: number;
     sessionCount: number;
     activeSessionsCount: number;
@@ -320,6 +335,17 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     lowStockItemCount: number;
     productDemand: Array<{ productId: string; productName: string; quantitySold: number; totalRevenue: number }>;
     peakPeriods: Array<{ timeSlot: string; activityLevel: string; transactionCount: number; purchaseVolume: number }>;
+    moneyAdded: number;
+    moneyRefunded: number;
+    cancelledTopUps: number;
+    netMoneyCollected: number;
+    cashInDrawer: number;
+    upiMoney: number;
+    upiCount: number;
+    cashMoney: number;
+    cashCount: number;
+    cardsGivenOut: number;
+    cardsReturned: number;
   }>();
 
   branches.forEach((b) => {
@@ -355,6 +381,11 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       upiRechargeVolume: 0,
       refundCount: 0,
       refundVolume: 0,
+      cancelledTopUpsCount: 0,
+      cancelledTopUpsVolume: 0,
+      cancelledCashTopUpsVolume: 0,
+      cancelledOrdersCount: 0,
+      cancelledOrdersVolume: 0,
       totalRevenue: 0,
       sessionCount: b.cardSessions.length,
       activeSessionsCount: activeSess,
@@ -366,6 +397,17 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       lowStockItemCount: lowStock,
       productDemand: bProductDemand,
       peakPeriods: [],
+      moneyAdded: 0,
+      moneyRefunded: 0,
+      cancelledTopUps: 0,
+      netMoneyCollected: 0,
+      cashInDrawer: 0,
+      upiMoney: 0,
+      upiCount: 0,
+      cashMoney: 0,
+      cashCount: 0,
+      cardsGivenOut: b.cardSessions.length,
+      cardsReturned: settledSess,
     });
   });
 
@@ -377,6 +419,35 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     const bm = branchMetricsMap.get(tx.branchId);
     const txType = String(tx.type || '');
     const paymentMethod = String((tx as any).paymentMethod || '').toUpperCase();
+    const isCancelled = Boolean((tx.items as any)?.isCancelled);
+
+    // Track cancelled transactions
+    if (isCancelled) {
+      if (txType === 'PURCHASE') {
+        cancelledOrdersCount++;
+        cancelledOrdersVolume += tx.amount;
+        if (bm) {
+          bm.cancelledOrdersCount++;
+          bm.cancelledOrdersVolume += tx.amount;
+        }
+      } else if (txType.includes('RECHARGE') || txType === 'CASH' || txType === 'UPI') {
+        cancelledTopUpsCount++;
+        cancelledTopUpsVolume += tx.amount;
+        if (paymentMethod === 'UPI' || txType === 'RECHARGE_UPI') {
+          cancelledUpiTopUpsVolume += tx.amount;
+        } else {
+          cancelledCashTopUpsVolume += tx.amount;
+        }
+        if (bm) {
+          bm.cancelledTopUpsCount++;
+          bm.cancelledTopUpsVolume += tx.amount;
+          if (paymentMethod !== 'UPI' && txType !== 'RECHARGE_UPI') {
+            bm.cancelledCashTopUpsVolume += tx.amount;
+          }
+        }
+      }
+      return; // Exclude cancelled transactions from active volume totals
+    }
 
     // Track hourly activity for live peak calculation
     if (tx.branchId) {
@@ -405,7 +476,9 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       }
     } else if (txType === 'RECHARGE_CASH' || paymentMethod === 'CASH' || paymentMethod === 'CARD' || txType === 'CASH') {
       totalRechargeVolume += tx.amount;
+      totalRechargeCount++;
       cashRechargeVolume += tx.amount;
+      cashRechargeCount++;
       if (bm) {
         bm.transactionCount++;
         bm.rechargeCount++;
@@ -417,7 +490,9 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       }
     } else if (txType === 'RECHARGE_UPI' || paymentMethod === 'UPI' || txType === 'UPI') {
       totalRechargeVolume += tx.amount;
+      totalRechargeCount++;
       upiRechargeVolume += tx.amount;
+      upiRechargeCount++;
       if (bm) {
         bm.transactionCount++;
         bm.rechargeCount++;
@@ -427,8 +502,10 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       }
     } else if (txType.includes('RECHARGE') || txType === 'ISSUANCE') {
       totalRechargeVolume += tx.amount;
+      totalRechargeCount++;
       if (paymentMethod === 'UPI') {
         upiRechargeVolume += tx.amount;
+        upiRechargeCount++;
         if (bm) {
           bm.transactionCount++;
           bm.rechargeCount++;
@@ -438,6 +515,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
         }
       } else {
         cashRechargeVolume += tx.amount;
+        cashRechargeCount++;
         if (bm) {
           bm.transactionCount++;
           bm.rechargeCount++;
@@ -450,6 +528,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       }
     } else if (txType.includes('REFUND') || txType.includes('RETURN') || txType.includes('SETTLE')) {
       totalRefundVolume += tx.amount;
+      totalRefundCount++;
       if (bm) {
         bm.transactionCount++;
         bm.refundCount++;
@@ -467,6 +546,28 @@ export async function getOrgAnalytics(req: Request, res: Response) {
   branchMetricsMap.forEach((bm) => {
     bm.avgTransactionValue = bm.transactionCount > 0 ? Number((bm.purchaseVolume / bm.transactionCount).toFixed(2)) : 0;
     bm.avgPurchaseValue = bm.purchaseCount > 0 ? Number((bm.purchaseVolume / bm.purchaseCount).toFixed(2)) : 0;
+    bm.purchaseVolume = Number(bm.purchaseVolume.toFixed(2));
+    bm.rechargeVolume = Number(bm.rechargeVolume.toFixed(2));
+    bm.cardRechargeVolume = Number((bm.cardRechargeVolume || 0).toFixed(2));
+    bm.cashRechargeVolume = Number((bm.cashRechargeVolume || 0).toFixed(2));
+    bm.upiRechargeVolume = Number((bm.upiRechargeVolume || 0).toFixed(2));
+    bm.refundVolume = Number(bm.refundVolume.toFixed(2));
+    bm.totalRevenue = Number(bm.totalRevenue.toFixed(2));
+    bm.cancelledTopUpsVolume = Number(bm.cancelledTopUpsVolume.toFixed(2));
+    bm.cancelledOrdersVolume = Number(bm.cancelledOrdersVolume.toFixed(2));
+
+    // Easy everyday words calculations
+    bm.moneyAdded = bm.rechargeVolume;
+    bm.moneyRefunded = bm.refundVolume;
+    bm.cancelledTopUps = bm.cancelledTopUpsVolume;
+    bm.netMoneyCollected = Number((bm.rechargeVolume - bm.refundVolume).toFixed(2));
+    bm.cashInDrawer = Number((bm.cashRechargeVolume - bm.refundVolume).toFixed(2));
+    bm.upiMoney = bm.upiRechargeVolume;
+    bm.upiCount = bm.upiRechargeCount;
+    bm.cashMoney = bm.cashRechargeVolume;
+    bm.cashCount = bm.cashRechargeCount;
+    bm.cardsGivenOut = bm.sessionCount;
+    bm.cardsReturned = bm.settledSessionsCount;
     bm.purchaseVolume = Number(bm.purchaseVolume.toFixed(2));
     bm.rechargeVolume = Number(bm.rechargeVolume.toFixed(2));
     bm.cardRechargeVolume = Number((bm.cardRechargeVolume || 0).toFixed(2));
@@ -741,7 +842,9 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     totalTransactions: transactions.length,
     totalRechargeVolume: Number(totalRechargeVolume.toFixed(2)),
     cashRechargeVolume: Number(cashRechargeVolume.toFixed(2)),
+    cashRechargeCount,
     upiRechargeVolume: Number(upiRechargeVolume.toFixed(2)),
+    upiRechargeCount,
     totalPurchaseVolume: Number(totalPurchaseVolume.toFixed(2)),
     totalRefundVolume: Number(totalRefundVolume.toFixed(2)),
     activeSessionsCount,
@@ -756,6 +859,24 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     activeStaffCount: staffPerformance.filter((s) => s.status === 'ACTIVE').length,
     totalStaffCount: staffPerformance.length,
     cardFleetAnalytics,
+
+    // Easy Everyday Words Metrics
+    moneyAdded: Number(totalRechargeVolume.toFixed(2)),
+    moneyRefunded: Number(totalRefundVolume.toFixed(2)),
+    cancelledTopUps: Number(cancelledTopUpsVolume.toFixed(2)),
+    cancelledTopUpsCount,
+    netMoneyCollected: Number((totalRechargeVolume - totalRefundVolume).toFixed(2)),
+    cashInDrawer: Number((cashRechargeVolume - totalRefundVolume).toFixed(2)),
+    upiMoney: Number(upiRechargeVolume.toFixed(2)),
+    upiCount: upiRechargeCount,
+    cashMoney: Number(cashRechargeVolume.toFixed(2)),
+    cashCount: cashRechargeCount,
+    cardsGivenOut: allSessions.length,
+    cardsReturned: settledSessionsCount,
+    cancelledOrdersCount,
+    cancelledOrdersVolume: Number(cancelledOrdersVolume.toFixed(2)),
+    rechargeCount: totalRechargeCount,
+    refundCount: totalRefundCount,
   });
 }
 

@@ -1,4 +1,4 @@
-import { Eye, RefreshCw, BarChart3, CreditCard, Store } from 'lucide-react';
+import { Eye, RefreshCw, BarChart3, CreditCard, Store, Receipt } from 'lucide-react';
 import { useAuth } from '@/hooks';
 import { Button, Select, LoadingState, ErrorState } from '@/components/ui';
 import {
@@ -6,6 +6,7 @@ import {
   OrgAdminPdfModal,
 } from './OrgAdminAnalyticsComponents';
 import { OrgAdminCardTracker } from './OrgAdminCardTracker';
+import { RechargesTableView } from './RechargesTableView';
 import type { SortMetric } from './OrgAdminAnalyticsComponents';
 import {
   useOrgAdminAnalytics,
@@ -47,6 +48,7 @@ export function OrgAdminAnalyticsView() {
     setStartDate,
     setEndDate,
     fetchAnalytics,
+    handlePresetChange,
     handleCustomDateApply,
     handleViewPdf,
     handleDownloadFinancialPdf,
@@ -101,7 +103,8 @@ export function OrgAdminAnalyticsView() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 focus:border-emerald-500 focus:outline-none"
+              className="h-8 px-2 text-xs bg-white border border-slate-200 rounded text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium"
+              aria-label="Start date"
             />
             <span className="text-xs text-slate-400">to</span>
             <input
@@ -109,24 +112,22 @@ export function OrgAdminAnalyticsView() {
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 focus:border-emerald-500 focus:outline-none"
+              className="h-8 px-2 text-xs bg-white border border-slate-200 rounded text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium"
+              aria-label="End date"
             />
             <Button
+              variant="secondary"
               size="sm"
-              variant="outline"
               onClick={() => handleCustomDateApply(startDate, endDate)}
-              className="h-7 px-2.5 text-xs font-semibold"
+              className="h-8 px-2.5 text-xs font-semibold"
             >
               Apply
             </Button>
             <Button
-              size="sm"
               variant="outline"
-              onClick={() => {
-                const today = new Date().toISOString().split('T')[0];
-                handleCustomDateApply(today, today);
-              }}
-              className="h-7 px-2.5 text-xs font-semibold border-emerald-300 bg-emerald-50/70 text-emerald-700 hover:bg-emerald-100"
+              size="sm"
+              onClick={() => handlePresetChange('today')}
+              className="h-8 px-2 text-xs font-semibold text-slate-600 hover:text-slate-900 border-slate-200 bg-white"
             >
               Reset to Today
             </Button>
@@ -156,7 +157,7 @@ export function OrgAdminAnalyticsView() {
         </div>
       </div>
 
-      {/* ─── Tab Navigation: Strictly Financial Overview & Card Analytics ─── */}
+      {/* ─── Tab Navigation: Financial Overview, Card Analytics & Recharges ─── */}
       <div className="flex items-center gap-2 border-b border-slate-200">
         <button
           type="button"
@@ -183,10 +184,25 @@ export function OrgAdminAnalyticsView() {
           <CreditCard className="h-4 w-4 text-indigo-600" />
           <span>Card Analytics</span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabChange('recharges')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+            activeTab === 'recharges'
+              ? 'border-emerald-600 text-emerald-700 bg-emerald-50/50 rounded-t-lg'
+              : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+          }`}
+        >
+          <Receipt className="h-4 w-4 text-emerald-600" />
+          <span>Recharges</span>
+        </button>
       </div>
 
       {/* ─── Main Content ─── */}
-      {isLoading ? (
+      {activeTab === 'recharges' ? (
+        <RechargesTableView branchId={branchFilter === 'ALL' ? undefined : branchFilter} />
+      ) : isLoading ? (
         <LoadingState message="Calculating analytics metrics..." />
       ) : error ? (
         <ErrorState title="Failed to load analytics" message={error} onRetry={fetchAnalytics} />

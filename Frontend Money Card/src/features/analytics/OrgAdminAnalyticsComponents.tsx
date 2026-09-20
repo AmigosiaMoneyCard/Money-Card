@@ -51,140 +51,222 @@ export function OrgAdminFinancialSection({
   upiRecharge,
   totalRefund,
 }: FinancialSectionProps) {
-  const floatBalance = analytics.cardFleetAnalytics?.totalFloatBalance ?? 0;
-  const totalRecharge = cashRecharge + upiRecharge;
-  const cashPct = totalRecharge > 0 ? Math.round((cashRecharge / totalRecharge) * 100) : 0;
-  const upiPct = totalRecharge > 0 ? 100 - cashPct : 0;
+  const moneyAdded = analytics.moneyAdded ?? (cashRecharge + upiRecharge);
+  const moneyRefunded = analytics.moneyRefunded ?? totalRefund;
+  const cancelledTopUps = analytics.cancelledTopUps ?? 0;
+  const cancelledTopUpsCount = analytics.cancelledTopUpsCount ?? 0;
+  const cancelledOrdersVolume = analytics.cancelledOrdersVolume ?? 0;
+  const cancelledOrdersCount = analytics.cancelledOrdersCount ?? 0;
+
+  const netMoneyCollected = analytics.netMoneyCollected ?? (moneyAdded - moneyRefunded);
+  const cashInDrawer = analytics.cashInDrawer ?? (cashRecharge - totalRefund);
+
+  const upiMoney = analytics.upiMoney ?? upiRecharge;
+  const upiCount = analytics.upiCount ?? (analytics.upiRechargeCount ?? 0);
+  const cashMoney = analytics.cashMoney ?? cashRecharge;
+  const cashCount = analytics.cashCount ?? (analytics.cashRechargeCount ?? 0);
+
+  const cardsGivenOut = analytics.cardsGivenOut ?? (analytics.activeCardsCount ?? 0);
+  const cardsReturned = analytics.cardsReturned ?? (analytics.closedCardsCount ?? 0);
 
   return (
-    <div className="space-y-4">
-      {/* ─── Top 4 Core Financial Cards (Unified Box Style) ─── */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
+    <div className="space-y-6">
+      {/* ─── 1. Key Highlights: Net Money & Cash in Drawer ─── */}
+      <div className="grid gap-5 md:grid-cols-2">
+        {/* Net Money Collected */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Food Sales (POS)
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Net Money Collected
             </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-              <TrendingUp className="h-4 w-4" />
-            </div>
+            <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+              Added − Refunded
+            </span>
           </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-slate-900">
-              {formatCurrency(analytics.totalPurchaseVolume)}
+          <div className="mt-4">
+            <p className="font-mono text-3xl sm:text-4xl font-extrabold text-slate-900">
+              {formatCurrency(netMoneyCollected)}
             </p>
-            <p className="mt-1 text-xs text-slate-500">Gross cafeteria sales</p>
+            <p className="mt-2 text-xs text-slate-500">
+              Total money retained across online UPI and cash deposits
+            </p>
           </div>
-        </Card>
+        </div>
 
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
+        {/* Cash in Drawer (To Hand Over) */}
+        <div className="rounded-2xl border-2 border-emerald-500/20 bg-emerald-50/40 p-6 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Total Recharges
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-900">
+              💵 Cash in Drawer (To Hand Over)
+            </span>
+            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
+              Physical Cash
+            </span>
+          </div>
+          <div className="mt-4">
+            <p className="font-mono text-3xl sm:text-4xl font-extrabold text-emerald-700">
+              {formatCurrency(cashInDrawer)}
+            </p>
+            <p className="mt-2 text-xs text-emerald-800/80">
+              Physical cash received minus cash refunds — exact amount in cashier register
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── 2. Side-by-Side Online UPI & Cash Comparison Boxes ─── */}
+      <div className="grid gap-5 md:grid-cols-2">
+        {/* Online UPI Money */}
+        <div className="rounded-2xl border border-purple-200 bg-purple-50/30 p-6 shadow-xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-700">
+                <CreditCard className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900">📱 Online UPI Money</h3>
+                <p className="text-xs text-slate-500">Instant QR & App Payments</p>
+              </div>
+            </div>
+            <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-700">
+              {upiCount} top-ups
+            </span>
+          </div>
+          <div className="mt-4">
+            <p className="font-mono text-3xl font-black text-purple-700">
+              {formatCurrency(upiMoney)}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">Credited directly to bank account</p>
+          </div>
+        </div>
+
+        {/* Cash Money */}
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/30 p-6 shadow-xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                <DollarSign className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900">💵 Cash Money</h3>
+                <p className="text-xs text-slate-500">Paper bills at the counter</p>
+              </div>
+            </div>
+            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
+              {cashCount} top-ups
+            </span>
+          </div>
+          <div className="mt-4">
+            <p className="font-mono text-3xl font-black text-emerald-700">
+              {formatCurrency(cashMoney)}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">Cash collected at register counters</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── 3. Four Core Activity Cards (Everyday Words) ─── */}
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Money Added */}
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Money Added
             </span>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-              <CreditCard className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-slate-900">
-              {formatCurrency(analytics.totalRechargeVolume)}
-            </p>
-            <p className="mt-1 text-xs text-slate-500">Total card deposits</p>
-          </div>
-        </Card>
-
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Total Card Balance
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
               <Wallet className="h-4 w-4" />
             </div>
           </div>
-          <div className="mt-2">
+          <div className="mt-3">
             <p className="font-mono text-2xl font-bold text-slate-900">
-              {formatCurrency(floatBalance)}
+              {formatCurrency(moneyAdded)}
             </p>
-            <p className="mt-1 text-xs text-slate-500">Money remaining on cards</p>
+            <p className="mt-1 text-xs text-slate-500">Total top-ups loaded onto cards</p>
           </div>
         </Card>
 
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
+        {/* Money Refunded */}
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Total Transactions
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
-              <BarChart3 className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-slate-900">
-              {analytics.totalTransactions.toLocaleString()}
-            </p>
-            <p className="mt-1 text-xs text-slate-500">Total cafeteria activity</p>
-          </div>
-        </Card>
-      </div>
-
-      {/* ─── Bottom 3 Payment & Refund Cards (Unified Box Style) ─── */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Cash Recharges
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-              <DollarSign className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-slate-900">
-              {formatCurrency(cashRecharge)}
-            </p>
-            {totalRecharge > 0 && (
-              <p className="mt-1 text-xs text-slate-500">{cashPct}% of total recharges</p>
-            )}
-          </div>
-        </Card>
-
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              UPI Recharges
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
-              <CreditCard className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-slate-900">
-              {formatCurrency(upiRecharge)}
-            </p>
-            {totalRecharge > 0 && (
-              <p className="mt-1 text-xs text-slate-500">{upiPct}% of total recharges</p>
-            )}
-          </div>
-        </Card>
-
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Cash Returned
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Money Refunded
             </span>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
               <ArrowUpDown className="h-4 w-4" />
             </div>
           </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-slate-900">
-              {formatCurrency(totalRefund)}
+          <div className="mt-3">
+            <p className="font-mono text-2xl font-bold text-rose-600">
+              {formatCurrency(moneyRefunded)}
             </p>
-            <p className="mt-1 text-xs text-slate-500">Total refunded / returned to customers</p>
+            <p className="mt-1 text-xs text-slate-500">Remaining balance given back to customers</p>
           </div>
         </Card>
+
+        {/* Cancelled Top-ups */}
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Cancelled Top-ups
+            </span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+              <RefreshCw className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <p className="font-mono text-2xl font-bold text-amber-600">
+              {formatCurrency(cancelledTopUps)}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">{cancelledTopUpsCount} recharges reversed</p>
+          </div>
+        </Card>
+
+        {/* Cancelled Food Orders */}
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Cancelled Food Orders
+            </span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
+              <AlertCircle className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <p className="font-mono text-2xl font-bold text-orange-600">
+              {formatCurrency(cancelledOrdersVolume)}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">{cancelledOrdersCount} orders restored</p>
+          </div>
+        </Card>
+      </div>
+
+      {/* ─── 4. Card Operations Activity ─── */}
+      <div className="grid gap-5 sm:grid-cols-2">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+              <CheckCircle2 className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Cards Given Out</p>
+              <p className="font-mono text-2xl font-bold text-slate-900">{cardsGivenOut}</p>
+              <p className="text-xs text-slate-500">Active card sessions created</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+              <CreditCard className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Cards Returned & Closed</p>
+              <p className="font-mono text-2xl font-bold text-slate-900">{cardsReturned}</p>
+              <p className="text-xs text-slate-500">Sessions settled and returned to inventory</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

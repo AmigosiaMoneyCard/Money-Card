@@ -8,6 +8,7 @@ import '../../core/constants/app_spacing.dart';
 import '../../core/constants/permission_constants.dart';
 import '../../models/card.dart';
 import '../../models/card_session.dart';
+import '../../models/transaction.dart';
 import '../../providers/api_providers.dart';
 import '../../providers/branch_provider.dart';
 import '../../providers/card_operations_provider.dart';
@@ -357,16 +358,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     await _refreshSession();
   }
 
-  Future<void> _openViewSession() async {
-    final session = _activeSession;
-    if (session == null) return;
-
-    if (GoRouter.maybeOf(context) != null) {
-      await context.push('/app/sessions/${session.id}');
-    }
-    await _refreshSession();
-  }
-
   Future<void> _handleSettleReturn() async {
     final session = _activeSession;
     final card = _resolvedCard;
@@ -654,7 +645,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
               const Text(
-                                'This card is blocked and cannot be used. Please contact your manager.',
+                'Cannot perform operations on a blocked card. This card is blocked and cannot be used. Please contact your manager.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppColors.error,
@@ -1016,51 +1007,81 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
 
             // 2. Action Hub Section Header
             const SectionHeader(
-              title: 'Active Card Operations',
+              title: 'Card Actions & Operations',
             ),
             const SizedBox(height: AppSpacing.sm),
 
-            // ACTION 1: ADD PRODUCTS
+            // OPTION 1: ADD PRODUCTS
             if (canPurchase) ...[
               _buildActionTile(
-                icon: Icons.fastfood_outlined,
+                icon: Icons.add_shopping_cart,
                 iconColor: AppColors.primary,
                 title: 'Add Products',
+                subtitle: 'Order food items from menu catalog',
                 onTap: _openAddProducts,
               ),
               const SizedBox(height: AppSpacing.sm),
             ],
 
-            // ACTION 2: RECHARGE (Cash / Store UPI)
+            // OPTION 2: RECHARGE CARD (ADD MONEY)
             if (canRecharge) ...[
               _buildActionTile(
                 icon: Icons.account_balance_wallet_outlined,
                 iconColor: AppColors.success,
                 title: 'Recharge Card',
+                subtitle: 'Load cash or online UPI balance onto card',
                 onTap: _openRecharge,
               ),
               const SizedBox(height: AppSpacing.sm),
             ],
 
-            // ACTION 3: VIEW SESSION & TRANSACTIONS
-            if (canViewSession) ...[
-              _buildActionTile(
-                icon: Icons.receipt_long_outlined,
-                iconColor: Colors.blue,
-                title: 'View Session & Transaction History',
-                onTap: _openViewSession,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-            ],
+            // OPTION 3: TOP-UP HISTORY (WITH CANCEL TOP-UP FLOW)
+            _buildActionTile(
+              icon: Icons.receipt_long_outlined,
+              iconColor: Colors.purple,
+              title: 'Top-up History',
+              subtitle: 'View recharges or cancel wrong top-ups',
+              onTap: () => _showTopUpHistorySheet(context, session),
+            ),
+            const SizedBox(height: AppSpacing.sm),
 
-            // ACTION 5: SETTLE / RETURN CARD
+            // OPTION 4: FOOD ORDERS (WITH CANCEL ORDER FLOW)
+            _buildActionTile(
+              icon: Icons.fastfood_outlined,
+              iconColor: AppColors.primaryDark,
+              title: 'Food Orders',
+              subtitle: 'View total orders placed or cancel order',
+              onTap: () => _showFoodOrdersSheet(context, session),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+
+            // OPTION 5: SETTLE / RETURN CARD
             if (canSettleReturn) ...[
               _buildActionTile(
                 icon: Icons.assignment_return_outlined,
                 iconColor: AppColors.warning,
                 title: 'Settle / Return Card',
+                subtitle: session.balance > 0
+                    ? 'Refund ₹${session.balance.toStringAsFixed(2)} and close card'
+                    : 'Close session & return card to available stock',
                 isDestructive: session.balance > 0,
                 onTap: _handleSettleReturn,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+
+            // OPTION 6: VIEW SESSION & TRANSACTION HISTORY
+            if (canViewSession) ...[
+              _buildActionTile(
+                icon: Icons.history_outlined,
+                iconColor: AppColors.textSecondaryLight,
+                title: 'View Session & Transaction History',
+                subtitle: 'View full audit log of all card events',
+                onTap: () {
+                  if (GoRouter.maybeOf(context) != null) {
+                    context.push('/app/sessions/${session.id}');
+                  }
+                },
               ),
               const SizedBox(height: AppSpacing.md),
             ],
@@ -1087,7 +1108,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
   }) {
     return AppCard(
       onTap: onTap,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 14),
       child: Row(
         children: [
           Container(
@@ -1133,5 +1154,614 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
         ],
       ),
     );
+  }
+
+  // ==========================================
+  // TOP-UP HISTORY BOTTOM SHEET & CANCEL FLOW
+  // ==========================================
+
+  void _showTopUpHistorySheet(BuildContext context, CardSession session) {
+    final allTx = session.transactions ?? [];
+    final topUps = allTx.where((t) => t.type == TransactionType.recharge).toList();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => Container(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 10, bottom: 6),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Top-up History',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Card Balance: ₹${session.balance.toStringAsFixed(2)}',
+                        style: const TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(sheetCtx).pop(),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: topUps.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.history_toggle_off, size: 48, color: AppColors.textTertiaryLight),
+                            SizedBox(height: 12),
+                            Text(
+                              'No top-ups recorded yet',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: AppSpacing.paddingMd,
+                      itemCount: topUps.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      itemBuilder: (ctx, idx) {
+                        final t = topUps[idx];
+                        final isCash = t.paymentMethod == PaymentMethod.cash;
+
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: t.isCancelled ? Colors.grey.shade100 : Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: t.isCancelled ? Colors.grey.shade300 : AppColors.borderLight,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        '+₹${t.amount.toStringAsFixed(2)}',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: t.isCancelled ? Colors.grey : AppColors.success,
+                                          decoration: t.isCancelled ? TextDecoration.lineThrough : null,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: isCash ? AppColors.successLight : Colors.purple.shade50,
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          isCash ? '💵 Cash' : '📱 UPI',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: isCash ? AppColors.primaryDark : Colors.purple.shade700,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (t.isCancelled)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade200,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text(
+                                        'CANCELLED',
+                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black54),
+                                      ),
+                                    )
+                                  else
+                                    OutlinedButton.icon(
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppColors.error,
+                                        side: const BorderSide(color: AppColors.error),
+                                        visualDensity: VisualDensity.compact,
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                      ),
+                                      icon: const Icon(Icons.cancel_outlined, size: 14),
+                                      label: const Text('Cancel Top-up', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                      onPressed: () {
+                                        Navigator.of(sheetCtx).pop();
+                                        _handleCancelRecharge(t.id, t.amount, session);
+                                      },
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Staff: ${t.staffName ?? 'Counter Staff'}',
+                                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
+                                  ),
+                                  Text(
+                                    _formatDateTime(t.createdAt),
+                                    style: const TextStyle(fontSize: 11, color: AppColors.textTertiaryLight),
+                                  ),
+                                ],
+                              ),
+                              if (t.isCancelled && t.cancellationReason != null) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Reason: ${t.cancellationReason}',
+                                  style: const TextStyle(fontSize: 11, color: Colors.black54, fontStyle: FontStyle.italic),
+                                ),
+                              ],
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ==========================================
+  // FOOD ORDERS BOTTOM SHEET & CANCEL FLOW
+  // ==========================================
+
+  void _showFoodOrdersSheet(BuildContext context, CardSession session) {
+    final allTx = session.transactions ?? [];
+    final orders = allTx.where((t) => t.type == TransactionType.purchase).toList();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => Container(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 10, bottom: 6),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Food Orders',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        '${orders.length} orders recorded on this card',
+                        style: const TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(sheetCtx).pop(),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: orders.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.fastfood_outlined, size: 48, color: AppColors.textTertiaryLight),
+                            SizedBox(height: 12),
+                            Text(
+                              'No food orders placed yet',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: AppSpacing.paddingMd,
+                      itemCount: orders.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      itemBuilder: (ctx, idx) {
+                        final t = orders[idx];
+                        final items = t.items ?? [];
+
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: t.isCancelled ? Colors.grey.shade100 : Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: t.isCancelled ? Colors.grey.shade300 : AppColors.borderLight,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '-₹${t.amount.toStringAsFixed(2)}',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: t.isCancelled ? Colors.grey : AppColors.error,
+                                      decoration: t.isCancelled ? TextDecoration.lineThrough : null,
+                                    ),
+                                  ),
+                                  if (t.isCancelled)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade200,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text(
+                                        'CANCELLED',
+                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black54),
+                                      ),
+                                    )
+                                  else
+                                    OutlinedButton.icon(
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppColors.error,
+                                        side: const BorderSide(color: AppColors.error),
+                                        visualDensity: VisualDensity.compact,
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                      ),
+                                      icon: const Icon(Icons.remove_shopping_cart_outlined, size: 14),
+                                      label: const Text('Cancel Order', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                      onPressed: () {
+                                        Navigator.of(sheetCtx).pop();
+                                        _handleCancelOrder(t.id, t.amount, session);
+                                      },
+                                    ),
+                                ],
+                              ),
+                              if (items.isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surfaceVariantLight,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: items.map((item) {
+                                      return Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 2),
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              '${item.quantity}x ${item.itemName ?? "Item"}',
+                                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                                            ),
+                                            if (item.totalAmount != null)
+                                              Text(
+                                                '₹${item.totalAmount!.toStringAsFixed(2)}',
+                                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                              ),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 6),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Staff: ${t.staffName ?? 'Counter Staff'}',
+                                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
+                                  ),
+                                  Text(
+                                    _formatDateTime(t.createdAt),
+                                    style: const TextStyle(fontSize: 11, color: AppColors.textTertiaryLight),
+                                  ),
+                                ],
+                              ),
+                              if (t.isCancelled && t.cancellationReason != null) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Reason: ${t.cancellationReason}',
+                                  style: const TextStyle(fontSize: 11, color: Colors.black54, fontStyle: FontStyle.italic),
+                                ),
+                              ],
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ==========================================
+  // CANCELLATION HANDLERS
+  // ==========================================
+
+  Future<void> _handleCancelRecharge(String txId, double amount, CardSession session) async {
+    if (session.balance < amount) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Cannot cancel top-up: Customer already spent ₹${(amount - session.balance).toStringAsFixed(2)}. Current balance is only ₹${session.balance.toStringAsFixed(2)}.',
+          ),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    String selectedReason = 'Wrong Amount Entered';
+    final customReasonCtrl = TextEditingController();
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogCtx, setModalState) => AlertDialog(
+          title: Row(
+            children: const [
+              Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 24),
+              SizedBox(width: 8),
+              Text('Cancel Top-up?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'This will void the top-up and deduct ₹${amount.toStringAsFixed(2)} from the card balance.',
+                style: const TextStyle(fontSize: 14, color: AppColors.textPrimaryLight),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Select Cancellation Reason:',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                initialValue: selectedReason,
+                items: const [
+                  DropdownMenuItem(value: 'Wrong Amount Entered', child: Text('Wrong Amount Entered')),
+                  DropdownMenuItem(value: 'Customer Changed Mind', child: Text('Customer Changed Mind')),
+                  DropdownMenuItem(value: 'Duplicate Scan', child: Text('Duplicate Scan')),
+                  DropdownMenuItem(value: 'Payment Failed', child: Text('Payment Failed')),
+                  DropdownMenuItem(value: 'Other Reason', child: Text('Other Reason')),
+                ],
+                onChanged: (val) {
+                  if (val != null) {
+                    setModalState(() => selectedReason = val);
+                  }
+                },
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+              if (selectedReason == 'Other Reason') ...[
+                const SizedBox(height: 10),
+                TextField(
+                  controller: customReasonCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'Enter specific reason...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Keep Top-up'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Confirm Void', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirm != true) return;
+
+    final reason = selectedReason == 'Other Reason' && customReasonCtrl.text.trim().isNotEmpty
+        ? customReasonCtrl.text.trim()
+        : selectedReason;
+
+    try {
+      final sessionService = ref.read(sessionServiceProvider);
+      await sessionService.cancelRecharge(transactionId: txId, reason: reason);
+      await _refreshSession();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Top-up of ₹${amount.toStringAsFixed(2)} cancelled successfully.'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Cancellation failed: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleCancelOrder(String txId, double amount, CardSession session) async {
+    String selectedReason = 'Customer Changed Mind';
+    final customReasonCtrl = TextEditingController();
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogCtx, setModalState) => AlertDialog(
+          title: Row(
+            children: const [
+              Icon(Icons.remove_shopping_cart_outlined, color: AppColors.error, size: 24),
+              SizedBox(width: 8),
+              Text('Cancel Food Order?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'This will cancel the order and refund ₹${amount.toStringAsFixed(2)} back to the customer\'s card balance.',
+                style: const TextStyle(fontSize: 14, color: AppColors.textPrimaryLight),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Select Cancellation Reason:',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                initialValue: selectedReason,
+                items: const [
+                  DropdownMenuItem(value: 'Customer Changed Mind', child: Text('Customer Changed Mind')),
+                  DropdownMenuItem(value: 'Ordered Wrong Item', child: Text('Ordered Wrong Item')),
+                  DropdownMenuItem(value: 'Item Out of Stock', child: Text('Item Out of Stock')),
+                  DropdownMenuItem(value: 'Other Reason', child: Text('Other Reason')),
+                ],
+                onChanged: (val) {
+                  if (val != null) {
+                    setModalState(() => selectedReason = val);
+                  }
+                },
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+              if (selectedReason == 'Other Reason') ...[
+                const SizedBox(height: 10),
+                TextField(
+                  controller: customReasonCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'Enter specific reason...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Keep Order'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Refund & Cancel', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirm != true) return;
+
+    final reason = selectedReason == 'Other Reason' && customReasonCtrl.text.trim().isNotEmpty
+        ? customReasonCtrl.text.trim()
+        : selectedReason;
+
+    try {
+      final sessionService = ref.read(sessionServiceProvider);
+      await sessionService.cancelOrder(transactionId: txId, reason: reason);
+      await _refreshSession();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Order cancelled and ₹${amount.toStringAsFixed(2)} refunded to card.'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Order cancellation failed: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 }

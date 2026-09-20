@@ -462,15 +462,15 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
-  // ─── Tab 1: Financial Overview ───
+  // ─── Tab 1: Financial Overview (Easy Words Layout) ───
   Widget _buildFinancialOverview(BuildContext context, BranchPerformanceMetric data) {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: AppSpacing.paddingMd,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 16),
       children: [
-        // Total Revenue & Volume Card
+        // 1. Primary Highlight Card: Net Money Collected
         AppCard(
-          padding: AppSpacing.paddingLg,
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -478,10 +478,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'Financial Overview',
+                    'Net Money Collected',
                     style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
                       color: AppColors.textSecondaryLight,
                     ),
                   ),
@@ -493,78 +493,205 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: 8),
               Text(
-                '\u20b9${data.totalRevenue.toStringAsFixed(2)}',
+                '₹${data.netMoneyCollected.toStringAsFixed(2)}',
                 style: const TextStyle(
-                  fontSize: 32,
+                  fontSize: 34,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
+                  color: AppColors.primaryDark,
                 ),
               ),
-              const Text(
-                'Total Revenue (Sales & Recharges)',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
-              ),
-              const Divider(height: AppSpacing.xl),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildSummaryCol('Purchases', '\u20b9${data.purchaseVolume.toStringAsFixed(0)}'),
-                  _buildSummaryCol('Recharges', '\u20b9${data.rechargeVolume.toStringAsFixed(0)}'),
-                  _buildSummaryCol('Refunds', '\u20b9${data.refundVolume.toStringAsFixed(0)}'),
-                  _buildSummaryCol('Tx Count', '${data.transactionCount}'),
-                ],
+              const SizedBox(height: 4),
+              Text(
+                'Money Added (₹${data.moneyAdded.toStringAsFixed(0)}) minus Money Refunded (₹${data.moneyRefunded.toStringAsFixed(0)})',
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
               ),
             ],
           ),
         ),
-        const SizedBox(height: AppSpacing.md),
+        const SizedBox(height: 12),
 
-        // Financial Operations Grid
+        // 2. Cash in Drawer (To Hand Over) Card
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFECFDF5),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFA7F3D0), width: 1.5),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFD1FAE5),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.payments_outlined, color: Color(0xFF047857), size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Cash in Drawer (To Hand Over)',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF047857)),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '₹${data.cashInDrawer.toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF065F46)),
+                    ),
+                    Text(
+                      'Cash Added (₹${data.cashMoney.toStringAsFixed(0)}) minus Cash Returned (₹${data.moneyRefunded.toStringAsFixed(0)})',
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF059669)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // 3. Online UPI vs Cash Money Side-by-Side Comparison
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F3FF),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFDDD6FE)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '📱 Online UPI Money',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF6D28D9)),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '₹${data.upiMoney.toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF4C1D95)),
+                    ),
+                    Text(
+                      '${data.upiCount} top-ups',
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF7C3AED)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFBBF7D0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '💵 Cash Money',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF15803D)),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '₹${data.cashMoney.toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
+                    ),
+                    Text(
+                      '${data.cashCount} top-ups',
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF15803D)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+
+        // 4. Core Money Grid: Money Added & Money Refunded
         Row(
           children: [
             Expanded(
               child: _buildMetricTile(
-                icon: Icons.point_of_sale,
-                label: 'Orders / Purchases',
-                value: '${data.purchaseCount}',
-                subValue: 'Avg \u20b9${data.avgPurchaseValue.toStringAsFixed(0)}',
+                icon: Icons.add_card,
+                label: 'Money Added',
+                value: '₹${data.moneyAdded.toStringAsFixed(0)}',
+                subValue: '${data.rechargeCount} total top-ups',
+                color: AppColors.success,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: _buildMetricTile(
+                icon: Icons.assignment_return,
+                label: 'Money Refunded',
+                value: '₹${data.moneyRefunded.toStringAsFixed(0)}',
+                subValue: '${data.refundCount} cards returned',
+                color: AppColors.error,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+
+        // 5. Cancellations & Voided Activity
+        Row(
+          children: [
+            Expanded(
+              child: _buildMetricTile(
+                icon: Icons.cancel_outlined,
+                label: 'Cancelled Top-ups',
+                value: '₹${data.cancelledTopUps.toStringAsFixed(0)}',
+                subValue: '${data.cancelledTopUpsCount} voided top-ups',
+                color: Colors.orange.shade700,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: _buildMetricTile(
+                icon: Icons.remove_shopping_cart_outlined,
+                label: 'Cancelled Food Orders',
+                value: '₹${data.cancelledOrdersVolume.toStringAsFixed(0)}',
+                subValue: '${data.cancelledOrdersCount} voided orders',
+                color: Colors.deepOrange,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+
+        // 6. Food Sales & Card Count
+        Row(
+          children: [
+            Expanded(
+              child: _buildMetricTile(
+                icon: Icons.restaurant,
+                label: 'Food Sales (POS)',
+                value: '₹${data.purchaseVolume.toStringAsFixed(0)}',
+                subValue: '${data.purchaseCount} orders served',
                 color: AppColors.primary,
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: _buildMetricTile(
-                icon: Icons.account_balance_wallet,
-                label: 'Card Recharges',
-                value: '${data.rechargeCount}',
-                subValue: '\u20b9${data.rechargeVolume.toStringAsFixed(0)} volume',
-                color: AppColors.success,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Row(
-          children: [
-            Expanded(
-              child: _buildMetricTile(
-                icon: Icons.receipt_long,
-                label: 'Avg Transaction',
-                value: '\u20b9${data.avgTransactionValue.toStringAsFixed(0)}',
-                subValue: 'Across all orders',
+                icon: Icons.credit_card,
+                label: 'Cards Given Out',
+                value: '${data.cardsGivenOut}',
+                subValue: '${data.cardsReturned} returned',
                 color: AppColors.primaryDark,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: _buildMetricTile(
-                icon: Icons.inventory_2_outlined,
-                label: 'Low Stock Alert',
-                value: '${data.lowStockItemCount}',
-                subValue: 'of ${data.inventoryItemCount} items',
-                color: data.lowStockItemCount > 0 ? AppColors.warning : AppColors.success,
               ),
             ),
           ],
@@ -707,22 +834,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
-  Widget _buildSummaryCol(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-        ),
-      ],
-    );
-  }
+
 
   Widget _buildMetricTile({
     required IconData icon,

@@ -5,12 +5,17 @@
 
 ---
 
-## Git Push & Branching Policy
+## Git & GitHub Operations Policy
 
-1. **NEVER push to `main`** — strictly prohibited at all times.
-2. **Push to `staging` ONLY when explicitly told** — user must say "push to staging" or "add to staging git".
-3. **Default**: Push only to the active feature branch on remote (`origin/<feature-branch>`).
-4. User manually reviews PRs and merges into staging/main themselves.
+1. **Local Git Operations are Strictly Auto-Approved (Zero Consent Required)**:
+   - All local Git commands (`git status`, `git diff`, `git log`, `git add`, `git commit`, `git checkout`, `git branch`, etc.) are **strictly pre-authorized and auto-approved**.
+   - Execute local Git checks and commits proactively without prompting or asking for permission.
+2. **Remote Push to GitHub ONLY Requires User Confirmation / Instruction**:
+   - **ONLY ask the user when you are actually going to PUSH to remote / GitHub (`git push`)**.
+   - **NEVER push to `main`** — strictly prohibited at all times.
+   - **Push to `staging` ONLY when explicitly told** — user must say "push to staging" or "add to staging git".
+   - **Default Remote**: When pushing is confirmed, push only to the active feature branch on remote (`origin/<feature-branch>`).
+   - User manually reviews PRs and merges into staging/main themselves.
 
 ### Zero-Error Staging → Main Merge & URL Integrity Rules
 When merging `staging` into `main` (Production), zero errors and zero URL/domain mismatches must occur:
@@ -59,12 +64,25 @@ When merging `staging` into `main` (Production), zero errors and zero URL/domain
    - **Touch Targets & Typography**: Interactive buttons and inputs must maintain comfortable touch targets (minimum 36–44px height) with legible text sizes across mobile devices.
    - **Zero Horizontal Body Overflow**: Prevent unintended horizontal scrolling on the root page body across all screen sizes.
 
-5. **Proactive & Autonomous Test Execution for Web App & Mobile App (Zero Consent Required)**:
-   - Whenever there are **ANY tests to run across the Web App, Mobile App, or Backend (`.test.ts`, Vitest, unit tests, widget tests, `flutter test`, `flutter analyze`, or type checks)**, the agent **MUST immediately and autonomously run them without asking for user consent or confirmation**.
+5. **Proactive & Autonomous Test Execution for Web App & Mobile App (Zero Consent Required — Strictly Auto-Approved)**:
+   - Whenever there are **ANY tests to run across the Web App, Mobile App, or Backend (`.test.ts`, Vitest, unit tests, widget tests, `flutter test`, `flutter analyze --no-pub`, or type checks `npx tsc --noEmit`)**, the agent **MUST immediately and autonomously run them without asking for user consent, approval, or confirmation**. All test runs are strictly pre-authorized and auto-approved.
    - **Web App (`Frontend Money Card`)**: Proactively execute `npm test -- --run` and `npx tsc --noEmit` whenever frontend components, hooks, or tests are modified.
    - **Mobile App (`Flutter Money card`)**: Proactively execute `flutter test` and `flutter analyze --no-pub` whenever Flutter screens, providers, models, or services are modified.
    - **Backend (`Backend Money Card`)**: Proactively execute `npm test` whenever backend routes, controllers, or logic are modified.
-   - Never pause, ask for confirmation, or wait for consent before running tests. Run them immediately and report the results.
+   - **Zero Prompts**: Never pause, ask "May I run tests?", wait for confirmation, or prompt for approval before running tests. Just execute them automatically and report the results.
+
+6. **Autonomous Shorebird CodePush & Patch Execution (Zero Consent Required — Strictly Auto-Approved)**:
+   - Whenever Shorebird actions, OTA patches, release listings, or updates are requested or required after Flutter mobile app changes, the agent **MUST immediately and autonomously execute them without asking for user consent, approval, or confirmation**. All Shorebird operations are strictly pre-authorized and auto-approved.
+   - **Auto-Approved Commands**:
+     - Pushing OTA Patches: `"y" | shorebird patch android --target lib/main_staging.dart --flavor staging --release-version <ver> --allow-asset-diffs`
+     - Inspecting releases: `shorebird releases list --flavor <flavor>`
+     - Checking patch status: `shorebird patches list --flavor <flavor> --release-version <ver>`
+   - **Zero Prompts**: Never pause, ask "May I push to Shorebird?", wait for confirmation, or prompt for approval before executing Shorebird commands. Just execute them automatically and report the resulting patch details.
+
+7. **Local Git Auto-Approved vs Remote Push Guard (Ask ONLY for Git Push)**:
+   - All local Git commands (`git status`, `git diff`, `git log`, `git add`, `git commit`, `git checkout`, `git branch`, etc.) are **strictly pre-authorized and auto-approved**. Execute them autonomously without asking.
+   - **ONLY ask user confirmation when actually pushing to remote / GitHub (`git push`)**.
+   - **Strict Push Guard**: NEVER push to `main`. Push to `staging` ONLY when explicitly told ("push to staging"). When pushing is approved, default to pushing to `origin/<active-feature-branch>`.
 
 ---
 
@@ -321,6 +339,21 @@ Screens → Providers → Repositories → Services → API
 - `lib/main.dart` — Development
 - `lib/main_staging.dart` — Staging
 - `lib/main_production.dart` — Production
+
+### Shorebird CodePush & OTA Updates
+- **Configuration**: `Flutter Money card/shorebird.yaml`
+  - Base App ID: `7a78a307-72de-4c0b-8457-70982273ed72`
+  - Staging flavor: `2689834d-743e-4ff6-84b4-f337941b9efb`
+  - Production flavor: `a0d8b43e-7a19-4cab-a67a-fd15fb33b826`
+- **Pushing Over-The-Air (OTA) Patches**:
+  - Command: `shorebird patch android --target lib/main_staging.dart --flavor staging --release-version <ver> --allow-asset-diffs`
+  - **No APK Rebuild Needed**: For pure Dart changes (UI screens, Riverpod providers, models, business logic), existing staging APKs on devices automatically download and apply the patch over-the-air.
+- **When is an APK Rebuild Required?**:
+  1. Fresh installs on new devices where the APK was never previously installed.
+  2. Native Android modifications (Gradle changes, `AndroidManifest.xml`, native Java/Kotlin code, or newly added native plugins).
+  3. Version bump in `pubspec.yaml` (e.g. creating a new base release via `shorebird release android --target lib/main_staging.dart --flavor staging`).
+- **Strictly Auto-Approved**: All Shorebird operations (patching, release inspection, health checks) are pre-authorized and must run autonomously without prompting the user for confirmation.
+
 
 ---
 

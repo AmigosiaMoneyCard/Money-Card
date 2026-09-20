@@ -16,6 +16,8 @@ import type {
   Transaction,
   PurchaseItem,
   SessionStatus,
+  ListRechargesResponse,
+  RechargeTransaction,
 } from '@/types';
 
 export interface CardSessionOverview extends CardSession {
@@ -497,5 +499,116 @@ export const mockSessionsHandlers = {
       sessionStatus: 'SETTLED',
       cardStatus,
     });
+  },
+
+  async listRecharges(params?: {
+    branchId?: string;
+    startDate?: string;
+    endDate?: string;
+    paymentMethod?: string;
+    status?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<ApiResult<ListRechargesResponse>> {
+    await mockDelay();
+    let txs = mockStore.transactions.filter(
+      (t) => t.type === 'RECHARGE' || t.type === 'RECHARGE_CASH' || t.type === 'RECHARGE_UPI',
+    );
+    if (params?.branchId) {
+      txs = txs.filter((t) => t.branchId === params.branchId);
+    }
+    if (params?.paymentMethod && params.paymentMethod !== 'ALL') {
+      txs = txs.filter((t) => (t.paymentMethod || '').toUpperCase() === params.paymentMethod?.toUpperCase());
+    }
+    if (params?.status === 'ACTIVE') {
+      txs = txs.filter((t) => !t.isCancelled);
+    } else if (params?.status === 'CANCELLED') {
+      txs = txs.filter((t) => !!t.isCancelled);
+    }
+    if (params?.search) {
+      const q = params.search.toLowerCase();
+      txs = txs.filter(
+        (t) =>
+          (t.cardNumber && t.cardNumber.toLowerCase().includes(q)) ||
+          (t.customerName && t.customerName.toLowerCase().includes(q)) ||
+          (t.id && t.id.toLowerCase().includes(q)),
+      );
+    }
+
+    const totalCount = txs.length;
+    let upiCount = 0;
+    let upiVolume = 0;
+    let cashCount = 0;
+    let cashVolume = 0;
+    let cancelledCount = 0;
+    let cancelledVolume = 0;
+    let totalVolume = 0;
+
+    for (const t of txs) {
+      if (t.isCancelled) {
+        cancelledCount++;
+        cancelledVolume += t.amount;
+      } else {
+        totalVolume += t.amount;
+        if (t.paymentMethod === 'UPI') {
+          upiCount++;
+          upiVolume += t.amount;
+        } else {
+          cashCount++;
+          cashVolume += t.amount;
+        }
+      }
+    }
+
+    const page = params?.page || 1;
+    const limit = params?.limit || 20;
+    const paged = paginateArray(txs, page, limit);
+
+    return createMockSuccess({
+      transactions: paged.items as RechargeTransaction[],
+      total: totalCount,
+      page,
+      limit,
+      totalPages: paged.pagination.totalPages,
+      summary: {
+        totalCount,
+        totalVolume,
+        upiCount,
+        upiVolume,
+        cashCount,
+        cashVolume,
+        cancelledCount,
+        cancelledVolume,
+      },
+    });
+  },
+
+  async cancelRecharge(transactionId: string, reason: string): Promise<ApiResult<any>> {
+    await mockDelay();
+    const tx = mockStore.transactions.find((t) => t.id === transactionId);
+    if (!tx) return createMockError('NOT_FOUND', 'Transaction not found');
+    tx.isCancelled = true;
+    tx.cancelledAt = mockStore.getTimestamp();
+    tx.cancellationReason = reason;
+    const session = mockStore.sessions.find((s) => s.id === tx.sessionId);
+    if (session) {
+      session.balance = Math.max(0, session.balance - tx.amount);
+    }
+    return createMockSuccess({ message: 'Top-up cancelled successfully', transaction: tx });
+  },
+
+  async cancelOrder(transactionId: string, reason: string): Promise<ApiResult<any>> {
+    await mockDelay();
+    const tx = mockStore.transactions.find((t) => t.id === transactionId);
+    if (!tx) return createMockError('NOT_FOUND', 'Transaction not found');
+    tx.isCancelled = true;
+    tx.cancelledAt = mockStore.getTimestamp();
+    tx.cancellationReason = reason;
+    const session = mockStore.sessions.find((s) => s.id === tx.sessionId);
+    if (session) {
+      session.balance += tx.amount;
+    }
+    return createMockSuccess({ message: 'Food order cancelled successfully', transaction: tx });
   },
 };

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/config/app_config.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/storage/server_config_storage.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/common/app_button.dart';
+import '../../widgets/dialogs/server_config_dialog.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -259,6 +261,52 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         isLoading: authState.isAuthenticating,
                         onPressed: authState.isAuthenticating ? null : _handleLogin,
                       ),
+
+                      // Development / Staging Server Quick Config
+                      if (!AppConfig.isProduction) ...[
+                        const SizedBox(height: AppSpacing.md),
+                        Center(
+                          child: InkWell(
+                            onTap: () async {
+                              await ServerConfigDialog.show(context);
+                              if (mounted) setState(() {});
+                            },
+                            borderRadius: BorderRadius.circular(20),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: const Color(0xFFCBD5E1)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: AppConfig.isDevelopment ? Colors.teal : AppColors.primary,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Server: ${AppConfig.displayHost}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondaryLight,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Icon(Icons.settings_outlined, size: 13, color: AppColors.textSecondaryLight),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

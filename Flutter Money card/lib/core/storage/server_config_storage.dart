@@ -55,18 +55,23 @@ class ServerConfigStorage {
       _inMemoryFallback = null;
     }
     AppConfig.setBaseUrl(
-      AppConfig.isProduction ? AppConfig.productionBaseUrl : AppConfig.stagingBaseUrl,
+      AppConfig.isProduction
+          ? AppConfig.productionBaseUrl
+          : (AppConfig.isDevelopment ? AppConfig.defaultBaseUrl : AppConfig.stagingBaseUrl),
     );
   }
 
   /// Initializes AppConfig from persistent storage on startup with cross-environment isolation
   Future<void> initialize() async {
-    AppConfig.initialize();
-
     final savedUrl = await getServerUrl();
     if (savedUrl != null && savedUrl.isNotEmpty) {
-      // Guard: Purge staging backend contamination in production
-      if (AppConfig.isProduction && savedUrl.contains('money-card-backend-staging')) {
+      // Guard: Purge staging or local/development backend contamination in production
+      if (AppConfig.isProduction &&
+          (savedUrl.contains('money-card-backend-staging') ||
+           savedUrl.contains('127.0.0.1') ||
+           savedUrl.contains('localhost') ||
+           savedUrl.contains('10.0.2.2') ||
+           savedUrl.contains('192.168.'))) {
         await resetToDefault();
         return;
       }
@@ -80,7 +85,9 @@ class ServerConfigStorage {
       AppConfig.setBaseUrl(savedUrl);
     } else {
       AppConfig.setBaseUrl(
-        AppConfig.isProduction ? AppConfig.productionBaseUrl : AppConfig.stagingBaseUrl,
+        AppConfig.isProduction
+            ? AppConfig.productionBaseUrl
+            : (AppConfig.isDevelopment ? AppConfig.defaultBaseUrl : AppConfig.stagingBaseUrl),
       );
     }
   }

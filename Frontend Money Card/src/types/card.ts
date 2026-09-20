@@ -94,7 +94,52 @@ export interface Transaction {
   paymentMethod?: PaymentMethod | string;
   externalReference?: string;
   staffUserId?: string | null;
+  staffName?: string | null;
+  cardNumber?: string | null;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  branchName?: string | null;
   createdAt: string;
+  isCancelled?: boolean;
+  cancelledAt?: string | null;
+  cancelledByUserId?: string | null;
+  cancelledByUserName?: string | null;
+  cancellationReason?: string | null;
+}
+
+export interface RechargeTransaction extends Transaction {
+  isCancelled?: boolean;
+  cancelledAt?: string | null;
+  cancelledByUserId?: string | null;
+  cancelledByUserName?: string | null;
+  cancellationReason?: string | null;
+}
+
+export interface RechargesSummary {
+  totalCount: number;
+  totalVolume: number;
+  upiCount: number;
+  upiVolume: number;
+  cashCount: number;
+  cashVolume: number;
+  cancelledCount: number;
+  cancelledVolume: number;
+}
+
+export interface ListRechargesResponse {
+  transactions: RechargeTransaction[];
+  items?: RechargeTransaction[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  summary: RechargesSummary;
+  pagination?: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 export interface Payment {
@@ -293,3 +338,4 @@ export interface BulkAssignCardNumbersResponseData {
 }
 
 export type CardSessionOverview = CardSession;
+

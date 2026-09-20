@@ -129,11 +129,64 @@ export function buildOrgAnalyticsJsPdf({
     doc.text(`${sectionCounter}. Financial Overview`, margin, curY);
     sectionCounter++;
 
-    // Primary Financial Metrics (4 cards)
+    // Net Money Collected & Cash in Drawer Highlight Cards
     const floatBal = analytics.cardFleetAnalytics?.totalFloatBalance ?? 0;
+    const moneyAdded = analytics.moneyAdded ?? analytics.totalRechargeVolume ?? 0;
+    const moneyRefunded = analytics.moneyRefunded ?? analytics.totalRefundVolume ?? 0;
+    const netMoney = analytics.netMoneyCollected ?? (moneyAdded - moneyRefunded);
+    const cashInDrawer = analytics.cashInDrawer ?? (
+      (analytics.cashRechargeVolume ?? analytics.cashMoney ?? 0) - moneyRefunded
+    );
+
+    const highlightW = (contentWidth - 4) / 2;
+
+    // Card 1: Net Money Collected
+    doc.setFillColor(241, 245, 249); // slate-100
+    doc.setDrawColor(203, 213, 225);
+    doc.roundedRect(margin, curY + 4, highlightW, 19, 2, 2, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(71, 85, 105);
+    doc.text('NET MONEY COLLECTED', margin + 4, curY + 9);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text(formatPdfCurrency(netMoney), margin + 4, curY + 16);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6);
+    doc.setTextColor(100, 116, 139);
+    doc.text('Money Added - Money Refunded across all methods', margin + 4, curY + 20);
+
+    // Card 2: Cash in Drawer (To Hand Over)
+    const xCash = margin + highlightW + 4;
+    doc.setFillColor(236, 253, 245); // emerald-50
+    doc.setDrawColor(167, 243, 208); // emerald-200
+    doc.roundedRect(xCash, curY + 4, highlightW, 19, 2, 2, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(6, 95, 70); // emerald-800
+    doc.text('CASH IN DRAWER (TO HAND OVER)', xCash + 4, curY + 9);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(4, 120, 87); // emerald-700
+    doc.text(formatPdfCurrency(cashInDrawer), xCash + 4, curY + 16);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6);
+    doc.setTextColor(6, 95, 70);
+    doc.text('Physical cash balance in drawer after refunds', xCash + 4, curY + 20);
+
+    curY += 26;
+
+    // Secondary Financial Metrics (4 cards)
     const kpis = [
       { label: 'Food Sales (POS)', val: formatPdfCurrency(analytics.totalPurchaseVolume), sub: 'Gross cafeteria sales' },
-      { label: 'Total Recharges', val: formatPdfCurrency(analytics.totalRechargeVolume), sub: 'Total card deposits' },
+      { label: 'Money Added', val: formatPdfCurrency(moneyAdded), sub: 'Total card deposits' },
       { label: 'Total Card Balance', val: formatPdfCurrency(floatBal), sub: 'Money remaining on cards' },
       { label: 'Total Transactions', val: (analytics.totalTransactions ?? (analytics as any).transactionCount ?? 0).toLocaleString(), sub: 'Total cafeteria activity' },
     ];
@@ -143,25 +196,25 @@ export function buildOrgAnalyticsJsPdf({
       const x = margin + idx * (cardW + 3);
       doc.setFillColor(248, 250, 252);
       doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(x, curY + 4, cardW, 20, 2, 2, 'FD');
+      doc.roundedRect(x, curY + 2, cardW, 18, 2, 2, 'FD');
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7);
+      doc.setFontSize(6.5);
       doc.setTextColor(100, 116, 139);
-      doc.text(kpi.label, x + 3, curY + 9.5);
+      doc.text(kpi.label, x + 3, curY + 7);
 
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
+      doc.setFontSize(8.5);
       doc.setTextColor(15, 23, 42);
-      doc.text(kpi.val, x + 3, curY + 15.5);
+      doc.text(kpi.val, x + 3, curY + 12.5);
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(5.5);
+      doc.setFontSize(5);
       doc.setTextColor(100, 116, 139);
-      doc.text(kpi.sub, x + 3, curY + 20);
+      doc.text(kpi.sub, x + 3, curY + 16.5);
     });
 
-    curY += 28;
+    curY += 24;
   }
 
   // ── Section 2: Card Analytics ──
@@ -243,38 +296,44 @@ export function buildOrgAnalyticsJsPdf({
     doc.text(`${sectionCounter}. Payment & Refund Breakdown`, margin, curY);
     sectionCounter++;
 
-    const cashRecharge = analytics.cashRechargeVolume ?? 0;
-    const upiRecharge = analytics.upiRechargeVolume ?? 0;
-    const totalRefund = analytics.totalRefundVolume ?? 0;
+    const cashRecharge = analytics.cashRechargeVolume ?? analytics.cashMoney ?? 0;
+    const upiRecharge = analytics.upiRechargeVolume ?? analytics.upiMoney ?? 0;
+    const totalRefund = analytics.moneyRefunded ?? analytics.totalRefundVolume ?? 0;
     const totalRechargeVol = cashRecharge + upiRecharge;
 
     const cashPct = totalRechargeVol > 0 ? Math.round((cashRecharge / totalRechargeVol) * 100) : (totalRechargeVol === 0 && cashRecharge > 0 ? 100 : 0);
     const upiPct = totalRechargeVol > 0 ? 100 - cashPct : 0;
+    const drawerCash = analytics.cashInDrawer ?? (cashRecharge - totalRefund);
 
     const paymentCards = [
       {
-        label: 'Cash Recharges',
-        val: formatPdfCurrency(cashRecharge),
-        sub: `${cashPct}% of total recharges`,
-      },
-      {
-        label: 'UPI Recharges',
+        label: 'Online UPI Money',
         val: formatPdfCurrency(upiRecharge),
-        sub: `${upiPct}% of total recharges`,
+        sub: `${upiPct}% of total deposits`,
       },
       {
-        label: 'Cash Returned',
+        label: 'Cash Money',
+        val: formatPdfCurrency(cashRecharge),
+        sub: `${cashPct}% of total deposits`,
+      },
+      {
+        label: 'Money Refunded',
         val: formatPdfCurrency(totalRefund),
-        sub: 'Total refunded / returned to customers',
+        sub: 'Total returned to customers',
+      },
+      {
+        label: 'Cash in Drawer',
+        val: formatPdfCurrency(drawerCash),
+        sub: 'Physical cash in drawer',
       },
     ];
 
-    const cardW3 = (contentWidth - 6) / 3;
+    const cardW4 = (contentWidth - 9) / 4;
     paymentCards.forEach((card, idx) => {
-      const x = margin + idx * (cardW3 + 3);
+      const x = margin + idx * (cardW4 + 3);
       doc.setFillColor(248, 250, 252);
       doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(x, curY + 3, cardW3, 19, 2, 2, 'FD');
+      doc.roundedRect(x, curY + 3, cardW4, 19, 2, 2, 'FD');
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(7);
