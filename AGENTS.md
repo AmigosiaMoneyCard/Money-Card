@@ -92,6 +92,10 @@ When merging `staging` into `main` (Production), zero errors and zero URL/domain
      - **Documentation & Metadata**: Markdown files (`AGENTS.md`, READMEs, walkthroughs, implementation plans), comments, log messages, error messages, and tests.
      - **Version Control & Responses**: Git commit messages, branch names, PR titles/descriptions, and agent responses to the user.
 
+9. **Strict Minimalism & No Sub-Headings Policy (Zero Sub-Headings, Pure Minimalism)**:
+   - **No Sub-Headings Anywhere**: Never use markdown sub-headings (`###`, `####`, etc.) in responses, messages, summaries, notes, or explanations. Keep all communication flat, direct, and free of nested heading hierarchies.
+   - **Be Strictly Minimal**: Keep everything minimalized. Do not over-do things, over-engineer, or over-explain. Provide only the essential facts or changes needed, avoiding decorative sections, boilerplate fluff, and unnecessary verbosity.
+
 ---
 
 ## Project Overview
@@ -411,6 +415,8 @@ Files to change:
 - Don't break multi-tenant isolation — always filter queries by `organizationId`
 - Don't push to `main` — ever
 - Don't add emojis anywhere — never use emojis in code, UI text, labels, documentation, commit messages, notifications, or comments
+- Don't use sub-headings anywhere — keep responses, docs, and notes flat and minimal without nested headings
+- Don't over-do things — keep everything minimalized, clean, and concise
 
 ### Error Response Pattern (Backend)
 ```ts
