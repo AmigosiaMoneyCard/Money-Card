@@ -70,203 +70,214 @@ export function OrgAdminFinancialSection({
   const cardsReturned = analytics.cardsReturned ?? (analytics.closedCardsCount ?? 0);
 
   return (
-    <div className="space-y-6">
-      {/* ─── 1. Key Highlights: Net Money & Cash in Drawer ─── */}
-      <div className="grid gap-5 md:grid-cols-2">
+    <div className="space-y-4">
+      {/* Financial Summaries (4 Uniform Cards) */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Net Money Collected */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs flex flex-col justify-between">
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Net Money Collected
             </span>
-            <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-              Added − Refunded
+            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+              Added - Refunded
             </span>
           </div>
-          <div className="mt-4">
-            <p className="font-mono text-3xl sm:text-4xl font-extrabold text-slate-900">
+          <div className="mt-2">
+            <p className="font-mono text-2xl font-bold text-slate-900">
               {formatCurrency(netMoneyCollected)}
             </p>
-            <p className="mt-2 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-slate-500 leading-snug">
               Total money retained across online UPI and cash deposits
             </p>
           </div>
-        </div>
+        </Card>
 
         {/* Cash in Drawer (To Hand Over) */}
-        <div className="rounded-2xl border-2 border-emerald-500/20 bg-emerald-50/40 p-6 shadow-xs flex flex-col justify-between">
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-900">
-              💵 Cash in Drawer (To Hand Over)
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Cash in Drawer (To Hand Over)
             </span>
-            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
+            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
               Physical Cash
             </span>
           </div>
-          <div className="mt-4">
-            <p className="font-mono text-3xl sm:text-4xl font-extrabold text-emerald-700">
+          <div className="mt-2">
+            <p className="font-mono text-2xl font-bold text-emerald-700">
               {formatCurrency(cashInDrawer)}
             </p>
-            <p className="mt-2 text-xs text-emerald-800/80">
+            <p className="mt-1 text-xs text-slate-500 leading-snug">
               Physical cash received minus cash refunds — exact amount in cashier register
             </p>
           </div>
-        </div>
-      </div>
+        </Card>
 
-      {/* ─── 2. Side-by-Side Online UPI & Cash Comparison Boxes ─── */}
-      <div className="grid gap-5 md:grid-cols-2">
         {/* Online UPI Money */}
-        <div className="rounded-2xl border border-purple-200 bg-purple-50/30 p-6 shadow-xs">
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-700">
-                <CreditCard className="h-5 w-5" />
-              </div>
-              <div>
-                <h3 className="font-bold text-slate-900">📱 Online UPI Money</h3>
-                <p className="text-xs text-slate-500">Instant QR & App Payments</p>
-              </div>
-            </div>
-            <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-700">
-              {upiCount} top-ups
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Online UPI Money
+            </span>
+            <span className="rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700">
+              Instant QR & App
             </span>
           </div>
-          <div className="mt-4">
-            <p className="font-mono text-3xl font-black text-purple-700">
+          <div className="mt-2">
+            <p className="font-mono text-2xl font-bold text-purple-700">
               {formatCurrency(upiMoney)}
             </p>
-            <p className="mt-1 text-xs text-slate-500">Credited directly to bank account</p>
+            <p className="mt-1 text-xs text-slate-500 leading-snug">
+              {upiCount} top-ups
+            </p>
           </div>
-        </div>
+        </Card>
 
         {/* Cash Money */}
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/30 p-6 shadow-xs">
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
-                <DollarSign className="h-5 w-5" />
-              </div>
-              <div>
-                <h3 className="font-bold text-slate-900">💵 Cash Money</h3>
-                <p className="text-xs text-slate-500">Paper bills at the counter</p>
-              </div>
-            </div>
-            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
-              {cashCount} top-ups
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Cash Money
+            </span>
+            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+              Paper Bills
             </span>
           </div>
-          <div className="mt-4">
-            <p className="font-mono text-3xl font-black text-emerald-700">
+          <div className="mt-2">
+            <p className="font-mono text-2xl font-bold text-emerald-700">
               {formatCurrency(cashMoney)}
             </p>
-            <p className="mt-1 text-xs text-slate-500">Cash collected at register counters</p>
+            <p className="mt-1 text-xs text-slate-500 leading-snug">
+              {cashCount} top-ups
+            </p>
           </div>
-        </div>
+        </Card>
       </div>
 
-      {/* ─── 3. Four Core Activity Cards (Everyday Words) ─── */}
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Core Activity Flow (4 Uniform Cards) */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Money Added */}
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs">
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Money Added
             </span>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
               <Wallet className="h-4 w-4" />
             </div>
           </div>
-          <div className="mt-3">
+          <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-slate-900">
               {formatCurrency(moneyAdded)}
             </p>
-            <p className="mt-1 text-xs text-slate-500">Total top-ups loaded onto cards</p>
+            <p className="mt-1 text-xs text-slate-500 leading-snug">
+              Total top-ups loaded onto cards
+            </p>
           </div>
         </Card>
 
         {/* Money Refunded */}
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs">
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Money Refunded
             </span>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
               <ArrowUpDown className="h-4 w-4" />
             </div>
           </div>
-          <div className="mt-3">
+          <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-rose-600">
               {formatCurrency(moneyRefunded)}
             </p>
-            <p className="mt-1 text-xs text-slate-500">Remaining balance given back to customers</p>
+            <p className="mt-1 text-xs text-slate-500 leading-snug">
+              Remaining balance given back to customers
+            </p>
           </div>
         </Card>
 
         {/* Cancelled Top-ups */}
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs">
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Cancelled Top-ups
             </span>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
               <RefreshCw className="h-4 w-4" />
             </div>
           </div>
-          <div className="mt-3">
+          <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-amber-600">
               {formatCurrency(cancelledTopUps)}
             </p>
-            <p className="mt-1 text-xs text-slate-500">{cancelledTopUpsCount} recharges reversed</p>
+            <p className="mt-1 text-xs text-slate-500 leading-snug">
+              {cancelledTopUpsCount} recharges reversed
+            </p>
           </div>
         </Card>
 
         {/* Cancelled Food Orders */}
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs">
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Cancelled Food Orders
             </span>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
               <AlertCircle className="h-4 w-4" />
             </div>
           </div>
-          <div className="mt-3">
+          <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-orange-600">
               {formatCurrency(cancelledOrdersVolume)}
             </p>
-            <p className="mt-1 text-xs text-slate-500">{cancelledOrdersCount} orders restored</p>
+            <p className="mt-1 text-xs text-slate-500 leading-snug">
+              {cancelledOrdersCount} orders restored
+            </p>
           </div>
         </Card>
       </div>
 
-      {/* ─── 4. Card Operations Activity ─── */}
-      <div className="grid gap-5 sm:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-              <CheckCircle2 className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Cards Given Out</p>
-              <p className="font-mono text-2xl font-bold text-slate-900">{cardsGivenOut}</p>
-              <p className="text-xs text-slate-500">Active card sessions created</p>
+      {/* Card Operations Activity (2 Uniform Cards) */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {/* Cards Given Out */}
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Cards Given Out
+            </span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+              <CheckCircle2 className="h-4 w-4" />
             </div>
           </div>
-        </div>
+          <div className="mt-2">
+            <p className="font-mono text-2xl font-bold text-slate-900">
+              {cardsGivenOut.toLocaleString()}
+            </p>
+            <p className="mt-1 text-xs text-slate-500 leading-snug">
+              Active card sessions created
+            </p>
+          </div>
+        </Card>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
-              <CreditCard className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Cards Returned & Closed</p>
-              <p className="font-mono text-2xl font-bold text-slate-900">{cardsReturned}</p>
-              <p className="text-xs text-slate-500">Sessions settled and returned to inventory</p>
+        {/* Cards Returned & Closed */}
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Cards Returned & Closed
+            </span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+              <CreditCard className="h-4 w-4" />
             </div>
           </div>
-        </div>
+          <div className="mt-2">
+            <p className="font-mono text-2xl font-bold text-slate-900">
+              {cardsReturned.toLocaleString()}
+            </p>
+            <p className="mt-1 text-xs text-slate-500 leading-snug">
+              Sessions settled and returned to inventory
+            </p>
+          </div>
+        </Card>
       </div>
     </div>
   );

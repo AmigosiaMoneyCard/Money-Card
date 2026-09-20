@@ -130,7 +130,6 @@ export function buildOrgAnalyticsJsPdf({
     sectionCounter++;
 
     // Net Money Collected & Cash in Drawer Highlight Cards
-    const floatBal = analytics.cardFleetAnalytics?.totalFloatBalance ?? 0;
     const moneyAdded = analytics.moneyAdded ?? analytics.totalRechargeVolume ?? 0;
     const moneyRefunded = analytics.moneyRefunded ?? analytics.totalRefundVolume ?? 0;
     const netMoney = analytics.netMoneyCollected ?? (moneyAdded - moneyRefunded);
@@ -181,18 +180,61 @@ export function buildOrgAnalyticsJsPdf({
     doc.setTextColor(6, 95, 70);
     doc.text('Physical cash balance in drawer after refunds', xCash + 4, curY + 20);
 
-    curY += 26;
+    curY += 25;
 
-    // Secondary Financial Metrics (4 cards)
-    const kpis = [
-      { label: 'Food Sales (POS)', val: formatPdfCurrency(analytics.totalPurchaseVolume), sub: 'Gross cafeteria sales' },
+    const upiMoney = analytics.upiMoney ?? analytics.upiRechargeVolume ?? 0;
+    const upiCount = analytics.upiCount ?? (analytics as any).upiRechargeCount ?? 0;
+    const cashMoney = analytics.cashMoney ?? analytics.cashRechargeVolume ?? 0;
+    const cashCount = analytics.cashCount ?? (analytics as any).cashRechargeCount ?? 0;
+    const cancelledTopUps = analytics.cancelledTopUps ?? 0;
+    const cancelledTopUpsCount = analytics.cancelledTopUpsCount ?? 0;
+    const cancelledOrdersVolume = analytics.cancelledOrdersVolume ?? 0;
+    const cancelledOrdersCount = analytics.cancelledOrdersCount ?? 0;
+    const cardsGivenOut = analytics.cardsGivenOut ?? analytics.activeCardsCount ?? analytics.activeSessionsCount ?? 0;
+    const cardsReturned = analytics.cardsReturned ?? analytics.closedCardsCount ?? 0;
+
+    // Row 2: Payment & Volume Flow (4 cards)
+    const row2Kpis = [
+      { label: 'Online UPI Money', val: formatPdfCurrency(upiMoney), sub: `${upiCount} top-ups` },
+      { label: 'Cash Money', val: formatPdfCurrency(cashMoney), sub: `${cashCount} top-ups` },
       { label: 'Money Added', val: formatPdfCurrency(moneyAdded), sub: 'Total card deposits' },
-      { label: 'Total Card Balance', val: formatPdfCurrency(floatBal), sub: 'Money remaining on cards' },
-      { label: 'Total Transactions', val: (analytics.totalTransactions ?? (analytics as any).transactionCount ?? 0).toLocaleString(), sub: 'Total cafeteria activity' },
+      { label: 'Money Refunded', val: formatPdfCurrency(moneyRefunded), sub: 'Balance returned to customers' },
     ];
 
     const cardW = (contentWidth - 9) / 4;
-    kpis.forEach((kpi, idx) => {
+    row2Kpis.forEach((kpi, idx) => {
+      const x = margin + idx * (cardW + 3);
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(x, curY + 2, cardW, 18, 2, 2, 'FD');
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(kpi.label, x + 3, curY + 7);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(kpi.val, x + 3, curY + 12.5);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(kpi.sub, x + 3, curY + 16.5);
+    });
+
+    curY += 22;
+
+    // Row 3: Cancellations & Card Fleet Flow (4 cards)
+    const row3Kpis = [
+      { label: 'Cancelled Top-ups', val: formatPdfCurrency(cancelledTopUps), sub: `${cancelledTopUpsCount} recharges reversed` },
+      { label: 'Cancelled Orders', val: formatPdfCurrency(cancelledOrdersVolume), sub: `${cancelledOrdersCount} orders restored` },
+      { label: 'Cards Given Out', val: cardsGivenOut.toLocaleString(), sub: 'Active card sessions created' },
+      { label: 'Cards Returned', val: cardsReturned.toLocaleString(), sub: 'Sessions settled and returned' },
+    ];
+
+    row3Kpis.forEach((kpi, idx) => {
       const x = margin + idx * (cardW + 3);
       doc.setFillColor(248, 250, 252);
       doc.setDrawColor(226, 232, 240);

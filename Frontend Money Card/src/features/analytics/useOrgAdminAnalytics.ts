@@ -118,14 +118,13 @@ export function useOrgAdminAnalytics() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'cards' | 'recharges'>(() => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'cards'>(() => {
     const t = searchParams.get('tab');
     if (t === 'cards') return 'cards';
-    if (t === 'recharges') return 'recharges';
     return 'overview';
   });
 
-  const handleTabChange = (tab: 'overview' | 'cards' | 'recharges') => {
+  const handleTabChange = (tab: 'overview' | 'cards') => {
     setActiveTab(tab);
     const newParams = new URLSearchParams(searchParams);
     if (tab === 'overview') {

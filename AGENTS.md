@@ -1,7 +1,8 @@
 # Money Card Project — Agent Workspace Guide
 
-> **Purpose**: This file is the single source of truth for any AI agent working in this repo.
-> Read this FIRST before reading any source file. It eliminates the need to re-explore the codebase from scratch each session.
+> **MANDATORY PROTOCOL FOR EVERY NEW CHAT SESSION**:
+> 1. In **ANY and EVERY new chat session**, the AI agent **MUST immediately and strictly read this file (`AGENTS.md`) in its entirety FIRST** before inspecting any other file, planning, or executing any commands.
+> 2. This file is the **single permanent source of truth**. All pre-authorized permissions (auto-approved tests, auto-approved Shorebird CodePush, auto-approved local Git, and the strict guard requiring confirmation ONLY for `git push`), naming rules (zero emojis, everyday easy words), and architectural boundaries defined here are strictly binding across all sessions.
 
 ---
 

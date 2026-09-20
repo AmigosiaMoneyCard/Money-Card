@@ -1,4 +1,4 @@
-import { Eye, RefreshCw, BarChart3, CreditCard, Store, Receipt } from 'lucide-react';
+import { Eye, RefreshCw, BarChart3, CreditCard, Store } from 'lucide-react';
 import { useAuth } from '@/hooks';
 import { Button, Select, LoadingState, ErrorState } from '@/components/ui';
 import {
@@ -6,7 +6,6 @@ import {
   OrgAdminPdfModal,
 } from './OrgAdminAnalyticsComponents';
 import { OrgAdminCardTracker } from './OrgAdminCardTracker';
-import { RechargesTableView } from './RechargesTableView';
 import type { SortMetric } from './OrgAdminAnalyticsComponents';
 import {
   useOrgAdminAnalytics,
@@ -184,25 +183,10 @@ export function OrgAdminAnalyticsView() {
           <CreditCard className="h-4 w-4 text-indigo-600" />
           <span>Card Analytics</span>
         </button>
-
-        <button
-          type="button"
-          onClick={() => handleTabChange('recharges')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer ${
-            activeTab === 'recharges'
-              ? 'border-emerald-600 text-emerald-700 bg-emerald-50/50 rounded-t-lg'
-              : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
-          }`}
-        >
-          <Receipt className="h-4 w-4 text-emerald-600" />
-          <span>Recharges</span>
-        </button>
       </div>
 
       {/* ─── Main Content ─── */}
-      {activeTab === 'recharges' ? (
-        <RechargesTableView branchId={branchFilter === 'ALL' ? undefined : branchFilter} />
-      ) : isLoading ? (
+      {isLoading ? (
         <LoadingState message="Calculating analytics metrics..." />
       ) : error ? (
         <ErrorState title="Failed to load analytics" message={error} onRetry={fetchAnalytics} />
