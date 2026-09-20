@@ -45,7 +45,7 @@ When merging `staging` into `main` (Production), zero errors and zero URL/domain
      - Clean, detailed **ASCII wireframes** of the UI layout, tables, modals, and buttons.
    - **Obtain user approval** before executing any source code edits.
 
-2. **Web App ↔ Mobile App Parity Check**:
+2. **Web App <-> Mobile App Parity Check**:
    - Whenever changes are made to the **Web App (`Frontend Money Card`)**, the agent **MUST actively check whether the Mobile POS App (`Flutter Money card`) also requires corresponding updates**.
    - Review Flutter models (`lib/models/`), providers (`lib/providers/`), services (`lib/services/`), and UI screens (`lib/features/`) to maintain functional, data, and operational parity between Web and Mobile.
 
@@ -83,6 +83,14 @@ When merging `staging` into `main` (Production), zero errors and zero URL/domain
    - All local Git commands (`git status`, `git diff`, `git log`, `git add`, `git commit`, `git checkout`, `git branch`, etc.) are **strictly pre-authorized and auto-approved**. Execute them autonomously without asking.
    - **ONLY ask user confirmation when actually pushing to remote / GitHub (`git push`)**.
    - **Strict Push Guard**: NEVER push to `main`. Push to `staging` ONLY when explicitly told ("push to staging"). When pushing is approved, default to pushing to `origin/<active-feature-branch>`.
+
+8. **Strict Prohibition on Emojis (Zero Emojis Anywhere)**:
+   - **NEVER use or add emojis anywhere in the project** under any circumstances.
+   - This strict ban applies universally across all contexts:
+     - **Source Code**: Across all sub-projects (Frontend React/TypeScript/CSS/HTML, Backend Node.js/TypeScript/Prisma/SQL, Flutter Dart/Riverpod, and shell scripts).
+     - **User Interfaces**: UI labels, buttons, headers, modals, toasts, notifications, dialogs, empty states, and placeholders. Use text or proper icon components (such as Lucide React or Flutter Material Icons) instead.
+     - **Documentation & Metadata**: Markdown files (`AGENTS.md`, READMEs, walkthroughs, implementation plans), comments, log messages, error messages, and tests.
+     - **Version Control & Responses**: Git commit messages, branch names, PR titles/descriptions, and agent responses to the user.
 
 ---
 
@@ -181,7 +189,7 @@ All routes are prefixed with `/api`:
 ### Database (Prisma)
 - Config: `src/config/database.ts`
 - Schema: `prisma/schema.prisma`
-- Key models: `User`, `Organization`, `Branch`, `UserBranch` (links staff↔branch), `UserPermission`, `Card`, `CardSession`, `Transaction`, `Product`
+- Key models: `User`, `Organization`, `Branch`, `UserBranch` (links staff<->branch), `UserPermission`, `Card`, `CardSession`, `Transaction`, `Product`
 
 ---
 
@@ -365,7 +373,7 @@ Screens → Providers → Repositories → Services → API
 - `3392366` — Removed "All Counters" filter from left sidebar
 - `eb83f19` — PDF modal checkable tiles, metric subtitles, inactive card definition fix
 
-### ✅ Completed Task: Counter Dashboard Full Control
+### Completed Task: Counter Dashboard Full Control
 **Status: Implemented, verified with 234/234 passing tests and 0 build errors.**
 
 Files to change:
@@ -402,6 +410,7 @@ Files to change:
 - Don't add TailwindCSS — use Vanilla CSS with existing utility classes
 - Don't break multi-tenant isolation — always filter queries by `organizationId`
 - Don't push to `main` — ever
+- Don't add emojis anywhere — never use emojis in code, UI text, labels, documentation, commit messages, notifications, or comments
 
 ### Error Response Pattern (Backend)
 ```ts
