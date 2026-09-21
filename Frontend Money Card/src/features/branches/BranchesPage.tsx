@@ -17,7 +17,7 @@ import {
   EmptyState,
   ErrorState,
 } from '@/components/ui';
-import { BulkCsvImportModal } from '@/components/common/BulkCsvImportModal';
+import { BulkCsvImportModal } from '@/components/common';
 import { DataTable } from '@/components/tables';
 import { notify, formatDate } from '@/utils';
 import {
