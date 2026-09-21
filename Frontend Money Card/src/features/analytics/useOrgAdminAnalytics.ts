@@ -149,7 +149,7 @@ export function useOrgAdminAnalytics() {
   const [pdfSections, setPdfSections] = useState<OrgPdfSectionOptions>({
     includeExecutiveKpis: true,
     includeCardLifecycle: true,
-    includePaymentBreakdown: true,
+    includePaymentBreakdown: false,
     includeRushKpis: true,
     includeTrafficDistribution: true,
     includeFoodDemand: true,
@@ -434,7 +434,7 @@ export function useOrgAdminAnalytics() {
       const defaultSections: OrgPdfSectionOptions = {
         includeExecutiveKpis: true,
         includeCardLifecycle: true,
-        includePaymentBreakdown: true,
+        includePaymentBreakdown: false,
         includeRushKpis: false,
         includeTrafficDistribution: false,
         includeFoodDemand: false,
@@ -444,7 +444,7 @@ export function useOrgAdminAnalytics() {
       setPdfSections(defaultSections);
       const options = getOrgReportOptions(defaultSections);
       if (!options) {
-        notify.error('No analytics data available to render PDF.');
+        notify.error('No analytics data available to preview.');
         return;
       }
 
@@ -464,7 +464,7 @@ export function useOrgAdminAnalytics() {
     const updated: OrgPdfSectionOptions = {
       ...pdfSections,
       includeExecutiveKpis: selected.financial,
-      includePaymentBreakdown: selected.financial,
+      includePaymentBreakdown: false,
       includeCardLifecycle: selected.cards,
       includeRushKpis: false,
       includeTrafficDistribution: false,
@@ -502,7 +502,7 @@ export function useOrgAdminAnalytics() {
       const options = getOrgReportOptions({
         includeExecutiveKpis: true,
         includeCardLifecycle: true,
-        includePaymentBreakdown: true,
+        includePaymentBreakdown: false,
         includeRushKpis: false,
         includeTrafficDistribution: false,
         includeFoodDemand: false,

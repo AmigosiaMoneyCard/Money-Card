@@ -316,7 +316,7 @@ export function CardsPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  <th className="py-3 px-4 min-w-[220px]">Counter Name</th>
+                  <th className="py-3 px-4 w-1/2 min-w-[240px]">Counter Name</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -326,13 +326,13 @@ export function CardsPage() {
                   return (
                     <tr key={branch.id} className="hover:bg-slate-50/60 transition-colors">
                       {/* Counter Name */}
-                      <td className="py-3.5 px-4">
+                      <td className="py-3.5 px-4 w-1/2 min-w-[240px]">
                         <div className="flex items-center gap-3">
                           <div className="h-8 w-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
                             <Building2 className="h-4 w-4" />
                           </div>
                           <span className="font-semibold text-sm text-slate-900">
-                            {branch.name}
+                            Cards - {branch.name}
                           </span>
                         </div>
                       </td>

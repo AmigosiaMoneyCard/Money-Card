@@ -678,7 +678,7 @@ export function BranchesPage() {
     {
       key: 'name',
       header: 'Counter Name',
-      className: 'w-full',
+      className: 'w-80 whitespace-nowrap',
       render: (branch: Branch) => (
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -693,9 +693,9 @@ export function BranchesPage() {
     {
       key: 'createdAt',
       header: 'Created Date',
-      className: 'text-right whitespace-nowrap w-36',
+      className: 'text-left whitespace-nowrap w-48',
       render: (branch: Branch) => (
-        <div className="text-right text-xs text-slate-500">{formatDate(branch.createdAt)}</div>
+        <div className="text-left text-xs text-slate-500">{formatDate(branch.createdAt)}</div>
       ),
     },
     {
