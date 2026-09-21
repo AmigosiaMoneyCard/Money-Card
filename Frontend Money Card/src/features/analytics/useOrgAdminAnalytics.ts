@@ -120,16 +120,17 @@ export function useOrgAdminAnalytics() {
 
   const [activeTab, setActiveTab] = useState<'overview' | 'cards'>(() => {
     const t = searchParams.get('tab');
-    return t === 'cards' ? 'cards' : 'overview';
+    if (t === 'cards') return 'cards';
+    return 'overview';
   });
 
   const handleTabChange = (tab: 'overview' | 'cards') => {
     setActiveTab(tab);
     const newParams = new URLSearchParams(searchParams);
-    if (tab === 'cards') {
-      newParams.set('tab', 'cards');
-    } else {
+    if (tab === 'overview') {
       newParams.delete('tab');
+    } else {
+      newParams.set('tab', tab);
     }
     setSearchParams(newParams);
   };

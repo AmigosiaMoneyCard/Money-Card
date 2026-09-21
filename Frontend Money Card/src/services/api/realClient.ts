@@ -57,6 +57,7 @@ import type {
   PurchaseRequest,
   PurchaseResponseData,
   CustomerHistoryEvent,
+  ListRechargesResponse,
 } from '@/types';
 import { mockClient } from '../mock/mockClient';
 
@@ -261,6 +262,10 @@ export const realClient: typeof mockClient = {
 
     async createBranch(data: CreateBranchRequest & { organizationId?: string }): Promise<ApiResult<Branch>> {
       return handleApiCall(() => apiClient.post<Branch>('/v1/branches', data));
+    },
+
+    async createBranchesBatch(data: { branches: any[] }): Promise<ApiResult<{ created: any[]; createdCount: number; errors: any[] }>> {
+      return handleApiCall(() => apiClient.post('/v1/branches/batch', data));
     },
 
     async updateBranch(id: string, data: UpdateBranchRequest): Promise<ApiResult<Branch>> {
@@ -474,6 +479,18 @@ export const realClient: typeof mockClient = {
 
     async refundSession(sessionId: string): Promise<ApiResult<RefundResponseData>> {
       return handleApiCall(() => apiClient.post<RefundResponseData>(`/v1/card-sessions/${sessionId}/return`));
+    },
+
+    async listRecharges(params?: any): Promise<ApiResult<ListRechargesResponse>> {
+      return handleApiCall(() => apiClient.get<ListRechargesResponse>('/v1/card-sessions/transactions/recharges', { params }));
+    },
+
+    async cancelRecharge(transactionId: string, reason: string): Promise<ApiResult<any>> {
+      return handleApiCall(() => apiClient.post(`/v1/card-sessions/transactions/${transactionId}/cancel-recharge`, { reason }));
+    },
+
+    async cancelOrder(transactionId: string, reason: string): Promise<ApiResult<any>> {
+      return handleApiCall(() => apiClient.post(`/v1/card-sessions/transactions/${transactionId}/cancel-order`, { reason }));
     },
   },
 

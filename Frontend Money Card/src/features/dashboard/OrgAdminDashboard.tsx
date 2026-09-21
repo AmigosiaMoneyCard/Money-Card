@@ -515,7 +515,7 @@ export function OrgAdminDashboard() {
                   {/* Time Window Filter (Custom Range Only) */}
                   <div>
                     <label className="mb-1 block text-[11px] font-medium text-slate-600">Time Window</label>
-                    <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 shadow-2xs">
+                    <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 shadow-2xs">
                       <input
                         id="dashboard-start-date"
                         type="date"
@@ -531,6 +531,18 @@ export function OrgAdminDashboard() {
                         onChange={(e) => setEndDate(e.target.value)}
                         className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-800 focus:border-emerald-500 focus:bg-white focus:outline-none"
                       />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const today = getPresetDates('today').startDate;
+                          setStartDate(today);
+                          setEndDate(today);
+                        }}
+                        className="h-7 px-2 text-xs font-semibold border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer"
+                      >
+                        Reset to Today
+                      </Button>
                     </div>
                   </div>
                 </div>

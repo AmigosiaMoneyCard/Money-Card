@@ -266,7 +266,12 @@ export async function getActiveSessionByQr(req: Request, res: Response) {
         take: 1,
         include: {
           branch: true,
-          transactions: { orderBy: { createdAt: 'desc' } },
+          transactions: {
+            include: {
+              staff: { select: { id: true, name: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+          },
         },
       },
     },
@@ -600,3 +605,359 @@ export async function returnSession(req: Request, res: Response) {
 
   return sendSuccess(res, result);
 }
+
+export async function cancelRecharge(req: Request, res: Response) {
+  const { id } = req.params;
+  const { reason } = req.body;
+  const orgId = req.user?.organizationId;
+
+  const txRecord = await prisma.transaction.findUnique({
+    where: { id },
+    include: {
+      session: {
+        include: { card: true, branch: true },
+      },
+    },
+  });
+
+  if (!txRecord) {
+    return sendError(res, 404, 'NOT_FOUND', 'Transaction not found');
+  }
+
+  if (orgId && txRecord.session.organizationId !== orgId) {
+    return sendError(res, 403, 'FORBIDDEN', 'Access denied to this transaction');
+  }
+
+  const txType = String(txRecord.type || '');
+  const isRecharge = txType.includes('RECHARGE') || txType === 'CASH' || txType === 'UPI';
+  if (!isRecharge) {
+    return sendError(res, 400, 'INVALID_TRANSACTION_TYPE', 'Only recharge transactions can be cancelled via this endpoint');
+  }
+
+  const existingMeta = (txRecord.items as any) || {};
+  if (existingMeta.isCancelled) {
+    return sendError(res, 400, 'ALREADY_CANCELLED', 'This recharge transaction has already been cancelled');
+  }
+
+  const session = txRecord.session;
+  if (session.status !== SessionStatus.ACTIVE) {
+    return sendError(res, 400, 'SESSION_INACTIVE', 'Cannot cancel top-up on an inactive or settled session');
+  }
+
+  if (session.balance < txRecord.amount) {
+    const spentAmount = (txRecord.amount - session.balance).toFixed(2);
+    return sendError(
+      res,
+      400,
+      'INSUFFICIENT_BALANCE',
+      `Cannot cancel top-up: Customer already spent ₹${spentAmount}. Current card balance is only ₹${session.balance.toFixed(2)}.`,
+    );
+  }
+
+  const balanceBefore = session.balance;
+  const balanceAfter = balanceBefore - txRecord.amount;
+
+  const result = await prisma.$transaction(async (txPrisma) => {
+    const updatedSession = await txPrisma.cardSession.update({
+      where: { id: session.id },
+      data: { balance: balanceAfter },
+    });
+
+    const cancelMeta = {
+      ...existingMeta,
+      isCancelled: true,
+      cancelledAt: new Date().toISOString(),
+      cancelledByUserId: req.user?.id,
+      cancelledByUserName: req.user?.name || 'Staff',
+      cancellationReason: (reason || '').trim() || 'Staff voided recharge',
+    };
+
+    const updatedTx = await txPrisma.transaction.update({
+      where: { id: txRecord.id },
+      data: {
+        items: cancelMeta,
+      },
+      include: {
+        staff: { select: { id: true, name: true } },
+      },
+    });
+
+    return { session: updatedSession, transaction: updatedTx };
+  });
+
+  balanceStreamService.broadcastBalanceUpdate(session.sessionToken, {
+    balance: balanceAfter,
+    status: session.status,
+    type: 'RECHARGE_CANCELLED',
+    amount: txRecord.amount,
+    sessionId: session.id,
+  });
+
+  return sendSuccess(res, result);
+}
+
+export async function cancelOrder(req: Request, res: Response) {
+  const { id } = req.params;
+  const { reason } = req.body;
+  const orgId = req.user?.organizationId;
+
+  const txRecord = await prisma.transaction.findUnique({
+    where: { id },
+    include: {
+      session: {
+        include: { card: true, branch: true },
+      },
+    },
+  });
+
+  if (!txRecord) {
+    return sendError(res, 404, 'NOT_FOUND', 'Transaction not found');
+  }
+
+  if (orgId && txRecord.session.organizationId !== orgId) {
+    return sendError(res, 403, 'FORBIDDEN', 'Access denied to this transaction');
+  }
+
+  if (txRecord.type !== TransactionType.PURCHASE) {
+    return sendError(res, 400, 'INVALID_TRANSACTION_TYPE', 'Only purchase orders can be cancelled via this endpoint');
+  }
+
+  const existingMeta = (txRecord.items as any) || {};
+  if (existingMeta?.isCancelled) {
+    return sendError(res, 400, 'ALREADY_CANCELLED', 'This order has already been cancelled');
+  }
+
+  const session = txRecord.session;
+  if (session.status !== SessionStatus.ACTIVE) {
+    return sendError(res, 400, 'SESSION_INACTIVE', 'Cannot cancel order on an inactive or settled session');
+  }
+
+  const balanceBefore = session.balance;
+  const balanceAfter = balanceBefore + txRecord.amount;
+
+  const result = await prisma.$transaction(async (txPrisma) => {
+    const updatedSession = await txPrisma.cardSession.update({
+      where: { id: session.id },
+      data: { balance: balanceAfter },
+    });
+
+    const orderItems = Array.isArray(txRecord.items)
+      ? txRecord.items
+      : existingMeta.orderItems || [];
+
+    const cancelMeta = {
+      orderItems,
+      isCancelled: true,
+      cancelledAt: new Date().toISOString(),
+      cancelledByUserId: req.user?.id,
+      cancelledByUserName: req.user?.name || 'Staff',
+      cancellationReason: (reason || '').trim() || 'Customer cancelled order',
+    };
+
+    const updatedTx = await txPrisma.transaction.update({
+      where: { id: txRecord.id },
+      data: {
+        items: cancelMeta,
+      },
+      include: {
+        staff: { select: { id: true, name: true } },
+      },
+    });
+
+    return { session: updatedSession, transaction: updatedTx };
+  });
+
+  balanceStreamService.broadcastBalanceUpdate(session.sessionToken, {
+    balance: balanceAfter,
+    status: session.status,
+    type: 'PURCHASE_CANCELLED',
+    amount: txRecord.amount,
+    sessionId: session.id,
+  });
+
+  return sendSuccess(res, result);
+}
+
+export async function listRecharges(req: Request, res: Response) {
+  const orgId = req.user?.organizationId;
+  if (!orgId && req.user?.role !== 'SUPER_ADMIN') {
+    return sendError(res, 400, 'VALIDATION_ERROR', 'User has no associated organization');
+  }
+
+  const {
+    branchId,
+    startDate,
+    endDate,
+    paymentMethod,
+    status,
+    search,
+    limit = 50,
+    page = 1,
+    offset,
+  } = req.query as Record<string, any>;
+
+  let effectiveBranchId = branchId && branchId !== 'ALL' ? String(branchId) : undefined;
+  if (req.user?.role === 'STAFF' && req.user.assignedBranchIds && req.user.assignedBranchIds.length > 0) {
+    if (!effectiveBranchId || !req.user.assignedBranchIds.includes(effectiveBranchId)) {
+      effectiveBranchId = req.user.assignedBranchIds[0];
+    }
+  }
+
+  const dateFilter: any = {};
+  if (startDate) dateFilter.gte = new Date(startDate.includes('T') ? startDate : `${startDate}T00:00:00.000Z`);
+  if (endDate) dateFilter.lte = new Date(endDate.includes('T') ? endDate : `${endDate}T23:59:59.999Z`);
+
+  const where: any = {
+    type: { in: [TransactionType.RECHARGE_CASH, TransactionType.RECHARGE_UPI] },
+    session: {
+      ...(orgId ? { organizationId: orgId } : {}),
+      ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
+    },
+    ...(startDate || endDate ? { createdAt: dateFilter } : {}),
+  };
+
+  if (effectiveBranchId) {
+    where.branchId = effectiveBranchId;
+  }
+
+  const take = Math.min(100, Math.max(1, parseInt(String(limit), 10) || 50));
+  const skip = offset ? parseInt(String(offset), 10) || 0 : (Math.max(1, parseInt(String(page), 10) || 1) - 1) * take;
+
+  const allMatchingTx = await prisma.transaction.findMany({
+    where,
+    include: {
+      branch: { select: { id: true, name: true } },
+      staff: { select: { id: true, name: true, email: true } },
+      session: {
+        include: {
+          card: { select: { physicalCardNumber: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  let filtered = allMatchingTx;
+
+  // Filter by payment method if specified
+  if (paymentMethod && paymentMethod !== 'ALL') {
+    const pm = String(paymentMethod).toUpperCase();
+    filtered = filtered.filter((t) => {
+      const type = String(t.type);
+      const method = String(t.paymentMethod || '').toUpperCase();
+      return pm === 'UPI' ? (type.includes('UPI') || method === 'UPI') : (type.includes('CASH') || method === 'CASH');
+    });
+  }
+
+  // Filter by status (ACTIVE vs CANCELLED)
+  if (status && status !== 'ALL') {
+    const isCancelledTarget = status === 'CANCELLED';
+    filtered = filtered.filter((t) => {
+      const isCancelled = Boolean((t.items as any)?.isCancelled);
+      return isCancelledTarget ? isCancelled : !isCancelled;
+    });
+  }
+
+  // Filter by search term
+  const searchTerm = String(search || '').trim().toLowerCase();
+  if (searchTerm) {
+    filtered = filtered.filter((t) => {
+      const cardNum = (t.session.card?.physicalCardNumber || t.session.sessionCardNumber || '').toLowerCase();
+      const custName = (t.session.customerName || '').toLowerCase();
+      const custPhone = (t.session.customerPhone || '').toLowerCase();
+      const staffName = (t.staff?.name || '').toLowerCase();
+      return (
+        cardNum.includes(searchTerm) ||
+        custName.includes(searchTerm) ||
+        custPhone.includes(searchTerm) ||
+        staffName.includes(searchTerm)
+      );
+    });
+  }
+
+  // Calculate summary metrics across all filtered recharges
+  let totalCount = 0;
+  let totalVolume = 0;
+  let upiCount = 0;
+  let upiVolume = 0;
+  let cashCount = 0;
+  let cashVolume = 0;
+  let cancelledCount = 0;
+  let cancelledVolume = 0;
+
+  filtered.forEach((t) => {
+    const isCancelled = Boolean((t.items as any)?.isCancelled);
+    const isUpi = String(t.type).includes('UPI') || String(t.paymentMethod || '').toUpperCase() === 'UPI';
+
+    if (isCancelled) {
+      cancelledCount++;
+      cancelledVolume += t.amount;
+    } else {
+      totalCount++;
+      totalVolume += t.amount;
+      if (isUpi) {
+        upiCount++;
+        upiVolume += t.amount;
+      } else {
+        cashCount++;
+        cashVolume += t.amount;
+      }
+    }
+  });
+
+  const paginated = filtered.slice(skip, skip + take);
+
+  const formatted = paginated.map((t) => {
+    const isCancelled = Boolean((t.items as any)?.isCancelled);
+    const cancelMeta = (t.items as any) || {};
+    const isUpi = String(t.type).includes('UPI') || String(t.paymentMethod || '').toUpperCase() === 'UPI';
+
+    return {
+      id: t.id,
+      sessionId: t.sessionId,
+      cardNumber: t.session.card?.physicalCardNumber || t.session.sessionCardNumber || 'MC-CARD',
+      customerName: t.session.customerName || 'Customer',
+      customerPhone: t.session.customerPhone || '—',
+      branchId: t.branchId,
+      branchName: t.branch?.name || 'Counter',
+      staffUserId: t.staffUserId,
+      staffName: t.staff?.name || 'Staff',
+      type: t.type,
+      amount: t.amount,
+      paymentMethod: isUpi ? 'UPI' : 'CASH',
+      balanceBefore: t.balanceBefore,
+      balanceAfter: t.balanceAfter,
+      isCancelled,
+      cancelledAt: cancelMeta.cancelledAt || null,
+      cancelledByUserName: cancelMeta.cancelledByUserName || null,
+      cancellationReason: cancelMeta.cancellationReason || null,
+      createdAt: t.createdAt.toISOString(),
+    };
+  });
+
+  return sendSuccess(res, {
+    items: formatted,
+    transactions: formatted,
+    total: filtered.length,
+    page: Math.floor(skip / take) + 1,
+    limit: take,
+    totalPages: Math.ceil(filtered.length / take) || 1,
+    summary: {
+      totalCount,
+      totalVolume: Number(totalVolume.toFixed(2)),
+      upiCount,
+      upiVolume: Number(upiVolume.toFixed(2)),
+      cashCount,
+      cashVolume: Number(cashVolume.toFixed(2)),
+      cancelledCount,
+      cancelledVolume: Number(cancelledVolume.toFixed(2)),
+    },
+    pagination: {
+      total: filtered.length,
+      page: Math.floor(skip / take) + 1,
+      limit: take,
+      totalPages: Math.ceil(filtered.length / take) || 1,
+    },
+  });
+}
+

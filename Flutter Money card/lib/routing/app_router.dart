@@ -17,6 +17,7 @@ import '../features/pos/pos_checkout_screen.dart';
 import '../features/pos/pos_scan_purchase_screen.dart';
 import '../features/products/products_screen.dart';
 import '../features/receipt/bill_receipt_screen.dart';
+import '../features/recharges/recharges_screen.dart';
 import '../features/sessions/session_details_screen.dart';
 import '../features/sessions/sessions_screen.dart';
 import '../models/receipt_bill.dart';
@@ -187,6 +188,11 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         path: '/app/analytics',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const AnalyticsScreen(),
+      ),
+      GoRoute(
+        path: '/app/recharges',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const RechargesScreen(),
       ),
       GoRoute(
         path: '/app/more/mock-qr',

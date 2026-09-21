@@ -112,4 +112,60 @@ class SessionService {
       fromJson: (data) => SessionReturnResult.fromJson(data as Map<String, dynamic>),
     );
   }
+
+  /// Cancel a recharge transaction (POST /api/v1/card-sessions/transactions/:id/cancel-recharge)
+  Future<void> cancelRecharge({
+    required String transactionId,
+    String? reason,
+  }) async {
+    await _apiService.post<dynamic>(
+      ApiEndpoints.cancelRecharge(transactionId),
+      data: {
+        if (reason != null && reason.isNotEmpty) 'reason': reason,
+      },
+      fromJson: (data) => data,
+    );
+  }
+
+  /// Cancel an order transaction (POST /api/v1/card-sessions/transactions/:id/cancel-order)
+  Future<void> cancelOrder({
+    required String transactionId,
+    String? reason,
+  }) async {
+    await _apiService.post<dynamic>(
+      ApiEndpoints.cancelOrder(transactionId),
+      data: {
+        if (reason != null && reason.isNotEmpty) 'reason': reason,
+      },
+      fromJson: (data) => data,
+    );
+  }
+
+  /// List recharges with filters (GET /api/v1/card-sessions/transactions/recharges)
+  Future<Map<String, dynamic>> listRecharges({
+    String? branchId,
+    String? startDate,
+    String? endDate,
+    String? paymentMethod,
+    String? status,
+    String? search,
+    int? page,
+    int? limit,
+  }) async {
+    final query = <String, dynamic>{};
+    if (branchId != null) query['branchId'] = branchId;
+    if (startDate != null) query['startDate'] = startDate;
+    if (endDate != null) query['endDate'] = endDate;
+    if (paymentMethod != null) query['paymentMethod'] = paymentMethod;
+    if (status != null) query['status'] = status;
+    if (search != null) query['search'] = search;
+    if (page != null) query['page'] = page;
+    if (limit != null) query['limit'] = limit;
+
+    return _apiService.get<Map<String, dynamic>>(
+      ApiEndpoints.recharges,
+      queryParameters: query,
+      fromJson: (data) => data as Map<String, dynamic>,
+    );
+  }
 }

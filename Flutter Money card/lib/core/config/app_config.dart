@@ -54,7 +54,11 @@ class AppConfig {
   static bool get isProduction => environment == 'production' || environment == 'prod';
   static bool get isDevelopment => !isProduction && !isStaging;
 
-  static String get appName => isProduction ? 'Money Card' : 'Money Card (Staging)';
+  static String get appName {
+    if (isProduction) return 'Money Card';
+    if (isDevelopment) return 'Money Card (Dev)';
+    return 'Money Card (Staging)';
+  }
 
   /// Staging API URL (connected to money-card-backend-staging)
   static const String stagingBaseUrl = String.fromEnvironment(
@@ -71,6 +75,9 @@ class AppConfig {
   /// Primary USB Reverse / Local Loopback endpoint
   static const String defaultBaseUrl = 'http://127.0.0.1:3000/api/v1';
   static const String defaultLocalBaseUrl = defaultBaseUrl;
+
+  /// Android Emulator loopback endpoint (10.0.2.2 maps to host 127.0.0.1)
+  static const String defaultEmulatorBaseUrl = 'http://10.0.2.2:3000/api/v1';
 
   /// Current active Laptop Wi-Fi LAN endpoint
   static const String defaultLanBaseUrl = 'http://192.168.105.39:3000/api/v1';
@@ -99,6 +106,9 @@ class AppConfig {
     }
     if (isProduction) {
       return normalizeUrl(productionBaseUrl);
+    }
+    if (isDevelopment) {
+      return normalizeUrl(defaultBaseUrl);
     }
     // Default for staging: stagingBaseUrl
     return normalizeUrl(stagingBaseUrl);

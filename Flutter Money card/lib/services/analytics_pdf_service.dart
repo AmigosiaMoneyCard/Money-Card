@@ -226,31 +226,45 @@ class AnalyticsPdfService {
                   ),
                   pw.TableRow(
                     children: [
-                      _buildCell('POS Purchases (Sales)'),
-                      _buildCell('${analytics.purchaseCount} orders', alignRight: true),
-                      _buildCell(currencyFmt.format(analytics.purchaseVolume), alignRight: true, isBold: true),
-                    ],
-                  ),
-                  pw.TableRow(
-                    children: [
-                      _buildCell('Card Recharges (Deposits)'),
+                      _buildCell('Money Added (Top-ups)'),
                       _buildCell('${analytics.rechargeCount} top-ups', alignRight: true),
-                      _buildCell(currencyFmt.format(analytics.rechargeVolume), alignRight: true, isBold: true),
+                      _buildCell(currencyFmt.format(analytics.moneyAdded), alignRight: true, isBold: true),
                     ],
                   ),
                   pw.TableRow(
                     children: [
-                      _buildCell('Refunds Issued'),
+                      _buildCell('Money Refunded (Cards Returned)'),
                       _buildCell('${analytics.refundCount} refunds', alignRight: true),
-                      _buildCell('- ${currencyFmt.format(analytics.refundVolume)}', alignRight: true),
+                      _buildCell('- ${currencyFmt.format(analytics.moneyRefunded)}', alignRight: true),
+                    ],
+                  ),
+                  pw.TableRow(
+                    children: [
+                      _buildCell('Cancelled Top-ups (Voided)'),
+                      _buildCell('${analytics.cancelledTopUpsCount} voided', alignRight: true),
+                      _buildCell(currencyFmt.format(analytics.cancelledTopUps), alignRight: true),
+                    ],
+                  ),
+                  pw.TableRow(
+                    children: [
+                      _buildCell('Cash in Drawer (To Hand Over)'),
+                      _buildCell('Physical Drawer', alignRight: true),
+                      _buildCell(currencyFmt.format(analytics.cashInDrawer), alignRight: true, isBold: true),
+                    ],
+                  ),
+                  pw.TableRow(
+                    children: [
+                      _buildCell('Food Sales (POS Purchases)'),
+                      _buildCell('${analytics.purchaseCount} orders', alignRight: true),
+                      _buildCell(currencyFmt.format(analytics.purchaseVolume), alignRight: true),
                     ],
                   ),
                   pw.TableRow(
                     decoration: pw.BoxDecoration(color: primaryLight),
                     children: [
-                      _buildCell('Total Net Revenue', isBold: true),
+                      _buildCell('Net Money Collected', isBold: true),
                       _buildCell('${analytics.transactionCount} total txns', alignRight: true, isBold: true),
-                      _buildCell(currencyFmt.format(analytics.totalRevenue), alignRight: true, isBold: true),
+                      _buildCell(currencyFmt.format(analytics.netMoneyCollected), alignRight: true, isBold: true),
                     ],
                   ),
                 ],

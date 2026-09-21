@@ -24,6 +24,21 @@ export interface BranchPerformanceMetric {
   productsSoldCount: number;
   inventoryItemCount: number;
   lowStockItemCount: number;
+  // Easy Words Metrics
+  moneyAdded?: number;
+  moneyRefunded?: number;
+  cancelledTopUps?: number;
+  cancelledTopUpsCount?: number;
+  netMoneyCollected?: number;
+  cashInDrawer?: number;
+  upiMoney?: number;
+  cashMoney?: number;
+  upiCount?: number;
+  cashCount?: number;
+  cardsGivenOut?: number;
+  cardsReturned?: number;
+  cancelledOrdersCount?: number;
+  cancelledOrdersVolume?: number;
 }
 
 export interface StaffActivityItem {
@@ -95,6 +110,21 @@ export interface AnalyticsOverview {
   activeStaffCount?: number;
   totalStaffCount?: number;
   cardFleetAnalytics?: CardFleetAnalytics;
+  // Easy Words Metrics
+  moneyAdded?: number;
+  moneyRefunded?: number;
+  cancelledTopUps?: number;
+  cancelledTopUpsCount?: number;
+  netMoneyCollected?: number;
+  cashInDrawer?: number;
+  upiMoney?: number;
+  cashMoney?: number;
+  upiCount?: number;
+  cashCount?: number;
+  cardsGivenOut?: number;
+  cardsReturned?: number;
+  cancelledOrdersCount?: number;
+  cancelledOrdersVolume?: number;
 }
 
 export interface CardFleetTrackItem {

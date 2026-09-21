@@ -1,0 +1,7 @@
+import 'core/config/app_config.dart';
+import 'main.dart' as entry;
+
+Future<void> main() async {
+  AppConfig.initialize(env: 'development');
+  await entry.main();
+}
