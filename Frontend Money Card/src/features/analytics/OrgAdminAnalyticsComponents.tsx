@@ -35,26 +35,19 @@ export type SortMetric =
 
 interface FinancialSectionProps {
   analytics: AnalyticsOverview;
-  cashRecharge: number;
-  upiRecharge: number;
-  totalRefund: number;
+  cashRecharge?: number;
+  upiRecharge?: number;
+  totalRefund?: number;
 }
 
 export interface KpiCardsProps {
   analytics: AnalyticsOverview;
 }
 
-
 export function OrgAdminFinancialSection({
   analytics,
-  cashRecharge,
-  upiRecharge,
-  totalRefund,
 }: FinancialSectionProps) {
   const floatBalance = analytics.cardFleetAnalytics?.totalFloatBalance ?? 0;
-  const totalRecharge = cashRecharge + upiRecharge;
-  const cashPct = totalRecharge > 0 ? Math.round((cashRecharge / totalRecharge) * 100) : 0;
-  const upiPct = totalRecharge > 0 ? 100 - cashPct : 0;
 
   return (
     <div className="space-y-4">
@@ -125,64 +118,6 @@ export function OrgAdminFinancialSection({
               {analytics.totalTransactions.toLocaleString()}
             </p>
             <p className="mt-1 text-xs text-slate-500">Total cafeteria activity</p>
-          </div>
-        </Card>
-      </div>
-
-      {/* ─── Bottom 3 Payment & Refund Cards (Unified Box Style) ─── */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Cash Recharges
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-              <DollarSign className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-slate-900">
-              {formatCurrency(cashRecharge)}
-            </p>
-            {totalRecharge > 0 && (
-              <p className="mt-1 text-xs text-slate-500">{cashPct}% of total recharges</p>
-            )}
-          </div>
-        </Card>
-
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              UPI Recharges
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
-              <CreditCard className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-slate-900">
-              {formatCurrency(upiRecharge)}
-            </p>
-            {totalRecharge > 0 && (
-              <p className="mt-1 text-xs text-slate-500">{upiPct}% of total recharges</p>
-            )}
-          </div>
-        </Card>
-
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Cash Returned
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
-              <ArrowUpDown className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-slate-900">
-              {formatCurrency(totalRefund)}
-            </p>
-            <p className="mt-1 text-xs text-slate-500">Total refunded / returned to customers</p>
           </div>
         </Card>
       </div>

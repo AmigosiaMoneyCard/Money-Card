@@ -56,7 +56,7 @@ export function buildOrgAnalyticsJsPdf({
   const effectiveSections: OrgPdfSectionOptions = {
     includeExecutiveKpis: sections?.includeExecutiveKpis ?? true,
     includeCardLifecycle: sections?.includeCardLifecycle ?? true,
-    includePaymentBreakdown: sections?.includePaymentBreakdown ?? true,
+    includePaymentBreakdown: sections?.includePaymentBreakdown ?? false,
     includeRushKpis: sections?.includeRushKpis ?? true,
     includeTrafficDistribution: sections?.includeTrafficDistribution ?? true,
     includeFoodDemand: sections?.includeFoodDemand ?? true,
@@ -802,7 +802,7 @@ export function downloadFinancialOverviewPdf(options: GenerateOrgPdfOptions, fil
     sections: {
       includeExecutiveKpis: true,
       includeCardLifecycle: false,
-      includePaymentBreakdown: true,
+      includePaymentBreakdown: false,
       includeRushKpis: false,
       includeTrafficDistribution: false,
       includeFoodDemand: false,
