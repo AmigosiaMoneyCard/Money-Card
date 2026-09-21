@@ -35,6 +35,7 @@ import {
   EyeOff,
   FileSpreadsheet,
   Download,
+  ChevronDown,
 } from 'lucide-react';
 
 // ─── Slide Switch Component (Far Right End) ─────────────────
@@ -188,6 +189,7 @@ export function BranchesPage() {
 
   // Bulk CSV Import state
   const [showBulkModal, setShowBulkModal] = useState(false);
+  const [showAddCounterDropdown, setShowAddCounterDropdown] = useState(false);
 
   // Bulk WhatsApp Dispatch state
   const [showBulkWhatsAppModal, setShowBulkWhatsAppModal] = useState(false);
@@ -750,24 +752,55 @@ export function BranchesPage() {
 
         <div className="flex items-center gap-2.5 flex-wrap">
           {canManage && (
-            <div className="flex items-center">
+            <div className="relative inline-flex items-center rounded-xl shadow-2xs">
               <Button
                 variant="primary"
                 onClick={handleOpenCreate}
                 leftIcon={<Plus className="h-4 w-4" />}
-                className="rounded-r-none border-r border-emerald-500"
+                className="rounded-r-none pr-3"
               >
                 Add Counter
               </Button>
-              <Button
-                variant="primary"
-                onClick={() => setShowBulkModal(true)}
-                leftIcon={<FileSpreadsheet className="h-4 w-4" />}
-                className="rounded-l-none px-3"
-                title="Bulk Upload Counters CSV"
+              <button
+                type="button"
+                onClick={() => setShowAddCounterDropdown((prev) => !prev)}
+                className="h-9 px-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-r-xl border-l border-emerald-600 transition-colors cursor-pointer flex items-center justify-center"
+                title="More Counter Options"
               >
-                Bulk Upload
-              </Button>
+                <ChevronDown className="h-4 w-4" />
+              </button>
+              {showAddCounterDropdown && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setShowAddCounterDropdown(false)}
+                  />
+                  <div className="absolute right-0 top-full mt-1.5 w-56 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 z-20">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddCounterDropdown(false);
+                        handleOpenCreate();
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2 cursor-pointer"
+                    >
+                      <Plus className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>Add Single Counter</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddCounterDropdown(false);
+                        setShowBulkModal(true);
+                      }}
+                      className="w-full text-left px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2 cursor-pointer"
+                    >
+                      <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>Bulk Upload Counters (CSV)</span>
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

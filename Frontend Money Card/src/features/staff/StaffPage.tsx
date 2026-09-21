@@ -1065,27 +1065,27 @@ export function StaffPage() {
     );
   }, [counterStaffGroups, selectedCounterGroup, modalCounterSearch]);
 
-  // ── Table Columns (Counter-First & Minimal) ────────────────
+  // ── Table Columns (Counter-First & Minimal 3 Columns) ─────────
   const columns = [
     {
       key: 'counterName',
       header: 'Counter Name',
-      className: 'w-1/2 min-w-[220px]',
+      className: 'w-1/2 min-w-[200px]',
       render: (group: CounterStaffGroup) => (
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
             <Building2 className="h-4 w-4" />
           </div>
-          <span className="font-semibold text-slate-900 text-sm">Counter - {group.counterName}</span>
+          <span className="font-semibold text-slate-900 text-sm">Staff - {group.counterName}</span>
         </div>
       ),
     },
     {
-      key: 'staffDetails',
-      header: 'Staff Details',
-      className: 'text-right',
+      key: 'addStaff',
+      header: 'Add Staff',
+      className: 'w-36 text-center',
       render: (group: CounterStaffGroup) => (
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-center">
           {canManage && (
             <Button
               variant="outline"
@@ -1097,6 +1097,15 @@ export function StaffPage() {
               Add
             </Button>
           )}
+        </div>
+      ),
+    },
+    {
+      key: 'staffDetails',
+      header: 'Staff Details',
+      className: 'w-44 text-right',
+      render: (group: CounterStaffGroup) => (
+        <div className="flex items-center justify-end">
           <Button
             variant="outline"
             size="sm"
@@ -1127,20 +1136,6 @@ export function StaffPage() {
           <p className="text-xs text-slate-500">
             Showing staff at your counter only. New staff are automatically assigned to your counter.
           </p>
-        )}
-
-        {canManage && (
-          <div className="flex justify-center">
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => handleOpenAdd()}
-              leftIcon={<UserPlus className="h-3.5 w-3.5" />}
-              className="text-xs h-8 px-3.5 font-semibold"
-            >
-              Add Staff
-            </Button>
-          </div>
         )}
       </div>
 

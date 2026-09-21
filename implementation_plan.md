@@ -1,88 +1,120 @@
-# Implementation Plan: Counters, Menu, Staff, Analytics & POS Parity
+# Implementation Plan: Menu Bulk Upload, Counter Button Merge & Staff Table Centering
 
-Unified implementation plan covering:
-1. Backend Manager Naming: In `organization.controller.ts`, change auto-provisioned staff name from `<name> Counter Manager` to `Staff - <name>` (e.g. `Staff - counter2`).
-2. Staff Display Sanitization: In `StaffPage.tsx`, normalize existing staff names ending in "Counter Manager" to display cleanly as `Staff - <CounterName>` (matching Cards - Counter).
-3. Bulk Counter Password Persistence: In `handleBulkImport` inside `BranchesPage.tsx`, persist passwords for batch-created counters into local storage (`mc_branch_passwords`).
-4. Mobile Analytics Parity: Remove "Cash in Drawer (To Hand Over)" from mobile analytics in `analytics_screen.dart` and mobile PDF export in `analytics_pdf_service.dart`.
-5. Product Rename Analytics Unification: Product demand groups strictly by immutable `productId` (UUID) with current catalog display name.
+Unified implementation plan addressing:
+1. Org Admin Menu Bulk Upload: Integrate Bulk Upload (CSV) directly into the `Add Menu` modal ([CounterAddProductModal.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/products/CounterAddProductModal.tsx)) with tabs for Single Item and Bulk Upload CSV.
+2. Counters Button Consolidation: Merge the standalone `Bulk Upload` button into the `Add Counter` button in [BranchesPage.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/branches/BranchesPage.tsx) via a unified split dropdown and modal switcher.
+3. Staff Top Button Removal & Horizontal Centering: In [StaffPage.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/staff/StaffPage.tsx), remove the top green `Add Staff` button and restructure the table into 3 columns, placing the existing `+ Add` button in the horizontal center of the row.
+4. Staff Naming Normalization: In [StaffPage.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/staff/StaffPage.tsx), change row labels from `Counter - {group.counterName}` to `Staff - {group.counterName}` (e.g. `Staff - counter2`).
 
-![Updated SaaS Dashboard Layout](file:///C:/Users/damie/.gemini/antigravity-ide/brain/9635058f-8784-4982-b40a-c7e9d921ee9b/updated_saas_features_sketch_1789981547689.jpg)
+![Staff, Menu, and Counters Revamp](file:///C:/Users/damie/.gemini/antigravity-ide/brain/9635058f-8784-4982-b40a-c7e9d921ee9b/org_admin_staff_menu_counters_revamp_1789987621646.jpg)
 
 ## User Review Required
 
 > [!IMPORTANT]
-> 1. Backend Manager Naming: When single or bulk counters are created/updated in `organization.controller.ts`, the associated staff user's name is auto-provisioned as `Staff - <CounterName>` (e.g. `Staff - counter2`) instead of `<name> Counter Manager`.
-> 2. Staff Display Sanitization: Any historical staff records in `StaffPage.tsx` with names ending in "Counter Manager" are sanitized dynamically via `formatStaffDisplayName` to display as `Staff - <CounterName>`.
-> 3. Bulk Counter Password Persistence: In `BranchesPage.tsx`, `handleBulkImport` extracts created counter IDs and passwords, persisting them to localStorage (`mc_branch_passwords`) via `storePassword(c.id, c.password)`, ensuring passwords are never lost when viewing/editing the counter later.
-> 4. Mobile Analytics Parity: "Cash in Drawer (To Hand Over)" card is removed from `Flutter Money card/lib/features/analytics/analytics_screen.dart` and its row is removed from `analytics_pdf_service.dart`, matching the web app.
+> 1. Menu Modal Bulk Upload: Clicking `Add Menu` on any counter row in Menu Management will display a modal with two tabs: `Single Item` and `Bulk Upload (CSV)`. The bulk upload tab supports downloading sample CSV, selecting a file, parsing, and batch creation.
+> 2. Counters Button Unification: The standalone `Bulk Upload` button next to `Add Counter` is eliminated. A single `Add Counter` button with an integrated dropdown option for `Bulk Upload Counters (CSV)` will be displayed, and the Create Counter modal will also offer a `Bulk Upload (CSV)` tab.
+> 3. Staff Page Top Button Removal: The centered green `Add Staff` button on the top header of Staff Management is removed completely.
+> 4. Staff Table 3-Column Layout: The table is restructured into 3 distinct columns:
+>    - Column 1 (Left): `Staff - <CounterName>`
+>    - Column 2 (Center): `+ Add` (centered horizontally in the middle)
+>    - Column 3 (Right): `Staff Details (<count>)`
 
 ---
 
 ## Proposed Changes
 
-### 1. Backend Auto-Provisioned Staff Naming
+### 1. Org Admin Menu Add Item Modal — CounterAddProductModal.tsx
 
-#### [organization.controller.ts](file:///d:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/organization.controller.ts)
-- In `createBranch` (line 279):
-  Change `name: \`${name.trim()} Counter Manager\`` to `name: \`Staff - ${name.trim()}\``.
-- In `bulkCreateBranches` (line 451):
-  Change `name: \`${name} Counter Manager\`` to `name: \`Staff - ${name}\``.
-- In `updateBranch` (lines 667, 679):
-  Change `name: \`${String(name).trim()} Counter Manager\`` to `name: \`Staff - ${String(name).trim()}\``.
-  Change `name: \`${(name ? String(name).trim() : branch.name)} Counter Manager\`` to `name: \`Staff - ${(name ? String(name).trim() : branch.name)}\``.
+#### [CounterAddProductModal.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/products/CounterAddProductModal.tsx)
+- Add tab switcher at the top of the modal:
+  - `Single Item` (existing form: Item Name, Price, Veg/Non-Veg/Drink).
+  - `Bulk Upload (CSV)` (bulk file upload, drag-and-drop, template download, row preview, and batch submission).
+- When `Bulk Upload (CSV)` is active:
+  - Provide a `Download Template` link (`itemName,price,category`).
+  - Accept `.csv` file drop or browse.
+  - Parse rows with validation (name required, price > 0, category valid).
+  - On submit, iteratively or concurrently invoke `apiService.products.createProduct` for the selected `branch.id`.
+  - Trigger `onSuccess()` to refresh the product catalog.
 
----
-
-### 2. Frontend Staff Name Sanitization
-
-#### [StaffPage.tsx](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/staff/StaffPage.tsx)
-- Implement `formatStaffDisplayName(name: string, assignedBranchIds?: string[], fallbackCounterName?: string): string`:
-  - If name ends with "Counter Manager" (case-insensitive), strip it and prepend `Staff - <CounterName>`.
-  - Check fallback counter name first, then match `assignedBranchIds` with `branches` list, or fallback to the prefix before "Counter Manager".
-- Apply `formatStaffDisplayName` to:
-  - Modal staff list display (`st.name` and avatar letter)
-  - Staff settings / details modal header and title
-  - Staff audit modal title and avatar
-  - Delete staff modal confirmation text
-  - Initial value of `formName` when opening the edit modal
-
----
-
-### 3. Bulk Counter Password Persistence
-
-#### [BranchesPage.tsx](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/branches/BranchesPage.tsx)
-- In `handleBulkImport`:
-  - Iterate through `result.data.created`.
-  - For each created counter, retrieve `c.password || c.credentials?.password` and `c.id || c.branchId`.
-  - If valid, call `storePassword(branchId, password)`.
-  - Normalize `phone` and `password` on items set to `bulkCreatedCounters` so copy/download/WhatsApp actions work seamlessly.
+```
++-------------------------------------------------------------+
+| Add Menu — Main Cafeteria                               [X] |
+|                                                             |
+|   [ Single Item ]         [ Bulk Upload (CSV) ]             |
+|   ---------------------------------------------             |
+|                                                             |
+|   +-----------------------------------------------------+   |
+|   |         (Upload Icon)                               |   |
+|   |   Drag and drop menu CSV file here or browse        |   |
+|   |   Supported: .csv (itemName, price, category)       |   |
+|   +-----------------------------------------------------+   |
+|                                                             |
+|   [Download CSV Template]                  [Upload & Add]   |
++-------------------------------------------------------------+
+```
 
 ---
 
-### 4. Mobile Analytics Parity & PDF Export
+### 2. Counters Button Consolidation — BranchesPage.tsx
 
-#### [analytics_screen.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/analytics/analytics_screen.dart)
-- Remove `Cash in Drawer (To Hand Over)` Card (lines 515-556).
-- Remove decorative emojis from `Online UPI Money` and `Cash Money` cards to enforce zero-emoji policy.
-- Retain the top `Net Money Collected` card and the balanced side-by-side `Online UPI Money` and `Cash Money` comparison.
+#### [BranchesPage.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/branches/BranchesPage.tsx)
+- Remove standalone `Bulk Upload` button from lines 762-770.
+- Replace with a single consolidated `Add Counter` button with integrated dropdown menu:
+  - Primary button click opens Create Counter modal.
+  - Chevron dropdown menu provides:
+    - `Add Single Counter`
+    - `Bulk Upload Counters (CSV)`
+- Inside the Create Counter modal, provide a top tab or link:
+  `[ Single Counter ] [ Bulk Upload (CSV) ]`
+  allowing direct toggle between single and batch modes without cluttering the page header.
 
-#### [analytics_pdf_service.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/services/analytics_pdf_service.dart)
-- Remove `pw.TableRow` containing `Cash in Drawer (To Hand Over)` (lines 248-254) from the PDF financial table.
+```
++------------------------------------------------------------------------+
+| Counters                                        [ Add Counter | v ]    |
+|                                                 | Single Counter  |    |
+|                                                 | Bulk Upload CSV |    |
++------------------------------------------------------------------------+
+```
+
+---
+
+### 3. Staff Page Header & 3-Column Table Layout — StaffPage.tsx
+
+#### [StaffPage.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/staff/StaffPage.tsx)
+- Remove top green `Add Staff` button container from lines 1132-1144:
+  Delete `<div className="flex justify-center"><Button ...>Add Staff</Button></div>`.
+- Restructure table columns into 3 columns:
+  - Column 1: `w-1/2 min-w-[220px]`
+    - Header: `Counter Name`
+    - Content: `<Building2 /> Staff - {group.counterName}` (replacing `Counter - {group.counterName}`).
+  - Column 2: `w-36 text-center`
+    - Header: `Add Staff`
+    - Content: Centered button `<Button variant="outline" size="sm" onClick={() => handleOpenAdd(group.id)}>+ Add</Button>`.
+  - Column 3: `w-48 text-right`
+    - Header: `Staff Details`
+    - Content: `<Button variant="outline" size="sm" onClick={() => handleOpenCounterStaff(group)}>Staff Details ({group.staff.length})</Button>`.
+
+```
++----------------------------------------------------------------------------------+
+| Counter Name                 Add Staff                         Staff Details     |
++----------------------------------------------------------------------------------+
+| [Icon] Staff - counter1      [ + Add ]                 [ Staff Details (2) ]     |
+| [Icon] Staff - counter2      [ + Add ]                 [ Staff Details (1) ]     |
+| [Icon] Staff - counter3      [ + Add ]                 [ Staff Details (0) ]     |
++----------------------------------------------------------------------------------+
+```
 
 ---
 
 ## Verification Plan
 
 ### Automated Tests
-- Backend Unit Tests: `npm test` in `Backend Money Card/`
 - Frontend TypeScript Check: `npx tsc --noEmit` in `Frontend Money Card/`
 - Frontend Vitest Suite: `npm test -- --run` in `Frontend Money Card/`
+- Backend Tests: `npm test` in `Backend Money Card/`
 - Flutter Analyzer: `flutter analyze --no-pub` in `Flutter Money card/`
-- Flutter Widget & Unit Tests: `flutter test` in `Flutter Money card/`
 
 ### Manual Verification
-- Verify auto-created staff is named `Staff - <counterName>`.
-- Verify existing staff ending with `Counter Manager` render as `Staff - <CounterName>`.
-- Verify batch importing counters saves passwords into `mc_branch_passwords` in localStorage.
-- Verify mobile analytics screen and mobile PDF export do not contain "Cash in Drawer (To Hand Over)".
+- Menu: Open Menu page as Org Admin, click `Add Menu` on any counter row, verify tabs for `Single Item` and `Bulk Upload (CSV)`. Upload a test CSV to confirm items are created for that counter.
+- Counters: Verify header bar has only one clean `Add Counter` button with integrated dropdown for `Bulk Upload CSV`.
+- Staff: Verify the green top `Add Staff` button is gone. Verify table has 3 columns: `Staff - counter2` on the left, `+ Add` button in the horizontal center, and `Staff Details` on the right.
