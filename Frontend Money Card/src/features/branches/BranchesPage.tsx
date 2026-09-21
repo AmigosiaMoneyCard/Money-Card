@@ -377,44 +377,6 @@ export function BranchesPage() {
     window.open(waUrl, '_blank', 'noopener,noreferrer');
   };
 
-  const handleBulkImportSubmit = async (rows: any[]) => {
-    setShowBulkModal(false);
-    setIsSubmitting(true);
-    const createdCounters: { name: string; phone: string; password: string }[] = [];
-    try {
-      for (const row of rows) {
-        const name = row.counterName || row.name || '';
-        const phone = (row.phone || '').replace(/\D/g, '').slice(-10);
-        const password = row.password || '123456';
-        const result = await apiService.branches.createBranch({
-          name: name.trim(),
-          phone: phone || undefined,
-          password,
-        });
-        if (result.success && result.data) {
-          createdCounters.push({
-            name: result.data.name,
-            phone: result.data.credentials?.phone || phone || '',
-            password: result.data.credentials?.password || password,
-          });
-        }
-      }
-
-      if (createdCounters.length > 0) {
-        setBulkCreatedCounters(
-          createdCounters.map((c, i) => ({ ...c, branchId: '' })),
-        );
-        setShowBulkWhatsAppModal(true);
-      }
-      notify.success(`Created ${createdCounters.length} counters`);
-      fetchBranches();
-    } catch {
-      notify.error('Bulk import failed');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   // ── Consolidated View / Edit Counter Details ──────────────
   const handleOpenViewEdit = (branch: Branch) => {
     setSelectedBranch(branch);
@@ -590,6 +552,7 @@ export function BranchesPage() {
       }
     } catch {
       notify.error('Bulk import failed');
+      return { success: false, message: 'Bulk import failed' };
     } finally {
       setIsSubmitting(false);
     }
@@ -629,8 +592,6 @@ export function BranchesPage() {
     URL.revokeObjectURL(url);
     notify.success('Credentials CSV downloaded');
   };
-
-  const BRANCH_CSV_TEMPLATE = 'counterName,phone,password,address\n';
 
   // ── Delete / Archive Branch ────────────────────────────────
   const handleOpenDelete = (branch: Branch) => {
