@@ -35,21 +35,20 @@ export type SortMetric =
 
 interface FinancialSectionProps {
   analytics: AnalyticsOverview;
-  cashRecharge: number;
-  upiRecharge: number;
-  totalRefund: number;
+  cashRecharge?: number;
+  upiRecharge?: number;
+  totalRefund?: number;
 }
 
 export interface KpiCardsProps {
   analytics: AnalyticsOverview;
 }
 
-
 export function OrgAdminFinancialSection({
   analytics,
-  cashRecharge,
-  upiRecharge,
-  totalRefund,
+  cashRecharge = 0,
+  upiRecharge = 0,
+  totalRefund = 0,
 }: FinancialSectionProps) {
   const moneyAdded = analytics.moneyAdded ?? (cashRecharge + upiRecharge);
   const moneyRefunded = analytics.moneyRefunded ?? totalRefund;

@@ -32,6 +32,7 @@ import { UnauthorizedPage } from '@/features/auth';
 import {
   Users,
   UserPlus,
+  Plus,
   Search,
   Edit2,
   Building2,
@@ -382,13 +383,15 @@ export function StaffPage() {
   }
 
   // ── Open Add Staff Modal ──────────────────────────────────
-  const handleOpenAdd = () => {
+  const handleOpenAdd = (defaultBranchId?: string) => {
     setFormName('');
     setFormPhone('');
     setFormEmail('');
     setFormPassword('');
     setShowAddPassword(false);
-    const defaultBranchIds = isCounterView
+    const defaultBranchIds = defaultBranchId
+      ? [defaultBranchId]
+      : isCounterView
       ? scopedBranches.map((b) => b.id)
       : branches.map((b) => b.id);
     setFormBranchIds(defaultBranchIds);
@@ -1051,12 +1054,13 @@ export function StaffPage() {
     {
       key: 'counterName',
       header: 'Counter Name',
+      className: 'w-1/2 min-w-[220px]',
       render: (group: CounterStaffGroup) => (
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
             <Building2 className="h-4 w-4" />
           </div>
-          <span className="font-semibold text-slate-900 text-sm">{group.counterName}</span>
+          <span className="font-semibold text-slate-900 text-sm">Counter - {group.counterName}</span>
         </div>
       ),
     },
@@ -1065,7 +1069,18 @@ export function StaffPage() {
       header: 'Staff Details',
       className: 'text-right',
       render: (group: CounterStaffGroup) => (
-        <div className="flex justify-end">
+        <div className="flex items-center justify-end gap-2">
+          {canManage && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleOpenAdd(group.id)}
+              className="text-xs font-semibold py-1.5 px-3 rounded-lg border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 transition-all shadow-2xs cursor-pointer"
+              leftIcon={<Plus className="h-3.5 w-3.5 text-emerald-600" />}
+            >
+              Add
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -1099,20 +1114,6 @@ export function StaffPage() {
             </p>
           )}
         </div>
-
-        {canManage && (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleOpenAdd}
-              leftIcon={<UserPlus className="h-3.5 w-3.5" />}
-              className="text-xs h-8 px-3.5 font-semibold"
-            >
-              Add Staff Member
-            </Button>
-          </div>
-        )}
       </div>
 
       {/* Plan Resource Usage Indicator */}
@@ -1175,7 +1176,7 @@ export function StaffPage() {
           description="Add your team members to grant POS cashier and counter access."
           action={
             canManage ? (
-              <Button variant="primary" onClick={handleOpenAdd} leftIcon={<UserPlus className="h-4 w-4" />}>
+              <Button variant="primary" onClick={() => handleOpenAdd()} leftIcon={<UserPlus className="h-4 w-4" />}>
                 Add First Staff Member
               </Button>
             ) : undefined

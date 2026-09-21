@@ -459,9 +459,9 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  <th className="py-3 px-4 min-w-[200px]">Counter Name</th>
-                  <th className="py-3 px-4 text-center w-[130px]">Add Item</th>
-                  <th className="py-3 px-4 text-right w-[180px]">View Menu / Edit</th>
+                  <th className="py-3 px-4 w-1/2">Counter Name</th>
+                  <th className="py-3 px-4 text-center w-36">Add Menu</th>
+                  <th className="py-3 px-4 text-right w-44">View / Edit</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -472,19 +472,19 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
                       className="hover:bg-slate-50/60 transition-colors"
                     >
                       {/* 1. Counter Name */}
-                      <td className="py-3.5 px-4">
+                      <td className="py-3.5 px-4 w-1/2">
                         <div className="flex items-center gap-3">
                           <div className="h-8 w-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
                             <Building2 className="h-4 w-4" />
                           </div>
                           <span className="font-semibold text-sm text-slate-900">
-                            {branch.name}
+                            Menu - {branch.name}
                           </span>
                         </div>
                       </td>
 
                       {/* 2. Add Button */}
-                      <td className="py-3.5 px-4 text-center">
+                      <td className="py-3.5 px-4 text-center w-36">
                         {canManageProducts && (
                           <Button
                             variant="outline"
@@ -498,8 +498,8 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
                         )}
                       </td>
 
-                      {/* 3. View Menu / Edit */}
-                      <td className="py-3.5 px-4 text-right">
+                      {/* 3. View / Edit */}
+                      <td className="py-3.5 px-4 text-right w-44">
                         <Button
                           variant="ghost"
                           size="sm"
@@ -507,7 +507,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
                           className="text-xs h-7 px-3 rounded-lg text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200 font-medium cursor-pointer"
                           leftIcon={<Eye className="h-3.5 w-3.5 text-slate-500" />}
                         >
-                          View Menu / Edit
+                          View / Edit
                         </Button>
                       </td>
                     </tr>
