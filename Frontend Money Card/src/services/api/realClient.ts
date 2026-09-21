@@ -264,6 +264,10 @@ export const realClient: typeof mockClient = {
       return handleApiCall(() => apiClient.post<Branch>('/v1/branches', data));
     },
 
+    async createBranchesBatch(data: { branches: any[] }): Promise<ApiResult<any>> {
+      return handleApiCall(() => apiClient.post('/v1/branches/batch', data));
+    },
+
     async updateBranch(id: string, data: UpdateBranchRequest): Promise<ApiResult<Branch>> {
       return handleApiCall(() => apiClient.patch<Branch>(`/v1/branches/${id}`, data));
     },

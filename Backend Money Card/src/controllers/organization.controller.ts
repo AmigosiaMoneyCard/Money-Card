@@ -5,6 +5,17 @@ import { Role, UserStatus, PermissionCode } from '@prisma/client';
 import { getEffectiveLimits, formatSubscription } from '../utils/limits.js';
 import { hashPassword } from '../utils/crypto.js';
 
+interface BulkBranchItem {
+  name: string;
+  phone?: string;
+  password?: string;
+  location?: string;
+}
+
+interface BulkBranchesRequest {
+  branches: BulkBranchItem[];
+}
+
 export async function getOrganizationProfile(req: Request, res: Response) {
   const orgId = req.user?.organizationId;
   if (!orgId) {
@@ -346,6 +357,164 @@ export async function createBranch(req: Request, res: Response) {
       phone: cleanPhone,
       password: effectivePassword,
     } : undefined,
+  }, 201);
+}
+
+export async function createBranchesBatch(req: Request, res: Response) {
+  const orgId = req.user?.organizationId;
+  if (!orgId) {
+    return sendError(res, 400, 'VALIDATION_ERROR', 'User has no associated organization');
+  }
+
+  const { branches } = req.body as BulkBranchesRequest;
+  if (!Array.isArray(branches) || branches.length === 0) {
+    return sendError(res, 400, 'VALIDATION_ERROR', 'At least one counter is required');
+  }
+
+  const [effectiveLimits, currentBranchCount] = await Promise.all([
+    getEffectiveLimits(orgId),
+    prisma.branch.count({ where: { organizationId: orgId } }),
+  ]);
+
+  if (currentBranchCount + branches.length > effectiveLimits.branchLimit) {
+    return sendError(
+      res,
+      409,
+      'BRANCH_LIMIT_REACHED',
+      `Your organization can only create ${effectiveLimits.branchLimit} counters in total. Currently at ${currentBranchCount}. Please upgrade your plan or request a custom limit override to create more counters.`,
+    );
+  }
+
+  const created: any[] = [];
+  const errors: { index: number; message: string }[] = [];
+
+  for (let i = 0; i < branches.length; i++) {
+    const item = branches[i];
+    const name = item?.name?.trim();
+    if (!name || name.length < 2 || name.length > 20) {
+      errors.push({ index: i, message: 'Counter name must be between 2 and 20 characters' });
+      continue;
+    }
+    if (!/^[a-zA-Z0-9\s\-&]+$/.test(name)) {
+      errors.push({ index: i, message: 'Counter name can only contain letters, numbers, spaces, hyphens, and ampersands' });
+      continue;
+    }
+
+    const cleanPhone = item?.phone ? String(item.phone).replace(/\D/g, '') : undefined;
+    if (cleanPhone && (cleanPhone.length < 10 || cleanPhone.length > 15)) {
+      errors.push({ index: i, message: 'Phone number must be at least 10 digits' });
+      continue;
+    }
+    if (cleanPhone && cleanPhone.length === 10 && !/^[6-9]\d{9}$/.test(cleanPhone)) {
+      errors.push({ index: i, message: 'Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9' });
+      continue;
+    }
+
+    const effectivePassword = item?.password || '123456';
+    if (effectivePassword.length < 6 || effectivePassword.length > 30) {
+      errors.push({ index: i, message: 'Password must be between 6 and 30 characters' });
+      continue;
+    }
+
+    try {
+      const passwordHash = await hashPassword(effectivePassword);
+
+      const result = await prisma.$transaction(async (tx) => {
+        const countInTx = await tx.branch.count({ where: { organizationId: orgId } });
+        if (countInTx >= effectiveLimits.branchLimit) {
+          throw new Error('BRANCH_LIMIT_REACHED');
+        }
+
+        const branch = await tx.branch.create({
+          data: {
+            organizationId: orgId,
+            name,
+            location: item?.location?.trim(),
+          },
+        });
+
+        const orgStaff = await tx.user.findMany({
+          where: { organizationId: orgId, role: Role.STAFF, status: 'ACTIVE' },
+          select: { id: true },
+        });
+        for (const staff of orgStaff) {
+          await tx.userBranch.create({
+            data: { userId: staff.id, branchId: branch.id },
+          }).catch(() => {});
+        }
+
+        if (cleanPhone) {
+          let counterUser = await tx.user.findUnique({ where: { phone: cleanPhone } });
+          if (!counterUser) {
+            counterUser = await tx.user.create({
+              data: {
+                name: `${name} Counter Manager`,
+                phone: cleanPhone,
+                passwordHash,
+                role: Role.STAFF,
+                organizationId: orgId,
+                status: UserStatus.ACTIVE,
+              },
+            });
+          } else {
+            await tx.user.update({
+              where: { id: counterUser.id },
+              data: { passwordHash, status: UserStatus.ACTIVE },
+            });
+          }
+
+          const defaultPermissions: PermissionCode[] = [
+            PermissionCode.CARD_VIEW,
+            PermissionCode.CARD_ISSUE,
+            PermissionCode.CARD_RETURN,
+            PermissionCode.CARD_BLOCK,
+            PermissionCode.CARD_UNBLOCK,
+            PermissionCode.SESSION_VIEW,
+            PermissionCode.RECHARGE,
+            PermissionCode.PURCHASE,
+            PermissionCode.REFUND,
+            PermissionCode.PRODUCT_VIEW,
+            PermissionCode.PRODUCT_MANAGE,
+            PermissionCode.INVENTORY_VIEW,
+            PermissionCode.INVENTORY_MANAGE,
+            PermissionCode.VIEW_ANALYTICS,
+            PermissionCode.VIEW_REPORTS,
+            PermissionCode.STAFF_VIEW,
+            PermissionCode.STAFF_MANAGE,
+          ];
+
+          for (const perm of defaultPermissions) {
+            await tx.userPermission.upsert({
+              where: { userId_permission: { userId: counterUser.id, permission: perm } },
+              create: { userId: counterUser.id, permission: perm },
+              update: {},
+            }).catch(() => {});
+          }
+
+          await tx.userBranch.upsert({
+            where: { userId_branchId: { userId: counterUser.id, branchId: branch.id } },
+            create: { userId: counterUser.id, branchId: branch.id },
+            update: {},
+          }).catch(() => {});
+        }
+
+        return branch;
+      });
+
+      created.push({
+        id: result.id,
+        name: result.name,
+        credentials: cleanPhone ? { name: result.name, phone: cleanPhone, password: effectivePassword } : undefined,
+      });
+    } catch (err: any) {
+      errors.push({ index: i, message: err?.message === 'BRANCH_LIMIT_REACHED' ? 'Counter limit reached' : 'Failed to create counter' });
+    }
+  }
+
+  return sendSuccess(res, {
+    created,
+    createdCount: created.length,
+    errors,
   }, 201);
 }
 
