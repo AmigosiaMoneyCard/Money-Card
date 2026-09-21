@@ -40,10 +40,13 @@ When merging `staging` into `main` (Production), zero errors and zero URL/domain
 ## Mandatory Agent Workflow Rules
 
 1. **Automatic Implementation Plan & Visual Image Sketch**:
-   - Whenever the user requests **ANY changes in the project**, the agent **MUST automatically create an implementation plan** (`implementation_plan.md`) containing:
-     - Clear technical design, component breakdown, and step-by-step changes.
+   - Whenever the user requests **ANY changes in the project**, the agent **MUST automatically create an implementation plan** containing:
+     - Clear technical design, component breakdown, exact file paths, function names, and step-by-step changes across the worktree.
      - **Visual Image Sketch** generated via `generate_image` tool (high-fidelity, realistic SaaS UI design).
      - Clean, detailed **ASCII wireframes** of the UI layout, tables, modals, and buttons.
+   - **Workspace Root File Sync (`D:\Money Card Project\implementation_plan.md`)**:
+     - The implementation plan **MUST always be saved/mirrored directly to `D:\Money Card Project\implementation_plan.md`** in the workspace root in addition to the artifact directory.
+     - This ensures external coding agents (such as Cline or Kilo Code) can immediately read the full specification and worktree changes without missing any requirements.
    - **Obtain user approval** before executing any source code edits.
 
 2. **Web App <-> Mobile App Parity Check**:

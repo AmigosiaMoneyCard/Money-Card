@@ -129,20 +129,14 @@ export function buildOrgAnalyticsJsPdf({
     doc.text(`${sectionCounter}. Financial Overview`, margin, curY);
     sectionCounter++;
 
-    // Net Money Collected & Cash in Drawer Highlight Cards
+    // Net Money Collected Highlight Card (full width)
     const moneyAdded = analytics.moneyAdded ?? analytics.totalRechargeVolume ?? 0;
     const moneyRefunded = analytics.moneyRefunded ?? analytics.totalRefundVolume ?? 0;
     const netMoney = analytics.netMoneyCollected ?? (moneyAdded - moneyRefunded);
-    const cashInDrawer = analytics.cashInDrawer ?? (
-      (analytics.cashRechargeVolume ?? analytics.cashMoney ?? 0) - moneyRefunded
-    );
 
-    const highlightW = (contentWidth - 4) / 2;
-
-    // Card 1: Net Money Collected
     doc.setFillColor(241, 245, 249); // slate-100
     doc.setDrawColor(203, 213, 225);
-    doc.roundedRect(margin, curY + 4, highlightW, 19, 2, 2, 'FD');
+    doc.roundedRect(margin, curY + 4, contentWidth, 19, 2, 2, 'FD');
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7);
@@ -158,27 +152,6 @@ export function buildOrgAnalyticsJsPdf({
     doc.setFontSize(6);
     doc.setTextColor(100, 116, 139);
     doc.text('Money Added - Money Refunded across all methods', margin + 4, curY + 20);
-
-    // Card 2: Cash in Drawer (To Hand Over)
-    const xCash = margin + highlightW + 4;
-    doc.setFillColor(236, 253, 245); // emerald-50
-    doc.setDrawColor(167, 243, 208); // emerald-200
-    doc.roundedRect(xCash, curY + 4, highlightW, 19, 2, 2, 'FD');
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
-    doc.setTextColor(6, 95, 70); // emerald-800
-    doc.text('CASH IN DRAWER (TO HAND OVER)', xCash + 4, curY + 9);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(4, 120, 87); // emerald-700
-    doc.text(formatPdfCurrency(cashInDrawer), xCash + 4, curY + 16);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6);
-    doc.setTextColor(6, 95, 70);
-    doc.text('Physical cash balance in drawer after refunds', xCash + 4, curY + 20);
 
     curY += 25;
 
@@ -345,7 +318,6 @@ export function buildOrgAnalyticsJsPdf({
 
     const cashPct = totalRechargeVol > 0 ? Math.round((cashRecharge / totalRechargeVol) * 100) : (totalRechargeVol === 0 && cashRecharge > 0 ? 100 : 0);
     const upiPct = totalRechargeVol > 0 ? 100 - cashPct : 0;
-    const drawerCash = analytics.cashInDrawer ?? (cashRecharge - totalRefund);
 
     const paymentCards = [
       {
@@ -363,19 +335,14 @@ export function buildOrgAnalyticsJsPdf({
         val: formatPdfCurrency(totalRefund),
         sub: 'Total returned to customers',
       },
-      {
-        label: 'Cash in Drawer',
-        val: formatPdfCurrency(drawerCash),
-        sub: 'Physical cash in drawer',
-      },
     ];
 
-    const cardW4 = (contentWidth - 9) / 4;
+    const cardW3 = (contentWidth - 6) / 3;
     paymentCards.forEach((card, idx) => {
-      const x = margin + idx * (cardW4 + 3);
+      const x = margin + idx * (cardW3 + 3);
       doc.setFillColor(248, 250, 252);
       doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(x, curY + 3, cardW4, 19, 2, 2, 'FD');
+      doc.roundedRect(x, curY + 3, cardW3, 19, 2, 2, 'FD');
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(7);

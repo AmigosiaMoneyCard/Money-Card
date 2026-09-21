@@ -1,99 +1,88 @@
-# Implementation Plan: Bulk Upload for Counters & Menu with Bulk WhatsApp Dispatch
+# Implementation Plan: Counters, Menu, Staff, Analytics & POS Parity
 
-Add Bulk Upload options to the "Create Counter" and "Add Menu Item" buttons, and provide an automated Bulk WhatsApp Credentials Dispatch workflow for all newly provisioned counter managers.
+Unified implementation plan covering:
+1. Backend Manager Naming: In `organization.controller.ts`, change auto-provisioned staff name from `<name> Counter Manager` to `Staff - <name>` (e.g. `Staff - counter2`).
+2. Staff Display Sanitization: In `StaffPage.tsx`, normalize existing staff names ending in "Counter Manager" to display cleanly as `Staff - <CounterName>` (matching Cards - Counter).
+3. Bulk Counter Password Persistence: In `handleBulkImport` inside `BranchesPage.tsx`, persist passwords for batch-created counters into local storage (`mc_branch_passwords`).
+4. Mobile Analytics Parity: Remove "Cash in Drawer (To Hand Over)" from mobile analytics in `analytics_screen.dart` and mobile PDF export in `analytics_pdf_service.dart`.
+5. Product Rename Analytics Unification: Product demand groups strictly by immutable `productId` (UUID) with current catalog display name.
 
-![Bulk WhatsApp Dispatch Screen](C:/Users/damie/.gemini/antigravity-ide/brain/9635058f-8784-4982-b40a-c7e9d921ee9b/bulk_upload_whatsapp_dispatch_plan_1789925142934.jpg)
+![Updated SaaS Dashboard Layout](file:///C:/Users/damie/.gemini/antigravity-ide/brain/9635058f-8784-4982-b40a-c7e9d921ee9b/updated_saas_features_sketch_1789981547689.jpg)
 
 ## User Review Required
 
-- Counter Details in CSV Template:
-  - `counterName`: Counter name (e.g. "Main Cafeteria Counter 1")
-  - `phone`: Manager mobile number (10 digits)
-  - `password`: Manager login password (defaults to 123456 if empty)
-  - `address`: Optional physical counter location
-- Bulk WhatsApp Credential Sharing:
-  - Web browsers cannot silently send WhatsApp messages in the background without user interaction (or an enterprise Meta Cloud API).
-  - Solution: Upon successful bulk creation, a "Counters Created Successfully!" dispatch panel displays all created counters with:
-    1. Direct 1-Click WhatsApp Button on every row (launches WhatsApp Web with the manager's personalized welcome message, counter name, mobile number, password, and login URL pre-filled).
-    2. Sequential "Send to Next Manager" button to step through each manager in order with a single click.
-    3. "Copy All Credentials" button to copy all credentials into the clipboard in one organized text block for instant group sharing or broadcast.
-    4. "Download Credentials CSV" to save an offline reference.
+> [!IMPORTANT]
+> 1. Backend Manager Naming: When single or bulk counters are created/updated in `organization.controller.ts`, the associated staff user's name is auto-provisioned as `Staff - <CounterName>` (e.g. `Staff - counter2`) instead of `<name> Counter Manager`.
+> 2. Staff Display Sanitization: Any historical staff records in `StaffPage.tsx` with names ending in "Counter Manager" are sanitized dynamically via `formatStaffDisplayName` to display as `Staff - <CounterName>`.
+> 3. Bulk Counter Password Persistence: In `BranchesPage.tsx`, `handleBulkImport` extracts created counter IDs and passwords, persisting them to localStorage (`mc_branch_passwords`) via `storePassword(c.id, c.password)`, ensuring passwords are never lost when viewing/editing the counter later.
+> 4. Mobile Analytics Parity: "Cash in Drawer (To Hand Over)" card is removed from `Flutter Money card/lib/features/analytics/analytics_screen.dart` and its row is removed from `analytics_pdf_service.dart`, matching the web app.
 
-## ASCII Layout Wireframe
-
-```
-1. Counters Page Split Button:
-+-----------------------------------------------------------------------------------------------+
-| Counters                                                [ Create Counter | v ]                |
-| Counter Usage: 3 / 10 counters created                  +-----------------------------------+ |
-|                                                         | [+] Single Counter                | |
-|                                                         | [^] Bulk Upload Counters (CSV)    | |
-|                                                         +-----------------------------------+ |
-+-----------------------------------------------------------------------------------------------+
-
-2. Post-Upload Bulk WhatsApp Credentials Dispatch Screen:
-+-----------------------------------------------------------------------------------------------+
-| Counters Created Successfully! (3 Counters Ready)                                         [X] |
-+-----------------------------------------------------------------------------------------------+
-| All 3 counters have been provisioned. Share credentials with counter managers:                |
-|                                                                                               |
-| +---------------------+---------------+------------+----------------------------------------+ |
-| | Counter Name        | Mobile Number | Password   | WhatsApp Dispatch                      | |
-| +---------------------+---------------+------------+----------------------------------------+ |
-| | North Block Kiosk   | 9876543210    | Pass@123   | [ Send via WhatsApp ]                  | |
-| | Food Court Counter  | 9876543211    | Pass@456   | [ Send via WhatsApp ]                  | |
-| | Executive Lounge    | 9876543212    | Pass@789   | [ Send via WhatsApp ]                  | |
-| +---------------------+---------------+------------+----------------------------------------+ |
-|                                                                                               |
-| [ Copy All Credentials ]     [ Download Credentials CSV ]                    [ Done ]         |
-+-----------------------------------------------------------------------------------------------+
-
-3. Menu Page Split Button:
-+-----------------------------------------------------------------------------------------------+
-| Menu Management  [Counter Scope]                       [ Add Menu Item | v ]                  |
-|                                                        +-----------------------------------+  |
-|                                                        | [+] Add Single Item               |  |
-|                                                        | [^] Bulk Upload Menu (CSV)        |  |
-|                                                        +-----------------------------------+  |
-+-----------------------------------------------------------------------------------------------+
-```
+---
 
 ## Proposed Changes
 
-### Frontend Web (`Frontend Money Card`)
+### 1. Backend Auto-Provisioned Staff Naming
 
-- [NEW] [BulkCsvImportModal.tsx](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/components/common/BulkCsvImportModal.tsx)
-  - Universal CSV import component supporting template downloads, drag-and-drop parsing, and live row validation diagnostics.
-  - Supports custom post-import success screens (such as the Bulk WhatsApp Dispatch view for counters).
+#### [organization.controller.ts](file:///d:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/organization.controller.ts)
+- In `createBranch` (line 279):
+  Change `name: \`${name.trim()} Counter Manager\`` to `name: \`Staff - ${name.trim()}\``.
+- In `bulkCreateBranches` (line 451):
+  Change `name: \`${name} Counter Manager\`` to `name: \`Staff - ${name}\``.
+- In `updateBranch` (lines 667, 679):
+  Change `name: \`${String(name).trim()} Counter Manager\`` to `name: \`Staff - ${String(name).trim()}\``.
+  Change `name: \`${(name ? String(name).trim() : branch.name)} Counter Manager\`` to `name: \`Staff - ${(name ? String(name).trim() : branch.name)}\``.
 
-- [MODIFY] [BranchesPage.tsx](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/branches/BranchesPage.tsx)
-  - Convert "Create Counter" button into a split button with dropdown option for "Bulk Upload Counters (CSV)".
-  - Configure bulk import with Counter template (`counterName,phone,password,address`).
-  - Implement the Bulk WhatsApp Credentials Dispatch modal showing created counters, individual `wa.me` links, and "Copy All Credentials" handler.
+---
 
-- [MODIFY] [ProductsPage.tsx](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/products/ProductsPage.tsx)
-  - Convert "Add Menu Item" button into a split button with dropdown option for "Bulk Upload Menu (CSV)".
-  - Configure bulk import with Menu template (`itemName,category,price,description`).
-  - Batch persist items to the active counter.
+### 2. Frontend Staff Name Sanitization
 
-- [MODIFY] [realClient.ts](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/services/api/realClient.ts)
-  - Add batch counter creation and batch menu item helpers.
+#### [StaffPage.tsx](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/staff/StaffPage.tsx)
+- Implement `formatStaffDisplayName(name: string, assignedBranchIds?: string[], fallbackCounterName?: string): string`:
+  - If name ends with "Counter Manager" (case-insensitive), strip it and prepend `Staff - <CounterName>`.
+  - Check fallback counter name first, then match `assignedBranchIds` with `branches` list, or fallback to the prefix before "Counter Manager".
+- Apply `formatStaffDisplayName` to:
+  - Modal staff list display (`st.name` and avatar letter)
+  - Staff settings / details modal header and title
+  - Staff audit modal title and avatar
+  - Delete staff modal confirmation text
+  - Initial value of `formName` when opening the edit modal
 
-### Backend API (`Backend Money Card`)
+---
 
-- [MODIFY] [organization.controller.ts](file:///d:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/organization.controller.ts)
-  - Support batch creation of branches and atomic provisioning of counter managers with permission checks and plan limit validation.
+### 3. Bulk Counter Password Persistence
+
+#### [BranchesPage.tsx](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/branches/BranchesPage.tsx)
+- In `handleBulkImport`:
+  - Iterate through `result.data.created`.
+  - For each created counter, retrieve `c.password || c.credentials?.password` and `c.id || c.branchId`.
+  - If valid, call `storePassword(branchId, password)`.
+  - Normalize `phone` and `password` on items set to `bulkCreatedCounters` so copy/download/WhatsApp actions work seamlessly.
+
+---
+
+### 4. Mobile Analytics Parity & PDF Export
+
+#### [analytics_screen.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/analytics/analytics_screen.dart)
+- Remove `Cash in Drawer (To Hand Over)` Card (lines 515-556).
+- Remove decorative emojis from `Online UPI Money` and `Cash Money` cards to enforce zero-emoji policy.
+- Retain the top `Net Money Collected` card and the balanced side-by-side `Online UPI Money` and `Cash Money` comparison.
+
+#### [analytics_pdf_service.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/services/analytics_pdf_service.dart)
+- Remove `pw.TableRow` containing `Cash in Drawer (To Hand Over)` (lines 248-254) from the PDF financial table.
+
+---
 
 ## Verification Plan
 
 ### Automated Tests
-- TypeScript check: `npx tsc --noEmit` in `Frontend Money Card/`
-- Frontend Vitest suite: `npm test -- --run` in `Frontend Money Card/`
-- Backend Vitest suite: `npm test` in `Backend Money Card/`
-- Flutter check: `flutter analyze --no-pub` in `Flutter Money card/`
+- Backend Unit Tests: `npm test` in `Backend Money Card/`
+- Frontend TypeScript Check: `npx tsc --noEmit` in `Frontend Money Card/`
+- Frontend Vitest Suite: `npm test -- --run` in `Frontend Money Card/`
+- Flutter Analyzer: `flutter analyze --no-pub` in `Flutter Money card/`
+- Flutter Widget & Unit Tests: `flutter test` in `Flutter Money card/`
 
 ### Manual Verification
-- Test downloading Counter CSV template.
-- Upload valid CSV with 3 counters, verify creation, and verify the Bulk WhatsApp Dispatch screen renders each counter with their individual WhatsApp links.
-- Test "Copy All Credentials" and confirm formatted text is placed on the clipboard.
-- Test downloading Menu CSV template and uploading items to verify catalog addition.
+- Verify auto-created staff is named `Staff - <counterName>`.
+- Verify existing staff ending with `Counter Manager` render as `Staff - <CounterName>`.
+- Verify batch importing counters saves passwords into `mc_branch_passwords` in localStorage.
+- Verify mobile analytics screen and mobile PDF export do not contain "Cash in Drawer (To Hand Over)".

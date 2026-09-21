@@ -59,7 +59,6 @@ export function OrgAdminFinancialSection({
   const cancelledOrdersCount = analytics.cancelledOrdersCount ?? 0;
 
   const netMoneyCollected = analytics.netMoneyCollected ?? (moneyAdded - moneyRefunded);
-  const cashInDrawer = analytics.cashInDrawer ?? (cashRecharge - totalRefund);
 
   const upiMoney = analytics.upiMoney ?? upiRecharge;
   const upiCount = analytics.upiCount ?? (analytics.upiRechargeCount ?? 0);
@@ -71,8 +70,8 @@ export function OrgAdminFinancialSection({
 
   return (
     <div className="space-y-4">
-      {/* Financial Summaries (4 Uniform Cards) */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Financial Summaries (3 Uniform Cards) */}
+      <div className="grid gap-4 sm:grid-cols-3">
         {/* Net Money Collected */}
         <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
@@ -89,26 +88,6 @@ export function OrgAdminFinancialSection({
             </p>
             <p className="mt-1 text-xs text-slate-500 leading-snug">
               Total money retained across online UPI and cash deposits
-            </p>
-          </div>
-        </Card>
-
-        {/* Cash in Drawer (To Hand Over) */}
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Cash in Drawer (To Hand Over)
-            </span>
-            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-              Physical Cash
-            </span>
-          </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-emerald-700">
-              {formatCurrency(cashInDrawer)}
-            </p>
-            <p className="mt-1 text-xs text-slate-500 leading-snug">
-              Physical cash received minus cash refunds — exact amount in cashier register
             </p>
           </div>
         </Card>

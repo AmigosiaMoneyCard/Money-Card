@@ -214,7 +214,7 @@ function CounterStaffMenuView({
               className="text-xs h-8 px-3 cursor-pointer"
               leftIcon={<Plus className="h-3.5 w-3.5" />}
             >
-              Add Menu Item
+              Add Menu
             </Button>
             <Button
               variant="primary"
@@ -460,7 +460,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   <th className="py-3 px-4 min-w-[200px]">Counter Name</th>
-                  <th className="py-3 px-4 text-center w-[130px]">Add Item</th>
+                  <th className="py-3 px-4 text-center w-[130px]">Add Menu</th>
                   <th className="py-3 px-4 text-right w-[180px]">View Menu / Edit</th>
                 </tr>
               </thead>
@@ -493,7 +493,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
                             className="text-xs h-7 px-2.5 rounded-lg border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 font-semibold cursor-pointer"
                             leftIcon={<Plus className="h-3.5 w-3.5 text-emerald-600" />}
                           >
-                            Add
+                            Add Menu
                           </Button>
                         )}
                       </td>

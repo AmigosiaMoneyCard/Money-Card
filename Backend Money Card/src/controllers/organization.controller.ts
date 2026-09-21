@@ -276,7 +276,7 @@ export async function createBranch(req: Request, res: Response) {
       if (!counterUser) {
         counterUser = await tx.user.create({
           data: {
-            name: `${name.trim()} Counter Manager`,
+            name: `Staff - ${name.trim()}`,
             phone: cleanPhone,
             passwordHash,
             role: Role.STAFF,
@@ -448,7 +448,7 @@ export async function createBranchesBatch(req: Request, res: Response) {
           if (!counterUser) {
             counterUser = await tx.user.create({
               data: {
-                name: `${name} Counter Manager`,
+                name: `Staff - ${name}`,
                 phone: cleanPhone,
                 passwordHash,
                 role: Role.STAFF,
@@ -664,7 +664,7 @@ export async function updateBranch(req: Request, res: Response) {
       await tx.user.update({
         where: { id: existingManager.id },
         data: {
-          ...(name !== undefined ? { name: `${String(name).trim()} Counter Manager` } : {}),
+          ...(name !== undefined ? { name: `Staff - ${String(name).trim()}` } : {}),
           ...(cleanPhone ? { phone: cleanPhone } : {}),
           ...(passwordHash ? { passwordHash } : {}),
         },
@@ -676,7 +676,7 @@ export async function updateBranch(req: Request, res: Response) {
       const newManager = await tx.user.upsert({
         where: { phone: cleanPhone },
         create: {
-          name: `${(name ? String(name).trim() : branch.name)} Counter Manager`,
+          name: `Staff - ${(name ? String(name).trim() : branch.name)}`,
           phone: cleanPhone,
           passwordHash: hash,
           role: Role.STAFF,

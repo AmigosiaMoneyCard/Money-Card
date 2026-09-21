@@ -229,7 +229,7 @@ export function CounterViewEditMenuModal({
               className="shrink-0 text-xs h-8 px-3"
               leftIcon={<Plus className="h-3.5 w-3.5" />}
             >
-              Add Item
+              Add Menu
             </Button>
           )}
         </div>

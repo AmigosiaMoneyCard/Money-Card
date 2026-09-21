@@ -31,6 +31,7 @@ class FakeAnalyticsRepository implements AnalyticsRepository {
     rechargeCount: 52,
     rechargeVolume: 24800.0,
     totalRevenue: 43250.0,
+    netMoneyCollected: 43250.0,
     activeSessionsCount: 12,
     settledSessionsCount: 84,
     avgTransactionValue: 292.23,
@@ -121,9 +122,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('₹43250.00'), findsOneWidget);
-      expect(find.text('148'), findsOneWidget); // Total transactions
-      expect(find.text('Orders / Purchases'), findsOneWidget);
-      expect(find.text('Card Recharges'), findsOneWidget);
+      expect(find.text('Net Money Collected'), findsOneWidget);
+      expect(find.text('Money Added'), findsOneWidget);
       expect(find.text('Reset to Today'), findsOneWidget);
       expect(find.text('Apply'), findsOneWidget);
       expect(find.text('View PDF'), findsOneWidget);

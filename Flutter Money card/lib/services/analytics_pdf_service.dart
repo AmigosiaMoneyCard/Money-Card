@@ -247,13 +247,6 @@ class AnalyticsPdfService {
                   ),
                   pw.TableRow(
                     children: [
-                      _buildCell('Cash in Drawer (To Hand Over)'),
-                      _buildCell('Physical Drawer', alignRight: true),
-                      _buildCell(currencyFmt.format(analytics.cashInDrawer), alignRight: true, isBold: true),
-                    ],
-                  ),
-                  pw.TableRow(
-                    children: [
                       _buildCell('Food Sales (POS Purchases)'),
                       _buildCell('${analytics.purchaseCount} orders', alignRight: true),
                       _buildCell(currencyFmt.format(analytics.purchaseVolume), alignRight: true),

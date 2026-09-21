@@ -88,7 +88,7 @@ export function CounterAddProductModal({
     <Modal
       isOpen={isOpen}
       onClose={() => !isSubmitting && onClose()}
-      title="Add Menu Item"
+      title="Add Menu"
       size="sm"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -200,7 +200,7 @@ export function CounterAddProductModal({
             isLoading={isSubmitting}
             leftIcon={<Plus className="h-4 w-4" />}
           >
-            Add Menu Item
+            Add Menu
           </Button>
         </ModalFooter>
       </form>

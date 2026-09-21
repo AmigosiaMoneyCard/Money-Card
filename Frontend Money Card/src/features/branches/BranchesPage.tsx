@@ -196,6 +196,27 @@ export function BranchesPage() {
   >([]);
   const [bulkCopied, setBulkCopied] = useState(false);
 
+  // Password persistence helpers — store known passwords in localStorage by branchId
+  const PASS_STORAGE_KEY = 'mc_branch_passwords';
+
+  const getStoredPasswords = (): Record<string, string> => {
+    try {
+      return JSON.parse(localStorage.getItem(PASS_STORAGE_KEY) || '{}');
+    } catch {
+      return {};
+    }
+  };
+
+  const storePassword = (branchId: string, password: string) => {
+    try {
+      const stored = getStoredPasswords();
+      stored[branchId] = password;
+      localStorage.setItem(PASS_STORAGE_KEY, JSON.stringify(stored));
+    } catch {
+      // ignore storage errors
+    }
+  };
+
   const canManage = hasPermission('BRANCH_MANAGE');
 
   // ── Fetch Branches & Organization Usage ───────────────────
@@ -330,6 +351,9 @@ export function BranchesPage() {
       setShowCreateModal(false);
       fetchBranches();
 
+      // Persist password in localStorage for this branch
+      storePassword(result.data.id, branchPasswordInput);
+
       // Open WhatsApp Dispatch Modal
       setCreatedBranchCredentials({
         name: result.data.name,
@@ -383,8 +407,8 @@ export function BranchesPage() {
     setEditNameInput(branch.name);
     const initialPhone = (branch.manager?.phone || branch.credentials?.phone || '').replace(/\D/g, '').slice(-10);
     setEditPhoneInput(initialPhone);
-    const initialPassword = branch.credentials?.password || '123456';
-    setCurrentBranchPassword(initialPassword);
+    const storedPassword = getStoredPasswords()[branch.id] || branch.credentials?.password || '';
+    setCurrentBranchPassword(storedPassword);
     setShowCurrentPassword(false);
     setEditPasswordInput('');
     setShowEditPassword(false);
@@ -434,6 +458,7 @@ export function BranchesPage() {
 
       if (editPasswordInput.trim()) {
         setCurrentBranchPassword(editPasswordInput.trim());
+        storePassword(selectedBranch.id, editPasswordInput.trim());
       }
       notify.success('Counter details updated successfully');
       setShowViewEditModal(false);
@@ -542,7 +567,21 @@ export function BranchesPage() {
         notify.success(`Created ${result.data.createdCount || 0} counters${result.data.errors?.length ? ` (with ${result.data.errors.length} errors)` : ''}`);
         fetchBranches();
         if (result.data.created?.length > 0) {
-          setBulkCreatedCounters(result.data.created.map((c: any) => ({ ...c, branchId: c.id })));
+          const normalizedCreated = result.data.created.map((c: any) => {
+            const branchId = c.id || c.branchId;
+            const password = c.password || c.credentials?.password || '';
+            const phone = c.phone || c.credentials?.phone || '';
+            if (branchId && password) {
+              storePassword(branchId, password);
+            }
+            return {
+              ...c,
+              branchId,
+              phone,
+              password,
+            };
+          });
+          setBulkCreatedCounters(normalizedCreated);
           setShowBulkWhatsAppModal(true);
         }
         return { success: true, data: result.data };
@@ -711,19 +750,21 @@ export function BranchesPage() {
 
         <div className="flex items-center gap-2.5 flex-wrap">
           {canManage && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center">
               <Button
                 variant="primary"
                 onClick={handleOpenCreate}
                 leftIcon={<Plus className="h-4 w-4" />}
+                className="rounded-r-none border-r border-emerald-500"
               >
-                Create Counter
+                Add Counter
               </Button>
               <Button
                 variant="primary"
                 onClick={() => setShowBulkModal(true)}
                 leftIcon={<FileSpreadsheet className="h-4 w-4" />}
-                className="rounded-l-none"
+                className="rounded-l-none px-3"
+                title="Bulk Upload Counters CSV"
               >
                 Bulk Upload
               </Button>
