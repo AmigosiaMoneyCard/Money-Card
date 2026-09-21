@@ -120,16 +120,17 @@ export function useOrgAdminAnalytics() {
 
   const [activeTab, setActiveTab] = useState<'overview' | 'cards'>(() => {
     const t = searchParams.get('tab');
-    return t === 'cards' ? 'cards' : 'overview';
+    if (t === 'cards') return 'cards';
+    return 'overview';
   });
 
   const handleTabChange = (tab: 'overview' | 'cards') => {
     setActiveTab(tab);
     const newParams = new URLSearchParams(searchParams);
-    if (tab === 'cards') {
-      newParams.set('tab', 'cards');
-    } else {
+    if (tab === 'overview') {
       newParams.delete('tab');
+    } else {
+      newParams.set('tab', tab);
     }
     setSearchParams(newParams);
   };
@@ -148,7 +149,7 @@ export function useOrgAdminAnalytics() {
   const [pdfSections, setPdfSections] = useState<OrgPdfSectionOptions>({
     includeExecutiveKpis: true,
     includeCardLifecycle: true,
-    includePaymentBreakdown: true,
+    includePaymentBreakdown: false,
     includeRushKpis: true,
     includeTrafficDistribution: true,
     includeFoodDemand: true,
@@ -433,7 +434,7 @@ export function useOrgAdminAnalytics() {
       const defaultSections: OrgPdfSectionOptions = {
         includeExecutiveKpis: true,
         includeCardLifecycle: true,
-        includePaymentBreakdown: true,
+        includePaymentBreakdown: false,
         includeRushKpis: false,
         includeTrafficDistribution: false,
         includeFoodDemand: false,
@@ -443,7 +444,7 @@ export function useOrgAdminAnalytics() {
       setPdfSections(defaultSections);
       const options = getOrgReportOptions(defaultSections);
       if (!options) {
-        notify.error('No analytics data available to render PDF.');
+        notify.error('No analytics data available to preview.');
         return;
       }
 
@@ -463,7 +464,7 @@ export function useOrgAdminAnalytics() {
     const updated: OrgPdfSectionOptions = {
       ...pdfSections,
       includeExecutiveKpis: selected.financial,
-      includePaymentBreakdown: selected.financial,
+      includePaymentBreakdown: false,
       includeCardLifecycle: selected.cards,
       includeRushKpis: false,
       includeTrafficDistribution: false,
@@ -501,7 +502,7 @@ export function useOrgAdminAnalytics() {
       const options = getOrgReportOptions({
         includeExecutiveKpis: true,
         includeCardLifecycle: true,
-        includePaymentBreakdown: true,
+        includePaymentBreakdown: false,
         includeRushKpis: false,
         includeTrafficDistribution: false,
         includeFoodDemand: false,

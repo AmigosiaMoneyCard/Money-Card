@@ -81,6 +81,21 @@ class BranchPerformanceMetric {
   final List<ProductDemand>? productDemand;
   final List<PeakPeriod>? peakPeriods;
 
+  final double moneyAdded;
+  final double moneyRefunded;
+  final double cancelledTopUps;
+  final int cancelledTopUpsCount;
+  final double netMoneyCollected;
+  final double cashInDrawer;
+  final double upiMoney;
+  final int upiCount;
+  final double cashMoney;
+  final int cashCount;
+  final int cardsGivenOut;
+  final int cardsReturned;
+  final int cancelledOrdersCount;
+  final double cancelledOrdersVolume;
+
   const BranchPerformanceMetric({
     required this.branchId,
     required this.branchName,
@@ -103,9 +118,32 @@ class BranchPerformanceMetric {
     this.lowStockItemCount = 0,
     this.productDemand,
     this.peakPeriods,
+    this.moneyAdded = 0.0,
+    this.moneyRefunded = 0.0,
+    this.cancelledTopUps = 0.0,
+    this.cancelledTopUpsCount = 0,
+    this.netMoneyCollected = 0.0,
+    this.cashInDrawer = 0.0,
+    this.upiMoney = 0.0,
+    this.upiCount = 0,
+    this.cashMoney = 0.0,
+    this.cashCount = 0,
+    this.cardsGivenOut = 0,
+    this.cardsReturned = 0,
+    this.cancelledOrdersCount = 0,
+    this.cancelledOrdersVolume = 0.0,
   });
 
   factory BranchPerformanceMetric.fromJson(Map<String, dynamic> json) {
+    final rechVol = (json['rechargeVolume'] as num?)?.toDouble() ?? 0.0;
+    final refVol = (json['refundVolume'] as num?)?.toDouble() ?? 0.0;
+    final cashVol = (json['cashMoney'] as num?)?.toDouble() ??
+        (json['cashRechargeVolume'] as num?)?.toDouble() ??
+        0.0;
+    final cancelTopUps = (json['cancelledTopUps'] as num?)?.toDouble() ??
+        (json['cancelledTopUpsVolume'] as num?)?.toDouble() ??
+        0.0;
+
     return BranchPerformanceMetric(
       branchId: json['branchId'] as String? ?? '',
       branchName: json['branchName'] as String? ?? '',
@@ -114,9 +152,9 @@ class BranchPerformanceMetric {
       purchaseCount: (json['purchaseCount'] as num?)?.toInt() ?? 0,
       purchaseVolume: (json['purchaseVolume'] as num?)?.toDouble() ?? 0.0,
       rechargeCount: (json['rechargeCount'] as num?)?.toInt() ?? 0,
-      rechargeVolume: (json['rechargeVolume'] as num?)?.toDouble() ?? 0.0,
+      rechargeVolume: rechVol,
       refundCount: (json['refundCount'] as num?)?.toInt() ?? 0,
-      refundVolume: (json['refundVolume'] as num?)?.toDouble() ?? 0.0,
+      refundVolume: refVol,
       totalRevenue: (json['totalRevenue'] as num?)?.toDouble() ?? 0.0,
       sessionCount: (json['sessionCount'] as num?)?.toInt() ?? 0,
       activeSessionsCount: (json['activeSessionsCount'] as num?)?.toInt() ?? 0,
@@ -132,6 +170,20 @@ class BranchPerformanceMetric {
       peakPeriods: (json['peakPeriods'] as List<dynamic>?)
           ?.map((e) => PeakPeriod.fromJson(e as Map<String, dynamic>))
           .toList(),
+      moneyAdded: (json['moneyAdded'] as num?)?.toDouble() ?? rechVol,
+      moneyRefunded: (json['moneyRefunded'] as num?)?.toDouble() ?? refVol,
+      cancelledTopUps: cancelTopUps,
+      cancelledTopUpsCount: (json['cancelledTopUpsCount'] as num?)?.toInt() ?? 0,
+      netMoneyCollected: (json['netMoneyCollected'] as num?)?.toDouble() ?? (rechVol - refVol),
+      cashInDrawer: (json['cashInDrawer'] as num?)?.toDouble() ?? (cashVol - refVol),
+      upiMoney: (json['upiMoney'] as num?)?.toDouble() ?? (json['upiRechargeVolume'] as num?)?.toDouble() ?? 0.0,
+      upiCount: (json['upiCount'] as num?)?.toInt() ?? (json['upiRechargeCount'] as num?)?.toInt() ?? 0,
+      cashMoney: cashVol,
+      cashCount: (json['cashCount'] as num?)?.toInt() ?? (json['cashRechargeCount'] as num?)?.toInt() ?? 0,
+      cardsGivenOut: (json['cardsGivenOut'] as num?)?.toInt() ?? (json['sessionCount'] as num?)?.toInt() ?? 0,
+      cardsReturned: (json['cardsReturned'] as num?)?.toInt() ?? (json['settledSessionsCount'] as num?)?.toInt() ?? 0,
+      cancelledOrdersCount: (json['cancelledOrdersCount'] as num?)?.toInt() ?? 0,
+      cancelledOrdersVolume: (json['cancelledOrdersVolume'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -155,6 +207,20 @@ class BranchPerformanceMetric {
         'productsSoldCount': productsSoldCount,
         'inventoryItemCount': inventoryItemCount,
         'lowStockItemCount': lowStockItemCount,
+        'moneyAdded': moneyAdded,
+        'moneyRefunded': moneyRefunded,
+        'cancelledTopUps': cancelledTopUps,
+        'cancelledTopUpsCount': cancelledTopUpsCount,
+        'netMoneyCollected': netMoneyCollected,
+        'cashInDrawer': cashInDrawer,
+        'upiMoney': upiMoney,
+        'upiCount': upiCount,
+        'cashMoney': cashMoney,
+        'cashCount': cashCount,
+        'cardsGivenOut': cardsGivenOut,
+        'cardsReturned': cardsReturned,
+        'cancelledOrdersCount': cancelledOrdersCount,
+        'cancelledOrdersVolume': cancelledOrdersVolume,
         if (productDemand != null)
           'productDemand': productDemand!.map((e) => e.toJson()).toList(),
         if (peakPeriods != null)

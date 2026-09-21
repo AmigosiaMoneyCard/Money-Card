@@ -90,6 +90,11 @@ export async function getStaffList(req: Request, res: Response) {
       name: b.branch.name,
     })),
     permissions: s.permissions.map((p) => p.permission),
+    credentials: {
+      name: s.name,
+      phone: s.phone || '',
+      password: '123456',
+    },
     createdAt: s.createdAt,
     updatedAt: s.updatedAt,
   }));
@@ -306,6 +311,11 @@ export async function getStaffById(req: Request, res: Response) {
     assignedBranchIds: staff.assignedBranches.map((b) => b.branchId),
     assignedBranches: staff.assignedBranches.map((b) => ({ id: b.branch.id, name: b.branch.name })),
     permissions: staff.permissions.map((p) => p.permission),
+    credentials: {
+      name: staff.name,
+      phone: staff.phone || '',
+      password: '123456',
+    },
     createdAt: staff.createdAt,
     updatedAt: staff.updatedAt,
   });

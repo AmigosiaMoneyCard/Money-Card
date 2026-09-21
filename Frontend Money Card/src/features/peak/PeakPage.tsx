@@ -285,6 +285,14 @@ function usePeakPageData() {
     setEndDate(customEndDate);
   };
 
+  const handleResetToToday = () => {
+    const today = new Date().toISOString().split('T')[0];
+    setCustomStartDate(today);
+    setCustomEndDate(today);
+    setStartDate(today);
+    setEndDate(today);
+  };
+
   const fetchPeakData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -509,6 +517,7 @@ function usePeakPageData() {
     pdfSections,
     handlePresetChange,
     handleApplyCustomDates,
+    handleResetToToday,
     fetchPeakData,
     handleRefreshData,
     handleToggleSection,
@@ -868,6 +877,7 @@ interface PeakFilterToolbarProps {
   startDate: string;
   endDate: string;
   handleApplyCustomDates: () => void;
+  handleResetToToday: () => void;
 }
 
 function PeakFilterToolbar({
@@ -884,6 +894,7 @@ function PeakFilterToolbar({
   startDate,
   endDate,
   handleApplyCustomDates,
+  handleResetToToday,
 }: PeakFilterToolbarProps) {
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -969,6 +980,15 @@ function PeakFilterToolbar({
             className="h-8"
           >
             Apply Range
+          </Button>
+          <Button
+            id="peak-reset-today"
+            size="sm"
+            variant="outline"
+            onClick={handleResetToToday}
+            className="h-8 border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold cursor-pointer"
+          >
+            Reset to Today
           </Button>
           {startDate && endDate && (
             <span className="text-xs text-slate-500 self-center">
@@ -1074,6 +1094,7 @@ export function PeakPage() {
     pdfSections,
     handlePresetChange,
     handleApplyCustomDates,
+    handleResetToToday,
     fetchPeakData,
     handleRefreshData,
     handleToggleSection,
@@ -1136,6 +1157,7 @@ export function PeakPage() {
         startDate={startDate}
         endDate={endDate}
         handleApplyCustomDates={handleApplyCustomDates}
+        handleResetToToday={handleResetToToday}
       />
 
       {isLoading ? (

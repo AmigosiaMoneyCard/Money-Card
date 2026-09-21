@@ -4,6 +4,7 @@ import {
   updateOrganizationProfile,
   getBranches,
   createBranch,
+  createBranchesBatch,
   getBranchById,
   updateBranch,
   deleteBranch,
@@ -21,6 +22,7 @@ export const branchesRouter = Router();
 branchesRouter.use(requireAuth);
 branchesRouter.get('/', getBranches);
 branchesRouter.post('/', requireRole(Role.SUPER_ADMIN, Role.ORG_ADMIN), createBranch);
+branchesRouter.post('/batch', requireRole(Role.SUPER_ADMIN, Role.ORG_ADMIN), createBranchesBatch);
 branchesRouter.get('/:id', getBranchById);
 branchesRouter.patch('/:id', requireRole(Role.SUPER_ADMIN, Role.ORG_ADMIN), updateBranch);
 branchesRouter.put('/:id', requireRole(Role.SUPER_ADMIN, Role.ORG_ADMIN), updateBranch);

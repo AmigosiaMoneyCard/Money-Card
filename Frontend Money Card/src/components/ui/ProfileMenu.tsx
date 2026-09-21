@@ -6,7 +6,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks';
-import { LogOut, ChevronDown, ShieldCheck, Settings } from 'lucide-react';
+import { LogOut, ChevronDown, Settings } from 'lucide-react';
 import { cn } from '@/utils';
 
 export function ProfileMenu() {
@@ -90,10 +90,6 @@ export function ProfileMenu() {
                 <p className="truncate text-sm font-semibold text-slate-900">{user?.name}</p>
                 <p className="truncate text-xs text-slate-500">{user?.email}</p>
               </div>
-            </div>
-            <div className="mt-2.5 flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700 border border-emerald-100">
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-              <span>Role: {user?.role ? (user.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Org Admin') : 'Loading...'}</span>
             </div>
           </div>
 

@@ -112,6 +112,35 @@ export const mockBranchesHandlers = {
     return createMockSuccess(newBranch);
   },
 
+  async createBranchesBatch(data: { branches: any[] }): Promise<ApiResult<{ created: any[]; createdCount: number; errors: any[] }>> {
+    await mockDelay();
+    const created: any[] = [];
+    const errors: any[] = [];
+    for (const b of data.branches) {
+      const res = await this.createBranch({
+        name: b.counterName || b.name,
+        phone: b.phone,
+        password: b.password,
+        location: b.address || b.location,
+      });
+      if (res.success) {
+        created.push({
+          id: res.data.id,
+          name: res.data.name,
+          phone: b.phone || '',
+          password: b.password || '123456',
+        });
+      } else {
+        errors.push({ message: res.error.message || 'Failed to create branch' });
+      }
+    }
+    return createMockSuccess({
+      created,
+      createdCount: created.length,
+      errors,
+    });
+  },
+
   async updateBranch(
     id: string,
     data: { name?: string; status?: 'ACTIVE' | 'INACTIVE' },

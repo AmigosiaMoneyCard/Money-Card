@@ -111,6 +111,13 @@ class Transaction {
   final String? staffName;
   final String? branchName;
   final String? createdAt;
+  final bool isCancelled;
+  final String? cancellationReason;
+  final String? cancelledAt;
+  final String? cancelledByUserName;
+  final String? cardNumber;
+  final String? customerName;
+  final String? customerPhone;
 
   const Transaction({
     required this.id,
@@ -127,9 +134,44 @@ class Transaction {
     this.staffName,
     this.branchName,
     this.createdAt,
+    this.isCancelled = false,
+    this.cancellationReason,
+    this.cancelledAt,
+    this.cancelledByUserName,
+    this.cardNumber,
+    this.customerName,
+    this.customerPhone,
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
+    final itemsRaw = json['items'];
+    final bool isCancelled = json['isCancelled'] == true ||
+        (itemsRaw is Map<String, dynamic> && itemsRaw['isCancelled'] == true);
+    final String? cancelReason = json['cancellationReason'] as String? ??
+        (itemsRaw is Map<String, dynamic> ? itemsRaw['cancellationReason'] as String? : null);
+    final String? cancelTime = json['cancelledAt'] as String? ??
+        (itemsRaw is Map<String, dynamic> ? itemsRaw['cancelledAt'] as String? : null);
+    final String? cancelBy = json['cancelledByUserName'] as String? ??
+        (itemsRaw is Map<String, dynamic> ? itemsRaw['cancelledByUserName'] as String? : null);
+
+    List<PurchaseItem>? parsedItems;
+    if (itemsRaw is List) {
+      parsedItems = itemsRaw
+          .map((item) => PurchaseItem.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } else if (itemsRaw is Map<String, dynamic> && itemsRaw['orderItems'] is List) {
+      parsedItems = (itemsRaw['orderItems'] as List)
+          .map((item) => PurchaseItem.fromJson(item as Map<String, dynamic>))
+          .toList();
+    }
+
+    final staff = json['staff'];
+    final sName = json['staffName'] as String? ??
+        (staff is Map ? staff['name'] as String? : null);
+    final branch = json['branch'];
+    final bName = json['branchName'] as String? ??
+        (branch is Map ? branch['name'] as String? : null);
+
     return Transaction(
       id: json['id'] as String? ?? '',
       sessionId: json['sessionId'] as String? ?? '',
@@ -139,16 +181,21 @@ class Transaction {
       balanceBefore: (json['balanceBefore'] as num?)?.toDouble(),
       balanceAfter: (json['balanceAfter'] as num?)?.toDouble(),
       status: TransactionStatus.fromString(json['status'] as String?),
-      items: (json['items'] as List<dynamic>?)
-          ?.map((item) => PurchaseItem.fromJson(item as Map<String, dynamic>))
-          .toList(),
+      items: parsedItems,
       paymentMethod: json['paymentMethod'] != null
           ? PaymentMethod.fromString(json['paymentMethod'] as String?)
           : null,
       externalReference: json['externalReference'] as String?,
-      staffName: json['staffName'] as String?,
-      branchName: json['branchName'] as String?,
+      staffName: sName,
+      branchName: bName,
       createdAt: json['createdAt'] as String?,
+      isCancelled: isCancelled,
+      cancellationReason: cancelReason,
+      cancelledAt: cancelTime,
+      cancelledByUserName: cancelBy,
+      cardNumber: json['cardNumber'] as String?,
+      customerName: json['customerName'] as String?,
+      customerPhone: json['customerPhone'] as String?,
     );
   }
 
@@ -167,5 +214,12 @@ class Transaction {
         if (staffName != null) 'staffName': staffName,
         if (branchName != null) 'branchName': branchName,
         if (createdAt != null) 'createdAt': createdAt,
+        'isCancelled': isCancelled,
+        if (cancellationReason != null) 'cancellationReason': cancellationReason,
+        if (cancelledAt != null) 'cancelledAt': cancelledAt,
+        if (cancelledByUserName != null) 'cancelledByUserName': cancelledByUserName,
+        if (cardNumber != null) 'cardNumber': cardNumber,
+        if (customerName != null) 'customerName': customerName,
+        if (customerPhone != null) 'customerPhone': customerPhone,
       };
 }

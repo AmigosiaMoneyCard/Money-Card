@@ -87,6 +87,11 @@ export interface Staff {
   status: 'ACTIVE' | 'INACTIVE' | 'PENDING_ACTIVATION' | 'DEACTIVATED';
   permissions: Permission[];
   assignedBranchIds: string[];
+  credentials?: {
+    name: string;
+    phone: string;
+    password?: string;
+  };
   createdAt: string;
   updatedAt: string;
 }

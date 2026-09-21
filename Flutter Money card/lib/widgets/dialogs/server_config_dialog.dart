@@ -68,8 +68,14 @@ class _ServerConfigDialogState extends ConsumerState<ServerConfigDialog> {
 
       if (!mounted) return;
       if (resp.statusCode == 200) {
-        final isLoopback = normalized.contains('127.0.0.1') || normalized.contains('localhost');
-        final modeDesc = isLoopback ? 'USB Reverse / Local' : 'Wi-Fi LAN';
+        final isUsbLoopback = normalized.contains('127.0.0.1') || normalized.contains('localhost');
+        final isEmulator = normalized.contains('10.0.2.2');
+        final isCloud = normalized.contains('onrender.com');
+        final modeDesc = isUsbLoopback
+            ? 'USB Reverse / Localhost'
+            : (isEmulator
+                ? 'Android Emulator'
+                : (isCloud ? 'Staging Cloud' : 'Wi-Fi LAN'));
         setState(() {
           _testSuccess = true;
           _testResult = '✓ Connected (${stopwatch.elapsedMilliseconds}ms) • $modeDesc Online (HTTP 200)';
@@ -87,11 +93,14 @@ class _ServerConfigDialogState extends ConsumerState<ServerConfigDialog> {
         _testSuccess = false;
         if (e is DioException) {
           if (e.type == DioExceptionType.connectionTimeout) {
-            _testResult = '✗ Timed out (4s). Ensure phone & laptop are on the same Wi-Fi and port 3000 is open in firewall.';
+            _testResult = '✗ Timed out (4s). Ensure host is reachable and port 3000 is open in firewall.';
           } else if (e.type == DioExceptionType.connectionError) {
-            final isLoopback = normalized.contains('127.0.0.1') || normalized.contains('localhost');
-            if (isLoopback) {
-              _testResult = '✗ Connection refused on 127.0.0.1.\nFor USB cable, run in terminal on your computer:\nadb reverse tcp:3000 tcp:3000';
+            final isUsbLoopback = normalized.contains('127.0.0.1') || normalized.contains('localhost');
+            final isEmulator = normalized.contains('10.0.2.2');
+            if (isUsbLoopback) {
+              _testResult = '✗ Connection refused on 127.0.0.1:3000.\nFor USB cable, run in terminal on your computer:\nadb reverse tcp:3000 tcp:3000';
+            } else if (isEmulator) {
+              _testResult = '✗ Connection refused on 10.0.2.2:3000.\nEnsure local backend is running on your host computer at http://localhost:3000.';
             } else {
               _testResult = '✗ Connection refused. Ensure backend server is running on laptop (http://0.0.0.0:3000).';
             }
@@ -205,12 +214,30 @@ class _ServerConfigDialogState extends ConsumerState<ServerConfigDialog> {
                   },
                 ),
                 ActionChip(
+                  avatar: const Icon(Icons.phone_android, size: 14, color: Colors.amber),
+                  label: const Text('Emulator (10.0.2.2)', style: TextStyle(fontSize: 12, color: Colors.white)),
+                  backgroundColor: const Color(0xFF0F172A),
+                  side: const BorderSide(color: Color(0xFF334155)),
+                  onPressed: () {
+                    _urlController.text = AppConfig.defaultEmulatorBaseUrl;
+                  },
+                ),
+                ActionChip(
                   avatar: const Icon(Icons.wifi, size: 14, color: AppColors.primary),
                   label: const Text('Wi-Fi LAN', style: TextStyle(fontSize: 12, color: Colors.white)),
                   backgroundColor: const Color(0xFF0F172A),
                   side: const BorderSide(color: Color(0xFF334155)),
                   onPressed: () {
                     _urlController.text = AppConfig.defaultLanBaseUrl;
+                  },
+                ),
+                ActionChip(
+                  avatar: const Icon(Icons.cloud_outlined, size: 14, color: Colors.indigoAccent),
+                  label: const Text('Staging Cloud', style: TextStyle(fontSize: 12, color: Colors.white)),
+                  backgroundColor: const Color(0xFF0F172A),
+                  side: const BorderSide(color: Color(0xFF334155)),
+                  onPressed: () {
+                    _urlController.text = AppConfig.stagingBaseUrl;
                   },
                 ),
               ],

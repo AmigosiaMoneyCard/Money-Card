@@ -4,7 +4,6 @@
 // 2. Staff: Deduct Amount, POS checkout, menu view, scan cards (no recharge rights).
 
 import type { Permission } from '@/types';
-import { Badge } from '@/components/ui';
 import { Check, X, Wallet, ShoppingCart } from 'lucide-react';
 import { MANAGER_PERMISSIONS, STAFF_PERMISSIONS } from './constants';
 
@@ -36,25 +35,8 @@ export function PermissionMatrix({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-            Select Staff Role & Access Level
-          </h4>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            Choose whether this team member manages card recharges or processes POS food orders.
-          </p>
-        </div>
-        <Badge
-          variant={isManager ? 'success' : 'info'}
-          className="text-xs font-semibold px-2.5 py-0.5"
-        >
-          {isManager ? 'Active: Manager' : 'Active: Staff'}
-        </Badge>
-      </div>
-
       <div className="grid gap-3.5 sm:grid-cols-2">
-        {/* ── ROLE 1: MANAGER (Recharge Cards) ── */}
+        {/* ── ROLE 1: MANAGER ── */}
         <div
           role="button"
           tabIndex={readOnly ? -1 : 0}
@@ -85,12 +67,7 @@ export function PermissionMatrix({
                 >
                   <Wallet className="h-4 w-4" />
                 </div>
-                <div>
-                  <h5 className="font-bold text-sm text-slate-900 leading-tight">Manager</h5>
-                  <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                    Recharge Cards
-                  </span>
-                </div>
+                <h5 className="font-bold text-sm text-slate-900 leading-tight">Manager</h5>
               </div>
 
               {/* Radio Indicator */}
@@ -104,10 +81,6 @@ export function PermissionMatrix({
                 {isManager && <div className="h-2 w-2 rounded-full bg-white" />}
               </div>
             </div>
-
-            <p className="text-xs text-slate-600 font-medium mt-2 leading-relaxed">
-              Authorized to recharge customer cards with cash or UPI, issue and return cards, and manage counter operations.
-            </p>
 
             <div className="mt-3.5 pt-3 border-t border-slate-200/80 space-y-1.5 text-xs">
               <div className="flex items-center gap-2 text-slate-700">
@@ -149,7 +122,7 @@ export function PermissionMatrix({
           </div>
         </div>
 
-        {/* ── ROLE 2: STAFF (Deduct Amount) ── */}
+        {/* ── ROLE 2: STAFF ── */}
         <div
           role="button"
           tabIndex={readOnly ? -1 : 0}
@@ -180,12 +153,7 @@ export function PermissionMatrix({
                 >
                   <ShoppingCart className="h-4 w-4" />
                 </div>
-                <div>
-                  <h5 className="font-bold text-sm text-slate-900 leading-tight">Staff</h5>
-                  <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-sky-100 text-sky-800">
-                    Deduct Amount
-                  </span>
-                </div>
+                <h5 className="font-bold text-sm text-slate-900 leading-tight">Staff</h5>
               </div>
 
               {/* Radio Indicator */}
@@ -199,10 +167,6 @@ export function PermissionMatrix({
                 {!isManager && <div className="h-2 w-2 rounded-full bg-white" />}
               </div>
             </div>
-
-            <p className="text-xs text-slate-600 font-medium mt-2 leading-relaxed">
-              Authorized to deduct amount from customer cards at POS checkout, add food products to cart, and create & edit menu items.
-            </p>
 
             <div className="mt-3.5 pt-3 border-t border-slate-200/80 space-y-1.5 text-xs">
               <div className="flex items-center gap-2 text-slate-700">

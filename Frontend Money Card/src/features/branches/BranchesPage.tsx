@@ -17,6 +17,7 @@ import {
   EmptyState,
   ErrorState,
 } from '@/components/ui';
+import { BulkCsvImportModal } from '@/components/common';
 import { DataTable } from '@/components/tables';
 import { notify, formatDate } from '@/utils';
 import {
@@ -32,6 +33,8 @@ import {
   Check,
   Eye,
   EyeOff,
+  FileSpreadsheet,
+  Download,
 } from 'lucide-react';
 
 // ─── Slide Switch Component (Far Right End) ─────────────────
@@ -183,6 +186,16 @@ export function BranchesPage() {
   } | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Bulk CSV Import state
+  const [showBulkModal, setShowBulkModal] = useState(false);
+
+  // Bulk WhatsApp Dispatch state
+  const [showBulkWhatsAppModal, setShowBulkWhatsAppModal] = useState(false);
+  const [bulkCreatedCounters, setBulkCreatedCounters] = useState<
+    { name: string; phone: string; password: string; branchId?: string }[]
+  >([]);
+  const [bulkCopied, setBulkCopied] = useState(false);
+
   const canManage = hasPermission('BRANCH_MANAGE');
 
   // ── Fetch Branches & Organization Usage ───────────────────
@@ -255,13 +268,15 @@ export function BranchesPage() {
   // ── Instant Client-Side Filtered Branches ──────────────────
   const filteredBranches = useMemo(() => {
     let result = branches;
-    if (currentBranch && currentBranch.id && currentBranch.id !== 'ALL') {
-      result = result.filter((b) => b.id === currentBranch.id);
-    }
     if (!searchQuery.trim()) return result;
     const q = searchQuery.toLowerCase().trim();
-    return result.filter((b) => b.name.toLowerCase().includes(q));
-  }, [branches, currentBranch, searchQuery]);
+    return result.filter(
+      (b) =>
+        b.name.toLowerCase().includes(q) ||
+        (b.manager?.phone && b.manager.phone.toLowerCase().includes(q)) ||
+        (b.credentials?.phone && b.credentials.phone.toLowerCase().includes(q)),
+    );
+  }, [branches, searchQuery]);
 
   // ── Create Counter ─────────────────────────────────────────
   const handleOpenCreate = () => {
@@ -424,7 +439,8 @@ export function BranchesPage() {
       setShowViewEditModal(false);
       fetchBranches();
     } catch {
-      setViewEditApiError('An unexpected error occurred. Please try again.');
+      notify.error('Bulk import failed');
+      return { success: false, message: 'Bulk import failed' };
     } finally {
       setIsSubmitting(false);
     }
@@ -474,7 +490,7 @@ export function BranchesPage() {
   };
 
   // ── Direct Status Toggle via Slide Switch ─────────────────
-  const activeBranchesCount = branches.filter((b) => b.status === 'ACTIVE').length;
+    const activeBranchesCount = branches.filter((b) => b.status === 'ACTIVE').length;
 
   const handleDirectStatusToggle = async (branch: Branch) => {
     const newStatus = branch.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
@@ -514,6 +530,67 @@ export function BranchesPage() {
     } finally {
       setIsTogglingStatus(null);
     }
+  };
+
+  const BRANCH_CSV_TEMPLATE = 'counterName,phone,password,address\n';
+
+  const handleBulkImport = async (rows: any[]): Promise<{ success: boolean; message?: string; data?: any }> => {
+    setIsSubmitting(true);
+    try {
+      const result = await apiService.branches.createBranchesBatch({ branches: rows });
+      if (result.success) {
+        notify.success(`Created ${result.data.createdCount || 0} counters${result.data.errors?.length ? ` (with ${result.data.errors.length} errors)` : ''}`);
+        fetchBranches();
+        if (result.data.created?.length > 0) {
+          setBulkCreatedCounters(result.data.created.map((c: any) => ({ ...c, branchId: c.id })));
+          setShowBulkWhatsAppModal(true);
+        }
+        return { success: true, data: result.data };
+      } else {
+        notify.error(result.error.message || 'Bulk import failed');
+        return { success: false, message: result.error.message || 'Bulk import failed' };
+      }
+    } catch {
+      notify.error('Bulk import failed');
+      return { success: false, message: 'Bulk import failed' };
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCopyAllCredentials = () => {
+    if (!bulkCreatedCounters.length) return;
+    const loginUrl = `${window.location.origin}/login`;
+    const textToCopy = bulkCreatedCounters
+      .map(
+        (c) =>
+          `Counter Name: ${c.name}\nPhone Number: ${c.phone}\nPassword: ${c.password}\nLogin URL: ${loginUrl}`,
+      )
+      .join('\n\n');
+    navigator.clipboard.writeText(textToCopy);
+    setBulkCopied(true);
+    notify.success('All credentials copied to clipboard');
+    setTimeout(() => setBulkCopied(false), 2500);
+  };
+
+  const handleDownloadAllCredentials = () => {
+    if (!bulkCreatedCounters.length) return;
+    const loginUrl = `${window.location.origin}/login`;
+    const csvContent =
+      'Counter Name,Phone Number,Password,Login URL\n' +
+      bulkCreatedCounters
+        .map((c) => `${c.name},${c.phone},${c.password},${loginUrl}`)
+        .join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'bulk_counter_credentials.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    notify.success('Credentials CSV downloaded');
   };
 
   // ── Delete / Archive Branch ────────────────────────────────
@@ -562,7 +639,7 @@ export function BranchesPage() {
     {
       key: 'name',
       header: 'Counter Name',
-      className: 'w-full',
+      className: 'w-80 whitespace-nowrap',
       render: (branch: Branch) => (
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -577,9 +654,9 @@ export function BranchesPage() {
     {
       key: 'createdAt',
       header: 'Created Date',
-      className: 'text-right whitespace-nowrap w-36',
+      className: 'text-left whitespace-nowrap w-48',
       render: (branch: Branch) => (
-        <div className="text-right text-xs text-slate-500">{formatDate(branch.createdAt)}</div>
+        <div className="text-left text-xs text-slate-500">{formatDate(branch.createdAt)}</div>
       ),
     },
     {
@@ -634,13 +711,23 @@ export function BranchesPage() {
 
         <div className="flex items-center gap-2.5 flex-wrap">
           {canManage && (
-            <Button
-              variant="primary"
-              onClick={handleOpenCreate}
-              leftIcon={<Plus className="h-4 w-4" />}
-            >
-              Create Counter
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="primary"
+                onClick={handleOpenCreate}
+                leftIcon={<Plus className="h-4 w-4" />}
+              >
+                Create Counter
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => setShowBulkModal(true)}
+                leftIcon={<FileSpreadsheet className="h-4 w-4" />}
+                className="rounded-l-none"
+              >
+                Bulk Upload
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -1121,6 +1208,100 @@ export function BranchesPage() {
               </div>
             </div>
           </form>
+        </div>
+      </Modal>
+
+      {/* ── Bulk CSV Import Modal ──────────────────────────────── */}
+      <BulkCsvImportModal
+        isOpen={showBulkModal}
+        onClose={() => setShowBulkModal(false)}
+        title="Bulk Upload Counters (CSV)"
+        templateFilename="counters-template.csv"
+        templateContent={BRANCH_CSV_TEMPLATE}
+        onImport={handleBulkImport}
+      />
+
+      {/* ── Bulk WhatsApp Credentials Dispatch Modal ───────────── */}
+      <Modal
+        isOpen={showBulkWhatsAppModal}
+        onClose={() => setShowBulkWhatsAppModal(false)}
+        title={`Counters Created Successfully! (${bulkCreatedCounters.length})`}
+        description={`Share the login credentials with each counter manager:`}
+        size="2xl"
+      >
+        <div className="space-y-4">
+          {bulkCreatedCounters.length > 0 && (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-emerald-800 font-semibold text-sm">{bulkCreatedCounters.length} Counter Credentials</span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopyAllCredentials}
+                    leftIcon={bulkCopied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                    className="text-xs cursor-pointer"
+                  >
+                    {bulkCopied ? 'Copied' : 'Copy All Credentials'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDownloadAllCredentials}
+                    leftIcon={<Download className="h-3.5 w-3.5" />}
+                    className="text-xs cursor-pointer"
+                  >
+                    Download CSV
+                  </Button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-white/60 text-slate-500">
+                    <tr>
+                      <th className="text-left py-2 px-2.5 font-medium border-b border-emerald-100">Counter Name</th>
+                      <th className="text-left py-2 px-2.5 font-medium border-b border-emerald-100">Mobile Number</th>
+                      <th className="text-left py-2 px-2.5 font-medium border-b border-emerald-100">Password</th>
+                      <th className="text-right py-2 px-2.5 font-medium border-b border-emerald-100">WhatsApp</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-emerald-50">
+                    {bulkCreatedCounters.map((c, i) => {
+                      const cleanPhone = c.phone.replace(/\D/g, '').slice(-10);
+                      const loginUrl = `${window.location.origin}/login`;
+                      const message = encodeURIComponent(
+                        `Counter Name: ${c.name}\nPhone: ${c.phone}\nPassword: ${c.password}\nDashboard: ${loginUrl}`,
+                      );
+                      const waUrl = `https://wa.me/91${cleanPhone}?text=${message}`;
+                      return (
+                        <tr key={`${c.name}-${i}`}>
+                          <td className="px-2.5 py-2 font-semibold text-slate-800">{c.name}</td>
+                          <td className="px-2.5 py-2 font-mono text-slate-700">{c.phone}</td>
+                          <td className="px-2.5 py-2 font-mono text-slate-700">{c.password}</td>
+                          <td className="px-2.5 py-2 text-right">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(waUrl, '_blank', 'noopener,noreferrer')}
+                              className="text-xs px-2.5 py-1 bg-[#25D366] hover:bg-[#20bd5a] text-white border-transparent cursor-pointer"
+                              leftIcon={<MessageSquare className="h-3 w-3" />}
+                            >
+                              Send
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <ModalFooter>
+            <Button variant="ghost" onClick={() => setShowBulkWhatsAppModal(false)}>Done</Button>
+          </ModalFooter>
         </div>
       </Modal>
 

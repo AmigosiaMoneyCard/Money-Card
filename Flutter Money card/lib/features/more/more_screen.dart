@@ -105,6 +105,13 @@ class MoreScreen extends ConsumerWidget {
           ),
         ),
 
+        _buildMenuTile(
+          icon: Icons.receipt_long_outlined,
+          title: 'Recharges & Top-ups',
+          subtitle: 'UPI and Cash top-up history & voiding',
+          onTap: () => context.push('/app/recharges'),
+        ),
+
 
         const SizedBox(height: AppSpacing.lg),
 

@@ -14,9 +14,11 @@ import {
   Trash2,
   Check,
   X,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { CounterAddProductModal } from './CounterAddProductModal';
 import { CounterViewEditMenuModal } from './CounterViewEditMenuModal';
+import { BulkCsvImportModal } from '@/components/common';
 
 interface ProductsPageProps {
   defaultTab?: string;
@@ -34,10 +36,71 @@ function CounterStaffMenuView({
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showBulkMenuModal, setShowBulkMenuModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editPrice, setEditPrice] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+
+  const MENU_CSV_TEMPLATE =
+    'itemName,category,price\nVeg Burger,"Snacks, Fast Food",120\nCold Coffee,Beverages,80\nSpecial Thali,"Lunch, Dinner",220\n';
+
+  const handleBulkImportMenu = async (
+    rows: any[],
+  ): Promise<{ success: boolean; message?: string; data?: any }> => {
+    if (!branch) {
+      return { success: false, message: 'No counter selected for menu import' };
+    }
+    let createdCount = 0;
+    const errors: string[] = [];
+
+    for (const row of rows) {
+      const itemName = row.itemname || row.itemName || row.name || '';
+      const priceVal = parseFloat(row.price);
+      const categoryVal = row.category || 'General';
+
+      if (!itemName.trim()) {
+        errors.push(`Row ${row.rowNumber || '?'}: Item name is required`);
+        continue;
+      }
+      if (isNaN(priceVal) || priceVal <= 0) {
+        errors.push(`Row ${row.rowNumber || '?'}: Valid price greater than 0 required`);
+        continue;
+      }
+
+      const categoryList = Array.isArray(categoryVal)
+        ? categoryVal
+        : typeof categoryVal === 'string'
+        ? categoryVal.split(',').map((c: string) => c.trim()).filter(Boolean)
+        : ['General'];
+
+      try {
+        const res = await apiService.products.createProduct({
+          branchId: branch.id,
+          itemName: itemName.trim(),
+          price: Math.round(priceVal),
+          category: categoryList,
+        });
+        if (res.success) {
+          createdCount++;
+        } else {
+          errors.push(`Row ${row.rowNumber || '?'}: ${res.error.message || 'Failed to create'}`);
+        }
+      } catch {
+        errors.push(`Row ${row.rowNumber || '?'}: Network or server error`);
+      }
+    }
+
+    if (createdCount > 0) {
+      fetchItems();
+      notify.success(
+        `Created ${createdCount} menu items${errors.length > 0 ? ` (${errors.length} errors)` : ''}`,
+      );
+      return { success: true, message: `Created ${createdCount} menu items successfully` };
+    } else {
+      return { success: false, message: errors.join(', ') || 'No valid items imported' };
+    }
+  };
 
   const fetchItems = useCallback(async () => {
     if (!branch) return;
@@ -143,15 +206,26 @@ function CounterStaffMenuView({
         </div>
 
         {canManage && (
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setShowAddModal(true)}
-            className="text-xs h-8 px-3 cursor-pointer"
-            leftIcon={<Plus className="h-3.5 w-3.5" />}
-          >
-            Add Menu Item
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setShowAddModal(true)}
+              className="text-xs h-8 px-3 cursor-pointer"
+              leftIcon={<Plus className="h-3.5 w-3.5" />}
+            >
+              Add Menu Item
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setShowBulkMenuModal(true)}
+              className="text-xs h-8 px-3 cursor-pointer rounded-l-none"
+              leftIcon={<FileSpreadsheet className="h-3.5 w-3.5" />}
+            >
+              Bulk Upload
+            </Button>
+          </div>
         )}
       </div>
 
@@ -270,6 +344,15 @@ function CounterStaffMenuView({
         branch={branch}
         onSuccess={fetchItems}
       />
+
+      <BulkCsvImportModal
+        isOpen={showBulkMenuModal}
+        onClose={() => setShowBulkMenuModal(false)}
+        title="Bulk Upload Menu Items (CSV)"
+        templateFilename="menu_items_template.csv"
+        templateContent={MENU_CSV_TEMPLATE}
+        onImport={handleBulkImportMenu}
+      />
     </div>
   );
 }
@@ -376,9 +459,9 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  <th className="py-3 px-4 min-w-[200px]">Counter Name</th>
-                  <th className="py-3 px-4 text-center w-[130px]">Add Item</th>
-                  <th className="py-3 px-4 text-right w-[180px]">View Menu / Edit</th>
+                  <th className="py-3 px-4 w-1/2">Counter Name</th>
+                  <th className="py-3 px-4 text-center w-36">Add Menu</th>
+                  <th className="py-3 px-4 text-right w-44">View / Edit</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -389,19 +472,19 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
                       className="hover:bg-slate-50/60 transition-colors"
                     >
                       {/* 1. Counter Name */}
-                      <td className="py-3.5 px-4">
+                      <td className="py-3.5 px-4 w-1/2">
                         <div className="flex items-center gap-3">
                           <div className="h-8 w-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
                             <Building2 className="h-4 w-4" />
                           </div>
                           <span className="font-semibold text-sm text-slate-900">
-                            {branch.name}
+                            Menu - {branch.name}
                           </span>
                         </div>
                       </td>
 
                       {/* 2. Add Button */}
-                      <td className="py-3.5 px-4 text-center">
+                      <td className="py-3.5 px-4 text-center w-36">
                         {canManageProducts && (
                           <Button
                             variant="outline"
@@ -415,8 +498,8 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
                         )}
                       </td>
 
-                      {/* 3. View Menu / Edit */}
-                      <td className="py-3.5 px-4 text-right">
+                      {/* 3. View / Edit */}
+                      <td className="py-3.5 px-4 text-right w-44">
                         <Button
                           variant="ghost"
                           size="sm"
@@ -424,7 +507,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
                           className="text-xs h-7 px-3 rounded-lg text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200 font-medium cursor-pointer"
                           leftIcon={<Eye className="h-3.5 w-3.5 text-slate-500" />}
                         >
-                          View Menu / Edit
+                          View / Edit
                         </Button>
                       </td>
                     </tr>

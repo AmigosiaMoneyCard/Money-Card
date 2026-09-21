@@ -47,6 +47,7 @@ export function OrgAdminAnalyticsView() {
     setStartDate,
     setEndDate,
     fetchAnalytics,
+    handlePresetChange,
     handleCustomDateApply,
     handleViewPdf,
     handleDownloadFinancialPdf,
@@ -95,13 +96,14 @@ export function OrgAdminAnalyticsView() {
           )}
 
           {/* Custom Date Pickers — always visible */}
-          <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-lg border border-slate-200">
+          <div className="flex flex-wrap items-center gap-1.5 bg-slate-50 p-1 rounded-lg border border-slate-200">
             <input
               id="org-analytics-start-date"
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 focus:border-emerald-500 focus:outline-none"
+              className="h-8 px-2 text-xs bg-white border border-slate-200 rounded text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium"
+              aria-label="Start date"
             />
             <span className="text-xs text-slate-400">to</span>
             <input
@@ -109,15 +111,24 @@ export function OrgAdminAnalyticsView() {
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 focus:border-emerald-500 focus:outline-none"
+              className="h-8 px-2 text-xs bg-white border border-slate-200 rounded text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium"
+              aria-label="End date"
             />
             <Button
+              variant="secondary"
               size="sm"
-              variant="outline"
               onClick={() => handleCustomDateApply(startDate, endDate)}
-              className="h-7 px-2.5 text-xs font-semibold"
+              className="h-8 px-2.5 text-xs font-semibold"
             >
               Apply
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePresetChange('today')}
+              className="h-8 px-2 text-xs font-semibold text-slate-600 hover:text-slate-900 border-slate-200 bg-white"
+            >
+              Reset to Today
             </Button>
           </div>
 
@@ -145,7 +156,7 @@ export function OrgAdminAnalyticsView() {
         </div>
       </div>
 
-      {/* ─── Tab Navigation: Strictly Financial Overview & Card Analytics ─── */}
+      {/* ─── Tab Navigation: Financial Overview, Card Analytics & Recharges ─── */}
       <div className="flex items-center gap-2 border-b border-slate-200">
         <button
           type="button"

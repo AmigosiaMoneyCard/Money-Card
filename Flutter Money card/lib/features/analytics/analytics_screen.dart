@@ -129,160 +129,193 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   color: Colors.white,
                   border: Border(bottom: BorderSide(color: AppColors.borderLight)),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Date Range Pickers
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () async {
-                                final picked = await showDatePicker(
-                                  context: context,
-                                  initialDate: DateTime.tryParse(_startDate) ?? DateTime.now(),
-                                  firstDate: DateTime(2020),
-                                  lastDate: DateTime.now(),
-                                  helpText: 'Select Start Date',
-                                );
-                                if (picked != null) {
-                                  setState(() {
-                                    final y = picked.year.toString().padLeft(4, '0');
-                                    final m = picked.month.toString().padLeft(2, '0');
-                                    final d = picked.day.toString().padLeft(2, '0');
-                                    _startDate = '$y-$m-$d';
-                                  });
-                                }
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: AppSpacing.roundedSm,
-                                  border: Border.all(color: AppColors.borderLight),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.calendar_today, size: 13, color: AppColors.primary),
-                                    const SizedBox(width: 5),
-                                    Flexible(
-                                      child: Text(
-                                        _startDate,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: AppColors.textPrimaryLight,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 4),
-                            child: Text('to', style: TextStyle(fontSize: 11, color: AppColors.textSecondaryLight)),
-                          ),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () async {
-                                final picked = await showDatePicker(
-                                  context: context,
-                                  initialDate: DateTime.tryParse(_endDate) ?? DateTime.now(),
-                                  firstDate: DateTime(2020),
-                                  lastDate: DateTime.now(),
-                                  helpText: 'Select End Date',
-                                );
-                                if (picked != null) {
-                                  setState(() {
-                                    final y = picked.year.toString().padLeft(4, '0');
-                                    final m = picked.month.toString().padLeft(2, '0');
-                                    final d = picked.day.toString().padLeft(2, '0');
-                                    _endDate = '$y-$m-$d';
-                                  });
-                                }
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: AppSpacing.roundedSm,
-                                  border: Border.all(color: AppColors.borderLight),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.calendar_today, size: 13, color: AppColors.primary),
-                                    const SizedBox(width: 5),
-                                    Flexible(
-                                      child: Text(
-                                        _endDate,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: AppColors.textPrimaryLight,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          // Apply Button
-                          ElevatedButton(
-                            onPressed: () {
-                              notifier.setCustomRange(_startDate, _endDate);
+                    // Row 1: Start Date and End Date Pickers
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: DateTime.tryParse(_startDate) ?? DateTime.now(),
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime.now(),
+                                helpText: 'Select Start Date',
+                              );
+                              if (picked != null) {
+                                setState(() {
+                                  final y = picked.year.toString().padLeft(4, '0');
+                                  final m = picked.month.toString().padLeft(2, '0');
+                                  final d = picked.day.toString().padLeft(2, '0');
+                                  _startDate = '$y-$m-$d';
+                                });
+                              }
                             },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              shape: RoundedRectangleBorder(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
                                 borderRadius: AppSpacing.roundedSm,
+                                border: Border.all(color: AppColors.borderLight),
                               ),
-                            ),
-                            child: const Text(
-                              'Apply',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.calendar_today, size: 13, color: AppColors.primary),
+                                  const SizedBox(width: 5),
+                                  Flexible(
+                                    child: Text(
+                                      _startDate,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppColors.textPrimaryLight,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-
-                    // View PDF Action Button
-                    ElevatedButton.icon(
-                      onPressed: (analyticsState.isLoading || analyticsState.analytics == null)
-                          ? null
-                          : () => _openPdfPreview(
-                                context,
-                                analyticsState.analytics!,
-                                currentBranch?.name ?? 'Main Cafeteria',
-                                analyticsState.selectedRange,
-                              ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: AppColors.borderLight,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: AppSpacing.roundedSm,
                         ),
-                      ),
-                      icon: const Icon(Icons.picture_as_pdf, size: 16),
-                      label: const Text(
-                        'View PDF',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 6),
+                          child: Text('to', style: TextStyle(fontSize: 11, color: AppColors.textSecondaryLight)),
+                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: DateTime.tryParse(_endDate) ?? DateTime.now(),
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime.now(),
+                                helpText: 'Select End Date',
+                              );
+                              if (picked != null) {
+                                setState(() {
+                                  final y = picked.year.toString().padLeft(4, '0');
+                                  final m = picked.month.toString().padLeft(2, '0');
+                                  final d = picked.day.toString().padLeft(2, '0');
+                                  _endDate = '$y-$m-$d';
+                                });
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: AppSpacing.roundedSm,
+                                border: Border.all(color: AppColors.borderLight),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.calendar_today, size: 13, color: AppColors.primary),
+                                  const SizedBox(width: 5),
+                                  Flexible(
+                                    child: Text(
+                                      _endDate,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppColors.textPrimaryLight,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    // Row 2: Action Buttons (Apply, Reset to Today, View PDF)
+                    Row(
+                      children: [
+                        ElevatedButton(
+                          onPressed: () {
+                            notifier.setCustomRange(_startDate, _endDate);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: AppSpacing.roundedSm,
+                            ),
+                          ),
+                          child: const Text(
+                            'Apply',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            final today = _todayStr();
+                            setState(() {
+                              _startDate = today;
+                              _endDate = today;
+                            });
+                            notifier.setCustomRange(today, today);
+                          },
+                          icon: const Icon(Icons.today, size: 13, color: AppColors.primary),
+                          label: const Text(
+                            'Reset to Today',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: AppColors.primaryLight),
+                            backgroundColor: AppColors.primaryLight.withValues(alpha: 0.35),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: AppSpacing.roundedSm,
+                            ),
+                          ),
+                        ),
+                        const Spacer(),
+                        ElevatedButton.icon(
+                          onPressed: (analyticsState.isLoading || analyticsState.analytics == null)
+                              ? null
+                              : () => _openPdfPreview(
+                                    context,
+                                    analyticsState.analytics!,
+                                    currentBranch?.name ?? 'Main Cafeteria',
+                                    analyticsState.selectedRange,
+                                  ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: AppColors.borderLight,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: AppSpacing.roundedSm,
+                            ),
+                          ),
+                          icon: const Icon(Icons.picture_as_pdf, size: 14),
+                          label: const Text(
+                            'View PDF',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -429,15 +462,15 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
-  // ─── Tab 1: Financial Overview ───
+  // ─── Tab 1: Financial Overview (Easy Words Layout) ───
   Widget _buildFinancialOverview(BuildContext context, BranchPerformanceMetric data) {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: AppSpacing.paddingMd,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 16),
       children: [
-        // Total Revenue & Volume Card
+        // 1. Primary Highlight Card: Net Money Collected
         AppCard(
-          padding: AppSpacing.paddingLg,
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -445,10 +478,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'Financial Overview',
+                    'Net Money Collected',
                     style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
                       color: AppColors.textSecondaryLight,
                     ),
                   ),
@@ -460,78 +493,205 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: 8),
               Text(
-                '\u20b9${data.totalRevenue.toStringAsFixed(2)}',
+                '₹${data.netMoneyCollected.toStringAsFixed(2)}',
                 style: const TextStyle(
-                  fontSize: 32,
+                  fontSize: 34,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
+                  color: AppColors.primaryDark,
                 ),
               ),
-              const Text(
-                'Total Revenue (Sales & Recharges)',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
-              ),
-              const Divider(height: AppSpacing.xl),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildSummaryCol('Purchases', '\u20b9${data.purchaseVolume.toStringAsFixed(0)}'),
-                  _buildSummaryCol('Recharges', '\u20b9${data.rechargeVolume.toStringAsFixed(0)}'),
-                  _buildSummaryCol('Refunds', '\u20b9${data.refundVolume.toStringAsFixed(0)}'),
-                  _buildSummaryCol('Tx Count', '${data.transactionCount}'),
-                ],
+              const SizedBox(height: 4),
+              Text(
+                'Money Added (₹${data.moneyAdded.toStringAsFixed(0)}) minus Money Refunded (₹${data.moneyRefunded.toStringAsFixed(0)})',
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
               ),
             ],
           ),
         ),
-        const SizedBox(height: AppSpacing.md),
+        const SizedBox(height: 12),
 
-        // Financial Operations Grid
+        // 2. Cash in Drawer (To Hand Over) Card
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFECFDF5),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFA7F3D0), width: 1.5),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFD1FAE5),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.payments_outlined, color: Color(0xFF047857), size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Cash in Drawer (To Hand Over)',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF047857)),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '₹${data.cashInDrawer.toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF065F46)),
+                    ),
+                    Text(
+                      'Cash Added (₹${data.cashMoney.toStringAsFixed(0)}) minus Cash Returned (₹${data.moneyRefunded.toStringAsFixed(0)})',
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF059669)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // 3. Online UPI vs Cash Money Side-by-Side Comparison
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F3FF),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFDDD6FE)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '📱 Online UPI Money',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF6D28D9)),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '₹${data.upiMoney.toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF4C1D95)),
+                    ),
+                    Text(
+                      '${data.upiCount} top-ups',
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF7C3AED)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFBBF7D0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '💵 Cash Money',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF15803D)),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '₹${data.cashMoney.toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
+                    ),
+                    Text(
+                      '${data.cashCount} top-ups',
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF15803D)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+
+        // 4. Core Money Grid: Money Added & Money Refunded
         Row(
           children: [
             Expanded(
               child: _buildMetricTile(
-                icon: Icons.point_of_sale,
-                label: 'Orders / Purchases',
-                value: '${data.purchaseCount}',
-                subValue: 'Avg \u20b9${data.avgPurchaseValue.toStringAsFixed(0)}',
+                icon: Icons.add_card,
+                label: 'Money Added',
+                value: '₹${data.moneyAdded.toStringAsFixed(0)}',
+                subValue: '${data.rechargeCount} total top-ups',
+                color: AppColors.success,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: _buildMetricTile(
+                icon: Icons.assignment_return,
+                label: 'Money Refunded',
+                value: '₹${data.moneyRefunded.toStringAsFixed(0)}',
+                subValue: '${data.refundCount} cards returned',
+                color: AppColors.error,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+
+        // 5. Cancellations & Voided Activity
+        Row(
+          children: [
+            Expanded(
+              child: _buildMetricTile(
+                icon: Icons.cancel_outlined,
+                label: 'Cancelled Top-ups',
+                value: '₹${data.cancelledTopUps.toStringAsFixed(0)}',
+                subValue: '${data.cancelledTopUpsCount} voided top-ups',
+                color: Colors.orange.shade700,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: _buildMetricTile(
+                icon: Icons.remove_shopping_cart_outlined,
+                label: 'Cancelled Food Orders',
+                value: '₹${data.cancelledOrdersVolume.toStringAsFixed(0)}',
+                subValue: '${data.cancelledOrdersCount} voided orders',
+                color: Colors.deepOrange,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+
+        // 6. Food Sales & Card Count
+        Row(
+          children: [
+            Expanded(
+              child: _buildMetricTile(
+                icon: Icons.restaurant,
+                label: 'Food Sales (POS)',
+                value: '₹${data.purchaseVolume.toStringAsFixed(0)}',
+                subValue: '${data.purchaseCount} orders served',
                 color: AppColors.primary,
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: _buildMetricTile(
-                icon: Icons.account_balance_wallet,
-                label: 'Card Recharges',
-                value: '${data.rechargeCount}',
-                subValue: '\u20b9${data.rechargeVolume.toStringAsFixed(0)} volume',
-                color: AppColors.success,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Row(
-          children: [
-            Expanded(
-              child: _buildMetricTile(
-                icon: Icons.receipt_long,
-                label: 'Avg Transaction',
-                value: '\u20b9${data.avgTransactionValue.toStringAsFixed(0)}',
-                subValue: 'Across all orders',
+                icon: Icons.credit_card,
+                label: 'Cards Given Out',
+                value: '${data.cardsGivenOut}',
+                subValue: '${data.cardsReturned} returned',
                 color: AppColors.primaryDark,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: _buildMetricTile(
-                icon: Icons.inventory_2_outlined,
-                label: 'Low Stock Alert',
-                value: '${data.lowStockItemCount}',
-                subValue: 'of ${data.inventoryItemCount} items',
-                color: data.lowStockItemCount > 0 ? AppColors.warning : AppColors.success,
               ),
             ),
           ],
@@ -674,22 +834,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
-  Widget _buildSummaryCol(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-        ),
-      ],
-    );
-  }
+
 
   Widget _buildMetricTile({
     required IconData icon,
