@@ -229,7 +229,7 @@ export function CounterViewEditMenuModal({
               className="shrink-0 text-xs h-8 px-3"
               leftIcon={<Plus className="h-3.5 w-3.5" />}
             >
-              Add Item
+              Add Menu
             </Button>
           )}
         </div>
@@ -312,7 +312,10 @@ export function CounterViewEditMenuModal({
                                   : 'border-slate-200 bg-white text-slate-600'
                               }`}
                             >
-                              {t === 'Veg' ? '🟢 Veg' : t === 'Non-Veg' ? '🔴 Non' : '☕ Drink'}
+                              <span className="flex items-center gap-1.5">
+                                <span className={`h-2 w-2 rounded-full ${t === 'Veg' ? 'bg-emerald-600' : t === 'Non-Veg' ? 'bg-rose-600' : 'bg-sky-600'}`}></span>
+                                <span>{t === 'Veg' ? 'Veg' : t === 'Non-Veg' ? 'Non' : 'Drink'}</span>
+                              </span>
                             </button>
                           ))}
                         </div>
@@ -354,11 +357,11 @@ export function CounterViewEditMenuModal({
                   {/* Left: Indicator + Name & Category */}
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
                     <span
-                      className="text-base shrink-0 select-none"
+                      className={`h-2.5 w-2.5 rounded-full shrink-0 ${
+                        foodType === 'Veg' ? 'bg-emerald-600' : foodType === 'Non-Veg' ? 'bg-rose-600' : 'bg-sky-600'
+                      }`}
                       title={foodType}
-                    >
-                      {foodType === 'Veg' ? '🟢' : foodType === 'Non-Veg' ? '🔴' : '☕'}
-                    </span>
+                    />
 
                     <div className="min-w-0">
                       <p className="font-semibold text-xs text-slate-900 truncate">

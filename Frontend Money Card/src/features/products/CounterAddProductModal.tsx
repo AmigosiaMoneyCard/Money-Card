@@ -88,7 +88,7 @@ export function CounterAddProductModal({
     <Modal
       isOpen={isOpen}
       onClose={() => !isSubmitting && onClose()}
-      title="Add Menu Item"
+      title={`Add Menu — ${branch.name}`}
       size="sm"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -136,7 +136,7 @@ export function CounterAddProductModal({
           </div>
         </div>
 
-        {/* Food Type Selector (Veg / Non-Veg / Drink) */}
+        {/* Food Type Selector (Clean Colored Dots, Zero Emojis) */}
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1.5">
             Type
@@ -145,39 +145,39 @@ export function CounterAddProductModal({
             <button
               type="button"
               onClick={() => setFoodType('Veg')}
-              className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+              className={`flex items-center justify-center gap-2 py-2 px-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                 foodType === 'Veg'
                   ? 'border-emerald-500 bg-emerald-50 text-emerald-800 shadow-2xs'
                   : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
               }`}
             >
-              <span>🟢</span>
+              <span className="h-2 w-2 rounded-full bg-emerald-600"></span>
               <span>Veg</span>
             </button>
 
             <button
               type="button"
               onClick={() => setFoodType('Non-Veg')}
-              className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+              className={`flex items-center justify-center gap-2 py-2 px-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                 foodType === 'Non-Veg'
                   ? 'border-rose-500 bg-rose-50 text-rose-800 shadow-2xs'
                   : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
               }`}
             >
-              <span>🔴</span>
+              <span className="h-2 w-2 rounded-full bg-rose-600"></span>
               <span>Non-Veg</span>
             </button>
 
             <button
               type="button"
               onClick={() => setFoodType('Drink')}
-              className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+              className={`flex items-center justify-center gap-2 py-2 px-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                 foodType === 'Drink'
                   ? 'border-sky-500 bg-sky-50 text-sky-800 shadow-2xs'
                   : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
               }`}
             >
-              <span>☕</span>
+              <span className="h-2 w-2 rounded-full bg-sky-600"></span>
               <span>Drink</span>
             </button>
           </div>
@@ -200,7 +200,7 @@ export function CounterAddProductModal({
             isLoading={isSubmitting}
             leftIcon={<Plus className="h-4 w-4" />}
           >
-            Add Menu Item
+            Add Menu
           </Button>
         </ModalFooter>
       </form>

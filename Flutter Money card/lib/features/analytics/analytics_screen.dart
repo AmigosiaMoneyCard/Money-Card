@@ -510,53 +510,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 12),
-
-        // 2. Cash in Drawer (To Hand Over) Card
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFFECFDF5),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFA7F3D0), width: 1.5),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFD1FAE5),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.payments_outlined, color: Color(0xFF047857), size: 24),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Cash in Drawer (To Hand Over)',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF047857)),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '₹${data.cashInDrawer.toStringAsFixed(2)}',
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF065F46)),
-                    ),
-                    Text(
-                      'Cash Added (₹${data.cashMoney.toStringAsFixed(0)}) minus Cash Returned (₹${data.moneyRefunded.toStringAsFixed(0)})',
-                      style: const TextStyle(fontSize: 11, color: Color(0xFF059669)),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
         const SizedBox(height: 14),
 
-        // 3. Online UPI vs Cash Money Side-by-Side Comparison
+        // 2. Online UPI vs Cash Money Side-by-Side Comparison
         Row(
           children: [
             Expanded(
@@ -571,7 +527,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      '📱 Online UPI Money',
+                      'Online UPI Money',
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF6D28D9)),
                     ),
                     const SizedBox(height: 6),
@@ -600,7 +556,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      '💵 Cash Money',
+                      'Cash Money',
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF15803D)),
                     ),
                     const SizedBox(height: 6),
@@ -672,29 +628,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         ),
         const SizedBox(height: AppSpacing.sm),
 
-        // 6. Food Sales & Card Count
-        Row(
-          children: [
-            Expanded(
-              child: _buildMetricTile(
-                icon: Icons.restaurant,
-                label: 'Food Sales (POS)',
-                value: '₹${data.purchaseVolume.toStringAsFixed(0)}',
-                subValue: '${data.purchaseCount} orders served',
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: _buildMetricTile(
-                icon: Icons.credit_card,
-                label: 'Cards Given Out',
-                value: '${data.cardsGivenOut}',
-                subValue: '${data.cardsReturned} returned',
-                color: AppColors.primaryDark,
-              ),
-            ),
-          ],
+        // 6. Food Sales (POS)
+        _buildMetricTile(
+          icon: Icons.restaurant,
+          label: 'Food Sales (POS)',
+          value: '₹${data.purchaseVolume.toStringAsFixed(0)}',
+          subValue: '${data.purchaseCount} orders served',
+          color: AppColors.primary,
         ),
       ],
     );

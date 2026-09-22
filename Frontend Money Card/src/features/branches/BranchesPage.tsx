@@ -17,7 +17,7 @@ import {
   EmptyState,
   ErrorState,
 } from '@/components/ui';
-import { BulkCsvImportModal } from '@/components/common';
+
 import { DataTable } from '@/components/tables';
 import { notify, formatDate } from '@/utils';
 import {
@@ -33,8 +33,6 @@ import {
   Check,
   Eye,
   EyeOff,
-  FileSpreadsheet,
-  Download,
 } from 'lucide-react';
 
 // ─── Slide Switch Component (Far Right End) ─────────────────
@@ -186,15 +184,26 @@ export function BranchesPage() {
   } | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Bulk CSV Import state
-  const [showBulkModal, setShowBulkModal] = useState(false);
+  // Password persistence helpers — store known passwords in localStorage by branchId
+  const PASS_STORAGE_KEY = 'mc_branch_passwords';
 
-  // Bulk WhatsApp Dispatch state
-  const [showBulkWhatsAppModal, setShowBulkWhatsAppModal] = useState(false);
-  const [bulkCreatedCounters, setBulkCreatedCounters] = useState<
-    { name: string; phone: string; password: string; branchId?: string }[]
-  >([]);
-  const [bulkCopied, setBulkCopied] = useState(false);
+  const getStoredPasswords = (): Record<string, string> => {
+    try {
+      return JSON.parse(localStorage.getItem(PASS_STORAGE_KEY) || '{}');
+    } catch {
+      return {};
+    }
+  };
+
+  const storePassword = (branchId: string, password: string) => {
+    try {
+      const stored = getStoredPasswords();
+      stored[branchId] = password;
+      localStorage.setItem(PASS_STORAGE_KEY, JSON.stringify(stored));
+    } catch {
+      // ignore storage errors
+    }
+  };
 
   const canManage = hasPermission('BRANCH_MANAGE');
 
@@ -330,6 +339,9 @@ export function BranchesPage() {
       setShowCreateModal(false);
       fetchBranches();
 
+      // Persist password in localStorage for this branch
+      storePassword(result.data.id, branchPasswordInput);
+
       // Open WhatsApp Dispatch Modal
       setCreatedBranchCredentials({
         name: result.data.name,
@@ -364,12 +376,12 @@ export function BranchesPage() {
     if (!createdBranchCredentials) return;
     const loginUrl = `${window.location.origin}/login`;
     const message =
-      `🍽️ *Welcome to Money Card Counter Portal*\n\n` +
+      `*Welcome to Money Card Counter Portal*\n\n` +
       `Your counter account has been created successfully:\n\n` +
       `• *Counter Name:* ${createdBranchCredentials.name}\n` +
       `• *Mobile Number:* ${createdBranchCredentials.phone}\n` +
       `• *Password:* ${createdBranchCredentials.password}\n\n` +
-      `🌐 *Counter Dashboard Link:* ${loginUrl}\n\n` +
+      `*Counter Dashboard Link:* ${loginUrl}\n\n` +
       `_Log in using your Mobile Number and Password to access your Counter Menu, Staff, and Analytics._`;
 
     const cleanPhone = createdBranchCredentials.phone.replace(/\D/g, '').slice(-10);
@@ -383,8 +395,8 @@ export function BranchesPage() {
     setEditNameInput(branch.name);
     const initialPhone = (branch.manager?.phone || branch.credentials?.phone || '').replace(/\D/g, '').slice(-10);
     setEditPhoneInput(initialPhone);
-    const initialPassword = branch.credentials?.password || '123456';
-    setCurrentBranchPassword(initialPassword);
+    const storedPassword = getStoredPasswords()[branch.id] || branch.credentials?.password || '';
+    setCurrentBranchPassword(storedPassword);
     setShowCurrentPassword(false);
     setEditPasswordInput('');
     setShowEditPassword(false);
@@ -434,6 +446,7 @@ export function BranchesPage() {
 
       if (editPasswordInput.trim()) {
         setCurrentBranchPassword(editPasswordInput.trim());
+        storePassword(selectedBranch.id, editPasswordInput.trim());
       }
       notify.success('Counter details updated successfully');
       setShowViewEditModal(false);
@@ -471,12 +484,12 @@ export function BranchesPage() {
     const loginUrl = `${window.location.origin}/login`;
     const passwordText = editPasswordInput.trim() || currentBranchPassword || '123456';
     const message =
-      `🍽️ *Money Card Counter Credentials*\n\n` +
+      `*Money Card Counter Credentials*\n\n` +
       `Here are your counter login details:\n\n` +
       `• *Counter Name:* ${editNameInput.trim() || selectedBranch.name}\n` +
       `• *Mobile Number:* ${cleanPhone}\n` +
       `• *Password:* ${passwordText}\n\n` +
-      `🌐 *Counter Dashboard Link:* ${loginUrl}\n\n` +
+      `*Counter Dashboard Link:* ${loginUrl}\n\n` +
       `_Log in using your Mobile Number and Password to access your Counter Menu, Staff, and Analytics._`;
 
     const waUrl = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(message)}`;
@@ -530,67 +543,6 @@ export function BranchesPage() {
     } finally {
       setIsTogglingStatus(null);
     }
-  };
-
-  const BRANCH_CSV_TEMPLATE = 'counterName,phone,password,address\n';
-
-  const handleBulkImport = async (rows: any[]): Promise<{ success: boolean; message?: string; data?: any }> => {
-    setIsSubmitting(true);
-    try {
-      const result = await apiService.branches.createBranchesBatch({ branches: rows });
-      if (result.success) {
-        notify.success(`Created ${result.data.createdCount || 0} counters${result.data.errors?.length ? ` (with ${result.data.errors.length} errors)` : ''}`);
-        fetchBranches();
-        if (result.data.created?.length > 0) {
-          setBulkCreatedCounters(result.data.created.map((c: any) => ({ ...c, branchId: c.id })));
-          setShowBulkWhatsAppModal(true);
-        }
-        return { success: true, data: result.data };
-      } else {
-        notify.error(result.error.message || 'Bulk import failed');
-        return { success: false, message: result.error.message || 'Bulk import failed' };
-      }
-    } catch {
-      notify.error('Bulk import failed');
-      return { success: false, message: 'Bulk import failed' };
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleCopyAllCredentials = () => {
-    if (!bulkCreatedCounters.length) return;
-    const loginUrl = `${window.location.origin}/login`;
-    const textToCopy = bulkCreatedCounters
-      .map(
-        (c) =>
-          `Counter Name: ${c.name}\nPhone Number: ${c.phone}\nPassword: ${c.password}\nLogin URL: ${loginUrl}`,
-      )
-      .join('\n\n');
-    navigator.clipboard.writeText(textToCopy);
-    setBulkCopied(true);
-    notify.success('All credentials copied to clipboard');
-    setTimeout(() => setBulkCopied(false), 2500);
-  };
-
-  const handleDownloadAllCredentials = () => {
-    if (!bulkCreatedCounters.length) return;
-    const loginUrl = `${window.location.origin}/login`;
-    const csvContent =
-      'Counter Name,Phone Number,Password,Login URL\n' +
-      bulkCreatedCounters
-        .map((c) => `${c.name},${c.phone},${c.password},${loginUrl}`)
-        .join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'bulk_counter_credentials.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    notify.success('Credentials CSV downloaded');
   };
 
   // ── Delete / Archive Branch ────────────────────────────────
@@ -711,23 +663,13 @@ export function BranchesPage() {
 
         <div className="flex items-center gap-2.5 flex-wrap">
           {canManage && (
-            <div className="flex items-center gap-1">
-              <Button
-                variant="primary"
-                onClick={handleOpenCreate}
-                leftIcon={<Plus className="h-4 w-4" />}
-              >
-                Create Counter
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => setShowBulkModal(true)}
-                leftIcon={<FileSpreadsheet className="h-4 w-4" />}
-                className="rounded-l-none"
-              >
-                Bulk Upload
-              </Button>
-            </div>
+            <Button
+              variant="primary"
+              onClick={handleOpenCreate}
+              leftIcon={<Plus className="h-4 w-4" />}
+            >
+              Add Counter
+            </Button>
           )}
         </div>
       </div>
@@ -1208,100 +1150,6 @@ export function BranchesPage() {
               </div>
             </div>
           </form>
-        </div>
-      </Modal>
-
-      {/* ── Bulk CSV Import Modal ──────────────────────────────── */}
-      <BulkCsvImportModal
-        isOpen={showBulkModal}
-        onClose={() => setShowBulkModal(false)}
-        title="Bulk Upload Counters (CSV)"
-        templateFilename="counters-template.csv"
-        templateContent={BRANCH_CSV_TEMPLATE}
-        onImport={handleBulkImport}
-      />
-
-      {/* ── Bulk WhatsApp Credentials Dispatch Modal ───────────── */}
-      <Modal
-        isOpen={showBulkWhatsAppModal}
-        onClose={() => setShowBulkWhatsAppModal(false)}
-        title={`Counters Created Successfully! (${bulkCreatedCounters.length})`}
-        description={`Share the login credentials with each counter manager:`}
-        size="2xl"
-      >
-        <div className="space-y-4">
-          {bulkCreatedCounters.length > 0 && (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-emerald-800 font-semibold text-sm">{bulkCreatedCounters.length} Counter Credentials</span>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCopyAllCredentials}
-                    leftIcon={bulkCopied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
-                    className="text-xs cursor-pointer"
-                  >
-                    {bulkCopied ? 'Copied' : 'Copy All Credentials'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleDownloadAllCredentials}
-                    leftIcon={<Download className="h-3.5 w-3.5" />}
-                    className="text-xs cursor-pointer"
-                  >
-                    Download CSV
-                  </Button>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead className="bg-white/60 text-slate-500">
-                    <tr>
-                      <th className="text-left py-2 px-2.5 font-medium border-b border-emerald-100">Counter Name</th>
-                      <th className="text-left py-2 px-2.5 font-medium border-b border-emerald-100">Mobile Number</th>
-                      <th className="text-left py-2 px-2.5 font-medium border-b border-emerald-100">Password</th>
-                      <th className="text-right py-2 px-2.5 font-medium border-b border-emerald-100">WhatsApp</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-emerald-50">
-                    {bulkCreatedCounters.map((c, i) => {
-                      const cleanPhone = c.phone.replace(/\D/g, '').slice(-10);
-                      const loginUrl = `${window.location.origin}/login`;
-                      const message = encodeURIComponent(
-                        `Counter Name: ${c.name}\nPhone: ${c.phone}\nPassword: ${c.password}\nDashboard: ${loginUrl}`,
-                      );
-                      const waUrl = `https://wa.me/91${cleanPhone}?text=${message}`;
-                      return (
-                        <tr key={`${c.name}-${i}`}>
-                          <td className="px-2.5 py-2 font-semibold text-slate-800">{c.name}</td>
-                          <td className="px-2.5 py-2 font-mono text-slate-700">{c.phone}</td>
-                          <td className="px-2.5 py-2 font-mono text-slate-700">{c.password}</td>
-                          <td className="px-2.5 py-2 text-right">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => window.open(waUrl, '_blank', 'noopener,noreferrer')}
-                              className="text-xs px-2.5 py-1 bg-[#25D366] hover:bg-[#20bd5a] text-white border-transparent cursor-pointer"
-                              leftIcon={<MessageSquare className="h-3 w-3" />}
-                            >
-                              Send
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          <ModalFooter>
-            <Button variant="ghost" onClick={() => setShowBulkWhatsAppModal(false)}>Done</Button>
-          </ModalFooter>
         </div>
       </Modal>
 

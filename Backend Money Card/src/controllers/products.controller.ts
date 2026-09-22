@@ -117,7 +117,7 @@ export async function getProducts(req: Request, res: Response) {
       lowStockThreshold: threshold,
       reorderLevel: threshold,
       isLowStock: currentQty <= threshold && currentQty > 0,
-      isOutOfStock: currentQty <= 0,
+      isOutOfStock: false,
       inventory: p.inventoryItems.map((inv) => ({
         branchId: inv.branchId,
         branchName: inv.branch.name,
@@ -349,7 +349,7 @@ export async function getInventory(req: Request, res: Response) {
         lowStockThreshold: threshold,
         reorderLevel: threshold,
         isLowStock: qty <= threshold && qty > 0,
-        isOutOfStock: qty <= 0,
+        isOutOfStock: false,
         status: derivedStatus,
         updatedAt: inv?.updatedAt || prod.updatedAt,
         product: {
@@ -388,7 +388,7 @@ export async function getInventory(req: Request, res: Response) {
         lowStockThreshold: threshold,
         reorderLevel: threshold,
         isLowStock: qty <= threshold && qty > 0,
-        isOutOfStock: qty <= 0,
+        isOutOfStock: false,
         status: derivedStatus,
         updatedAt: inv.updatedAt,
         product: {
@@ -521,7 +521,7 @@ export async function adjustInventoryStock(req: Request, res: Response) {
       lowStockThreshold: threshold,
       reorderLevel: threshold,
       isLowStock: updated.quantity <= threshold && updated.quantity > 0,
-      isOutOfStock: updated.quantity <= 0,
+      isOutOfStock: false,
       status: updated.quantity <= 0 ? 'OUT_OF_STOCK' : (updated.quantity <= threshold ? 'LOW_STOCK' : 'IN_STOCK'),
       updatedAt: updated.updatedAt,
       product: {

@@ -524,7 +524,7 @@ export function StaffPage() {
     initialTab: 'overview' | 'permissions' | 'branches' = 'overview',
   ) => {
     setSelectedStaff(staff);
-    setFormName(staff.name);
+    setFormName(formatStaffDisplayName(staff.name, staff.assignedBranchIds));
     setFormPhone(staff.phone || '');
     setFormEmail(staff.email || '');
     setFormBranchIds(staff.assignedBranchIds);
@@ -895,6 +895,22 @@ export function StaffPage() {
   };
 
   // ── Staff Performance & Operational Audit Helpers ────────
+  const formatStaffDisplayName = (name?: string, assignedBranchIds?: string[], fallbackCounterName?: string): string => {
+    if (!name) return '';
+    if (/counter manager$/i.test(name.trim())) {
+      if (fallbackCounterName) {
+        return `Staff - ${fallbackCounterName}`;
+      }
+      if (assignedBranchIds && assignedBranchIds.length > 0) {
+        const branch = branches.find((b) => assignedBranchIds.includes(b.id));
+        if (branch) return `Staff - ${branch.name}`;
+      }
+      const cleaned = name.replace(/\s*counter\s*manager$/i, '').trim();
+      return `Staff - ${cleaned}`;
+    }
+    return name;
+  };
+
   const getStaffRoleLabel = (staff: Staff): string => {
     if (staff.permissions.includes('RECHARGE') || staff.permissions.includes('STAFF_MANAGE')) {
       return 'Manager';
@@ -1049,27 +1065,27 @@ export function StaffPage() {
     );
   }, [counterStaffGroups, selectedCounterGroup, modalCounterSearch]);
 
-  // ── Table Columns (Counter-First & Minimal) ────────────────
+  // ── Table Columns (Counter-First & Minimal 3 Columns) ─────────
   const columns = [
     {
       key: 'counterName',
       header: 'Counter Name',
-      className: 'w-1/2 min-w-[220px]',
+      className: 'w-1/2 min-w-[200px]',
       render: (group: CounterStaffGroup) => (
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
             <Building2 className="h-4 w-4" />
           </div>
-          <span className="font-semibold text-slate-900 text-sm">Counter - {group.counterName}</span>
+          <span className="font-semibold text-slate-900 text-sm">Staff - {group.counterName}</span>
         </div>
       ),
     },
     {
-      key: 'staffDetails',
-      header: 'Staff Details',
-      className: 'text-right',
+      key: 'addStaff',
+      header: 'Add Staff',
+      className: 'w-36 text-center',
       render: (group: CounterStaffGroup) => (
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-center">
           {canManage && (
             <Button
               variant="outline"
@@ -1081,6 +1097,15 @@ export function StaffPage() {
               Add
             </Button>
           )}
+        </div>
+      ),
+    },
+    {
+      key: 'staffDetails',
+      header: 'Staff Details',
+      className: 'w-44 text-right',
+      render: (group: CounterStaffGroup) => (
+        <div className="flex items-center justify-end">
           <Button
             variant="outline"
             size="sm"
@@ -1098,22 +1123,20 @@ export function StaffPage() {
   return (
     <div className="space-y-5 max-w-6xl mx-auto pb-10">
       {/* ─── Minimal Header ─── */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Staff Management</h1>
-            {isCounterView && (
-              <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold px-2.5 py-0.5 text-xs">
-                Counter Scope
-              </Badge>
-            )}
-          </div>
+      <div className="flex flex-col gap-3 border-b border-slate-200/80 pb-4">
+        <div className="flex items-center gap-2.5">
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Staff Management</h1>
           {isCounterView && (
-            <p className="text-xs text-slate-500 mt-0.5">
-              Showing staff at your counter only. New staff are automatically assigned to your counter.
-            </p>
+            <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold px-2.5 py-0.5 text-xs">
+              Counter Scope
+            </Badge>
           )}
         </div>
+        {isCounterView && (
+          <p className="text-xs text-slate-500">
+            Showing staff at your counter only. New staff are automatically assigned to your counter.
+          </p>
+        )}
       </div>
 
       {/* Plan Resource Usage Indicator */}
@@ -1221,7 +1244,7 @@ export function StaffPage() {
       <Modal
         isOpen={showStaffModal}
         onClose={() => setShowStaffModal(false)}
-        title={canManage ? `Staff Settings: ${selectedStaff?.name}` : `Staff Details: ${selectedStaff?.name}`}
+        title={canManage ? `Staff Settings: ${formatStaffDisplayName(selectedStaff?.name, selectedStaff?.assignedBranchIds)}` : `Staff Details: ${formatStaffDisplayName(selectedStaff?.name, selectedStaff?.assignedBranchIds)}`}
         size="xl"
       >
         <form onSubmit={handleSaveStaffChanges} noValidate className="space-y-6">
@@ -1584,7 +1607,7 @@ export function StaffPage() {
           <div className="rounded-xl border border-rose-100 bg-rose-50 p-4 text-xs text-rose-800">
             <p className="font-semibold text-sm text-rose-900 mb-1">Are you sure you want to delete this staff member?</p>
             <p>
-              This will permanently remove <strong>{staffToDelete?.name}</strong> from your organization. They will no longer be able to log in to the POS or counter.
+              This will permanently remove <strong>{formatStaffDisplayName(staffToDelete?.name, staffToDelete?.assignedBranchIds)}</strong> from your organization. They will no longer be able to log in to the POS or counter.
             </p>
           </div>
           <ModalFooter>
@@ -1625,11 +1648,11 @@ export function StaffPage() {
             {/* Header / Avatar Profile Block */}
             <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-xl font-bold text-white shadow-xs">
-                {selectedStaff.name.charAt(0).toUpperCase()}
+                {formatStaffDisplayName(selectedStaff.name, selectedStaff.assignedBranchIds).charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-lg font-bold text-slate-900 truncate">{selectedStaff.name}</h3>
+                  <h3 className="text-lg font-bold text-slate-900 truncate">{formatStaffDisplayName(selectedStaff.name, selectedStaff.assignedBranchIds)}</h3>
                   {selectedStaff.status === 'PENDING_ACTIVATION' ? (
                     <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 border border-amber-200">
                       Pending Activation
@@ -1801,15 +1824,15 @@ export function StaffPage() {
                   >
                     <div className="flex items-center gap-3.5 min-w-0 flex-1">
                       <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-sm sm:text-base font-bold text-white shadow-2xs">
-                        {st.name.charAt(0).toUpperCase()}
+                        {formatStaffDisplayName(st.name, st.assignedBranchIds, selectedCounterGroup?.counterName).charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-slate-900 text-sm sm:text-base">{st.name}</span>
+                          <span className="font-bold text-slate-900 text-sm sm:text-base">{formatStaffDisplayName(st.name, st.assignedBranchIds, selectedCounterGroup?.counterName)}</span>
                         </div>
                         <div className="flex items-center gap-2.5 text-xs text-slate-500 mt-0.5 flex-wrap">
                           <span className="font-medium text-slate-600">
-                            {getStaffRoleLabel(st)}
+                            {selectedCounterGroup ? `Staff - ${selectedCounterGroup.counterName}` : getStaffRoleLabel(st)}
                           </span>
                           {st.phone && <span className="font-mono text-slate-500">• {st.phone}</span>}
                         </div>
@@ -2509,7 +2532,7 @@ export function StaffPage() {
             setAuditStartDate(today);
             setAuditEndDate(today);
           }}
-          title={`${selectedStaffForAudit.name} — Staff Performance & Operational Audit`}
+          title={`${formatStaffDisplayName(selectedStaffForAudit.name, selectedStaffForAudit.assignedBranchIds)} — Staff Performance & Operational Audit`}
           size="xl"
         >
           <div className="space-y-6 text-xs">
@@ -2517,11 +2540,11 @@ export function StaffPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 font-bold text-white text-base">
-                  {selectedStaffForAudit.name.charAt(0).toUpperCase()}
+                  {formatStaffDisplayName(selectedStaffForAudit.name, selectedStaffForAudit.assignedBranchIds).charAt(0).toUpperCase()}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-900 text-sm">{selectedStaffForAudit.name}</span>
+                    <span className="font-bold text-slate-900 text-sm">{formatStaffDisplayName(selectedStaffForAudit.name, selectedStaffForAudit.assignedBranchIds)}</span>
                     <Badge variant="outline" className="text-[10px] text-slate-600 bg-white">
                       {getStaffRoleLabel(selectedStaffForAudit)}
                     </Badge>
