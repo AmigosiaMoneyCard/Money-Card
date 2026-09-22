@@ -895,20 +895,11 @@ export function StaffPage() {
   };
 
   // ── Staff Performance & Operational Audit Helpers ────────
-  const formatStaffDisplayName = (name?: string, assignedBranchIds?: string[], fallbackCounterName?: string): string => {
+  const formatStaffDisplayName = (name?: string, _assignedBranchIds?: string[], _fallbackCounterName?: string): string => {
     if (!name) return '';
-    if (/counter manager$/i.test(name.trim())) {
-      if (fallbackCounterName) {
-        return `Staff - ${fallbackCounterName}`;
-      }
-      if (assignedBranchIds && assignedBranchIds.length > 0) {
-        const branch = branches.find((b) => assignedBranchIds.includes(b.id));
-        if (branch) return `Staff - ${branch.name}`;
-      }
-      const cleaned = name.replace(/\s*counter\s*manager$/i, '').trim();
-      return `Staff - ${cleaned}`;
-    }
-    return name;
+    const cleaned = name.trim().replace(/^\s*counter\s*manager\s*[-:]?\s*/i, '').trim();
+    if (cleaned && cleaned !== name.trim()) return cleaned;
+    return name.trim();
   };
 
   const getStaffRoleLabel = (staff: Staff): string => {
@@ -1127,7 +1118,7 @@ export function StaffPage() {
       header: 'Staff Name',
       className: 'w-full',
       render: (staff: Staff) => (
-        <span className="font-medium text-slate-900 text-sm">{staff.name}</span>
+        <span className="font-medium text-slate-900 text-sm">{formatStaffDisplayName(staff.name, staff.assignedBranchIds)}</span>
       ),
     },
     {
@@ -1734,6 +1725,26 @@ export function StaffPage() {
               </div>
             </div>
 
+            {/* Status Slide Switch */}
+            <div className="flex items-center gap-3">
+              <span className={`text-sm font-semibold ${selectedStaff.status === 'ACTIVE' ? 'text-emerald-700' : 'text-slate-400'}`}>
+                {selectedStaff.status === 'ACTIVE' ? 'Active' : 'Inactive'}
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={selectedStaff.status === 'ACTIVE'}
+                disabled={!canManage || togglingStaffId === selectedStaff.id}
+                onClick={() => handleToggleStaffStatus(selectedStaff)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500/40 disabled:opacity-50 disabled:cursor-not-allowed ${selectedStaff.status === 'ACTIVE' ? 'bg-emerald-600' : 'bg-slate-300'}`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`pointer-events-none inline-block h-4 w-4 mt-[3px] rounded-full bg-white shadow-md transform ring-0 transition duration-200 ease-in-out ${selectedStaff.status === 'ACTIVE' ? 'translate-x-[21px]' : 'translate-x-[3px]'}`}
+                />
+              </button>
+            </div>
+
             {/* Quick Action Footer */}
             <ModalFooter>
               {selectedCounterGroup && (
@@ -1755,8 +1766,47 @@ export function StaffPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setShowStaffDetailsModal(false)}
+                className="text-xs font-medium"
               >
                 Close
+              </Button>
+              {canManage && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    setShowStaffDetailsModal(false);
+                    handleOpenStaffModal(selectedStaff, 'overview');
+                  }}
+                  leftIcon={<Edit2 className="h-3.5 w-3.5" />}
+                  className="text-xs font-medium"
+                >
+                  Edit
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowStaffDetailsModal(false);
+                  handleOpenStaffAudit(selectedStaff);
+                }}
+                leftIcon={<FileSpreadsheet className="h-3.5 w-3.5" />}
+                className="text-xs font-medium border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50"
+              >
+                Performance & Audit
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowStaffDetailsModal(false);
+                  handleOpenStaffDetails(selectedStaff);
+                }}
+                leftIcon={<Eye className="h-3.5 w-3.5" />}
+                className="text-xs font-medium border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50"
+              >
+                View Details
               </Button>
             </ModalFooter>
           </div>
@@ -1861,20 +1911,21 @@ export function StaffPage() {
                     className="flex flex-col md:flex-row md:items-center justify-between p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/20 transition-all gap-3.5"
                   >
                     <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                      <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-sm sm:text-base font-bold text-white shadow-2xs">
-                        {formatStaffDisplayName(st.name, st.assignedBranchIds, selectedCounterGroup?.counterName).charAt(0).toUpperCase()}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-slate-900 text-sm sm:text-base">{formatStaffDisplayName(st.name, st.assignedBranchIds, selectedCounterGroup?.counterName)}</span>
-                        </div>
-                        <div className="flex items-center gap-2.5 text-xs text-slate-500 mt-0.5 flex-wrap">
-                          <span className="font-medium text-slate-600">
-                            {selectedCounterGroup ? `Staff - ${selectedCounterGroup.counterName}` : getStaffRoleLabel(st)}
-                          </span>
-                          {st.phone && <span className="font-mono text-slate-500">• {st.phone}</span>}
-                        </div>
-                      </div>
+                       <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-sm sm:text-base font-bold text-white shadow-2xs">
+                         {formatStaffDisplayName(st.name, st.assignedBranchIds, selectedCounterGroup?.counterName).charAt(0).toUpperCase()}
+                       </div>
+                       <div className="min-w-0 flex-1">
+                         <div className="flex items-center gap-2 flex-wrap">
+                           <span className="font-bold text-slate-900 text-sm sm:text-base">{formatStaffDisplayName(st.name, st.assignedBranchIds)}</span>
+                         </div>
+                         <div className="flex items-center gap-2.5 text-xs text-slate-500 mt-0.5 flex-wrap">
+                           <span className="font-medium text-slate-600">
+                             {selectedCounterGroup ? getStaffRoleLabel(st) : getStaffRoleLabel(st)}
+                           </span>
+                           {st.phone && <span className="font-mono text-slate-500">• {st.phone}</span>}
+                         </div>
+                       </div>
+
                     </div>
 
                     <div className="flex items-center gap-2 self-end md:self-center shrink-0 flex-wrap sm:flex-nowrap">
