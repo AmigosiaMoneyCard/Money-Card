@@ -628,29 +628,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         ),
         const SizedBox(height: AppSpacing.sm),
 
-        // 6. Food Sales & Card Count
-        Row(
-          children: [
-            Expanded(
-              child: _buildMetricTile(
-                icon: Icons.restaurant,
-                label: 'Food Sales (POS)',
-                value: '₹${data.purchaseVolume.toStringAsFixed(0)}',
-                subValue: '${data.purchaseCount} orders served',
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: _buildMetricTile(
-                icon: Icons.credit_card,
-                label: 'Cards Given Out',
-                value: '${data.cardsGivenOut}',
-                subValue: '${data.cardsReturned} returned',
-                color: AppColors.primaryDark,
-              ),
-            ),
-          ],
+        // 6. Food Sales (POS)
+        _buildMetricTile(
+          icon: Icons.restaurant,
+          label: 'Food Sales (POS)',
+          value: '₹${data.purchaseVolume.toStringAsFixed(0)}',
+          subValue: '${data.purchaseCount} orders served',
+          color: AppColors.primary,
         ),
       ],
     );

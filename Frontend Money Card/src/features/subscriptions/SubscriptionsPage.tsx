@@ -725,31 +725,6 @@ function OrgAdminSubscriptionsView() {
             </div>
           </div>
 
-          <p className="text-xs text-slate-600 leading-relaxed">
-            Clicking <strong>Submit Renewal Request</strong> will send an <strong className="text-amber-700">Alert to Super Admin</strong> to review and accept your subscription renewal for <strong>{currentPlan?.name}</strong>. Upon approval, your subscription will be extended by 1 billing cycle ({currentPlan?.billingInterval.toLowerCase()}).
-          </p>
-
-          <div className="space-y-1 text-xs">
-            <div className="flex items-center justify-between">
-              <label htmlFor="renew-plan-notes" className="font-semibold text-slate-700">
-                Renewal Notes / Reference (Optional)
-              </label>
-              <span className={`text-[10px] font-mono ${renewReason.length >= 500 ? 'text-rose-600 font-bold' : 'text-slate-500'}`}>
-                {renewReason.length}/500
-              </span>
-            </div>
-            <textarea
-              id="renew-plan-notes"
-              value={renewReason}
-              onChange={(e) => setRenewReason(e.target.value.slice(0, 500))}
-              maxLength={500}
-              placeholder="e.g. Offline payment made via Bank Transfer Ref #12345, please approve renewal..."
-              rows={3}
-              disabled={isSubmitting}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
-            />
-          </div>
-
           <ModalFooter>
             <Button
               variant="outline"

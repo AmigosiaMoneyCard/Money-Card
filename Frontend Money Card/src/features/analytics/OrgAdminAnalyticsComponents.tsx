@@ -64,9 +64,6 @@ export function OrgAdminFinancialSection({
   const cashMoney = analytics.cashMoney ?? cashRecharge;
   const cashCount = analytics.cashCount ?? (analytics.cashRechargeCount ?? 0);
 
-  const cardsGivenOut = analytics.cardsGivenOut ?? (analytics.activeCardsCount ?? 0);
-  const cardsReturned = analytics.cardsReturned ?? (analytics.closedCardsCount ?? 0);
-
   return (
     <div className="space-y-4">
       {/* Financial Summaries (3 Uniform Cards) */}
@@ -210,49 +207,6 @@ export function OrgAdminFinancialSection({
             </p>
             <p className="mt-1 text-xs text-slate-500 leading-snug">
               {cancelledOrdersCount} orders restored
-            </p>
-          </div>
-        </Card>
-      </div>
-
-      {/* Card Operations Activity (2 Uniform Cards) */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        {/* Cards Given Out */}
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Cards Given Out
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-              <CheckCircle2 className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-slate-900">
-              {cardsGivenOut.toLocaleString()}
-            </p>
-            <p className="mt-1 text-xs text-slate-500 leading-snug">
-              Active card sessions created
-            </p>
-          </div>
-        </Card>
-
-        {/* Cards Returned & Closed */}
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Cards Returned & Closed
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-              <CreditCard className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-slate-900">
-              {cardsReturned.toLocaleString()}
-            </p>
-            <p className="mt-1 text-xs text-slate-500 leading-snug">
-              Sessions settled and returned to inventory
             </p>
           </div>
         </Card>

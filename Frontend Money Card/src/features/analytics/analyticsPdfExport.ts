@@ -163,8 +163,6 @@ export function buildOrgAnalyticsJsPdf({
     const cancelledTopUpsCount = analytics.cancelledTopUpsCount ?? 0;
     const cancelledOrdersVolume = analytics.cancelledOrdersVolume ?? 0;
     const cancelledOrdersCount = analytics.cancelledOrdersCount ?? 0;
-    const cardsGivenOut = analytics.cardsGivenOut ?? analytics.activeCardsCount ?? analytics.activeSessionsCount ?? 0;
-    const cardsReturned = analytics.cardsReturned ?? analytics.closedCardsCount ?? 0;
 
     // Row 2: Payment & Volume Flow (4 cards)
     const row2Kpis = [
@@ -199,19 +197,18 @@ export function buildOrgAnalyticsJsPdf({
 
     curY += 22;
 
-    // Row 3: Cancellations & Card Fleet Flow (4 cards)
+    // Row 3: Cancellations (2 cards)
     const row3Kpis = [
       { label: 'Cancelled Top-ups', val: formatPdfCurrency(cancelledTopUps), sub: `${cancelledTopUpsCount} recharges reversed` },
       { label: 'Cancelled Orders', val: formatPdfCurrency(cancelledOrdersVolume), sub: `${cancelledOrdersCount} orders restored` },
-      { label: 'Cards Given Out', val: cardsGivenOut.toLocaleString(), sub: 'Active card sessions created' },
-      { label: 'Cards Returned', val: cardsReturned.toLocaleString(), sub: 'Sessions settled and returned' },
     ];
 
+    const cardWRow3 = (contentWidth - 3) / 2;
     row3Kpis.forEach((kpi, idx) => {
-      const x = margin + idx * (cardW + 3);
+      const x = margin + idx * (cardWRow3 + 3);
       doc.setFillColor(248, 250, 252);
       doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(x, curY + 2, cardW, 18, 2, 2, 'FD');
+      doc.roundedRect(x, curY + 2, cardWRow3, 18, 2, 2, 'FD');
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(6.5);
