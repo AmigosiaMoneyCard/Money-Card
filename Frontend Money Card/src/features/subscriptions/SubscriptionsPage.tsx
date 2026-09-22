@@ -106,7 +106,6 @@ function OrgAdminSubscriptionsView() {
 
   // Individual Plan Collapsible Dropdown State
   const [expandedPlanIds, setExpandedPlanIds] = useState<Record<string, boolean>>({});
-  const [isCurrentPlanExpanded, setIsCurrentPlanExpanded] = useState(true);
 
   const togglePlanDetails = (planId: string) => {
     setExpandedPlanIds((prev) => ({
@@ -361,18 +360,6 @@ function OrgAdminSubscriptionsView() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Subscription</h1>
         </div>
-
-        {subscription && (
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setShowRenewModal(true)}
-              leftIcon={<RefreshCw className="h-4 w-4" />}
-            >
-              Renew Subscription
-            </Button>
-          </div>
-        )}
       </div>
 
       {/* Pending Plan Change / Renewal Request Banner */}
@@ -444,93 +431,51 @@ function OrgAdminSubscriptionsView() {
                     </p>
                   </div>
 
-                  {/* Start Date & Renewal / End Date Box */}
-                  <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3.5 py-2.5 border border-slate-200 text-xs">
-                    <div>
-                      <span className="text-slate-500 font-medium block text-[11px]">Start Date:</span>
-                      <p className="font-semibold text-slate-900 mt-0.5 whitespace-nowrap">
-                        {subscription?.startDate ? formatDate(subscription.startDate) : '10 Sept 2026'}
-                      </p>
+                  {/* Technical Limits & Usage */}
+                  <div className="space-y-2 border-t border-b border-slate-200 py-3 text-xs">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                      Resource Limits & Usage
+                    </span>
+                    <div className="flex items-center justify-between text-slate-700">
+                      <span>Counters:</span>
+                      <span className="font-mono text-sm font-bold text-slate-900">
+                        {branchUsage} / <span className="text-emerald-700 font-extrabold">{branchLimit}</span>
+                      </span>
                     </div>
-                    <div className="h-7 w-px bg-slate-200" />
-                    <div className="text-right">
-                      <span className="text-slate-500 font-medium block text-[11px]">Renewal / End Date:</span>
-                      <p className="font-semibold text-slate-900 mt-0.5 whitespace-nowrap">
-                        {subscription?.renewalDate
-                          ? formatDate(subscription.renewalDate)
-                          : subscription?.endDate
-                            ? formatDate(subscription.endDate)
-                            : '10 Oct 2026'}
-                      </p>
+                    <div className="flex items-center justify-between text-slate-700">
+                      <span>Staff Accounts:</span>
+                      <span className="font-mono text-sm font-bold text-slate-900">
+                        {staffUsage} / <span className="text-emerald-700 font-extrabold">{staffLimit}</span>
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-700">
+                      <span>Active Cards:</span>
+                      <span className="font-mono text-sm font-bold text-slate-900">
+                        {cardUsage} / <span className="text-emerald-700 font-extrabold">{cardLimit}</span>
+                      </span>
                     </div>
                   </div>
 
-                  {/* Dropdown Toggle for Active Plan Details */}
-                  <button
-                    type="button"
-                    id="toggle-current-plan-details"
-                    onClick={() => setIsCurrentPlanExpanded((prev) => !prev)}
-                    className="flex w-full items-center justify-between rounded-lg bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors border border-slate-200 cursor-pointer"
-                    aria-expanded={isCurrentPlanExpanded}
-                  >
-                    <span>{isCurrentPlanExpanded ? 'Collapse Details' : 'View Plan Details'}</span>
-                    <ChevronDown
-                      className={`h-4 w-4 text-emerald-600 transition-transform duration-200 ${
-                        isCurrentPlanExpanded ? 'rotate-180' : ''
-                      }`}
-                    />
-                  </button>
-
-                  {/* Collapsible Details: Technical Limits & Entitlements */}
-                  {isCurrentPlanExpanded && (
-                    <div className="space-y-4 pt-1">
-                      {/* Technical Limits */}
-                      <div className="space-y-2 border-t border-b border-slate-200 py-3 text-xs">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                          Resource Limits & Usage
-                        </span>
-                        <div className="flex items-center justify-between text-slate-700">
-                          <span>Counters:</span>
-                          <span className="font-mono text-sm font-bold text-slate-900">
-                            {branchUsage} / <span className="text-emerald-700 font-extrabold">{branchLimit}</span>
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-slate-700">
-                          <span>Staff Accounts:</span>
-                          <span className="font-mono text-sm font-bold text-slate-900">
-                            {staffUsage} / <span className="text-emerald-700 font-extrabold">{staffLimit}</span>
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-slate-700">
-                          <span>Active Cards:</span>
-                          <span className="font-mono text-sm font-bold text-slate-900">
-                            {cardUsage} / <span className="text-emerald-700 font-extrabold">{cardLimit}</span>
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Entitlements */}
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
-                          Included Features
-                        </span>
-                        <ul className="space-y-2 text-xs text-slate-700 font-medium">
-                          <li className="flex items-center gap-2">
-                            <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                            <span>{currentPlan?.inventoryLevel || 'Advanced'} Inventory</span>
-                          </li>
-                          <li className="flex items-center gap-2">
-                            <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                            <span>{currentPlan?.analyticsLevel || 'Standard'} Analytics</span>
-                          </li>
-                          <li className="flex items-center gap-2">
-                            <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                            <span>{currentPlan?.supportLevel || 'Priority'} Support</span>
-                          </li>
-                        </ul>
-                      </div>
-                    </div>
-                  )}
+                  {/* Entitlements */}
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+                      Included Features
+                    </span>
+                    <ul className="space-y-2 text-xs text-slate-700 font-medium">
+                      <li className="flex items-center gap-2">
+                        <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                        <span>{currentPlan?.inventoryLevel || 'Advanced'} Inventory</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                        <span>{currentPlan?.analyticsLevel || 'Standard'} Analytics</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                        <span>{currentPlan?.supportLevel || 'Priority'} Support</span>
+                      </li>
+                    </ul>
+                  </div>
                 </div>
 
                 {/* Action CTA: Renew Subscription */}
