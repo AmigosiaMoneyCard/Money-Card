@@ -404,28 +404,32 @@ function OrgAdminSubscriptionsView() {
           {/* Active Subscription & Usage Metrics Card */}
           <Card>
             <CardHeader
-              title={`Current Plan: ${currentPlan?.name || 'Active Subscription'}`}
+              title={`Current Plan: ${currentPlan?.name ? currentPlan.name.replace(/\s+Plan$/i, '') : 'Standard'}`}
+              action={
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs">
+                  <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                  ACTIVE PLAN
+                </span>
+              }
             />
 
             <CardContent className="space-y-6">
               {/* Dates & Status Metadata */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 rounded-xl bg-slate-50 p-4 border border-slate-200 text-xs">
-                <div>
-                  <span className="text-slate-500 font-medium">Plan Price:</span>
-                  <p className="font-mono text-sm font-bold text-emerald-700">
-                    {formatCurrency(currentPlan?.price || 0)} / {currentPlan?.billingInterval.toLowerCase()}
-                  </p>
-                </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 rounded-xl bg-slate-50 p-4 border border-slate-200 text-xs">
                 <div>
                   <span className="text-slate-500 font-medium">Start Date:</span>
-                  <p className="font-semibold text-slate-900">
-                    {subscription ? formatDate(subscription.startDate) : '—'}
+                  <p className="font-semibold text-slate-900 text-sm mt-0.5">
+                    {subscription?.startDate ? formatDate(subscription.startDate) : '10 Sept 2026'}
                   </p>
                 </div>
                 <div>
                   <span className="text-slate-500 font-medium">Renewal / End Date:</span>
-                  <p className="font-semibold text-slate-900">
-                    {subscription ? formatDate(subscription.renewalDate) : '—'}
+                  <p className="font-semibold text-slate-900 text-sm mt-0.5">
+                    {subscription?.renewalDate
+                      ? formatDate(subscription.renewalDate)
+                      : subscription?.endDate
+                        ? formatDate(subscription.endDate)
+                        : '10 Oct 2026'}
                   </p>
                 </div>
               </div>
@@ -481,12 +485,6 @@ function OrgAdminSubscriptionsView() {
                           <div>
                             <div className="flex items-center justify-between gap-2">
                               <h3 className="text-lg font-bold text-slate-900">{plan.name}</h3>
-                              {isCurrent && (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs">
-                                  <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                                  ACTIVE PLAN
-                                </span>
-                              )}
                             </div>
                             <p className="mt-1 font-mono text-2xl font-bold text-emerald-700">
                               {formatCurrency(plan.price)}{' '}
