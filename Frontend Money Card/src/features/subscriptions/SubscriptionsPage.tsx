@@ -19,9 +19,6 @@ import type {
 import {
   Button,
   Select,
-  Card,
-  CardHeader,
-  CardContent,
   Badge,
   Modal,
   ModalFooter,
@@ -401,30 +398,40 @@ function OrgAdminSubscriptionsView() {
         <ErrorState title="Failed to load subscription" message={error} onRetry={fetchOrgSubscriptionData} />
       ) : (
         <div className="space-y-8">
-          {/* Active Subscription & Usage Metrics Card */}
-          <Card>
-            <CardHeader
-              title={`Current Plan: ${currentPlan?.name ? currentPlan.name.replace(/\s+Plan$/i, '') : 'Standard'}`}
-              action={
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs">
-                  <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                  ACTIVE PLAN
-                </span>
-              }
-            />
+          {/* Active Subscription Plan Card (Replacing Red Box) */}
+          <div className="relative overflow-hidden rounded-xl border-2 border-emerald-500 bg-white p-6 shadow-sm ring-2 ring-emerald-500/10">
+            {/* Top Bar: Plan Name, Price, and Dates Box */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-5">
+              <div>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-xl font-bold text-slate-900">
+                    {currentPlan?.name ? currentPlan.name.replace(/\s+Plan$/i, '') : 'Standard'}
+                  </h2>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs">
+                    <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                    ACTIVE PLAN
+                  </span>
+                </div>
+                <p className="mt-1 font-mono text-2xl font-bold text-emerald-700">
+                  {formatCurrency(currentPlan?.price || 1999)}{' '}
+                  <span className="text-xs font-normal text-slate-500">
+                    /{currentPlan?.billingInterval?.toLowerCase() || 'monthly'}
+                  </span>
+                </p>
+              </div>
 
-            <CardContent className="space-y-6">
-              {/* Dates & Status Metadata */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 rounded-xl bg-slate-50 p-4 border border-slate-200 text-xs">
+              {/* Start Date & Renewal / End Date Box */}
+              <div className="flex flex-wrap sm:flex-nowrap items-center gap-6 rounded-xl bg-slate-50 px-5 py-3 border border-slate-200 text-xs">
                 <div>
-                  <span className="text-slate-500 font-medium">Start Date:</span>
-                  <p className="font-semibold text-slate-900 text-sm mt-0.5">
+                  <span className="text-slate-500 font-medium block">Start Date:</span>
+                  <p className="font-semibold text-slate-900 text-sm mt-0.5 whitespace-nowrap">
                     {subscription?.startDate ? formatDate(subscription.startDate) : '10 Sept 2026'}
                   </p>
                 </div>
+                <div className="hidden sm:block h-7 w-px bg-slate-200" />
                 <div>
-                  <span className="text-slate-500 font-medium">Renewal / End Date:</span>
-                  <p className="font-semibold text-slate-900 text-sm mt-0.5">
+                  <span className="text-slate-500 font-medium block">Renewal / End Date:</span>
+                  <p className="font-semibold text-slate-900 text-sm mt-0.5 whitespace-nowrap">
                     {subscription?.renewalDate
                       ? formatDate(subscription.renewalDate)
                       : subscription?.endDate
@@ -433,8 +440,57 @@ function OrgAdminSubscriptionsView() {
                   </p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+
+            {/* Bottom Grid: Technical Limits & Entitlements */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-5">
+              {/* Technical Limits */}
+              <div className="space-y-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Resource Limits & Usage</span>
+                <div className="space-y-2 rounded-lg bg-slate-50/60 p-3.5 border border-slate-100 text-xs">
+                  <div className="flex items-center justify-between text-slate-700">
+                    <span>Counters:</span>
+                    <span className="font-mono text-sm font-bold text-slate-900">
+                      {branchUsage} / <span className="text-emerald-700 font-extrabold">{branchLimit}</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-slate-700">
+                    <span>Staff Accounts:</span>
+                    <span className="font-mono text-sm font-bold text-slate-900">
+                      {staffUsage} / <span className="text-emerald-700 font-extrabold">{staffLimit}</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-slate-700">
+                    <span>Active Cards:</span>
+                    <span className="font-mono text-sm font-bold text-slate-900">
+                      {cardUsage} / <span className="text-emerald-700 font-extrabold">{cardLimit}</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Entitlements */}
+              <div className="space-y-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Included Features</span>
+                <div className="rounded-lg bg-slate-50/60 p-3.5 border border-slate-100">
+                  <ul className="space-y-2 text-xs text-slate-700 font-medium">
+                    <li className="flex items-center gap-2">
+                      <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                      <span>{currentPlan?.inventoryLevel || 'Advanced'} Inventory</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                      <span>{currentPlan?.analyticsLevel || 'Standard'} Analytics</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                      <span>{currentPlan?.supportLevel || 'Priority'} Support</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* Available Plans / Plan Comparison Section */}
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
@@ -485,6 +541,12 @@ function OrgAdminSubscriptionsView() {
                           <div>
                             <div className="flex items-center justify-between gap-2">
                               <h3 className="text-lg font-bold text-slate-900">{plan.name}</h3>
+                              {isCurrent && (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                  ACTIVE PLAN
+                                </span>
+                              )}
                             </div>
                             <p className="mt-1 font-mono text-2xl font-bold text-emerald-700">
                               {formatCurrency(plan.price)}{' '}
