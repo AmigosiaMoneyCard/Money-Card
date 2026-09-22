@@ -1,4 +1,92 @@
-# Implementation Plan: Removal of Bulk Import, Minimal Renewal Modal, and Financial Overview Only Card Cleansing
+# Implementation Plan: Counter Staff Page Cleanup for STAFF Role
+
+## Overview
+Clean up the Staff page for Counter Staff (STAFF role) by removing informational banners, unnecessary table columns, tabs, and simplifying the interface to focus on essential actions only. ORG_ADMIN view remains completely unchanged.
+
+---
+
+## Changes Made
+
+### 1. Remove Info Banner for STAFF Role
+**File**: `Frontend Money Card/src/features/staff/StaffPage.tsx`  
+Removed the blue "Counter Scope" info banner that displayed:  
+"Showing staff at your counter only. New staff are automatically assigned to your counter."
+
+### 2. Simplify Staff Table (2 Columns Only for Counter Staff)
+**File**: `Frontend Money Card/src/features/staff/StaffPage.tsx`  
+Counter staff table columns reduced from 5+ to 2:
+- `Staff Name` (full width)
+- `Actions` (Details button with Eye icon)
+
+All other columns (Phone, Permissions, Status, Role) removed from table. All info accessible via Details button.
+
+### 3. Hide Permissions Tab for Counter View
+**File**: `Frontend Money Card/src/features/staff/StaffPage.tsx`  
+The Permissions tab in the unified Staff modal is now hidden when `isCounterView` is true. Only Overview tab visible for counter staff. The tab is conditionally rendered with `{!isCounterView && (...)}` wrapper, matching the existing pattern used for the Counters tab.
+
+### 4. Update Search Placeholder
+**File**: `Frontend Money Card/src/features/staff/StaffPage.tsx`  
+Changed from `"Search counters or staff by name, phone..."` to `"Search staff by name or phone..."` for counter view.
+
+### 5. Staff Details Modal (Already Clean)
+**File**: `Frontend Money Card/src/features/staff/StaffPage.tsx`  
+The `showStaffDetailsModal` (minimal modal) already shows only essential info: Name, Phone, Role, Status, Assigned Since. No changes needed.
+
+---
+
+## Visual Summary
+
+### Counter Staff View (STAFF Role)
+```
+┌────────────────────────────────────────────────────────┐
+│  Staff Management                          [Add Staff]   │
+├────────────────────────────────────────────────────────┤
+│  Staff Usage: 2 / 25 staff accounts created             │
+│                                                          │
+│  [Search staff by name or phone...]  [Refresh]        │
+│                                                          │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │ Staff Name                          Actions       │  │
+│  ├──────────────────────────────────────────────────┤  │
+│  │ John Doe                         [Details]        │  │
+│  │ Jane Smith                       [Details]        │  │
+│  └──────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────┘
+```
+
+### ORG_ADMIN View (Unchanged)
+- All tabs visible (Overview, Permissions, Counters)
+- Full table with all columns (Name, Phone, Counter, Role, Status, Actions)
+- Counter-grouped sections ("Staff - Counter", "Staff - c2")
+
+---
+
+## Files Modified
+
+| File | Changes |
+|------|---------|
+| `Frontend Money Card/src/features/staff/StaffPage.tsx` | 1. Remove info banner for STAFF role<br>2. Simplify table to 2 columns (Staff Name, Actions)<br>3. Hide Permissions tab for counter view (`{!isCounterView && ...}`)<br>4. Update search placeholder text<br>5. Staff Details modal already clean (no changes) |
+
+---
+
+## Verification
+
+- [x] `npx tsc --noEmit` - 0 errors
+- [x] `npm test -- --run` - 255/255 tests pass
+- [x] Counter Staff sees clean minimal interface (2-column table, no banner, no permissions tab)
+- [x] ORG_ADMIN view completely unchanged (all tabs, columns, counter groups intact)
+- [x] Details button opens minimal modal with all staff info
+- [x] Add Staff button functional
+- [x] Mobile responsive layout intact
+
+---
+
+## Technical Notes
+
+- Permissions tab uses the same `{!isCounterView && (...)}` guard pattern already used for the Counters tab (line ~1325)
+- The unified modal (`showStaffModal`) still has all tabs available for ORG_ADMIN; only counter staff see the simplified version
+- The Staff Details modal (`showStaffDetailsModal`) was already minimal and required no changes
+- Staff scoping to assigned counter is handled by existing backend logic via `GET /api/staff?branchId=...`
 
 Comprehensive implementation plan covering:
 1. **Remove Cards Given Out & Cards Returned from Analytics — Financial Overview ONLY**:

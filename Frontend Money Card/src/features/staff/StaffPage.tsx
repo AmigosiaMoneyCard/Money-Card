@@ -1065,8 +1065,8 @@ export function StaffPage() {
     );
   }, [counterStaffGroups, selectedCounterGroup, modalCounterSearch]);
 
-  // ── Table Columns (Counter-First & Minimal 3 Columns) ─────────
-  const columns = [
+  // ── Table Columns for ORG_ADMIN (Counter-Grouped View) ─────────
+  const orgAdminColumns = [
     {
       key: 'counterName',
       header: 'Counter Name',
@@ -1120,22 +1120,50 @@ export function StaffPage() {
     },
   ];
 
+  // ── Table Columns for Counter Staff (Flat Staff List - 2 Columns Only) ─────────
+  const counterStaffColumns = [
+    {
+      key: 'name',
+      header: 'Staff Name',
+      className: 'w-full',
+      render: (staff: Staff) => (
+        <span className="font-medium text-slate-900 text-sm">{staff.name}</span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      className: 'w-32 text-right',
+      render: (staff: Staff) => (
+        <div className="flex items-center justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleOpenStaffDetails(staff)}
+            className="text-xs font-semibold py-1.5 px-3 rounded-lg border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 transition-all shadow-2xs cursor-pointer"
+            leftIcon={<Eye className="h-3.5 w-3.5 text-emerald-600" />}
+          >
+            Details
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-5 max-w-6xl mx-auto pb-10">
       {/* ─── Minimal Header ─── */}
-      <div className="flex flex-col gap-3 border-b border-slate-200/80 pb-4">
-        <div className="flex items-center gap-2.5">
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Staff Management</h1>
-          {isCounterView && (
-            <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold px-2.5 py-0.5 text-xs">
-              Counter Scope
-            </Badge>
-          )}
-        </div>
-        {isCounterView && (
-          <p className="text-xs text-slate-500">
-            Showing staff at your counter only. New staff are automatically assigned to your counter.
-          </p>
+      <div className="flex items-center justify-between border-b border-slate-200/80 pb-4">
+        <h1 className="text-xl font-bold text-slate-900 tracking-tight">Staff Management</h1>
+        {canManage && (
+          <Button
+            variant="primary"
+            onClick={() => handleOpenAdd()}
+            leftIcon={<UserPlus className="h-4 w-4" />}
+            className="text-xs h-8 px-3"
+          >
+            Add Staff
+          </Button>
         )}
       </div>
 
@@ -1154,7 +1182,7 @@ export function StaffPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           <input
             type="text"
-            placeholder="Search counters or staff by name, phone..."
+            placeholder={isCounterView ? "Search staff by name or phone..." : "Search counters or staff by name, phone..."}
             value={searchQuery}
             maxLength={30}
             onChange={(e) => setSearchQuery(e.target.value.slice(0, 30))}
@@ -1232,11 +1260,19 @@ export function StaffPage() {
         />
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-          <DataTable<CounterStaffGroup>
-            data={counterStaffGroups}
-            columns={columns}
-            keyExtractor={(item: CounterStaffGroup) => item.id}
-          />
+          {isCounterView ? (
+            <DataTable<Staff>
+              data={filteredStaff}
+              columns={counterStaffColumns}
+              keyExtractor={(item: Staff) => item.id}
+            />
+          ) : (
+            <DataTable<CounterStaffGroup>
+              data={counterStaffGroups}
+              columns={orgAdminColumns}
+              keyExtractor={(item: CounterStaffGroup) => item.id}
+            />
+          )}
         </div>
       )}
 
@@ -1270,21 +1306,23 @@ export function StaffPage() {
               <span>Overview</span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => setStaffTab('permissions')}
-              className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
-                staffTab === 'permissions'
-                  ? 'border-emerald-600 text-emerald-700 font-semibold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <ShieldCheck className="h-4 w-4" />
-              <span>Permissions</span>
-              <Badge variant="outline" className="text-[10px] ml-1">
-                {formPermissions.length} / 20
-              </Badge>
-            </button>
+            {!isCounterView && (
+              <button
+                type="button"
+                onClick={() => setStaffTab('permissions')}
+                className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
+                  staffTab === 'permissions'
+                    ? 'border-emerald-600 text-emerald-700 font-semibold'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <ShieldCheck className="h-4 w-4" />
+                <span>Permissions</span>
+                <Badge variant="outline" className="text-[10px] ml-1">
+                  {formPermissions.length} / 20
+                </Badge>
+              </button>
+            )}
 
             {!isCounterView && (
               <button
