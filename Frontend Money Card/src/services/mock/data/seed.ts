@@ -661,13 +661,13 @@ export const SEED_SUBSCRIPTIONS: Subscription[] = [
     organizationId: 'org_001',
     planId: 'PLAN_STANDARD',
     status: 'ACTIVE',
-    startDate: '2026-01-01T00:00:00.000Z',
-    endDate: '2026-12-31T23:59:59.000Z',
-    renewalDate: '2026-12-31T23:59:59.000Z',
+    startDate: '2026-09-10T00:00:00.000Z',
+    endDate: '2026-10-10T23:59:59.000Z',
+    renewalDate: '2026-10-10T23:59:59.000Z',
     paymentStatus: 'SUCCESS',
     externalSubscriptionId: 'SUB_EXT_12345',
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
+    createdAt: '2026-09-10T00:00:00.000Z',
+    updatedAt: '2026-09-10T00:00:00.000Z',
   },
 ];
 

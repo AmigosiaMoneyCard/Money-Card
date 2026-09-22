@@ -19,9 +19,6 @@ import type {
 import {
   Button,
   Select,
-  Card,
-  CardHeader,
-  CardContent,
   Badge,
   Modal,
   ModalFooter,
@@ -107,8 +104,28 @@ function OrgAdminSubscriptionsView() {
   const [modalApiError, setModalApiError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Collapsible Dropdown Sections
-  const [isPlansOpen, setIsPlansOpen] = useState(true);
+  // Individual Plan Collapsible Dropdown State
+  const [expandedPlanIds, setExpandedPlanIds] = useState<Record<string, boolean>>({});
+
+  const togglePlanDetails = (planId: string) => {
+    setExpandedPlanIds((prev) => ({
+      ...prev,
+      [planId]: !prev[planId],
+    }));
+  };
+
+  const allPlansExpanded = plans.length > 0 && plans.every((p) => expandedPlanIds[p.id]);
+  const handleToggleAllPlans = () => {
+    if (allPlansExpanded) {
+      setExpandedPlanIds({});
+    } else {
+      const next: Record<string, boolean> = {};
+      plans.forEach((p) => {
+        next[p.id] = true;
+      });
+      setExpandedPlanIds(next);
+    }
+  };
 
   // ── Fetch Organization Subscription Data ───────────────────
   const fetchOrgSubscriptionData = useCallback(async () => {
@@ -343,18 +360,6 @@ function OrgAdminSubscriptionsView() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Subscription</h1>
         </div>
-
-        {subscription && (
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setShowRenewModal(true)}
-              leftIcon={<RefreshCw className="h-4 w-4" />}
-            >
-              Renew Subscription
-            </Button>
-          </div>
-        )}
       </div>
 
       {/* Pending Plan Change / Renewal Request Banner */}
@@ -401,103 +406,178 @@ function OrgAdminSubscriptionsView() {
         <ErrorState title="Failed to load subscription" message={error} onRetry={fetchOrgSubscriptionData} />
       ) : (
         <div className="space-y-8">
-          {/* Active Subscription & Usage Metrics Card */}
-          <Card>
-            <CardHeader
-              title={`Current Plan: ${currentPlan?.name || 'Active Subscription'}`}
-            />
+          {/* Active Subscription Plan Card (Centered) */}
+          <div>
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="sm:col-span-2 sm:max-w-sm sm:mx-auto lg:col-span-1 lg:col-start-2 w-full space-y-3">
+                <h2 className="text-base font-bold text-slate-900">Current Subscription</h2>
+                <div className="relative flex flex-col justify-between rounded-xl border-2 border-emerald-500 bg-white p-5 shadow-sm ring-2 ring-emerald-500/10">
+                  <div className="space-y-4">
+                    {/* Top Bar: Plan Name, Active Badge, and Price */}
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-lg font-bold text-slate-900">
+                          {currentPlan?.name ? currentPlan.name.replace(/\s+Plan$/i, '') : 'Standard'}
+                        </h3>
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs">
+                          <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                          ACTIVE PLAN
+                        </span>
+                      </div>
+                      <p className="mt-1 font-mono text-2xl font-bold text-emerald-700">
+                        {formatCurrency(currentPlan?.price || 1999)}{' '}
+                        <span className="text-xs font-normal text-slate-500">
+                          /{currentPlan?.billingInterval?.toLowerCase() || 'monthly'}
+                        </span>
+                      </p>
+                    </div>
 
-            <CardContent className="space-y-6">
-              {/* Dates & Status Metadata */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 rounded-xl bg-slate-50 p-4 border border-slate-200 text-xs">
-                <div>
-                  <span className="text-slate-500 font-medium">Plan Price:</span>
-                  <p className="font-mono text-sm font-bold text-emerald-700">
-                    {formatCurrency(currentPlan?.price || 0)} / {currentPlan?.billingInterval.toLowerCase()}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-slate-500 font-medium">Start Date:</span>
-                  <p className="font-semibold text-slate-900">
-                    {subscription ? formatDate(subscription.startDate) : '—'}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-slate-500 font-medium">Renewal / End Date:</span>
-                  <p className="font-semibold text-slate-900">
-                    {subscription ? formatDate(subscription.renewalDate) : '—'}
-                  </p>
+                    {/* Technical Limits & Usage */}
+                    <div className="space-y-2 border-t border-b border-slate-200 py-3 text-xs">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                        Resource Limits & Usage
+                      </span>
+                      <div className="flex items-center justify-between text-slate-700">
+                        <span>Counters:</span>
+                        <span className="font-mono text-sm font-bold text-slate-900">
+                          {branchUsage} / <span className="text-emerald-700 font-extrabold">{branchLimit}</span>
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-slate-700">
+                        <span>Staff Accounts:</span>
+                        <span className="font-mono text-sm font-bold text-slate-900">
+                          {staffUsage} / <span className="text-emerald-700 font-extrabold">{staffLimit}</span>
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-slate-700">
+                        <span>Active Cards:</span>
+                        <span className="font-mono text-sm font-bold text-slate-900">
+                          {cardUsage} / <span className="text-emerald-700 font-extrabold">{cardLimit}</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Entitlements */}
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+                        Included Features
+                      </span>
+                      <ul className="space-y-2 text-xs text-slate-700 font-medium">
+                        <li className="flex items-center gap-2">
+                          <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                          <span>{currentPlan?.inventoryLevel || 'Advanced'} Inventory</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                          <span>{currentPlan?.analyticsLevel || 'Standard'} Analytics</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                          <span>{currentPlan?.supportLevel || 'Priority'} Support</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Action CTA: Renew Subscription */}
+                  <div className="mt-5 pt-3 border-t border-slate-100">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => setShowRenewModal(true)}
+                      leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
+                    >
+                      Renew Subscription
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          {/* Available Plans / Plan Comparison Section */}
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
-            <button
-              type="button"
-              id="toggle-plans-details-dropdown"
-              onClick={() => setIsPlansOpen((prev) => !prev)}
-              className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-slate-50 cursor-pointer"
-              aria-expanded={isPlansOpen}
-            >
+          {/* Available Plans Section (Separate Dropdown per Plan) */}
+          <div className="space-y-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
                   <Layers className="h-5 w-5" />
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <h3 className="text-base font-bold text-slate-900">Plans</h3>
+                  <h3 className="text-base font-bold text-slate-900">Available Plans</h3>
                   <Badge variant="outline" className="font-mono text-xs">
                     {plans.length} Available
                   </Badge>
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600">
-                <span>{isPlansOpen ? 'Collapse' : 'View Plan Details'}</span>
-                <ChevronDown
-                  className={`h-4 w-4 transition-transform duration-200 ${
-                    isPlansOpen ? 'rotate-180' : ''
-                  }`}
-                />
-              </div>
-            </button>
 
-            {isPlansOpen && (
-              <div className="border-t border-slate-200 p-5 bg-slate-50/40">
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                  {plans.map((plan) => {
-                    const isCurrent = plan.id === currentPlan?.id;
+              <button
+                type="button"
+                onClick={handleToggleAllPlans}
+                className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition-colors cursor-pointer self-start sm:self-auto"
+              >
+                {allPlansExpanded ? 'Collapse All Details' : 'Expand All Details'}
+              </button>
+            </div>
 
-                    return (
-                      <div
-                        key={plan.id}
-                        className={`relative flex flex-col justify-between rounded-xl border-2 p-5 transition-all ${
-                          isCurrent
-                            ? 'border-emerald-500 bg-emerald-50/50 shadow-md ring-2 ring-emerald-500/20'
-                            : 'border-slate-200 bg-white hover:border-slate-300 shadow-xs'
-                        }`}
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {plans.map((plan) => {
+                const isCurrent = plan.id === currentPlan?.id;
+                const isExpanded = !!expandedPlanIds[plan.id];
+
+                return (
+                  <div
+                    key={plan.id}
+                    className={`relative flex flex-col justify-between rounded-xl border-2 p-5 transition-all ${
+                      isCurrent
+                        ? 'border-emerald-500 bg-emerald-50/40 shadow-md ring-2 ring-emerald-500/20'
+                        : 'border-slate-200 bg-white hover:border-slate-300 shadow-xs'
+                    }`}
+                  >
+                    <div className="space-y-4">
+                      {/* Plan Header */}
+                      <div>
+                        <div className="flex items-center justify-between gap-2">
+                          <h3 className="text-lg font-bold text-slate-900">{plan.name}</h3>
+                          {isCurrent && (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs">
+                              <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                              ACTIVE PLAN
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 font-mono text-2xl font-bold text-emerald-700">
+                          {formatCurrency(plan.price)}{' '}
+                          <span className="text-xs font-normal text-slate-500">
+                            /{plan.billingInterval.toLowerCase()}
+                          </span>
+                        </p>
+                      </div>
+
+                      {/* Individual Plan Dropdown Toggle */}
+                      <button
+                        type="button"
+                        id={`toggle-plan-${plan.id}-details`}
+                        onClick={() => togglePlanDetails(plan.id)}
+                        className="flex w-full items-center justify-between rounded-lg bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors border border-slate-200 cursor-pointer"
+                        aria-expanded={isExpanded}
                       >
-                        <div className="space-y-4">
-                          <div>
-                            <div className="flex items-center justify-between gap-2">
-                              <h3 className="text-lg font-bold text-slate-900">{plan.name}</h3>
-                              {isCurrent && (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs">
-                                  <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                                  ACTIVE PLAN
-                                </span>
-                              )}
-                            </div>
-                            <p className="mt-1 font-mono text-2xl font-bold text-emerald-700">
-                              {formatCurrency(plan.price)}{' '}
-                              <span className="text-xs font-normal text-slate-500">
-                                /{plan.billingInterval.toLowerCase()}
-                              </span>
-                            </p>
-                          </div>
+                        <span>{isExpanded ? 'Collapse Details' : 'View Plan Details'}</span>
+                        <ChevronDown
+                          className={`h-4 w-4 text-emerald-600 transition-transform duration-200 ${
+                            isExpanded ? 'rotate-180' : ''
+                          }`}
+                        />
+                      </button>
 
+                      {/* Collapsible Details: Technical Limits & Entitlements */}
+                      {isExpanded && (
+                        <div className="space-y-4 pt-1">
                           {/* Technical Limits List */}
                           <div className="space-y-2 border-t border-b border-slate-200 py-3 text-xs">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                              Resource Limits {isCurrent ? '& Usage' : ''}
+                            </span>
                             <div className="flex items-center justify-between text-slate-700">
                               <span>Counters:</span>
                               {isCurrent ? (
@@ -531,64 +611,74 @@ function OrgAdminSubscriptionsView() {
                           </div>
 
                           {/* Entitlements */}
-                          <ul className="space-y-2 text-xs text-slate-700 font-medium">
-                            <li className="flex items-center gap-2">
-                              <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                              <span>{plan.inventoryLevel} Inventory</span>
-                            </li>
-                            <li className="flex items-center gap-2">
-                              <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                              <span>{plan.analyticsLevel} Analytics</span>
-                            </li>
-                            <li className="flex items-center gap-2">
-                              <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                              <span>{plan.supportLevel} Support</span>
-                            </li>
-                          </ul>
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+                              Included Features
+                            </span>
+                            <ul className="space-y-2 text-xs text-slate-700 font-medium">
+                              <li className="flex items-center gap-2">
+                                <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                                <span>{plan.inventoryLevel} Inventory</span>
+                              </li>
+                              <li className="flex items-center gap-2">
+                                <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                                <span>{plan.analyticsLevel} Analytics</span>
+                              </li>
+                              <li className="flex items-center gap-2">
+                                <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                                <span>{plan.supportLevel} Support</span>
+                              </li>
+                            </ul>
+                          </div>
                         </div>
+                      )}
+                    </div>
 
-                        {/* Action CTA: [ Request Upgrade / Request Downgrade ] */}
-                        <div className="mt-6">
-                          {isCurrent ? (
-                            <Button variant="outline" size="sm" className="w-full bg-emerald-50 text-emerald-800 border-emerald-300 font-bold cursor-default" disabled>
-                              Current Active Plan
-                            </Button>
-                          ) : pendingRequest ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-full text-slate-400 bg-slate-100 border-slate-200 cursor-not-allowed font-medium"
-                              disabled
-                              title="You already have a plan change request awaiting Super Admin review"
-                            >
-                              Request Pending
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              className="w-full"
-                              onClick={() => handleOpenContactSuperAdmin(plan)}
-                              leftIcon={
-                                detectPlanRequestType(plan, currentPlan) === 'UPGRADE' ? (
-                                  <ArrowUpRight className="h-3.5 w-3.5" />
-                                ) : (
-                                  <ArrowDownRight className="h-3.5 w-3.5" />
-                                )
-                              }
-                            >
-                              {detectPlanRequestType(plan, currentPlan) === 'UPGRADE'
-                                ? `Upgrade to ${plan.name}`
-                                : `Enquiry for ${plan.name}`}
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+                    {/* Action CTA: [ Request Upgrade / Request Downgrade ] */}
+                    <div className="mt-5 pt-3 border-t border-slate-100">
+                      {isCurrent ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full bg-emerald-50 text-emerald-800 border-emerald-300 font-bold cursor-default"
+                          disabled
+                        >
+                          Current Active Plan
+                        </Button>
+                      ) : pendingRequest ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full text-slate-400 bg-slate-100 border-slate-200 cursor-not-allowed font-medium"
+                          disabled
+                          title="You already have a plan change request awaiting Super Admin review"
+                        >
+                          Request Pending
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => handleOpenContactSuperAdmin(plan)}
+                          leftIcon={
+                            detectPlanRequestType(plan, currentPlan) === 'UPGRADE' ? (
+                              <ArrowUpRight className="h-3.5 w-3.5" />
+                            ) : (
+                              <ArrowDownRight className="h-3.5 w-3.5" />
+                            )
+                          }
+                        >
+                          {detectPlanRequestType(plan, currentPlan) === 'UPGRADE'
+                            ? `Upgrade to ${plan.name}`
+                            : `Enquiry for ${plan.name}`}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
