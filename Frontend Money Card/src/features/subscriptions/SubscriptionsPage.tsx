@@ -406,89 +406,91 @@ function OrgAdminSubscriptionsView() {
         <ErrorState title="Failed to load subscription" message={error} onRetry={fetchOrgSubscriptionData} />
       ) : (
         <div className="space-y-8">
-          {/* Active Subscription Plan Card (Same size as individual plan cards) */}
-          <div className="space-y-3">
-            <h2 className="text-base font-bold text-slate-900">Current Subscription</h2>
+          {/* Active Subscription Plan Card (Centered) */}
+          <div>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="relative flex flex-col justify-between rounded-xl border-2 border-emerald-500 bg-white p-5 shadow-sm ring-2 ring-emerald-500/10">
-                <div className="space-y-4">
-                  {/* Top Bar: Plan Name, Active Badge, and Price */}
-                  <div>
-                    <div className="flex items-center justify-between gap-2">
-                      <h3 className="text-lg font-bold text-slate-900">
-                        {currentPlan?.name ? currentPlan.name.replace(/\s+Plan$/i, '') : 'Standard'}
-                      </h3>
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs">
-                        <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                        ACTIVE PLAN
-                      </span>
+              <div className="sm:col-span-2 sm:max-w-sm sm:mx-auto lg:col-span-1 lg:col-start-2 w-full space-y-3">
+                <h2 className="text-base font-bold text-slate-900">Current Subscription</h2>
+                <div className="relative flex flex-col justify-between rounded-xl border-2 border-emerald-500 bg-white p-5 shadow-sm ring-2 ring-emerald-500/10">
+                  <div className="space-y-4">
+                    {/* Top Bar: Plan Name, Active Badge, and Price */}
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-lg font-bold text-slate-900">
+                          {currentPlan?.name ? currentPlan.name.replace(/\s+Plan$/i, '') : 'Standard'}
+                        </h3>
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs">
+                          <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                          ACTIVE PLAN
+                        </span>
+                      </div>
+                      <p className="mt-1 font-mono text-2xl font-bold text-emerald-700">
+                        {formatCurrency(currentPlan?.price || 1999)}{' '}
+                        <span className="text-xs font-normal text-slate-500">
+                          /{currentPlan?.billingInterval?.toLowerCase() || 'monthly'}
+                        </span>
+                      </p>
                     </div>
-                    <p className="mt-1 font-mono text-2xl font-bold text-emerald-700">
-                      {formatCurrency(currentPlan?.price || 1999)}{' '}
-                      <span className="text-xs font-normal text-slate-500">
-                        /{currentPlan?.billingInterval?.toLowerCase() || 'monthly'}
+
+                    {/* Technical Limits & Usage */}
+                    <div className="space-y-2 border-t border-b border-slate-200 py-3 text-xs">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                        Resource Limits & Usage
                       </span>
-                    </p>
+                      <div className="flex items-center justify-between text-slate-700">
+                        <span>Counters:</span>
+                        <span className="font-mono text-sm font-bold text-slate-900">
+                          {branchUsage} / <span className="text-emerald-700 font-extrabold">{branchLimit}</span>
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-slate-700">
+                        <span>Staff Accounts:</span>
+                        <span className="font-mono text-sm font-bold text-slate-900">
+                          {staffUsage} / <span className="text-emerald-700 font-extrabold">{staffLimit}</span>
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-slate-700">
+                        <span>Active Cards:</span>
+                        <span className="font-mono text-sm font-bold text-slate-900">
+                          {cardUsage} / <span className="text-emerald-700 font-extrabold">{cardLimit}</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Entitlements */}
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+                        Included Features
+                      </span>
+                      <ul className="space-y-2 text-xs text-slate-700 font-medium">
+                        <li className="flex items-center gap-2">
+                          <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                          <span>{currentPlan?.inventoryLevel || 'Advanced'} Inventory</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                          <span>{currentPlan?.analyticsLevel || 'Standard'} Analytics</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                          <span>{currentPlan?.supportLevel || 'Priority'} Support</span>
+                        </li>
+                      </ul>
+                    </div>
                   </div>
 
-                  {/* Technical Limits & Usage */}
-                  <div className="space-y-2 border-t border-b border-slate-200 py-3 text-xs">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                      Resource Limits & Usage
-                    </span>
-                    <div className="flex items-center justify-between text-slate-700">
-                      <span>Counters:</span>
-                      <span className="font-mono text-sm font-bold text-slate-900">
-                        {branchUsage} / <span className="text-emerald-700 font-extrabold">{branchLimit}</span>
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-slate-700">
-                      <span>Staff Accounts:</span>
-                      <span className="font-mono text-sm font-bold text-slate-900">
-                        {staffUsage} / <span className="text-emerald-700 font-extrabold">{staffLimit}</span>
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-slate-700">
-                      <span>Active Cards:</span>
-                      <span className="font-mono text-sm font-bold text-slate-900">
-                        {cardUsage} / <span className="text-emerald-700 font-extrabold">{cardLimit}</span>
-                      </span>
-                    </div>
+                  {/* Action CTA: Renew Subscription */}
+                  <div className="mt-5 pt-3 border-t border-slate-100">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => setShowRenewModal(true)}
+                      leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
+                    >
+                      Renew Subscription
+                    </Button>
                   </div>
-
-                  {/* Entitlements */}
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
-                      Included Features
-                    </span>
-                    <ul className="space-y-2 text-xs text-slate-700 font-medium">
-                      <li className="flex items-center gap-2">
-                        <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                        <span>{currentPlan?.inventoryLevel || 'Advanced'} Inventory</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                        <span>{currentPlan?.analyticsLevel || 'Standard'} Analytics</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                        <span>{currentPlan?.supportLevel || 'Priority'} Support</span>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-
-                {/* Action CTA: Renew Subscription */}
-                <div className="mt-5 pt-3 border-t border-slate-100">
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    className="w-full"
-                    onClick={() => setShowRenewModal(true)}
-                    leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
-                  >
-                    Renew Subscription
-                  </Button>
                 </div>
               </div>
             </div>
