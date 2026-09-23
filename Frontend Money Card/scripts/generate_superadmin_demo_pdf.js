@@ -183,15 +183,21 @@ function generateSuperAdminPdf() {
     },
     {
       title: 'Module 3: Plans & Subscriptions Management (/subscriptions & /plans)',
-      desc: 'Configure global SaaS subscription catalog (Basic, Standard, Enterprise), set price billing intervals (Monthly/Yearly), enforce branch/staff/card limits, and review/approve plan change and renewal requests submitted by Org Admins.',
-      mlDesc: 'Plan-ukal create cheyyuka (Basic, Standard, Enterprise), cafeteria-kalkkulla card/staff limits theerumanikkuka. Cafeteria-kal ayakkunna plan renewal/upgrade requests review cheythu approve cheyyuka.',
-      actions: 'Review & Approve requests, Status filter (Pending/Approved/Rejected), Custom Overrides.',
+      desc: 'Streamlined SaaS plan catalog (Create New Plan), pricing intervals (Monthly/Yearly), branch/staff/card quota limits, and one-click review/approval of plan renewal and upgrade requests submitted by Org Admins.',
+      mlDesc: 'Create New Plan vazhi subscription tiers undakkuka, quota limits nischayikkuka. Org Admin-mar ayakkunna plan renewal/upgrade requests review cheythu approve cheyyuka.',
+      actions: 'Create New Plan, Review & Approve requests, Status filter, Custom Overrides.',
     },
     {
       title: 'Module 4: Platform Analytics & Client-Side PDF Engine (/analytics)',
       desc: 'Financial aggregation of gross purchases, customer recharges, refunds, and net revenue. Includes branch performance matrices and peak demand hour curves. Offers Dual-Mode PDF export: [View PDF] in-browser blob preview & [Download PDF] native vector rendering.',
       mlDesc: 'Motham revenue, recharges, customer refunds, net revenue enniva live chart-ukalil kanam. [View PDF] vazhi browser-il thanne report preview cheyyam, [Download PDF] vazhi direct print-ready file download aakum.',
       actions: 'Revenue metrics, Peak hour diagnostics, Zero-server-load jsPDF exports.',
+    },
+    {
+      title: 'Module 5: Mobile POS & Scanned Card Hub (Flutter POS Native App)',
+      desc: 'Cashier POS with single-tap card scan: Priority #1 Recharge Card and #2 Add Products food ordering (row-wise menu). Supports instant order cancellation with card refund, top-up voiding, and role-based analytics.',
+      mlDesc: 'Mobile POS-il card scan cheythu udan Recharge (#1), Add Products (#2) cheyyam. Food order cancel cheythu card balance refund nalkam, top-up void cheyyam.',
+      actions: 'Recharge #1, Add Products #2, Order Cancellation & Auto-Refund, Top-up Voiding.',
     },
   ];
 
@@ -345,6 +351,11 @@ function generateSuperAdminPdf() {
       q: 'Q7: How does client-side PDF export work without placing CPU load on the server?',
       enAns: 'The PDF generation uses client-side jsPDF in the browser memory. It formats tables and charts vectorially without requiring backend headless browsers or rendering microservices.',
       mlAns: 'PDF generation poornamayi client browser-il (jsPDF) aanu nadakkunnath. Server bandwidth-o CPU load-o aavashyamilla.',
+    },
+    {
+      q: 'Q8: How does order cancellation and top-up voiding work on the Mobile POS?',
+      enAns: 'Cashiers can cancel food orders directly from Food Orders or Action Hub, instantly refunding the card balance and restoring inventory. Top-ups can also be voided from Top-up History, deducting balance safely.',
+      mlAns: 'Food orders cancel cheythal thuka udan card-ilekku refund aakum, stock restore cheyyum. Top-up history-il ninnu thettaya reacharge void cheythu balance deduct cheyyam.',
     },
   ];
 

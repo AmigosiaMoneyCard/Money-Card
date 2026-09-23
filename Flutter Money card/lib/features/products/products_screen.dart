@@ -52,13 +52,6 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Products & Menu'),
-        actions: [
-          if (assignedBranches.length > 1 && currentBranch != null)
-            Padding(
-              padding: const EdgeInsets.only(right: AppSpacing.sm),
-              child: _buildBranchSwitcher(context, ref, currentBranch, assignedBranches),
-            ),
-        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddProductBottomSheet(context, ref, currentBranch),
@@ -93,8 +86,6 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                         ),
                       ),
                     ),
-                    if (assignedBranches.length > 1 && currentBranch != null)
-                      _buildBranchSwitcher(context, ref, currentBranch, assignedBranches),
                   ],
                 ),
               ),
@@ -173,69 +164,6 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     );
   }
 
-  Widget _buildBranchSwitcher(
-    BuildContext context,
-    WidgetRef ref,
-    Branch currentBranch,
-    List<Branch> assignedBranches,
-  ) {
-    return PopupMenuButton<Branch>(
-      initialValue: currentBranch,
-      onSelected: (branch) {
-        ref.read(branchNotifierProvider.notifier).selectBranch(branch);
-        ref.read(posCatalogNotifierProvider.notifier).loadProducts(force: true);
-      },
-      itemBuilder: (context) {
-        return assignedBranches.map((branch) {
-          final isSelected = branch.id == currentBranch.id;
-          return PopupMenuItem<Branch>(
-            value: branch,
-            child: Row(
-              children: [
-                Icon(
-                  Icons.storefront,
-                  size: 18,
-                  color: isSelected ? AppColors.primary : AppColors.textSecondaryLight,
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Text(
-                  branch.name,
-                  style: TextStyle(
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    color: isSelected ? AppColors.primaryDark : AppColors.textPrimaryLight,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList();
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: AppColors.primaryLight,
-          borderRadius: AppSpacing.roundedSm,
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-        ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.swap_horiz, size: 14, color: AppColors.primaryDark),
-            SizedBox(width: 4),
-            Text(
-              'Switch',
-              style: TextStyle(
-                color: AppColors.primaryDark,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            Icon(Icons.arrow_drop_down, size: 14, color: AppColors.primaryDark),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildProductsList(PosCatalogState state, PosCatalogNotifier notifier) {
     if (state.isLoading) {
@@ -326,13 +254,29 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                           label: product.status,
                           variant: isActive ? AppBadgeVariant.success : AppBadgeVariant.neutral,
                         ),
-                        const SizedBox(width: 4),
-                        IconButton(
-                          icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                          tooltip: 'Edit Item',
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
                           onPressed: () => _showEditProductBottomSheet(context, ref, product),
+                          icon: const Icon(Icons.edit, size: 13, color: Colors.white),
+                          label: const Text(
+                            'Edit',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.black,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            minimumSize: const Size(0, 28),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            elevation: 0,
+                          ),
                         ),
                       ],
                     ),

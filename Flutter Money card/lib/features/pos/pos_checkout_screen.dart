@@ -667,22 +667,13 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
               icon: Icons.search_off,
             ),
           ],
-        ),
-      );
-    }
-
-    return RefreshIndicator(
+          return RefreshIndicator(
       onRefresh: () => ref.read(posCatalogNotifierProvider.notifier).loadCatalog(),
-      child: GridView.builder(
+      child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: AppSpacing.paddingMd,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: AppSpacing.sm,
-          mainAxisSpacing: AppSpacing.sm,
-          childAspectRatio: 0.78,
-        ),
         itemCount: catalogState.filteredProducts.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
           final product = catalogState.filteredProducts[index];
           final cartItem = cartState.items[product.id];
@@ -691,60 +682,64 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
           final isNonVeg = product.category.any((c) => c.toLowerCase() == 'non-veg');
 
           return AppCard(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Top Row: Veg/Non-veg icon container & stock badge
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: isVeg
-                            ? AppColors.successLight
-                            : (isNonVeg ? AppColors.errorLight : AppColors.primaryLight),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        isVeg
-                            ? Icons.eco
-                            : (isNonVeg ? Icons.kebab_dining : Icons.fastfood_outlined),
-                        color: isVeg
-                            ? AppColors.success
-                            : (isNonVeg ? AppColors.error : AppColors.primary),
-                        size: 20,
-                      ),
-                    ),
-                    if (product.category.isNotEmpty)
-                      AppBadge(
-                        label: product.category.first,
-                        variant: isVeg
-                            ? AppBadgeVariant.success
-                            : (isNonVeg ? AppBadgeVariant.error : AppBadgeVariant.neutral),
-                      ),
-                  ],
+                // Veg/Non-veg icon container
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: isVeg
+                        ? AppColors.successLight
+                        : (isNonVeg ? AppColors.errorLight : AppColors.primaryLight),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    isVeg
+                        ? Icons.eco
+                        : (isNonVeg ? Icons.kebab_dining : Icons.fastfood_outlined),
+                    color: isVeg
+                        ? AppColors.success
+                        : (isNonVeg ? AppColors.error : AppColors.primary),
+                    size: 24,
+                  ),
                 ),
-                const SizedBox(height: AppSpacing.xs),
+                const SizedBox(width: 12),
 
-                // Product Name
+                // Middle: Product Name, Category tag, and Price
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        product.itemName,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimaryLight,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              product.itemName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimaryLight,
+                              ),
+                            ),
+                          ),
+                          if (product.category.isNotEmpty) ...[
+                            const SizedBox(width: 6),
+                            AppBadge(
+                              label: product.category.first,
+                              variant: isVeg
+                                  ? AppBadgeVariant.success
+                                  : (isNonVeg ? AppBadgeVariant.error : AppBadgeVariant.neutral),
+                            ),
+                          ],
+                        ],
                       ),
-                      const Spacer(),
+                      const SizedBox(height: 4),
                       Text(
                         '₹${product.price.toStringAsFixed(2)}',
                         style: const TextStyle(
@@ -756,12 +751,11 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: AppSpacing.xs),
+                const SizedBox(width: 12),
 
-                // Bottom Action: Add or Stepper
+                // Right: Add Button or Stepper
                 if (quantityInCart == 0)
                   SizedBox(
-                    width: double.infinity,
                     height: 36,
                     child: ElevatedButton.icon(
                       icon: const Icon(Icons.add, size: 16),
@@ -770,7 +764,7 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        padding: EdgeInsets.zero,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
                         elevation: 0,
                       ),
                       onPressed: () => cartNotifier.addToCart(product),
@@ -784,34 +778,33 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         InkWell(
                           onTap: () => cartNotifier.decreaseQuantity(product.id),
                           borderRadius: BorderRadius.circular(8),
                           child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                             child: Icon(Icons.remove, size: 18, color: AppColors.primaryDark),
                           ),
                         ),
-                        Text(
-                          '$quantityInCart',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryDark,
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Text(
+                            '$quantityInCart',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primaryDark,
+                            ),
                           ),
                         ),
                         InkWell(
                           onTap: () => cartNotifier.increaseQuantity(product.id),
                           borderRadius: BorderRadius.circular(8),
                           child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            child: Icon(
-                              Icons.add,
-                              size: 18,
-                              color: AppColors.primaryDark,
-                            ),
+                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            child: Icon(Icons.add, size: 18, color: AppColors.primaryDark),
                           ),
                         ),
                       ],

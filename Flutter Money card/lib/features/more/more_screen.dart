@@ -103,18 +103,6 @@ class MoreScreen extends ConsumerWidget {
           onTap: () => ref.read(authNotifierProvider.notifier).logout(),
         ),
 
-        const SizedBox(height: AppSpacing.lg),
-
-        // Operations Section
-        const SectionHeader(title: 'Operations'),
-        const SizedBox(height: AppSpacing.xs),
-
-        _buildMenuTile(
-          icon: Icons.receipt_long_outlined,
-          title: 'Recharges & Top-ups',
-          subtitle: 'UPI and Cash top-up history & voiding',
-          onTap: () => context.push('/app/recharges'),
-        ),
 
         // Development Tools Section (Mock Mode only)
         if (AppConfig.useMockApi) ...[

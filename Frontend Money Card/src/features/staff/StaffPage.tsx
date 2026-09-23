@@ -266,7 +266,6 @@ export function StaffPage() {
   const [showAddPassword, setShowAddPassword] = useState(false);
   const [formBranchIds, setFormBranchIds] = useState<string[]>([]);
   const [formPermissions, setFormPermissions] = useState<Permission[]>([]);
-  const [showAdvancedPerms, setShowAdvancedPerms] = useState(false);
 
   // ── Staff Performance & Operational Audit State ───────────
   const [selectedStaffForAudit, setSelectedStaffForAudit] = useState<Staff | null>(null);
@@ -2429,29 +2428,6 @@ export function StaffPage() {
                         </div>
                       </div>
                     </button>
-                  </div>
-
-                  {/* Collapsible Advanced Permissions Toggle */}
-                  <div className="pt-3 border-t border-slate-200 mt-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowAdvancedPerms(!showAdvancedPerms)}
-                      className="flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-slate-800 transition-colors cursor-pointer"
-                    >
-                      <span>{showAdvancedPerms ? '▼ Hide individual permissions' : '▶ Customize individual permissions (optional)'}</span>
-                      <Badge variant="outline" className="text-[10px]">
-                        {formPermissions.length} selected
-                      </Badge>
-                    </button>
-
-                    {showAdvancedPerms && (
-                      <div className="mt-3 pt-3 border-t border-slate-200">
-                        <PermissionMatrix
-                          selectedPermissions={formPermissions}
-                          onChange={setFormPermissions}
-                        />
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
