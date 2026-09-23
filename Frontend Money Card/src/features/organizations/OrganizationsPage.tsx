@@ -41,7 +41,6 @@ import {
 interface OrgActionMenuProps {
   org: OrganizationOverview;
   onViewDetails: () => void;
-  onEdit: () => void;
   onResetPassword: () => void;
   onResendAdminInvite?: () => void;
   onToggleStatus: () => void;
@@ -51,7 +50,6 @@ interface OrgActionMenuProps {
 function OrgActionMenu({
   org,
   onViewDetails,
-  onEdit,
   onResetPassword,
   onResendAdminInvite,
   onToggleStatus,
@@ -171,18 +169,6 @@ function OrgActionMenu({
               type="button"
               onClick={() => {
                 setIsOpen(false);
-                onEdit();
-              }}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer text-left"
-            >
-              <Edit2 className="h-4 w-4 text-emerald-600" />
-              <span>Edit Cafeteria</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setIsOpen(false);
                 onResetPassword();
               }}
               className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-amber-700 transition-colors cursor-pointer text-left"
@@ -292,7 +278,6 @@ export function OrganizationsPage() {
     adminEmail: string;
   } | null>(null);
   const [showPendingSuccessModal, setShowPendingSuccessModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -311,10 +296,10 @@ export function OrganizationsPage() {
   const [formPlanId, setFormPlanId] = useState('plan_002');
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  // Form State for Edit Organization
-  const [editFormName, setEditFormName] = useState('');
-  const [editFormPlanId, setEditFormPlanId] = useState('plan_002');
-  const [editFormErrors, setEditFormErrors] = useState<Record<string, string>>({});
+  // Inline Organization Name Editing in Details Modal
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editingOrgName, setEditingOrgName] = useState('');
+  const [isSavingOrgName, setIsSavingOrgName] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalApiError, setModalApiError] = useState<string | null>(null);
@@ -528,62 +513,53 @@ export function OrganizationsPage() {
     }
   };
 
-  // ── Open Edit Modal ───────────────────────────────────────
-  const handleOpenEditModal = (org: OrganizationOverview) => {
-    setSelectedOrg(org);
-    setEditFormName(org.name);
-    setEditFormPlanId(org.plan?.id || org.planId || plans[0]?.id || 'plan_002');
-    setEditFormErrors({});
-    setModalApiError(null);
-    setShowEditModal(true);
-  };
-
-  const handleEditSubmit = async () => {
+  // ── Inline Organization Name Save ───────────────────────────
+  const handleSaveOrgName = async () => {
     if (!selectedOrg) return;
-    const trimmedEditName = editFormName.trim();
-    if (!trimmedEditName) {
-      setEditFormErrors({ name: 'Cafeteria name is required' });
+    const trimmed = editingOrgName.trim();
+    if (!trimmed) {
+      notify.error('Cafeteria name is required');
       return;
-    } else if (trimmedEditName.length > 30) {
-      setEditFormErrors({ name: 'Cafeteria name must be at most 30 characters' });
+    }
+    if (trimmed.length > 30) {
+      notify.error('Cafeteria name must be at most 30 characters');
       return;
     }
 
-    setIsSubmitting(true);
-    setModalApiError(null);
-
+    setIsSavingOrgName(true);
     try {
       const res = await apiService.organizations.updateAdminOrganization(selectedOrg.id, {
-        name: editFormName.trim(),
-        planId: editFormPlanId,
+        name: trimmed,
+        planId: selectedOrg.plan?.id || selectedOrg.planId,
       });
 
       if (!res.success) {
-        setModalApiError(res.error.message || 'Failed to update cafeteria');
+        notify.error(res.error.message || 'Failed to update cafeteria name');
         return;
       }
 
-      notify.success(`Cafeteria ${res.data.name} updated successfully!`);
-      setShowEditModal(false);
-      if (showDetailsModal) {
-        setShowDetailsModal(false);
-      }
+      notify.success(`Cafeteria name updated to "${trimmed}" successfully!`);
+      setSelectedOrg({ ...selectedOrg, name: trimmed });
+      setIsEditingName(false);
       fetchOrganizations();
     } catch {
-      setModalApiError('An unexpected error occurred. Please try again.');
+      notify.error('An unexpected error occurred. Please try again.');
     } finally {
-      setIsSubmitting(false);
+      setIsSavingOrgName(false);
     }
   };
 
   // ── Open Details ──────────────────────────────────────────
   const handleOpenDetails = async (org: OrganizationOverview) => {
     setSelectedOrg(org);
+    setIsEditingName(false);
+    setEditingOrgName(org.name);
     setShowDetailsModal(true);
     try {
       const res = await apiService.organizations.getOrganizationById(org.id);
       if (res.success) {
         setSelectedOrg(res.data);
+        setEditingOrgName(res.data.name);
       }
     } catch {
       // Keep existing overview data
@@ -676,20 +652,11 @@ export function OrganizationsPage() {
     },
     {
       key: 'plan',
-      header: 'Plan & Quotas',
+      header: 'Plan',
       render: (org: OrganizationOverview) => (
-        <div>
-          <Badge variant="outline" className="text-xs">
-            {org.plan?.name || 'Standard'}
-          </Badge>
-          {org.usage && (
-            <div className="mt-1 flex items-center gap-2 text-[11px] text-slate-500">
-              <span>{org.usage.branchCount}/{org.usage.branchLimit} Counters</span>
-              <span>•</span>
-              <span>{org.usage.staffCount}/{org.usage.staffLimit} Staff</span>
-            </div>
-          )}
-        </div>
+        <Badge variant="outline" className="text-xs">
+          {org.plan?.name || 'Standard'}
+        </Badge>
       ),
     },
     {
@@ -721,7 +688,6 @@ export function OrganizationsPage() {
           <OrgActionMenu
             org={org}
             onViewDetails={() => handleOpenDetails(org)}
-            onEdit={() => handleOpenEditModal(org)}
             onResetPassword={() => handleOpenResetPasswordModal(org)}
             onResendAdminInvite={() => handleResendAdminInvite(org)}
             onToggleStatus={() => handleOpenStatusModal(org)}
@@ -1080,108 +1046,88 @@ export function OrganizationsPage() {
         </div>
       </Modal>
 
-      {/* ── Edit Organization Modal ── */}
-      <Modal
-        isOpen={showEditModal}
-        onClose={() => setShowEditModal(false)}
-        title="Edit Cafeteria"
-      >
-        <div className="space-y-4 py-2">
-          {modalApiError && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
-              <span>{modalApiError}</span>
-            </div>
-          )}
-
-          <Input
-            id="edit-org-name"
-            label="Cafeteria Name *"
-            placeholder="e.g. Acme Cafeterias"
-            maxLength={30}
-            value={editFormName}
-            onChange={(e) => {
-              setEditFormName(e.target.value);
-              if (editFormErrors.name) setEditFormErrors((prev) => ({ ...prev, name: '' }));
-            }}
-            error={editFormErrors.name}
-          />
-
-          {plans.length > 0 && (
-            <Select
-              label="Assigned Subscription Plan"
-              value={editFormPlanId}
-              onChange={(e) => setEditFormPlanId(e.target.value)}
-              options={plans.map((p) => ({
-                value: p.id,
-                label: `${p.name} (₹${p.price}/${p.billingInterval.toLowerCase()})`,
-              }))}
-            />
-          )}
-
-          <ModalFooter>
-            <Button variant="outline" onClick={() => setShowEditModal(false)} disabled={isSubmitting}>
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={handleEditSubmit} isLoading={isSubmitting} disabled={isSubmitting}>
-              Save Changes
-            </Button>
-          </ModalFooter>
-        </div>
-      </Modal>
-
       {/* ── Organization Details Modal ── */}
       <Modal
         isOpen={showDetailsModal}
-        onClose={() => setShowDetailsModal(false)}
+        onClose={() => {
+          setShowDetailsModal(false);
+          setIsEditingName(false);
+        }}
         title="Cafeteria Overview"
       >
         {selectedOrg && (
           <div className="space-y-6 py-2">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">{selectedOrg.name}</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
+            <div className="flex items-start justify-between border-b border-slate-200 pb-3 gap-3">
+              <div className="space-y-1 flex-1 min-w-0">
+                {isEditingName ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={editingOrgName}
+                      onChange={(e) => setEditingOrgName(e.target.value)}
+                      className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-sm font-semibold text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
+                      placeholder="Cafeteria name"
+                      maxLength={30}
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveOrgName();
+                        if (e.key === 'Escape') setIsEditingName(false);
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      isLoading={isSavingOrgName}
+                      onClick={handleSaveOrgName}
+                      className="py-1 px-2.5 text-xs"
+                    >
+                      Save
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setIsEditingName(false)}
+                      className="py-1 px-2.5 text-xs"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-slate-900">{selectedOrg.name}</h3>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingOrgName(selectedOrg.name);
+                        setIsEditingName(true);
+                      }}
+                      className="p-1 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                      title="Edit Cafeteria Name"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
+                <p className="text-xs text-slate-600 flex items-center gap-1.5 pt-0.5">
+                  <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                  <span className="font-mono text-slate-700 font-medium">
+                    {selectedOrg.adminUser?.email || 'admin@' + selectedOrg.name.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com'}
+                  </span>
+                </p>
+                <p className="text-xs text-slate-500">
                   Created Date: <span className="font-medium text-slate-700">{formatDate(selectedOrg.createdAt)}</span>
                 </p>
               </div>
               {selectedOrg.status === 'PENDING_ACTIVATION' ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-xs font-medium text-amber-700 shadow-sm">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-xs font-medium text-amber-700 shadow-sm shrink-0">
                   <Mail className="h-3 w-3 text-amber-500" />
                   Pending Activation via Email
                 </span>
               ) : (
-                <Badge variant={selectedOrg.status === 'ACTIVE' ? 'success' : 'danger'}>
+                <Badge variant={selectedOrg.status === 'ACTIVE' ? 'success' : 'danger'} className="shrink-0">
                   {selectedOrg.status}
                 </Badge>
               )}
-            </div>
-
-            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">
-                  Assigned Org Admin
-                </span>
-                {selectedOrg.adminUser?.mustChangePassword ? (
-                  <Badge variant="warning" className="text-[10px]">
-                    Password Reset Pending
-                  </Badge>
-                ) : (
-                  <Badge variant="success" className="text-[10px]">
-                    Active
-                  </Badge>
-                )}
-              </div>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">
-                    {selectedOrg.adminUser?.name || 'Org Admin'}
-                  </p>
-                  <p className="text-xs font-mono text-slate-500">
-                    {selectedOrg.adminUser?.email || 'admin@' + selectedOrg.name.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com'}
-                  </p>
-                </div>
-              </div>
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
