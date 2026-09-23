@@ -7,23 +7,17 @@ import { useNavigate } from 'react-router-dom';
 import { apiService } from '@/services/api';
 import type {
   OrganizationOverview,
-  Plan,
   PlanChangeRequest,
   Subscription,
 } from '@/types';
 import {
   Button,
-  Card,
-  CardHeader,
-  CardContent,
   Badge,
   StatCard,
   Select,
   LoadingState,
   ErrorState,
 } from '@/components/ui';
-import { DataTable } from '@/components/tables';
-import { formatDate, formatCurrency } from '@/utils';
 import {
   Building2,
   BarChart3,
@@ -32,11 +26,7 @@ import {
   RefreshCw,
   Layers,
   AlertTriangle,
-  X,
-  ChevronDown,
-  ChevronUp,
   Sparkles,
-  Search,
   PlusCircle,
   Bell,
   CheckCircle2,
@@ -86,7 +76,6 @@ export function SuperAdminDashboard() {
   const navigate = useNavigate();
 
   const [orgs, setOrgs] = useState<OrganizationOverview[]>([]);
-  const [plans, setPlans] = useState<Plan[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [planRequests, setPlanRequests] = useState<PlanChangeRequest[]>([]);
 
@@ -94,10 +83,6 @@ export function SuperAdminDashboard() {
   const [datePreset, setDatePreset] = useState<DatePreset>('all');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-
-  // Search & Cafeterias Accordion / Dropdown Toggle
-  const [searchOrgTerm, setSearchOrgTerm] = useState('');
-  const [isCafeteriasOpen, setIsCafeteriasOpen] = useState(true);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -117,9 +102,8 @@ export function SuperAdminDashboard() {
     setIsRefreshing(true);
     setError(null);
     try {
-      const [orgsRes, plansRes, reqsRes, subsRes] = await Promise.all([
+      const [orgsRes, reqsRes, subsRes] = await Promise.all([
         apiService.organizations.getOrganizations(),
-        apiService.plans.getPlans(),
         apiService.subscriptions.getPlanRequests(),
         apiService.subscriptions.getAllSubscriptions(),
       ]);
@@ -130,7 +114,6 @@ export function SuperAdminDashboard() {
       }
 
       setOrgs(orgsRes.data.items);
-      if (plansRes.success) setPlans(plansRes.data);
       if (reqsRes.success) setPlanRequests(reqsRes.data || []);
       if (subsRes.success) setSubscriptions(subsRes.data || []);
     } catch {
@@ -181,68 +164,6 @@ export function SuperAdminDashboard() {
       : orgs;
     return targetOrgs.reduce((sum, o) => sum + (o.usage?.cardCount || 0), 0);
   }, [orgs, selectedOrgId]);
-
-  const filteredOrgs = useMemo(() => {
-    if (!searchOrgTerm.trim()) return orgs;
-    const term = searchOrgTerm.toLowerCase().trim();
-    return orgs.filter((o) => o.name.toLowerCase().includes(term));
-  }, [orgs, searchOrgTerm]);
-
-  // Simplified Table Headers: Cafeteria, Status, Plan, Joined, View
-  const orgColumns = [
-    {
-      key: 'name',
-      header: 'Cafeteria',
-      render: (org: OrganizationOverview) => (
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-            <Building2 className="h-4 w-4" />
-          </div>
-          <div>
-            <p className="font-semibold text-slate-900">{org.name}</p>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (org: OrganizationOverview) => (
-        <Badge variant={org.status === 'ACTIVE' ? 'success' : 'danger'}>
-          {org.status === 'ACTIVE' ? 'Active' : 'Inactive'}
-        </Badge>
-      ),
-    },
-    {
-      key: 'plan',
-      header: 'Plan',
-      render: (org: OrganizationOverview) => (
-        <Badge variant="outline" className="text-emerald-700 border-emerald-200 bg-emerald-50">
-          {org.plan?.name || 'Standard'}
-        </Badge>
-      ),
-    },
-    {
-      key: 'createdAt',
-      header: 'Joined',
-      render: (org: OrganizationOverview) => (
-        <span className="text-xs text-slate-500">{formatDate(org.createdAt)}</span>
-      ),
-    },
-    {
-      key: 'actions',
-      header: 'View',
-      render: (_org: OrganizationOverview) => (
-        <button
-          onClick={() => navigate('/organizations')}
-          className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 hover:underline inline-flex items-center gap-1"
-        >
-          <span>Open</span>
-          <ArrowRight className="h-3.5 w-3.5" />
-        </button>
-      ),
-    },
-  ];
 
   return (
     <div className="space-y-6">
@@ -498,141 +419,6 @@ export function SuperAdminDashboard() {
               value={`${pendingRequestsCount} Pending`}
               icon={<Bell className="h-5 w-5 text-amber-600" />}
             />
-          </div>
-
-          {/* ── 5. Subscription Plans ─────────────────────────────────────── */}
-          <Card>
-            <CardHeader
-              title="Subscription Plans"
-            />
-            <CardContent>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                {plans.map((plan) => {
-                  const count = orgs.filter(
-                    (o) => o.plan?.id === plan.id || o.plan?.name === plan.name
-                  ).length;
-
-                  return (
-                    <div
-                      key={plan.id}
-                      className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 transition-all hover:border-emerald-500/40 shadow-xs"
-                    >
-                      <div className="space-y-1">
-                        <span className="text-sm font-bold text-slate-900">{plan.name}</span>
-                        <p className="text-xs font-semibold text-emerald-600">
-                          {formatCurrency(plan.price)} <span className="text-[10px] text-slate-500 font-normal">/ {plan.billingInterval.toLowerCase()}</span>
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <Badge variant="outline" className="font-bold text-emerald-700 border-emerald-200 bg-emerald-50">
-                          {count} Cafeteria{count !== 1 ? 's' : ''}
-                        </Badge>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* ── 6. Cafeterias Directory (Dropdown & Collapse Accordion) ── */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-            <div
-              onClick={() => setIsCafeteriasOpen((prev) => !prev)}
-              role="button"
-              tabIndex={0}
-              aria-expanded={isCafeteriasOpen}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  setIsCafeteriasOpen((prev) => !prev);
-                }
-              }}
-              className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 sm:p-5 text-left hover:bg-slate-50/80 transition-colors cursor-pointer gap-3"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
-                  <Building2 className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-base font-bold text-slate-900">
-                      Cafeterias
-                    </h2>
-                    <Badge variant="outline" className="font-bold text-emerald-700 border-emerald-200 bg-emerald-50 text-[11px]">
-                      {filteredOrgs.length}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-slate-500">
-                    Network directory and status
-                  </p>
-                </div>
-              </div>
-
-              <div
-                className="flex flex-wrap items-center gap-2.5 sm:gap-3"
-                onClick={(e) => e.stopPropagation()}
-                onKeyDown={(e) => e.stopPropagation()}
-              >
-                {/* Search Cafeterias */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                  <input
-                    type="text"
-                    value={searchOrgTerm}
-                    onChange={(e) => {
-                      setSearchOrgTerm(e.target.value);
-                      if (!isCafeteriasOpen) setIsCafeteriasOpen(true);
-                    }}
-                    placeholder="Search cafeteria..."
-                    className="rounded-xl border border-slate-300 bg-white pl-8 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
-                  />
-                  {searchOrgTerm && (
-                    <button
-                      onClick={() => setSearchOrgTerm('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  )}
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate('/organizations')}
-                  rightIcon={<ArrowRight className="h-4 w-4" />}
-                >
-                  Manage All
-                </Button>
-
-                {/* Dropdown & Collapse Toggle */}
-                <button
-                  type="button"
-                  onClick={() => setIsCafeteriasOpen((prev) => !prev)}
-                  className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 py-1.5 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 transition-colors cursor-pointer"
-                  aria-label={isCafeteriasOpen ? 'Collapse Cafeterias' : 'Expand Cafeterias'}
-                >
-                  <span>{isCafeteriasOpen ? 'Collapse' : 'Expand'}</span>
-                  {isCafeteriasOpen ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Collapsible Content */}
-            {isCafeteriasOpen && (
-              <div className="border-t border-slate-200">
-                <DataTable<OrganizationOverview>
-                  data={filteredOrgs.slice(0, 6)}
-                  columns={orgColumns}
-                  keyExtractor={(item: OrganizationOverview) => item.id}
-                />
-              </div>
-            )}
           </div>
         </div>
       )}
