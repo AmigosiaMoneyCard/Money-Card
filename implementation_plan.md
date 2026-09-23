@@ -1,158 +1,177 @@
-# Implementation Plan — Staff Audit Coupon ID, Action Hub Clean-Up, and Menu Analytics
+# Implementation Plan — Fix Cancellation API Exceptions, Remove Home Recharge Button, Reason Options, and Menu Dropdown
 
-This plan details technical designs and step-by-step changes for:
-1. Updating Coupon ID in Staff Performance & Operational Audit across Dashboard and Staff views.
-2. Comprehensive project documentation of architecture, workflows, and completed milestones.
-3. Clarifying Counter Manager vs Counter Staff roles and permissions in mobile operations.
-4. Mobile Active Card Action Hub clean-up: removing subheadings from all buttons, removing View Session & Transaction History button, merging Cancel/Edit Order into Food Orders with working Cancel and Edit flows, and making Cancel Top-up functional.
-5. Menu Analytics overhaul: replacing Avg Order Value with Menu Variety / Dishes Ordered, and displaying every ordered food item instead of only Samosa.
+This plan details technical designs and step-by-step changes to:
+1. Fix the backend TypeScript build failure that prevented deployment of `cancelRecharge` and `cancelOrder` endpoints to Render staging, causing 404 API exceptions on mobile cancellation actions.
+2. Robustly parse purchase items and handle branch matching in `analytics.controller.ts` so all ordered food items display in analytics.
+3. Remove the "Recharges" button from the mobile Home screen.
+4. Remove the "Customer Changed Mind" reason from both top-up void and food order cancellation dialogs across the mobile app.
+5. Convert the "ALL ORDERED MENU ITEMS" section in mobile Menu Analytics into an expandable dropdown accordion card.
 
 ## Visual Interface Design
 
-![Action Hub Clean-up and Menu Analytics Design](file:///C:/Users/damie/.gemini/antigravity-ide/brain/9c70217b-9240-4d11-907e-eaaf4a37b746/mobile_action_hub_and_menu_analytics_1790175298386.jpg)
+![Mobile Cancellation, Home Clean-up, and Menu Dropdown Design](file:///C:/Users/damie/.gemini/antigravity-ide/brain/9c70217b-9240-4d11-907e-eaaf4a37b746/mobile_topup_cancel_and_menu_dropdown_1790182631377.jpg)
 
 ## ASCII Wireframes
 
-### 1. Active Card Action Hub (Subheadings Removed, Clean Single-Line Buttons)
+### 1. Mobile Home Screen (Recharge Button Removed)
 ```
 +-------------------------------------------------------------+
-|                     Card: MC-001                      [QR]  |
-+-------------------------------------------------------------+
+| Hello, Alex                           [Manager]             |
+| Counter: Main Cafeteria                                     |
+| ----------------------------------------------------------- |
+|                                                             |
 | +---------------------------------------------------------+ |
-| | MC-001                       [ACTIVE]                   | |
-| | Rahul Sharma                                            | |
-| | ------------------------------------------------------- | |
-| | Balance: Rs 750.00                    Session Active    | |
+| |                    [ QR Icon ]                          | |
+| |                   SCAN QR CARD                          | |
+| |           Tap to Scan and Open Card Hub                 | |
 | +---------------------------------------------------------+ |
 |                                                             |
-| Card Actions & Operations                                   |
 | +---------------------------------------------------------+ |
-| | [Wallet]  Recharge Card                             (>) | |
-| +---------------------------------------------------------+ |
-| | [Cart]    Add Products                              (>) | |
-| +---------------------------------------------------------+ |
-| | [Clock]   Top-up History                            (>) | |
-| +---------------------------------------------------------+ |
-| | [Food]    Food Orders                               (>) | |
-| +---------------------------------------------------------+ |
-| | [Info]    Card Info & Statistics                    (>) | |
-| +---------------------------------------------------------+ |
-| | [Return]  Settle / Return Card                      (>) | |
+| | Today's Sales                  Transactions             | |
+| | Rs 3,450                       18 orders            [=] | |
 | +---------------------------------------------------------+ |
 |                                                             |
-| [ Scan Another Card ]                                       |
+| (Recharges button removed — clean focused dashboard)        |
 +-------------------------------------------------------------+
 ```
 
-### 2. Food Orders Sheet (Merged Cancel & Edit Order Flow)
+### 2. Cancel Top-up Dialog (Customer Changed Mind Removed)
 ```
 +-------------------------------------------------------------+
-| Food Orders                                             (X) |
-| 2 orders recorded on this card                              |
+| [!] Cancel Top-up?                                          |
 | ----------------------------------------------------------- |
+| This will void the top-up and deduct Rs 500.00 from the     |
+| card balance.                                               |
+|                                                             |
+| Select Cancellation Reason:                                 |
 | +---------------------------------------------------------+ |
-| | -Rs 140.00                                              | |
-| | 2x Chicken Biryani, 1x Lime Juice                       | |
-| | Staff: Counter Cashier 1         12:45 PM               | |
-| | [ Edit Order ]                      [ Cancel Order ]    | |
+| | Wrong Amount Entered                                [v] | |
 | +---------------------------------------------------------+ |
+| | - Wrong Amount Entered                                  | |
+| | - Duplicate Scan                                        | |
+| | - Payment Failed                                        | |
+| | - Other Reason                                          | |
 | +---------------------------------------------------------+ |
-| | -Rs 40.00                                               | |
-| | 2x Samosa, 1x Tea                                       | |
-| | Staff: Counter Cashier 1         11:30 AM               | |
-| | [ Edit Order ]                      [ Cancel Order ]    | |
-| +---------------------------------------------------------+ |
+|                                                             |
+| [ Keep Top-up ]                         [ Confirm Void ]    |
 +-------------------------------------------------------------+
 ```
 
-### 3. Analytics Menu Tab (Replaced Avg Order Value + All Ordered Items)
+### 3. Cancel Food Order Dialog (Customer Changed Mind Removed)
 ```
 +-------------------------------------------------------------+
-| [ Recharge ]                          [ Menu (Active) ]     |
+| [X] Cancel Food Order?                                      |
 | ----------------------------------------------------------- |
+| This will cancel the order and refund Rs 120.00 back to     |
+| the customer's card balance.                                |
+|                                                             |
+| Select Cancellation Reason:                                 |
+| +---------------------------------------------------------+ |
+| | Ordered Wrong Item                                  [v] | |
+| +---------------------------------------------------------+ |
+| | - Ordered Wrong Item                                    | |
+| | - Item Out of Stock                                     | |
+| | - Other Reason                                          | |
+| +---------------------------------------------------------+ |
+|                                                             |
+| [ Keep Order ]                          [ Refund & Cancel ] |
++-------------------------------------------------------------+
+```
+
+### 4. Menu Analytics Tab — Expandable Dropdown Accordion
+```
++-------------------------------------------------------------+
 | [ Food Sales: Rs 4,850 ]      [ Items Sold: 142 Units ]     |
 | [ Dishes Ordered: 14 Dishes ] [ Cancelled: 2 (Rs 80) ]      |
 |                                                             |
-| ALL ORDERED MENU ITEMS                            14 items  |
-| ----------------------------------------------------------- |
-| [Veg Rice]        42 units sold                  Rs 3,360   |
-| [Chicken Curry]   35 units sold                  Rs 4,200   |
-| [Sandwich]        28 units sold                  Rs 1,960   |
-| [Samosa]          24 units sold                    Rs 360   |
-| [Tea]             20 units sold                    Rs 200   |
-| [Paneer Tikka]    15 units sold                  Rs 2,250   |
+| +---------------------------------------------------------+ |
+| | ALL ORDERED MENU ITEMS                        14 items  | |
+| | Tap to view breakdown of all sold dishes            [^] | |
+| | ------------------------------------------------------- | |
+| | [Veg Rice]        42 units sold                Rs 3,360 | |
+| | [Chicken Curry]   35 units sold                Rs 4,200 | |
+| | [Sandwich]        28 units sold                Rs 1,960 | |
+| | [Samosa]          24 units sold                  Rs 360 | |
+| | [Tea]             20 units sold                  Rs 200 | |
+| | [Paneer Tikka]    15 units sold                Rs 2,250 | |
+| +---------------------------------------------------------+ |
 +-------------------------------------------------------------+
 ```
+
+## Root Cause Analysis for API Exception
+
+The mobile app threw `ApiException: [not_found] / Cannot POST /api/v1/card-sessions/transactions/:id/...` because Render staging backend has been failing to build since the recent commits.
+In `Backend Money Card/src/services/balanceStream.service.ts`:
+- `BalanceUpdatePayload.type` was typed as `'RECHARGE' | 'PURCHASE' | 'REFUND' | 'INIT'`, but `sessions.controller.ts` passed `'RECHARGE_CANCELLED'` and `'PURCHASE_CANCELLED'`.
+- Running `tsc` threw `TS2322: Type '"RECHARGE_CANCELLED"' is not assignable to type ...`.
+- Render's deployment pipeline uses `npm run build` (`prisma generate && tsc`), which caused all deploys to fail with `build_failed`.
+- The live Render server was stuck on an outdated build from September 19 that lacked the `cancelRecharge` and `cancelOrder` routes entirely.
 
 ## Proposed Changes
 
 ### Backend Sub-project (`Backend Money Card/`)
 
+#### [MODIFY] [balanceStream.service.ts](file:///D:/Money%20Card%20Project/Backend%20Money%20Card/src/services/balanceStream.service.ts)
+- Update `BalanceUpdatePayload` union type to include `'RECHARGE_CANCELLED'` and `'PURCHASE_CANCELLED'`.
+- This resolves the `tsc` compiler error and enables clean `npm run build` on Render staging.
+
 #### [MODIFY] [analytics.controller.ts](file:///D:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/analytics.controller.ts)
-- In `getOrgAnalytics` (line 167):
-  - Expand `prisma.transaction.findMany` include to fetch `session: { include: { card: true } }`.
-  - In `staffTxns.forEach`, populate `cardNumber` on all transaction activity records (`tx.session?.card?.physicalCardNumber || tx.session?.sessionCardNumber || 'MC-Card'`), along with `customerName` and `customerPhone`.
-  - In `branchMetricsMap`, calculate `productDemand` dynamically from `tx.items` of all `PURCHASE` transactions for each branch, instead of slicing inventory with fixed counts. Every purchased dish will be recorded with its actual `quantitySold` and `totalRevenue`.
-
-#### [MODIFY] [sessions.routes.ts](file:///D:/Money%20Card%20Project/Backend%20Money%20Card/src/routes/sessions.routes.ts)
-- Update authorization on `POST /transactions/:id/cancel-recharge` from `requirePermission(PermissionCode.RECHARGE)` to `requireAnyPermission(PermissionCode.RECHARGE, PermissionCode.PURCHASE)` so counter supervisors and authorized counter cashiers can void accidental top-ups at the counter.
-
----
-
-### Frontend Sub-project (`Frontend Money Card/`)
-
-#### [MODIFY] [StaffPage.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/staff/StaffPage.tsx)
-- In `handleOpenStaffAudit`, always re-fetch `apiService.analytics.getOverview()` so that staff audit activities and Coupon IDs are always fresh and updated with recent transactions.
-- Verify the Coupon ID column accurately formats `act.cardNumber` and does not fall back to empty dashes when card numbers are present.
-
-#### [MODIFY] [analytics.ts](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/services/mock/handlers/analytics.ts)
-- In mock analytics handler, ensure all `staffTxns` activity records populate `cardNumber`, `customerName`, and `customerPhone` from `mockStore.sessions` and `mockStore.cards`.
+- In `txWhere`, ensure transaction queries match transactions by both `branchId` and `session.branchId` (`OR: [{ branchId: effectiveBranchId }, { session: { branchId: effectiveBranchId } }]`) so transactions with null `branchId` are not dropped.
+- In `transactions.forEach`, robustly parse `tx.items`:
+  - Handle stringified JSON via `JSON.parse` fallback.
+  - Check both top-level arrays and `.orderItems` / `.items` fields.
+  - Fallback `branchId` to `tx.branchId || tx.session?.branchId || effectiveBranchId`.
+  - Extract item names from `it.itemName || it.productName || it.name || it.item_name`.
+  - Extract quantities and subtotals accurately.
 
 ---
 
 ### Mobile Sub-project (`Flutter Money card/`)
 
+#### [MODIFY] [home_screen.dart](file:///D:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/home/home_screen.dart)
+- Remove the `_buildQuickActionCard` for `Recharges` row beneath Today's Sales summary.
+- Staff recharge directly via the scan flow on the active card Action Hub.
+
+#### [MODIFY] [home_dashboard_test.dart](file:///D:/Money%20Card%20Project/Flutter%20Money%20card/test/features/home/home_dashboard_test.dart)
+- Update test assertion to verify `find.text('Recharges')` finds nothing on `HomeScreen`.
+
 #### [MODIFY] [pos_scan_purchase_screen.dart](file:///D:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/pos/pos_scan_purchase_screen.dart)
-- Action Hub Button Subheading Removal:
-  - In `_buildActionTile`, make `subtitle` optional and remove subtitle text from all action tiles (`Recharge Card`, `Add Products`, `Top-up History`, `Food Orders`, `Card Info & Statistics`, `Settle / Return Card`) so they render as clean, focused single-line buttons.
-- View Session Button Removal:
-  - Delete `OPTION 6: VIEW SESSION & TRANSACTION HISTORY` tile from the Action Hub layout.
-- Standalone Cancel / Edit Order Removal & Merge into Food Orders:
-  - Remove standalone `OPTION 3: CANCEL / EDIT RECENT ORDER` tile from the main Action Hub list.
-  - In `_showFoodOrdersSheet`, update each order card to show two operational action buttons:
-    - `Edit Order`: Displays confirmation, cancels the order with auto-refund, and immediately navigates to `/app/pos/${session.id}` with the items from that order pre-populated in the cart so staff can adjust quantities/items.
-    - `Cancel Order`: Prompts for reason and cancels the order with instant auto-refund back to card.
-- Top-up Cancel Functionality:
-  - In `_showTopUpHistorySheet`, keep the sheet responsive and wrap in `StatefulBuilder`.
-  - When `Cancel Top-up` is confirmed, call `sessionService.cancelRecharge`, refresh session data, and update the item badge to `CANCELLED` without dismissing the sheet unexpectedly.
-  - Check balance sufficiency before attempting void to give clear user feedback if balance was already spent.
+- Top-up Cancellation Dialog:
+  - Remove `Customer Changed Mind` from the reason dropdown items.
+  - Retain: `Wrong Amount Entered` (default), `Duplicate Scan`, `Payment Failed`, and `Other Reason`.
+- Food Order Cancellation Dialog:
+  - Remove `Customer Changed Mind` from the reason dropdown items.
+  - Change default selection to `Ordered Wrong Item`.
+  - Retain: `Ordered Wrong Item` (default), `Item Out of Stock`, and `Other Reason`.
+- Better Error Messages:
+  - In `catch (e)`, unwrap `ApiException` to display the backend's exact error message (e.g. `e.message`) instead of raw exception string `Cancellation failed: ApiException: ...`.
+
+#### [MODIFY] [recharges_screen.dart](file:///D:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/recharges/recharges_screen.dart)
+- Remove `Customer Changed Mind` from the top-up void reason dropdown.
 
 #### [MODIFY] [analytics_screen.dart](file:///D:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/analytics/analytics_screen.dart)
-- Replace "Avg Order Value" summary card with "Dishes Ordered" / "Menu Variety":
-  - Title: `Dishes Ordered` (or `Menu Variety`)
-  - Value: `${demands.length} Dishes`
-  - Subtitle: `${data.productsSoldCount} total units sold`
-  - Icon: `Icons.restaurant_outlined`
-- Popular Menu Items Section:
-  - Rename header from `POPULAR MENU ITEMS` to `ALL ORDERED MENU ITEMS`.
-  - Render every food item present in `data.productDemand` without truncation or limit.
-
-#### [MODIFY] [mock_api_interceptor.dart](file:///D:/Money%20Card%20Project/Flutter%20Money%20card/lib/core/network/interceptors/mock_api_interceptor.dart)
-- Populate `productDemand` dynamically from all `PURCHASE` transactions in mock data so that all purchased food items (Veg Rice, Chicken Curry, Sandwich, Samosa, Tea, Coffee, Paneer Tikka) appear in the list.
+- Convert "ALL ORDERED MENU ITEMS" into an expandable dropdown accordion card:
+  - Use a styled `Container` with an `ExpansionTile` or stateful expansion toggle.
+  - Header: `ALL ORDERED MENU ITEMS` with dish count badge (`${demands.length} items`) and expand/collapse chevron icon.
+  - Subtitle: `Tap to view ordered dishes` or summary text.
+  - Dropdown content: Render each ordered menu item with dish icon, item name, unit count, and total revenue.
+  - Default state: Expanded so staff see items immediately, with ability to collapse into a clean single-line header.
 
 ---
 
 ## Verification Plan
 
 ### Automated Tests
-- Run all frontend Vitest tests: `npm test -- --run` in `Frontend Money Card/`.
-- Run all Flutter unit & widget tests: `flutter test` in `Flutter Money card/`.
-- Run Flutter static analysis: `flutter analyze --no-pub` in `Flutter Money card/`.
-- Run backend unit tests: `npm test` in `Backend Money Card/`.
+- Run `npm run build` in `Backend Money Card/` to guarantee 0 TypeScript errors and confirm successful Prisma generation.
+- Run `npm test` in `Backend Money Card/` (10 test files, 100 tests).
+- Run `flutter analyze --no-pub` in `Flutter Money card/` to verify zero static analysis errors.
+- Run `flutter test` in `Flutter Money card/` to verify all unit and widget tests pass.
+- Run `npx tsc --noEmit` and `npm test -- --run` in `Frontend Money Card/`.
 
-### Manual & Hardware Verification
-- Check Staff Performance & Operational Audit modal in Web app: verify Coupon ID displays actual card numbers for purchases, recharges, and settlements.
-- Open Mobile POS Action Hub on Android device: verify all subheadings are removed, View Session button is gone, and standalone Cancel/Edit order button is merged into Food Orders.
-- Test "Edit Order" in Food Orders sheet: verify order is cancelled, balance refunded, and cart re-opened.
-- Test "Cancel Top-up" in Top-up History: verify balance is deducted and badge updates to CANCELLED.
-- Check Analytics Menu tab: verify "Avg Order Value" is replaced with "Dishes Ordered", and all ordered dishes are listed.
+### Manual & Staging Verification
+- Push to `origin/staging` and verify Render staging deployment succeeds with `status: "live"`.
+- Verify on mobile:
+  - Verify Home screen no longer displays the "Recharges" quick action button.
+  - Open active card session and tap "Top-up History" -> "Cancel Top-up". Verify reason dropdown does not include "Customer Changed Mind", and void completes successfully without API exception.
+  - In "Food Orders", tap "Cancel Order" and "Edit Order". Verify reason dropdown does not include "Customer Changed Mind", and cancellation/edit succeeds without API exception.
+  - Open "Analytics" -> "Menu" tab. Verify "ALL ORDERED MENU ITEMS" renders as an expandable dropdown card showing all recently purchased dishes.

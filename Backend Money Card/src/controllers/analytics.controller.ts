@@ -146,7 +146,14 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           ],
         }
       : {}),
-    ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
+    ...(effectiveBranchId
+      ? {
+          OR: [
+            { branchId: effectiveBranchId },
+            { session: { branchId: effectiveBranchId } },
+          ],
+        }
+      : {}),
     ...(fromDate || toDate ? { createdAt: dateFilter } : {}),
   };
 
@@ -414,7 +421,8 @@ export async function getOrgAnalytics(req: Request, res: Response) {
   const branchHourlyBuckets = new Map<string, Map<number, { count: number; volume: number }>>();
 
   transactions.forEach((tx) => {
-    const bm = branchMetricsMap.get(tx.branchId);
+    const targetBranchId = tx.branchId || tx.session?.branchId || effectiveBranchId;
+    const bm = targetBranchId ? branchMetricsMap.get(targetBranchId) : branchMetricsMap.get(tx.branchId);
     const txType = String(tx.type || '');
     const paymentMethod = String((tx as any).paymentMethod || '').toUpperCase();
     const isCancelled = Boolean((tx.items as any)?.isCancelled);
@@ -448,11 +456,12 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     }
 
     // Track hourly activity for live peak calculation
-    if (tx.branchId) {
-      let bBuckets = branchHourlyBuckets.get(tx.branchId);
+    const branchKey = targetBranchId || tx.branchId;
+    if (branchKey) {
+      let bBuckets = branchHourlyBuckets.get(branchKey);
       if (!bBuckets) {
         bBuckets = new Map<number, { count: number; volume: number }>();
-        branchHourlyBuckets.set(tx.branchId, bBuckets);
+        branchHourlyBuckets.set(branchKey, bBuckets);
       }
       const txHour = getLocalHourInTimezone(new Date(tx.createdAt), clientTimezone);
       const current = bBuckets.get(txHour) || { count: 0, volume: 0 };
@@ -471,22 +480,32 @@ export async function getOrgAnalytics(req: Request, res: Response) {
         bm.purchaseVolume += tx.amount;
         bm.totalRevenue += tx.amount;
       }
-      const orderList: any[] = Array.isArray(tx.items)
-        ? tx.items
-        : Array.isArray((tx.items as any)?.orderItems)
-        ? (tx.items as any).orderItems
+      let rawItems = tx.items;
+      if (typeof rawItems === 'string') {
+        try {
+          rawItems = JSON.parse(rawItems);
+        } catch (_) {
+          rawItems = [];
+        }
+      }
+      const orderList: any[] = Array.isArray(rawItems)
+        ? rawItems
+        : Array.isArray((rawItems as any)?.items)
+        ? (rawItems as any).items
+        : Array.isArray((rawItems as any)?.orderItems)
+        ? (rawItems as any).orderItems
         : [];
-      if (orderList.length > 0 && tx.branchId) {
-        let pMap = branchProductDemandMap.get(tx.branchId);
+      if (orderList.length > 0 && branchKey) {
+        let pMap = branchProductDemandMap.get(branchKey);
         if (!pMap) {
           pMap = new Map();
-          branchProductDemandMap.set(tx.branchId, pMap);
+          branchProductDemandMap.set(branchKey, pMap);
         }
         orderList.forEach((it) => {
-          const pId = String(it.productId || it.id || 'unknown');
-          const pName = String(it.itemName || it.productName || it.name || 'Food Item');
+          const pId = String(it.productId || it.id || it.product_id || 'unknown');
+          const pName = String(it.itemName || it.productName || it.name || it.item_name || 'Food Item');
           const qty = Number(it.quantity || it.qty || 1);
-          const rev = Number(it.subtotal || it.total || (it.unitPrice ? it.unitPrice * qty : 0));
+          const rev = Number(it.subtotal || it.total || (it.unitPrice ? it.unitPrice * qty : (it.price ? it.price * qty : 0)));
           if (bm) {
             bm.productsSoldCount += qty;
           }

@@ -197,7 +197,7 @@ void main() {
       expect(find.text('SCAN QR CARD'), findsOneWidget);
 
       // Quick action cards
-      expect(find.text('Recharges'), findsOneWidget);
+      expect(find.text('Recharges'), findsNothing);
     });
   });
 }

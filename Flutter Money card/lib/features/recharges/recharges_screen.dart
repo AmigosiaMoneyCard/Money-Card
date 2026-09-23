@@ -91,7 +91,6 @@ class _RechargesScreenState extends ConsumerState<RechargesScreen> {
                 initialValue: selectedReason,
                 items: const [
                   DropdownMenuItem(value: 'Wrong Amount Entered', child: Text('Wrong Amount Entered')),
-                  DropdownMenuItem(value: 'Customer Changed Mind', child: Text('Customer Changed Mind')),
                   DropdownMenuItem(value: 'Duplicate Scan', child: Text('Duplicate Scan')),
                   DropdownMenuItem(value: 'Payment Failed', child: Text('Payment Failed')),
                   DropdownMenuItem(value: 'Other Reason', child: Text('Other Reason')),

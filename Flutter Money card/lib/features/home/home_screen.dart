@@ -279,49 +279,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: AppSpacing.md),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildQuickActionCard(
-                      icon: Icons.receipt_long_outlined,
-                      label: 'Recharges',
-                      onTap: () => _safePush('/app/recharges'),
-                    ),
-                  ),
-                ],
-              ),
               const SizedBox(height: AppSpacing.xl),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildQuickActionCard({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return AppCard(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: AppColors.primary, size: 22),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimaryLight,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
       ),
     );
   }

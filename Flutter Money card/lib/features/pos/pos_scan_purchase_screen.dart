@@ -6,6 +6,7 @@ import '../../core/config/app_config.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/permission_constants.dart';
+import '../../core/errors/api_exception.dart';
 import '../../models/card.dart';
 import '../../models/card_session.dart';
 import '../../models/product.dart';
@@ -1580,7 +1581,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                 initialValue: selectedReason,
                 items: const [
                   DropdownMenuItem(value: 'Wrong Amount Entered', child: Text('Wrong Amount Entered')),
-                  DropdownMenuItem(value: 'Customer Changed Mind', child: Text('Customer Changed Mind')),
                   DropdownMenuItem(value: 'Duplicate Scan', child: Text('Duplicate Scan')),
                   DropdownMenuItem(value: 'Payment Failed', child: Text('Payment Failed')),
                   DropdownMenuItem(value: 'Other Reason', child: Text('Other Reason')),
@@ -1643,9 +1643,10 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       );
     } catch (e) {
       if (!mounted) return;
+      final msg = e is ApiException ? e.message : e.toString();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Cancellation failed: $e'),
+          content: Text('Cancellation failed: $msg'),
           backgroundColor: AppColors.error,
         ),
       );
@@ -1653,7 +1654,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
   }
 
   Future<void> _handleCancelOrder(String txId, double amount, CardSession session) async {
-    String selectedReason = 'Customer Changed Mind';
+    String selectedReason = 'Ordered Wrong Item';
     final customReasonCtrl = TextEditingController();
 
     final confirm = await showDialog<bool>(
@@ -1684,7 +1685,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
               DropdownButtonFormField<String>(
                 initialValue: selectedReason,
                 items: const [
-                  DropdownMenuItem(value: 'Customer Changed Mind', child: Text('Customer Changed Mind')),
                   DropdownMenuItem(value: 'Ordered Wrong Item', child: Text('Ordered Wrong Item')),
                   DropdownMenuItem(value: 'Item Out of Stock', child: Text('Item Out of Stock')),
                   DropdownMenuItem(value: 'Other Reason', child: Text('Other Reason')),
@@ -1747,9 +1747,10 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       );
     } catch (e) {
       if (!mounted) return;
+      final msg = e is ApiException ? e.message : e.toString();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Order cancellation failed: $e'),
+          content: Text('Order cancellation failed: $msg'),
           backgroundColor: AppColors.error,
         ),
       );
@@ -1853,9 +1854,10 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       await _refreshSession();
     } catch (e) {
       if (!mounted) return;
+      final msg = e is ApiException ? e.message : e.toString();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to edit order: $e'),
+          content: Text('Failed to edit order: $msg'),
           backgroundColor: AppColors.error,
         ),
       );
