@@ -52,6 +52,16 @@ app.get('/health', async (_req, res) => {
   }
 });
 
+// Prevent 304 stale caching on API responses
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api') || req.path.startsWith('/v1')) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+  next();
+});
+
 // Mount API routes with versatile prefixes for compatibility
 app.use('/api/v1', apiRouter);
 app.use('/api', apiRouter);

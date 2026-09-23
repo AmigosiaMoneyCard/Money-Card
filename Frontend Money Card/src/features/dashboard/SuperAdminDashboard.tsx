@@ -8,104 +8,48 @@ import { apiService } from '@/services/api';
 import type {
   OrganizationOverview,
   PlanChangeRequest,
-  Subscription,
 } from '@/types';
 import {
   Button,
   Badge,
   StatCard,
-  Select,
   LoadingState,
   ErrorState,
 } from '@/components/ui';
 import {
   Building2,
-  BarChart3,
   Users,
   ArrowRight,
   RefreshCw,
-  Layers,
   AlertTriangle,
   Sparkles,
+  Store,
+  UserCheck,
+  CheckCircle2,
   PlusCircle,
   Bell,
-  CheckCircle2,
+  Layers,
+  BarChart3,
 } from 'lucide-react';
-
-export type DatePreset = 'all' | 'today' | 'yesterday' | 'last7' | 'last30' | 'thisMonth' | 'custom';
-
-function formatLocalDate(d: Date): string {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-export function getPresetDates(preset: DatePreset): { startDate: string; endDate: string } {
-  const now = new Date();
-  const todayStr = formatLocalDate(now);
-
-  if (preset === 'today') {
-    return { startDate: todayStr, endDate: todayStr };
-  }
-  if (preset === 'yesterday') {
-    const yest = new Date(now);
-    yest.setDate(yest.getDate() - 1);
-    const yestStr = formatLocalDate(yest);
-    return { startDate: yestStr, endDate: yestStr };
-  }
-  if (preset === 'last7') {
-    const start = new Date(now);
-    start.setDate(start.getDate() - 7);
-    return { startDate: formatLocalDate(start), endDate: todayStr };
-  }
-  if (preset === 'last30') {
-    const start = new Date(now);
-    start.setDate(start.getDate() - 30);
-    return { startDate: formatLocalDate(start), endDate: todayStr };
-  }
-  if (preset === 'thisMonth') {
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { startDate: formatLocalDate(start), endDate: todayStr };
-  }
-
-  return { startDate: '', endDate: '' };
-}
 
 export function SuperAdminDashboard() {
   const navigate = useNavigate();
 
   const [orgs, setOrgs] = useState<OrganizationOverview[]>([]);
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [planRequests, setPlanRequests] = useState<PlanChangeRequest[]>([]);
-
-  const [selectedOrgId, setSelectedOrgId] = useState<string>('');
-  const [datePreset, setDatePreset] = useState<DatePreset>('all');
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
 
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const handlePresetChange = (preset: DatePreset) => {
-    setDatePreset(preset);
-    if (preset !== 'custom') {
-      const { startDate: s, endDate: e } = getPresetDates(preset);
-      setStartDate(s);
-      setEndDate(e);
-    }
-  };
 
   const fetchPlatformData = useCallback(async (isSilent = false) => {
     if (!isSilent) setIsLoading(true);
     setIsRefreshing(true);
     setError(null);
     try {
-      const [orgsRes, reqsRes, subsRes] = await Promise.all([
+      const [orgsRes, reqsRes] = await Promise.all([
         apiService.organizations.getOrganizations(),
         apiService.subscriptions.getPlanRequests(),
-        apiService.subscriptions.getAllSubscriptions(),
       ]);
 
       if (!orgsRes.success) {
@@ -115,55 +59,44 @@ export function SuperAdminDashboard() {
 
       setOrgs(orgsRes.data.items);
       if (reqsRes.success) setPlanRequests(reqsRes.data || []);
-      if (subsRes.success) setSubscriptions(subsRes.data || []);
     } catch {
       setError('Unable to load platform data. Please try again.');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [selectedOrgId, startDate, endDate]);
+  }, []);
 
   useEffect(() => {
     fetchPlatformData(false);
   }, [fetchPlatformData]);
 
-  const activeOrgsCount = useMemo(
-    () => orgs.filter((o) => o.status === 'ACTIVE').length,
+  const activeOrgs = useMemo(
+    () => orgs.filter((o) => o.status === 'ACTIVE'),
     [orgs]
   );
+  const activeOrgsCount = activeOrgs.length;
 
   const pendingRequests = useMemo(
     () => planRequests.filter((r) => r.status === 'PENDING'),
     [planRequests]
   );
 
-  // ── Super Admin B2B SaaS Business Metrics ─────────────────
-  const activeSubsCount = useMemo(() => {
-    if (selectedOrgId) {
-      const orgSub = subscriptions.find((s) => s.organizationId === selectedOrgId);
-      if (orgSub) return orgSub.status === 'ACTIVE' ? 1 : 0;
-      const org = orgs.find((o) => o.id === selectedOrgId);
-      return org?.status === 'ACTIVE' ? 1 : 0;
-    }
-    const fromSubs = subscriptions.filter((s) => s.status === 'ACTIVE').length;
-    if (fromSubs > 0) return fromSubs;
-    return orgs.filter((o) => o.status === 'ACTIVE').length;
-  }, [subscriptions, orgs, selectedOrgId]);
+  // ── Super Admin SaaS Platform Metrics (Active Only) ───────
+  const activeCardholdersCount = useMemo(
+    () => activeOrgs.reduce((sum, o) => sum + (o.usage?.activeCardCount ?? 0), 0),
+    [activeOrgs]
+  );
 
-  const pendingRequestsCount = useMemo(() => {
-    const list = selectedOrgId
-      ? planRequests.filter((r) => r.organizationId === selectedOrgId)
-      : planRequests;
-    return list.filter((r) => r.status === 'PENDING').length;
-  }, [planRequests, selectedOrgId]);
+  const activeCountersCount = useMemo(
+    () => activeOrgs.reduce((sum, o) => sum + (o.usage?.branchCount ?? 0), 0),
+    [activeOrgs]
+  );
 
-  const activeCardholdersCount = useMemo(() => {
-    const targetOrgs = selectedOrgId
-      ? orgs.filter((o) => o.id === selectedOrgId)
-      : orgs;
-    return targetOrgs.reduce((sum, o) => sum + (o.usage?.cardCount || 0), 0);
-  }, [orgs, selectedOrgId]);
+  const activeStaffCount = useMemo(
+    () => activeOrgs.reduce((sum, o) => sum + (o.usage?.staffCount ?? 0), 0),
+    [activeOrgs]
+  );
 
   return (
     <div className="space-y-6">
@@ -307,117 +240,30 @@ export function SuperAdminDashboard() {
         <ErrorState title="Could not load dashboard data" message={error} onRetry={() => fetchPlatformData(false)} />
       ) : (
         <div className="space-y-6">
-          {/* ── Filter Toolbar (Cafeteria Scope, Time Window, Refresh Data) ── */}
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Cafeteria Scope Filter */}
-              <div className="w-full sm:w-56">
-                <label htmlFor="dashboard-cafeteria-filter" className="mb-1 block text-[11px] font-medium text-slate-600">Cafeteria Scope</label>
-                <Select
-                  id="dashboard-cafeteria-filter"
-                  value={selectedOrgId}
-                  onChange={(e) => setSelectedOrgId(e.target.value)}
-                  options={[
-                    { value: '', label: 'All Cafeterias' },
-                    ...orgs.map((o) => ({ value: o.id, label: o.name })),
-                  ]}
-                />
-              </div>
-
-              {/* Time Window Filter */}
-              <div className="w-full sm:w-48">
-                <label htmlFor="dashboard-preset-filter" className="mb-1 block text-[11px] font-medium text-slate-600">Time Window</label>
-                <Select
-                  id="dashboard-preset-filter"
-                  value={datePreset}
-                  onChange={(e) => handlePresetChange(e.target.value as DatePreset)}
-                  options={[
-                    { value: 'all', label: 'All Time' },
-                    { value: 'today', label: 'Today' },
-                    { value: 'yesterday', label: 'Yesterday' },
-                    { value: 'last7', label: 'Last 7 Days' },
-                    { value: 'last30', label: 'Last 30 Days' },
-                    { value: 'thisMonth', label: 'This Month' },
-                    { value: 'custom', label: 'Custom Range' },
-                  ]}
-                />
-              </div>
-
-              {/* Custom Date Inputs (if selected) */}
-              {datePreset === 'custom' && (
-                <div className="flex flex-wrap items-end gap-2">
-                  <div>
-                    <label htmlFor="dashboard-start-date" className="mb-1 block text-[11px] font-medium text-slate-600">Start Date</label>
-                    <input
-                      id="dashboard-start-date"
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="dashboard-end-date" className="mb-1 block text-[11px] font-medium text-slate-600">End Date</label>
-                    <input
-                      id="dashboard-end-date"
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
-                    />
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const today = new Date().toISOString().split('T')[0];
-                      setStartDate(today);
-                      setEndDate(today);
-                    }}
-                    className="h-8 px-2.5 text-xs font-semibold border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer"
-                  >
-                    Reset to Today
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fetchPlatformData(true)}
-              isLoading={isRefreshing}
-              leftIcon={<RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />}
-              className="shrink-0 self-start lg:self-center"
-            >
-              Refresh Data
-            </Button>
-          </div>
-
-          {/* ── 4. Super Admin SaaS Platform Metrics (Cafeterias, Active Cardholders, Active Subscriptions, Plan Requests) ── */}
+          {/* ── 4. Super Admin SaaS Platform Metrics (Cafeterias, Active Cardholders, Active Counters, Staff Members) ── */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               label="Cafeterias"
-              value={`${activeOrgsCount} Active`}
+              value={`${activeOrgsCount} Cafeterias`}
               icon={<Building2 className="h-5 w-5 text-emerald-600" />}
             />
 
             <StatCard
               label="Active Cardholders"
-              value={`${activeCardholdersCount} User${activeCardholdersCount !== 1 ? 's' : ''}`}
+              value={`${activeCardholdersCount} Cardholders`}
               icon={<Users className="h-5 w-5 text-teal-600" />}
             />
 
             <StatCard
-              label="Active Subscriptions"
-              value={`${activeSubsCount} Active`}
-              icon={<Layers className="h-5 w-5 text-sky-600" />}
+              label="Active Counters"
+              value={`${activeCountersCount} Counters`}
+              icon={<Store className="h-5 w-5 text-sky-600" />}
             />
 
             <StatCard
-              label="Plan Requests"
-              value={`${pendingRequestsCount} Pending`}
-              icon={<Bell className="h-5 w-5 text-amber-600" />}
+              label="Staff Members"
+              value={`${activeStaffCount} Members`}
+              icon={<UserCheck className="h-5 w-5 text-amber-600" />}
             />
           </div>
         </div>

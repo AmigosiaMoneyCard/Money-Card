@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/database.js';
 import { sendError, sendSuccess } from '../utils/response.js';
-import { Role } from '@prisma/client';
+import { Role, OrgStatus } from '@prisma/client';
 
 function normalizeTimezone(tz?: string): string {
   if (!tz || typeof tz !== 'string' || tz.trim() === '') return 'Asia/Kolkata';
@@ -137,6 +137,13 @@ export async function getOrgAnalytics(req: Request, res: Response) {
   if (fromDate) dateFilter.gte = fromDate;
   if (toDate) dateFilter.lte = toDate;
 
+  const orgScope = orgId
+    ? { organizationId: orgId }
+    : { organization: { status: OrgStatus.ACTIVE } };
+  const branchOrgScope = orgId
+    ? { branch: { organizationId: orgId } }
+    : { branch: { organization: { status: OrgStatus.ACTIVE } } };
+
   const txWhere: any = {
     ...(orgId
       ? {
@@ -145,7 +152,12 @@ export async function getOrgAnalytics(req: Request, res: Response) {
             { branch: { organizationId: orgId } },
           ],
         }
-      : {}),
+      : {
+          OR: [
+            { session: { organization: { status: OrgStatus.ACTIVE } } },
+            { branch: { organization: { status: OrgStatus.ACTIVE } } },
+          ],
+        }),
     ...(effectiveBranchId
       ? {
           OR: [
@@ -159,7 +171,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
 
   const [
     transactions,
-    totalCards,
+    activeCardsCount,
     blockedCardsCount,
     availableCardsCount,
     activeSessionsCount,
@@ -185,18 +197,19 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     }),
     prisma.card.count({
       where: {
-        ...(orgId ? { organizationId: orgId } : {}),
+        ...orgScope,
+        status: 'ACTIVE',
       },
     }),
     prisma.card.count({
       where: {
-        ...(orgId ? { organizationId: orgId } : {}),
+        ...orgScope,
         status: 'BLOCKED',
       },
     }),
     prisma.card.count({
       where: {
-        ...(orgId ? { organizationId: orgId } : {}),
+        ...orgScope,
         OR: [
           { status: 'AVAILABLE' },
           { assignmentStatus: 'UNASSIGNED' },
@@ -205,14 +218,14 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     }),
     prisma.cardSession.count({
       where: {
-        ...(orgId ? { organizationId: orgId } : {}),
+        ...orgScope,
         ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
         status: 'ACTIVE',
       },
     }),
     prisma.branch.findMany({
       where: {
-        ...(orgId ? { organizationId: orgId } : {}),
+        ...orgScope,
         ...(staffBranchIds ? { id: { in: staffBranchIds } } : {}),
       },
       include: {
@@ -222,14 +235,14 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     }),
     prisma.branchInventory.count({
       where: {
-        ...(orgId ? { branch: { organizationId: orgId } } : {}),
+        ...branchOrgScope,
         ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
         quantity: { lte: 5 },
       },
     }),
     prisma.cardSession.findMany({
       where: {
-        ...(orgId ? { organizationId: orgId } : {}),
+        ...orgScope,
         ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
         status: 'ACTIVE',
       },
@@ -247,14 +260,14 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     }),
     prisma.cardSession.count({
       where: {
-        ...(orgId ? { organizationId: orgId } : {}),
+        ...orgScope,
         ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
         status: 'SETTLED',
       },
     }),
     prisma.user.findMany({
       where: {
-        ...(orgId ? { organizationId: orgId } : {}),
+        ...orgScope,
         role: Role.STAFF,
         ...(effectiveBranchId
           ? {
@@ -280,7 +293,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     }),
     prisma.customerHistoryEvent.findMany({
       where: {
-        ...(orgId ? { organizationId: orgId } : {}),
+        ...orgScope,
         ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
         ...(fromDate || toDate ? { createdAt: dateFilter } : {}),
       },
@@ -289,7 +302,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     }),
     prisma.cardSession.findMany({
       where: {
-        ...(orgId ? { organizationId: orgId } : {}),
+        ...orgScope,
         ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
         ...(fromDate || toDate ? { issuedAt: dateFilter } : {}),
       },
@@ -913,7 +926,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     totalPurchaseVolume: Number(totalPurchaseVolume.toFixed(2)),
     totalRefundVolume: Number(totalRefundVolume.toFixed(2)),
     activeSessionsCount,
-    activeCardsCount: totalCards,
+    activeCardsCount,
     lowStockItemsCount: lowStockCount,
     branchPerformance: Array.from(branchMetricsMap.values()),
     staffPerformance,
@@ -982,6 +995,10 @@ export async function getPeakAnalytics(req: Request, res: Response) {
   if (startDate) dateFilter.gte = new Date(startDate.includes('T') ? startDate : `${startDate}T00:00:00.000Z`);
   if (endDate) dateFilter.lte = new Date(endDate.includes('T') ? endDate : `${endDate}T23:59:59.999Z`);
 
+  const peakOrgScope = orgId
+    ? { organizationId: orgId }
+    : { organization: { status: OrgStatus.ACTIVE } };
+
   const txWhere: any = {
     ...(orgId
       ? {
@@ -990,7 +1007,12 @@ export async function getPeakAnalytics(req: Request, res: Response) {
             { branch: { organizationId: orgId } },
           ],
         }
-      : {}),
+      : {
+          OR: [
+            { session: { organization: { status: OrgStatus.ACTIVE } } },
+            { branch: { organization: { status: OrgStatus.ACTIVE } } },
+          ],
+        }),
     ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
     ...(startDate || endDate ? { createdAt: dateFilter } : {}),
   };
@@ -1003,14 +1025,14 @@ export async function getPeakAnalytics(req: Request, res: Response) {
     }),
     prisma.product.findMany({
       where: {
-        ...(orgId ? { organizationId: orgId } : {}),
+        ...peakOrgScope,
         status: { not: 'ARCHIVED' },
       },
       include: { inventoryItems: true },
     }),
     prisma.branch.findMany({
       where: {
-        ...(orgId ? { organizationId: orgId } : {}),
+        ...peakOrgScope,
         ...(staffBranchIds ? { id: { in: staffBranchIds } } : {}),
       },
     }),

@@ -116,7 +116,13 @@ export function SuperAdminAnalyticsView() {
 
       setAnalytics(analyticsRes.data);
       if (peakRes.success) setPeakData(peakRes.data);
-      if (orgsRes.success) setOrgs(orgsRes.data.items);
+      if (orgsRes.success) {
+        const fetchedOrgs = orgsRes.data.items;
+        setOrgs(fetchedOrgs);
+        if (selectedOrgId && !fetchedOrgs.some((o) => o.id === selectedOrgId && o.status === 'ACTIVE')) {
+          setSelectedOrgId('');
+        }
+      }
       if (branchesRes.success) setBranches(branchesRes.data.items);
     } catch {
       setError('Unable to connect to the server. Please try again.');
@@ -130,8 +136,9 @@ export function SuperAdminAnalyticsView() {
     fetchPlatformData(false);
   }, [fetchPlatformData]);
 
-  const selectedOrg = useMemo(() => orgs.find((o) => o.id === selectedOrgId), [orgs, selectedOrgId]);
-  const cafeteriaDisplayName = selectedOrg ? selectedOrg.name : `${orgs.length} Cafeterias`;
+  const activeOrgs = useMemo(() => orgs.filter((o) => o.status === 'ACTIVE'), [orgs]);
+  const selectedOrg = useMemo(() => activeOrgs.find((o) => o.id === selectedOrgId), [activeOrgs, selectedOrgId]);
+  const cafeteriaDisplayName = selectedOrg ? selectedOrg.name : `${activeOrgs.length} Cafeterias`;
   const dateRangeLabel = startDate && endDate ? `${startDate} to ${endDate}` : 'Custom Range';
 
   // Helper to compile report options
@@ -247,7 +254,7 @@ export function SuperAdminAnalyticsView() {
               onChange={(e) => setSelectedOrgId(e.target.value)}
               options={[
                 { value: '', label: 'All Cafeterias' },
-                ...orgs.map((o) => ({ value: o.id, label: o.name })),
+                ...activeOrgs.map((o) => ({ value: o.id, label: o.name })),
               ]}
               className="h-9 py-1.5 pl-3 pr-8 text-xs leading-normal font-medium"
             />
@@ -372,7 +379,7 @@ export function SuperAdminAnalyticsView() {
                 </div>
                 <div className="mt-2">
                   <p className="font-mono text-2xl font-bold text-slate-900">
-                    {selectedOrgId ? '1 Cafeteria' : `${orgs.length} Cafeterias`}
+                    {selectedOrgId ? '1 Cafeteria' : `${activeOrgs.length} Cafeterias`}
                   </p>
                   <p className="mt-1 text-xs text-slate-500 leading-snug">
                     {selectedOrg ? selectedOrg.name : 'Total registered client cafeterias'}

@@ -1,177 +1,184 @@
-# Implementation Plan — Fix Cancellation API Exceptions, Remove Home Recharge Button, Reason Options, and Menu Dropdown
+# Implementation Plan - Super Admin Dashboard Clean-Up & Real-Time Analytics Synchronization
 
-This plan details technical designs and step-by-step changes to:
-1. Fix the backend TypeScript build failure that prevented deployment of `cancelRecharge` and `cancelOrder` endpoints to Render staging, causing 404 API exceptions on mobile cancellation actions.
-2. Robustly parse purchase items and handle branch matching in `analytics.controller.ts` so all ordered food items display in analytics.
-3. Remove the "Recharges" button from the mobile Home screen.
-4. Remove the "Customer Changed Mind" reason from both top-up void and food order cancellation dialogs across the mobile app.
-5. Convert the "ALL ORDERED MENU ITEMS" section in mobile Menu Analytics into an expandable dropdown accordion card.
+## Overview
+This plan incorporates the latest user requirements:
+1. Super Admin Dashboard 4 Metric Boxes:
+   - Box 1: 'Cafeterias' (live active cafeterias)
+   - Box 2: 'Active Cardholders' (live active cards in active cafeterias, fixing raw 8 Users count)
+   - Box 3: 'Active Counters' (replaces Active Subscriptions)
+   - Box 4: 'Staff Members' (replaces Plan Requests)
+   - Strictly zero sub-headings or subtitles inside all 4 boxes (pure minimalism: icon, label, and bold value only).
+2. Super Admin Dashboard Filters:
+   - Completely remove the 'Cafeteria Scope' (All Cafeterias) dropdown and 'Time Window' (All Time) filter toolbar.
+3. Analytics Sync on Organization Deletion:
+   - When an organization is deleted or deactivated, platform analytics must immediately update, purging deleted org data from transactions, cards, active sessions, and cafeteria filter dropdowns.
+   - Prevent browser 304 conditional cache hits on admin and analytics routes.
+4. Mobile App Login Screen:
+   - Remove the 'Server: ...' host indicator pill displayed under the password field and login button on the staff login screen.
 
-## Visual Interface Design
-
-![Mobile Cancellation, Home Clean-up, and Menu Dropdown Design](file:///C:/Users/damie/.gemini/antigravity-ide/brain/9c70217b-9240-4d11-907e-eaaf4a37b746/mobile_topup_cancel_and_menu_dropdown_1790182631377.jpg)
-
-## ASCII Wireframes
-
-### 1. Mobile Home Screen (Recharge Button Removed)
-```
-+-------------------------------------------------------------+
-| Hello, Alex                           [Manager]             |
-| Counter: Main Cafeteria                                     |
-| ----------------------------------------------------------- |
-|                                                             |
-| +---------------------------------------------------------+ |
-| |                    [ QR Icon ]                          | |
-| |                   SCAN QR CARD                          | |
-| |           Tap to Scan and Open Card Hub                 | |
-| +---------------------------------------------------------+ |
-|                                                             |
-| +---------------------------------------------------------+ |
-| | Today's Sales                  Transactions             | |
-| | Rs 3,450                       18 orders            [=] | |
-| +---------------------------------------------------------+ |
-|                                                             |
-| (Recharges button removed — clean focused dashboard)        |
-+-------------------------------------------------------------+
-```
-
-### 2. Cancel Top-up Dialog (Customer Changed Mind Removed)
-```
-+-------------------------------------------------------------+
-| [!] Cancel Top-up?                                          |
-| ----------------------------------------------------------- |
-| This will void the top-up and deduct Rs 500.00 from the     |
-| card balance.                                               |
-|                                                             |
-| Select Cancellation Reason:                                 |
-| +---------------------------------------------------------+ |
-| | Wrong Amount Entered                                [v] | |
-| +---------------------------------------------------------+ |
-| | - Wrong Amount Entered                                  | |
-| | - Duplicate Scan                                        | |
-| | - Payment Failed                                        | |
-| | - Other Reason                                          | |
-| +---------------------------------------------------------+ |
-|                                                             |
-| [ Keep Top-up ]                         [ Confirm Void ]    |
-+-------------------------------------------------------------+
-```
-
-### 3. Cancel Food Order Dialog (Customer Changed Mind Removed)
-```
-+-------------------------------------------------------------+
-| [X] Cancel Food Order?                                      |
-| ----------------------------------------------------------- |
-| This will cancel the order and refund Rs 120.00 back to     |
-| the customer's card balance.                                |
-|                                                             |
-| Select Cancellation Reason:                                 |
-| +---------------------------------------------------------+ |
-| | Ordered Wrong Item                                  [v] | |
-| +---------------------------------------------------------+ |
-| | - Ordered Wrong Item                                    | |
-| | - Item Out of Stock                                     | |
-| | - Other Reason                                          | |
-| +---------------------------------------------------------+ |
-|                                                             |
-| [ Keep Order ]                          [ Refund & Cancel ] |
-+-------------------------------------------------------------+
-```
-
-### 4. Menu Analytics Tab — Expandable Dropdown Accordion
-```
-+-------------------------------------------------------------+
-| [ Food Sales: Rs 4,850 ]      [ Items Sold: 142 Units ]     |
-| [ Dishes Ordered: 14 Dishes ] [ Cancelled: 2 (Rs 80) ]      |
-|                                                             |
-| +---------------------------------------------------------+ |
-| | ALL ORDERED MENU ITEMS                        14 items  | |
-| | Tap to view breakdown of all sold dishes            [^] | |
-| | ------------------------------------------------------- | |
-| | [Veg Rice]        42 units sold                Rs 3,360 | |
-| | [Chicken Curry]   35 units sold                Rs 4,200 | |
-| | [Sandwich]        28 units sold                Rs 1,960 | |
-| | [Samosa]          24 units sold                  Rs 360 | |
-| | [Tea]             20 units sold                  Rs 200 | |
-| | [Paneer Tikka]    15 units sold                Rs 2,250 | |
-| +---------------------------------------------------------+ |
-+-------------------------------------------------------------+
-```
-
-## Root Cause Analysis for API Exception
-
-The mobile app threw `ApiException: [not_found] / Cannot POST /api/v1/card-sessions/transactions/:id/...` because Render staging backend has been failing to build since the recent commits.
-In `Backend Money Card/src/services/balanceStream.service.ts`:
-- `BalanceUpdatePayload.type` was typed as `'RECHARGE' | 'PURCHASE' | 'REFUND' | 'INIT'`, but `sessions.controller.ts` passed `'RECHARGE_CANCELLED'` and `'PURCHASE_CANCELLED'`.
-- Running `tsc` threw `TS2322: Type '"RECHARGE_CANCELLED"' is not assignable to type ...`.
-- Render's deployment pipeline uses `npm run build` (`prisma generate && tsc`), which caused all deploys to fail with `build_failed`.
-- The live Render server was stuck on an outdated build from September 19 that lacked the `cancelRecharge` and `cancelOrder` routes entirely.
-
-## Proposed Changes
-
-### Backend Sub-project (`Backend Money Card/`)
-
-#### [MODIFY] [balanceStream.service.ts](file:///D:/Money%20Card%20Project/Backend%20Money%20Card/src/services/balanceStream.service.ts)
-- Update `BalanceUpdatePayload` union type to include `'RECHARGE_CANCELLED'` and `'PURCHASE_CANCELLED'`.
-- This resolves the `tsc` compiler error and enables clean `npm run build` on Render staging.
-
-#### [MODIFY] [analytics.controller.ts](file:///D:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/analytics.controller.ts)
-- In `txWhere`, ensure transaction queries match transactions by both `branchId` and `session.branchId` (`OR: [{ branchId: effectiveBranchId }, { session: { branchId: effectiveBranchId } }]`) so transactions with null `branchId` are not dropped.
-- In `transactions.forEach`, robustly parse `tx.items`:
-  - Handle stringified JSON via `JSON.parse` fallback.
-  - Check both top-level arrays and `.orderItems` / `.items` fields.
-  - Fallback `branchId` to `tx.branchId || tx.session?.branchId || effectiveBranchId`.
-  - Extract item names from `it.itemName || it.productName || it.name || it.item_name`.
-  - Extract quantities and subtotals accurately.
+![Visual Sketch of Minimal 4 Boxes and Clean Dashboard](file:///C:/Users/damie/.gemini/antigravity-ide/brain/9c70217b-9240-4d11-907e-eaaf4a37b746/superadmin_minimal_4_stat_cards_1790186447422.jpg)
 
 ---
 
-### Mobile Sub-project (`Flutter Money card/`)
+## Wireframes
 
-#### [MODIFY] [home_screen.dart](file:///D:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/home/home_screen.dart)
-- Remove the `_buildQuickActionCard` for `Recharges` row beneath Today's Sales summary.
-- Staff recharge directly via the scan flow on the active card Action Hub.
+### Mobile Login Screen (Before vs After)
 
-#### [MODIFY] [home_dashboard_test.dart](file:///D:/Money%20Card%20Project/Flutter%20Money%20card/test/features/home/home_dashboard_test.dart)
-- Update test assertion to verify `find.text('Recharges')` finds nothing on `HomeScreen`.
+```
+BEFORE:
++------------------------------------+
+|            MONEY CARD              |
+|            Staff Login             |
+|                                    |
+| Phone Number                       |
+| [ 9876543210                     ] |
+|                                    |
+| Password                           |
+| [ ********                     [v] ] |
+|                                    |
+| [           Login Button         ] |
+|                                    |
+|    (o) Server: 10.0.2.2:3000 [*]   | <-- Remove this
++------------------------------------+
 
-#### [MODIFY] [pos_scan_purchase_screen.dart](file:///D:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/pos/pos_scan_purchase_screen.dart)
-- Top-up Cancellation Dialog:
-  - Remove `Customer Changed Mind` from the reason dropdown items.
-  - Retain: `Wrong Amount Entered` (default), `Duplicate Scan`, `Payment Failed`, and `Other Reason`.
-- Food Order Cancellation Dialog:
-  - Remove `Customer Changed Mind` from the reason dropdown items.
-  - Change default selection to `Ordered Wrong Item`.
-  - Retain: `Ordered Wrong Item` (default), `Item Out of Stock`, and `Other Reason`.
-- Better Error Messages:
-  - In `catch (e)`, unwrap `ApiException` to display the backend's exact error message (e.g. `e.message`) instead of raw exception string `Cancellation failed: ApiException: ...`.
+AFTER:
++------------------------------------+
+|            MONEY CARD              |
+|            Staff Login             |
+|                                    |
+| Phone Number                       |
+| [ 9876543210                     ] |
+|                                    |
+| Password                           |
+| [ ********                     [v] ] |
+|                                    |
+| [           Login Button         ] |
+|                                    |
++------------------------------------+
+```
 
-#### [MODIFY] [recharges_screen.dart](file:///D:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/recharges/recharges_screen.dart)
-- Remove `Customer Changed Mind` from the top-up void reason dropdown.
+### Super Admin Dashboard (4 Minimal Boxes, Zero Sub-Headings)
 
-#### [MODIFY] [analytics_screen.dart](file:///D:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/analytics/analytics_screen.dart)
-- Convert "ALL ORDERED MENU ITEMS" into an expandable dropdown accordion card:
-  - Use a styled `Container` with an `ExpansionTile` or stateful expansion toggle.
-  - Header: `ALL ORDERED MENU ITEMS` with dish count badge (`${demands.length} items`) and expand/collapse chevron icon.
-  - Subtitle: `Tap to view ordered dishes` or summary text.
-  - Dropdown content: Render each ordered menu item with dish icon, item name, unit count, and total revenue.
-  - Default state: Expanded so staff see items immediately, with ability to collapse into a clean single-line header.
+```
++------------------------------------------------------------------------------------+
+| Welcome back, Super Admin                                         [ Refresh Data ] |
++------------------------------------------------------------------------------------+
+| Action Needed: 1 Plan Request Awaiting Approval                 [ Review Requests ]|
++------------------------------------------------------------------------------------+
+| QUICK ACTIONS                                                                      |
+| [ Cafeterias ]    [ Subscriptions ]    [ System Settings ]    [ View Analytics ]   |
++------------------------------------------------------------------------------------+
+| SAAS PLATFORM METRICS (Strictly minimal: Icon + Label + Value, No Sub-headings)   |
+|                                                                                    |
+| +------------------+ +------------------+ +------------------+ +------------------+|
+| | [Building]       | | [Card/Users]     | | [Store]          | | [UserCheck]      ||
+| | Cafeterias       | | Active           | | Active Counters  | | Staff Members    ||
+| |                  | | Cardholders      | |                  | |                  ||
+| | 1 Active         | | 1 User           | | 2 Counters       | | 4 Members        ||
+| +------------------+ +------------------+ +------------------+ +------------------+|
++------------------------------------------------------------------------------------+
+```
+
+---
+
+## Technical Design
+
+### 1. Super Admin 4 Metric Cards (Zero Sub-Headings)
+The 4 metric boxes are rendered using `StatCard` with only `label`, `value`, and `icon`:
+- `description`, `subtitle`, and helper text are completely omitted.
+- Box 1: `label="Cafeterias"`, `value={`${activeOrgsCount} Active`}`, `Building2` icon.
+- Box 2: `label="Active Cardholders"`, `value={`${activeCardholdersCount} User${activeCardholdersCount !== 1 ? 's' : ''}`}`, `Users` icon.
+- Box 3: `label="Active Counters"`, `value={`${activeCountersCount} Counter${activeCountersCount !== 1 ? 's' : ''}`}`, `Store` icon.
+- Box 4: `label="Staff Members"`, `value={`${activeStaffCount} Member${activeStaffCount !== 1 ? 's' : ''}`}`, `UserCheck` icon.
+
+### 2. Removal of Dashboard Filters
+- The entire filter container with Cafeteria Scope and Time Window is removed from `SuperAdminDashboard.tsx`.
+- The `Refresh Data` button is moved into the top welcome header alongside `Welcome back, Super Admin`.
+
+### 3. Analytics Real-Time Sync on Organization Deletion
+- Backend `deleteOrganization`: ensures `transaction.deleteMany` targets `{ OR: [{ branch: { organizationId: id } }, { session: { organizationId: id } }] }` before purging sessions and cards.
+- Backend `analytics.controller.ts`: overview and peak analytics automatically scope all global queries to `{ organization: { status: OrgStatus.ACTIVE } }`, so any deleted or inactive organization data is never aggregated.
+- Frontend `SuperAdminAnalyticsView.tsx`: cafeteria filter list is strictly filtered by `o.status === 'ACTIVE'`. If a selected cafeteria is deleted, `selectedOrgId` resets to `''` and analytics refresh immediately.
+- Frontend Axios client & Backend server: set `Cache-Control: no-cache, no-store, must-revalidate` to avoid stale 304 browser cache hits.
+
+### 4. Mobile Login Screen Host Indicator Removal
+- In `Flutter Money card/lib/features/auth/login_screen.dart`, lines 266-310 (`Server: ${AppConfig.displayHost}`) are removed from the build tree.
+
+---
+
+## Proposed Changes
+
+### Flutter Mobile App (`Flutter Money card/`)
+
+#### [MODIFY] [login_screen.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/auth/login_screen.dart)
+- Remove `ServerConfigDialog` quick config pill (`Server: ${AppConfig.displayHost}`) under the login button.
+
+#### [MODIFY] [login_screen_test.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/test/features/auth/login_screen_test.dart)
+- Assert that `'Server:'` text does not appear on the login screen.
+
+---
+
+### Backend API (`Backend Money Card/`)
+
+#### [MODIFY] [admin.controller.ts](file:///d:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/admin.controller.ts)
+- In `getOrganizations`:
+  - Group active cards (`prisma.card.groupBy` with `status: CardStatus.ACTIVE`).
+  - Group active sessions (`prisma.cardSession.groupBy` with `status: SessionStatus.ACTIVE`).
+  - Add `activeCardCount` and `activeSessionCount` to `usage` payload.
+- In `deleteOrganization`:
+  - Delete transactions with `where: { OR: [{ branch: { organizationId: id } }, { session: { organizationId: id } }] }` before deleting sessions and cards.
+
+#### [MODIFY] [analytics.controller.ts](file:///d:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/analytics.controller.ts)
+- In `getOverview` and `getPeakAnalytics`:
+  - When `orgId` is omitted, scope transactions, cards, sessions, branches, and staff to active organizations (`organization: { status: OrgStatus.ACTIVE } }`).
+  - Compute `activeCardsCount` as `prisma.card.count` for cards with `status: 'ACTIVE'`.
+
+#### [MODIFY] [server.ts](file:///d:/Money%20Card%20Project/Backend%20Money%20Card/src/server.ts)
+- Add cache control headers on admin and analytics routes to set `Cache-Control: no-store, no-cache, must-revalidate`.
+
+---
+
+### Frontend Web Admin (`Frontend Money Card/`)
+
+#### [MODIFY] [entities.ts](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/types/entities.ts)
+- Extend `OrganizationOverview.usage` with `activeCardCount?: number` and `activeSessionCount?: number`.
+
+#### [MODIFY] [SuperAdminDashboard.tsx](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/dashboard/SuperAdminDashboard.tsx)
+- Remove Cafeteria Scope and Time Window filter container (lines 310-385).
+- Move `Refresh Data` button to the header next to `Welcome back, Super Admin`.
+- Compute the 4 minimal boxes with zero sub-headings/subtitles:
+  1. Cafeterias: `${activeOrgsCount} Active`
+  2. Active Cardholders: `${activeCardholdersCount} User${activeCardholdersCount !== 1 ? 's' : ''}` (from `o.usage?.activeCardCount`)
+  3. Active Counters: `${activeCountersCount} Counter${activeCountersCount !== 1 ? 's' : ''}` (from `o.usage?.branchCount`)
+  4. Staff Members: `${activeStaffCount} Member${activeStaffCount !== 1 ? 's' : ''}` (from `o.usage?.staffCount`)
+- Clean up unused filter state (`selectedOrgId`, `datePreset`, `startDate`, `endDate`).
+
+#### [MODIFY] [SuperAdminAnalyticsView.tsx](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/analytics/SuperAdminAnalyticsView.tsx)
+- Strictly filter cafeteria selector to `o.status === 'ACTIVE'`.
+- Reset `selectedOrgId` to `''` if selected cafeteria is deleted.
+
+#### [MODIFY] [client.ts](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/services/api/client.ts)
+- Include default request headers `Cache-Control: no-cache` and `Pragma: no-cache`.
+
+#### [MODIFY] [mock/handlers/organizations.ts](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/services/mock/handlers/organizations.ts)
+- Return `activeCardCount` in mock organization usage for test suite compatibility.
 
 ---
 
 ## Verification Plan
 
 ### Automated Tests
-- Run `npm run build` in `Backend Money Card/` to guarantee 0 TypeScript errors and confirm successful Prisma generation.
-- Run `npm test` in `Backend Money Card/` (10 test files, 100 tests).
-- Run `flutter analyze --no-pub` in `Flutter Money card/` to verify zero static analysis errors.
-- Run `flutter test` in `Flutter Money card/` to verify all unit and widget tests pass.
-- Run `npx tsc --noEmit` and `npm test -- --run` in `Frontend Money Card/`.
+1. Backend Tests:
+   `npm test` in `Backend Money Card/` (100 tests must pass).
+   `npm run build` in `Backend Money Card/` (0 errors).
+2. Frontend Web Tests:
+   `npm test -- --run` in `Frontend Money Card/` (267 tests must pass).
+   `npx tsc --noEmit` in `Frontend Money Card/` (0 errors).
+3. Flutter Mobile Tests:
+   `flutter test` in `Flutter Money card/` (168 tests must pass).
+   `flutter analyze --no-pub` in `Flutter Money card/` (0 errors/warnings).
 
-### Manual & Staging Verification
-- Push to `origin/staging` and verify Render staging deployment succeeds with `status: "live"`.
-- Verify on mobile:
-  - Verify Home screen no longer displays the "Recharges" quick action button.
-  - Open active card session and tap "Top-up History" -> "Cancel Top-up". Verify reason dropdown does not include "Customer Changed Mind", and void completes successfully without API exception.
-  - In "Food Orders", tap "Cancel Order" and "Edit Order". Verify reason dropdown does not include "Customer Changed Mind", and cancellation/edit succeeds without API exception.
-  - Open "Analytics" -> "Menu" tab. Verify "ALL ORDERED MENU ITEMS" renders as an expandable dropdown card showing all recently purchased dishes.
+### Manual Verification
+1. Mobile Login Screen: Verify absence of `Server: ...` under password and login button.
+2. Super Admin Dashboard: Verify that Cafeteria Scope and Time Window toolbar is removed, and 4 cards read: Cafeterias, Active Cardholders, Active Counters, Staff Members with no subheadings or descriptions.
+3. Organization Deletion & Analytics: Delete a cafeteria or view analytics to confirm metrics update immediately and excluded org data is not counted.
