@@ -1,4 +1,4 @@
-import { formatCurrency, formatDate, extractTransactionItems } from '@/utils';
+import { formatCurrency, formatDate, extractTransactionItems, formatLocalDate } from '@/utils';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiService } from '@/services/api';
 import { usePermissions, useAuth, useBranch } from '@/hooks';
@@ -77,10 +77,10 @@ export function CounterStaffCardsView() {
   const [isLoadingTxns, setIsLoadingTxns] = useState(false);
 
   // Analytics Custom Range Date States (Strictly Custom Range, Default: Today)
-  const [customStartDate, setCustomStartDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [customEndDate, setCustomEndDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [appliedStartDate, setAppliedStartDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [appliedEndDate, setAppliedEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [customStartDate, setCustomStartDate] = useState(() => formatLocalDate(new Date()));
+  const [customEndDate, setCustomEndDate] = useState(() => formatLocalDate(new Date()));
+  const [appliedStartDate, setAppliedStartDate] = useState(() => formatLocalDate(new Date()));
+  const [appliedEndDate, setAppliedEndDate] = useState(() => formatLocalDate(new Date()));
   const [counterAnalyticsData, setCounterAnalyticsData] = useState<any>(null);
   const [isLoadingCounterAnalytics, setIsLoadingCounterAnalytics] = useState(false);
 
@@ -203,7 +203,7 @@ export function CounterStaffCardsView() {
   }, [selectedCardForAnalytics, customStartDate, customEndDate, fetchCounterAnalytics, branches]);
 
   const handleResetToToday = useCallback(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = formatLocalDate(new Date());
     setCustomStartDate(today);
     setCustomEndDate(today);
     setAppliedStartDate(today);

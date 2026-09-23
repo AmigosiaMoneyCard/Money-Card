@@ -636,6 +636,17 @@ export const mockAnalyticsHandlers = {
       activeStaffCount,
       totalStaffCount: orgStaffList.length,
       cardFleetAnalytics,
+      foodOrdersCount: totalPurchaseCount,
+      productsSoldCount: Math.round(totalPurchaseCount * 2.2),
+      dishesOrderedCount: 18,
+      cancelledOrdersCount: 2,
+      cancelledOrdersVolume: 180,
+      allProductDemand: [
+        { productId: 'prod_1', productName: 'Chicken Biryani', unitPrice: 280, quantitySold: 45, totalRevenue: 12600, orderCount: 38 },
+        { productId: 'prod_2', productName: 'Masala Dosa', unitPrice: 120, quantitySold: 34, totalRevenue: 4080, orderCount: 30 },
+        { productId: 'prod_3', productName: 'Paneer Makhani', unitPrice: 240, quantitySold: 28, totalRevenue: 6720, orderCount: 24 },
+        { productId: 'prod_4', productName: 'Cold Coffee', unitPrice: 80, quantitySold: 22, totalRevenue: 1760, orderCount: 19 },
+      ],
     });
   },
 

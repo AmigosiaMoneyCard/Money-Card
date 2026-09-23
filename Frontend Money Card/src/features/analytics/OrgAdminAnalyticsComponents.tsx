@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   TrendingUp,
@@ -17,6 +17,11 @@ import {
   ArrowRight,
   Download,
   Wallet,
+  ChefHat,
+  ShoppingBag,
+  UtensilsCrossed,
+  Ban,
+  Search,
 } from 'lucide-react';
 import { Card, StatCard, Badge, Button, Select, Modal, ModalFooter } from '@/components/ui';
 import { formatCurrency } from '@/utils/formatters';
@@ -877,5 +882,184 @@ export function OrgAdminBranchDetailModal({ branch, onClose }: BranchDetailModal
         </ModalFooter>
       </div>
     </Modal>
+  );
+}
+
+// ─── Menu Analytics Tab Section ──────────────────────────────────────────
+export interface MenuAnalyticsSectionProps {
+  analytics: AnalyticsOverview;
+}
+
+export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSectionProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const foodSales = analytics.totalPurchaseVolume ?? 0;
+  const foodOrders = analytics.foodOrdersCount ?? analytics.purchaseCount ?? 0;
+  const itemsSold = analytics.productsSoldCount ?? 0;
+  const dishesOrdered = analytics.dishesOrderedCount ?? (analytics.allProductDemand?.length ?? 0);
+  const cancelledOrders = analytics.cancelledOrdersCount ?? 0;
+
+  const rawDemandList = useMemo(() => {
+    return analytics.allProductDemand ?? [];
+  }, [analytics.allProductDemand]);
+
+  const filteredItems = useMemo(() => {
+    if (!searchTerm.trim()) return rawDemandList;
+    const lower = searchTerm.toLowerCase();
+    return rawDemandList.filter((item) =>
+      item.productName.toLowerCase().includes(lower)
+    );
+  }, [rawDemandList, searchTerm]);
+
+  return (
+    <div className="space-y-6">
+      {/* 4 Summary KPI Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Food Sales
+            </span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+              <UtensilsCrossed className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <p className="font-mono text-2xl font-bold text-slate-900">
+              {formatCurrency(foodSales)}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              {foodOrders} orders
+            </p>
+          </div>
+        </Card>
+
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Items Sold
+            </span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
+              <ShoppingBag className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <p className="font-mono text-2xl font-bold text-slate-900">
+              {itemsSold} Units
+            </p>
+            <p className="mt-1 text-[11px] text-slate-500">
+              Units sold
+            </p>
+          </div>
+        </Card>
+
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Dishes Ordered
+            </span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+              <ChefHat className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <p className="font-mono text-2xl font-bold text-slate-900">
+              {dishesOrdered} Ordered
+            </p>
+            <p className="mt-1 text-[11px] text-slate-500">
+              Dish varieties
+            </p>
+          </div>
+        </Card>
+
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Cancelled Orders
+            </span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+              <Ban className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <p className="font-mono text-2xl font-bold text-slate-900">
+              {cancelledOrders} Cancels
+            </p>
+          </div>
+        </Card>
+      </div>
+
+      {/* All Ordered Menu Items Table */}
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-bold text-slate-900">
+              All Ordered Menu Items
+            </h2>
+            <Badge variant="default" className="text-xs font-semibold">
+              {filteredItems.length} Dishes
+            </Badge>
+          </div>
+
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search dishes..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-8 w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-xs text-slate-800 placeholder-slate-400 focus:border-emerald-500 focus:outline-none"
+            />
+          </div>
+        </div>
+
+        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
+          <table className="w-full text-left text-xs text-slate-600">
+            <thead className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+              <tr>
+                <th scope="col" className="px-4 py-3 text-left">
+                  Dish Name
+                </th>
+                <th scope="col" className="px-4 py-3 text-right">
+                  Price
+                </th>
+                <th scope="col" className="px-4 py-3 text-right">
+                  Quantity Sold
+                </th>
+                <th scope="col" className="px-4 py-3 text-right">
+                  Total Revenue
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredItems.length > 0 ? (
+                filteredItems.map((item, idx) => (
+                  <tr key={item.productId || idx} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="px-4 py-3 font-semibold text-slate-900">
+                      {item.productName}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-slate-700">
+                      {formatCurrency(item.unitPrice)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono font-medium text-slate-900">
+                      {item.quantitySold}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono font-semibold text-emerald-600">
+                      {formatCurrency(item.totalRevenue)}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
+                    No ordered dishes found for this period.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   );
 }

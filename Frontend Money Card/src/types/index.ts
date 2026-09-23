@@ -111,6 +111,7 @@ export type {
   PeakAnalyticsOverview,
   CardFleetAnalytics,
   CardFleetTrackItem,
+  ProductDemandItem,
 } from './analytics';
 
 export type {

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useBranch, useAuth } from '@/hooks';
 import { apiService } from '@/services/api';
 import { notify } from '@/utils/toast';
+import { formatLocalDate } from '@/utils';
 import type { Branch, AnalyticsOverview, BranchPerformanceMetric, PeakAnalyticsOverview } from '@/types';
 import type { OrgPdfSectionOptions } from './analyticsPdfExport';
 import {
@@ -17,7 +18,7 @@ export type DatePreset = 'thisMonth' | 'today' | 'yesterday' | 'last7' | 'last30
 
 export function getPresetDates(preset: DatePreset): { startDate: string; endDate: string } {
   const now = new Date();
-  const endStr = now.toISOString().split('T')[0];
+  const endStr = formatLocalDate(now);
 
   if (preset === 'today') {
     return { startDate: endStr, endDate: endStr };
@@ -25,22 +26,22 @@ export function getPresetDates(preset: DatePreset): { startDate: string; endDate
   if (preset === 'yesterday') {
     const yest = new Date(now);
     yest.setDate(yest.getDate() - 1);
-    const yestStr = yest.toISOString().split('T')[0];
+    const yestStr = formatLocalDate(yest);
     return { startDate: yestStr, endDate: yestStr };
   }
   if (preset === 'last7') {
     const start = new Date(now);
     start.setDate(start.getDate() - 7);
-    return { startDate: start.toISOString().split('T')[0], endDate: endStr };
+    return { startDate: formatLocalDate(start), endDate: endStr };
   }
   if (preset === 'last30') {
     const start = new Date(now);
     start.setDate(start.getDate() - 30);
-    return { startDate: start.toISOString().split('T')[0], endDate: endStr };
+    return { startDate: formatLocalDate(start), endDate: endStr };
   }
   if (preset === 'thisMonth') {
     const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { startDate: start.toISOString().split('T')[0], endDate: endStr };
+    return { startDate: formatLocalDate(start), endDate: endStr };
   }
 
   return { startDate: '', endDate: endStr };
@@ -118,13 +119,14 @@ export function useOrgAdminAnalytics() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'cards'>(() => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'cards' | 'menu'>(() => {
     const t = searchParams.get('tab');
     if (t === 'cards') return 'cards';
+    if (t === 'menu') return 'menu';
     return 'overview';
   });
 
-  const handleTabChange = (tab: 'overview' | 'cards') => {
+  const handleTabChange = (tab: 'overview' | 'cards' | 'menu') => {
     setActiveTab(tab);
     const newParams = new URLSearchParams(searchParams);
     if (tab === 'overview') {
@@ -485,7 +487,7 @@ export function useOrgAdminAnalytics() {
         return;
       }
 
-      const dateStr = new Date().toISOString().split('T')[0];
+      const dateStr = formatLocalDate(new Date());
       const filename = `MoneyCard_OrgAdmin_Analytics_${dateStr}.pdf`;
 
       downloadOrgAnalyticsPdf(options, filename);
@@ -513,7 +515,7 @@ export function useOrgAdminAnalytics() {
         notify.error('No analytics data available to download.');
         return;
       }
-      const dateStr = new Date().toISOString().split('T')[0];
+      const dateStr = formatLocalDate(new Date());
       const filename = `MoneyCard_Analytics_${dateStr}.pdf`;
       downloadOrgAnalyticsPdf(options, filename);
       notify.success(`Analytics report downloaded: ${filename}`);
@@ -529,7 +531,7 @@ export function useOrgAdminAnalytics() {
         notify.error('No analytics data available to download.');
         return;
       }
-      const dateStr = new Date().toISOString().split('T')[0];
+      const dateStr = formatLocalDate(new Date());
       downloadFinancialOverviewPdf(options, `MoneyCard_Financial_Overview_${dateStr}.pdf`);
       notify.success('Financial Overview PDF downloaded.');
     } catch {
@@ -544,7 +546,7 @@ export function useOrgAdminAnalytics() {
         notify.error('No analytics data available to download.');
         return;
       }
-      const dateStr = new Date().toISOString().split('T')[0];
+      const dateStr = formatLocalDate(new Date());
       downloadCardAnalyticsPdf(options, `MoneyCard_Card_Analytics_${dateStr}.pdf`);
       notify.success('Card Analytics PDF downloaded.');
     } catch {

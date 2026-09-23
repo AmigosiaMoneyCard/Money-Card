@@ -1,187 +1,258 @@
-# Comprehensive Platform Stability, Deletion Integrity, and POS Updates Plan
+# Menu Analytics Tab, Dashboard Food Order Metrics, and Local Timezone Date Reset Fix
+
+This document outlines the technical design, component breakdown, and step-by-step implementation for:
+1. **Fixing the Date Preset & "Reset to Today" Timezone Bug**: Resolving the issue where clicking "Reset to Today" (or loading date presets) in India (IST / UTC+5:30) resulted in yesterday's date (`2026-09-23`) instead of today's date (`2026-09-24`) due to UTC `toISOString().split('T')[0]` formatting.
+2. **Adding Food Order Metrics Across Dashboards**: Adding dedicated KPI cards (Food Sales, Items Sold, Dishes Ordered, Cancelled Orders) across Counter Dashboard, Org Admin Dashboard, and Super Admin Dashboard.
+3. **Introducing "Menu Analytics" Tab**: Adding a 3rd top tab in Web Analytics (`OrgAdminAnalyticsView` and `SuperAdminAnalyticsView`) with:
+   - Specific KPI label formats & clean subtexts:
+     - **Food Sales**: Display amount with simple subtitle `${orders} orders` (removed "Total amount").
+     - **Items Sold**: Display `${productsSoldCount} Units` with a small subtitle `Units sold`.
+     - **Dishes Ordered**: Display `${dishesOrderedCount} Ordered` with a small subtitle `Dish varieties`.
+     - **Cancelled Orders**: Display `${cancelledOrdersCount} Cancels` with no voided amount subtitle.
+   - Minimal 4-column "All Ordered Menu Items" table: `Dish Name`, `Price`, `Quantity Sold`, and `Total Revenue` (strictly removed `(R)` from header). Category, Status, and Cancelled Quantity are removed.
+
+![Menu Analytics Tab with Clean 4-Column Table](C:/Users/damie/.gemini/antigravity-ide/brain/9c70217b-9240-4d11-907e-eaaf4a37b746/menu_analytics_4_columns_table_sketch_1790195557898.jpg)
 
 ## User Review Required
 
-- Organization Deletion & Counter Ghosting Fix: Make `deleteOrganization` in `admin.controller.ts` completely comprehensive with bulletproof cascading deletion. Previously, `deleteOrganization` failed to delete transactions where `staffUserId` belonged to the org, and failed to delete `user_branches` linked by `branchId`. When an org had transaction or staff history, Postgres threw foreign key constraint errors and aborted the transaction, leaving the old organization ("khss karimpuzha") and its counter ("main bock") intact in the database.
-- Database Purge: Purged old orphaned organization "khss karimpuzha" and counter "main bock" from the live database. Only active client cafeterias (Acme Cafeterias and Test Org) now remain.
-- Mobile Analytics & Home Sales Bug Fix: Fix the timezone boundary parser in `analytics.controller.ts` where date strings like `2026-09-24` were parsed as UTC `T00:00:00.000Z` instead of local client time (`Asia/Kolkata` +05:30), causing all transactions between 12:00 AM and 5:30 AM IST to be excluded from Today's Sales, Recharges, and Menu Analytics.
-- Mobile Home Dashboard: Auto-load analytics on open and pull-to-refresh, and make the Today's Sales summary box tappable to navigate directly to the Analytics screen.
-- Mobile Receipts: Remove "Card No:" and "Receipt No:" from recharge completion; remove "Bill No:" and "Payment: Card Session" from purchase bills.
-- Mobile Edit Order & Stats: Remove the lengthy sentence from Edit Food Order dialog; rename "Voided Recharges" to "Cancelled Recharges".
-- Web Admin Counter Profile: Display "Counter Admin" instead of "Org Admin" on top-right profile trigger when logged in as counter staff (`user?.role === 'STAFF'`).
-- Web Admin Cleanups: Remove "Pending Email Activation" container; remove "Add Menu" button from inside View/Edit Counter Menu modal; fix Step 3 staff creation label to display "Manager" or "Staff"; release phone numbers on staff deactivation and org deletion.
+> [!IMPORTANT]
+> User-specified refinements:
+> 1. In Food Sales KPI card: Removed "Total amount" text; displays currency value and clean order count subtitle (e.g. `8,125 orders`).
+> 2. In Items Sold KPI card: Kept very small subtitle `Units sold`.
+> 3. In Dishes Ordered KPI card: Formatted as `${count} Ordered` (e.g. `384 Ordered`) with small subtitle `Dish varieties`.
+> 4. In Cancelled Orders KPI card: Formatted as `${count} Cancels` (e.g. `92 Cancels`) with total voided amount subtitle removed.
+> 5. In All Ordered Menu Items table: Removed `(R)` from the `Total Revenue` header; table columns are strictly: `Dish Name`, `Price`, `Quantity Sold`, `Total Revenue`.
 
-## Visual Design Reference
+## Proposed Layouts and Wireframes
 
-![Mobile Home Today Sales and Live Analytics](file:///C:/Users/damie/.gemini/antigravity-ide/brain/9c70217b-9240-4d11-907e-eaaf4a37b746/mobile_home_today_sales_and_live_analytics_1790191476934.jpg)
-
-![Counter Admin Profile and Clean Modals](file:///C:/Users/damie/.gemini/antigravity-ide/brain/9c70217b-9240-4d11-907e-eaaf4a37b746/counter_admin_profile_and_clean_modals_1790190510607.jpg)
-
-## ASCII Wireframes
-
-### Organization Deletion Cascading Sequence (Zero Ghost Counters)
+### 1. Web Analytics - Menu Analytics Tab Wireframe
 
 ```
-[ DELETE /api/v1/admin/organizations/:id ]
-                    |
-  +-----------------+-----------------+
-  | 1. Customer history events        |
-  | 2. Transactions (by branch,       |
-  |    session, OR staff user)        |
-  | 3. Card sessions (by org,         |
-  |    issuedBy, OR settledBy)        |
-  | 4. Cards & Card assignments       |
-  | 5. Inventory & Products           |
-  | 6. User permissions & Branches    |
-  |    (by user OR branch)            |
-  | 7. Users (all staff & org admin)  |
-  | 8. Branches (all counters)        |
-  | 9. Subscriptions & Payments       |
-  | 10. Organization record           |
-  +-----------------+-----------------+
-                    |
-          [ Full Cascade Commit ]
-          -> Zero ghost records
++----------------------------------------------------------------------------------------------------+
+| Analytics                                                  [All Cafeterias v] [2026-09-24 to ...]  |
+|                                                            [ Apply ] [ Reset Today ] [ View PDF ]  |
++----------------------------------------------------------------------------------------------------+
+| [ Financial Overview ]   [ Card Analytics ]   [ Menu Analytics (Active) ]                          |
++----------------------------------------------------------------------------------------------------+
+|                                                                                                    |
+| +---------------------+ +---------------------+ +---------------------+ +------------------------+ |
+| | FOOD SALES          | | ITEMS SOLD          | | DISHES ORDERED      | | CANCELLED ORDERS       | |
+| | Rs 345,670.00       | | 24,890 Units        | | 384 Ordered         | | 92 Cancels             | |
+| | 8,125 orders        | | Units sold          | | Dish varieties      | |                        | |
+| +---------------------+ +---------------------+ +---------------------+ +------------------------+ |
+|                                                                                                    |
+| +------------------------------------------------------------------------------------------------+ |
+| | All Ordered Menu Items                                                [Search dishes...]       | |
+| +------------------------------------------------------------------------------------------------+ |
+| | Dish Name                      | Price          | Quantity Sold         | Total Revenue        | |
+| |--------------------------------+----------------+-----------------------+----------------------| |
+| | Chicken Biryani                | Rs 280.00      | 1,450                 | Rs 406,000.00        | |
+| | Masala Dosa                    | Rs 120.00      | 1,120                 | Rs 134,400.00        | |
+| | Paneer Makhani                 | Rs 240.00      | 980                   | Rs 235,200.00        | |
+| | Cold Coffee                    | Rs 80.00       | 750                   | Rs 60,000.00         | |
+| +------------------------------------------------------------------------------------------------+ |
++----------------------------------------------------------------------------------------------------+
 ```
 
-### Mobile Home Screen: Active Tappable Today's Sales Box
+### 2. Counter Dashboard and Org Admin Dashboard - Food Metrics Section Wireframe
 
 ```
-+-----------------------------------+
-| Hello, Manager        [Manager]   |
-| Counter: Counter 1                |
-|                                   |
-| +-------------------------------+ |
-| |        [QR Scan Icon]         | |
-| |         SCAN QR CARD          | |
-| | Scan card to start purchase...| |
-| +-------------------------------+ |
-|                                   |
-| +-------------------------------+ |  <-- Whole box now tappable
-| | Today's Sales   Transactions  | |      navigates to /app/analytics
-| | Rs 1,560        8 orders   [>]| |      Loads immediately on open
-| +-------------------------------+ |
-+-----------------------------------+
++----------------------------------------------------------------------------------------------------+
+| Overview                                                   [Time Window: 2026-09-24 to 2026-09-24] |
++----------------------------------------------------------------------------------------------------+
+| FINANCIAL & CARD METRICS                                                                           |
+| +---------------------+ +---------------------+ +---------------------+ +------------------------+ |
+| | Purchase Volume     | | Wallet Recharges    | | Cards Issued        | | Active Staff           | |
+| | Rs 345,670.00       | | Rs 412,000.00       | | 148 Cards           | | 8 Members              | |
+| +---------------------+ +---------------------+ +---------------------+ +------------------------+ |
+|                                                                                                    |
+| FOOD & ORDER METRICS                                                    [Open Menu Analytics ->]   |
+| +---------------------+ +---------------------+ +---------------------+ +------------------------+ |
+| | Food Sales          | | Items Sold          | | Dishes Ordered      | | Cancelled Orders       | |
+| | Rs 345,670.00       | | 24,890 Units        | | 384 Ordered         | | 92 Cancels             | |
+| | 8,125 orders        | | Units sold          | | Dish varieties      | |                        | |
+| +---------------------+ +---------------------+ +---------------------+ +------------------------+ |
++----------------------------------------------------------------------------------------------------+
 ```
 
-### Mobile Analytics Screen: Recharge & Menu Analytics Tabs
+### 3. Super Admin Dashboard - Food & Order Metrics Section Wireframe
 
 ```
-+-----------------------------------+
-| Analytics                         |
-| Counter 1                         |
-| [  Recharge  ]   [    Menu    ]   |
-| --------------------------------- |
-| [ Start Date v ] [ End Date v ]   |
-| [ Apply ] [ Reset Today ] [ PDF ] |
-| --------------------------------- |
-| FOOD SALES         ITEMS SOLD     |
-| Rs 1,560.00        12             |
-| 8 orders placed    Total items    |
-| --------------------------------- |
-| TOP DISHES                        |
-| 1. Chicken Biryani     Rs 840.00  |
-|    6 units sold                   |
-| 2. Tea                 Rs 60.00   |
-|    4 units sold                   |
-+-----------------------------------+
++----------------------------------------------------------------------------------------------------+
+| PLATFORM SAAS METRICS                                                                              |
+| +---------------------+ +---------------------+ +---------------------+ +------------------------+ |
+| | Cafeterias          | | Active Cardholders  | | Active Counters     | | Staff Members          | |
+| | 12 Cafeterias       | | 4,210 Cardholders   | | 28 Counters         | | 64 Members             | |
+| +---------------------+ +---------------------+ +---------------------+ +------------------------+ |
+|                                                                                                    |
+| PLATFORM FOOD & ORDER PERFORMANCE                                       [View Reports ->]          |
+| +---------------------+ +---------------------+ +---------------------+ +------------------------+ |
+| | Platform Food Sales | | Total Items Sold    | | Dishes Ordered      | | Cancelled Orders       | |
+| | Rs 1,420,500.00     | | 94,120 Units        | | 1,240 Ordered       | | 312 Cancels            | |
+| | Platform orders     | | Units sold          | | Dish varieties      | |                        | |
+| +---------------------+ +---------------------+ +---------------------+ +------------------------+ |
++----------------------------------------------------------------------------------------------------+
 ```
 
 ## Proposed Changes
 
-### Backend API (`Backend Money Card/`)
+### Core Timezone & Date Formatting Fix (`Frontend Money Card/`)
 
-#### [MODIFY] [admin.controller.ts](file:///d:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/admin.controller.ts)
-- In `deleteOrganization`:
-  - Delete all `transactions` where `branch: { organizationId: id }`, `session: { organizationId: id }`, or `staffUser: { organizationId: id }`.
-  - Delete all `card_sessions` where `organizationId: id`, `issuedBy: { organizationId: id }`, or `settledBy: { organizationId: id }`.
-  - Delete all `user_branches` where `user: { organizationId: id }` or `branch: { organizationId: id }`.
-  - Delete all `user_permissions` where `user: { organizationId: id }`.
-  - Delete all `users` where `organizationId: id`.
-  - Delete all `branches` where `organizationId: id`.
-  - Delete all `subscriptions`, `subscription_payments`, and `plan_change_requests`.
-  - Delete `organization`.
-  - Guarantees 100% clean deletion with zero orphaned counters or foreign key constraint aborts.
+#### [MODIFY] [formatters.ts](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/utils/formatters.ts)
+- Add and export `formatLocalDate(d: Date = new Date()): string`:
+  ```ts
+  export function formatLocalDate(d: Date = new Date()): string {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  ```
+- Re-export in `src/utils/index.ts`.
 
-#### [MODIFY] [organization.controller.ts](file:///d:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/organization.controller.ts)
-- In `getBranches`:
-  - When `req.user?.role === Role.SUPER_ADMIN` and `organizationId` is passed, scope to `where.organizationId = organizationId`.
-  - Only return branches belonging to active, non-deleted organizations.
+#### [MODIFY] [useOrgAdminAnalytics.ts](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/analytics/useOrgAdminAnalytics.ts)
+- In `getPresetDates(preset)`: Replace all `toISOString().split('T')[0]` calls with `formatLocalDate()`.
+  - `today`: returns `{ startDate: formatLocalDate(now), endDate: formatLocalDate(now) }` (accurately evaluates to `2026-09-24`).
+  - `yesterday`: returns `{ startDate: formatLocalDate(yest), endDate: formatLocalDate(yest) }`.
+  - `last7`, `last30`, `thisMonth`: use `formatLocalDate()`.
+- In initial state for `startDate` and `endDate`: Default to `getPresetDates('today')` using local time.
+- Update `activeTab` type from `'overview' | 'cards'` to `'overview' | 'cards' | 'menu'`.
 
-#### [MODIFY] [analytics.controller.ts](file:///d:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/analytics.controller.ts)
-- Add timezone-aware date boundary parser helper:
-  `parseDateInTimezone(dateStr: string, timeZone: string, isEndOfDay: boolean): Date`
-  Calculates exact UTC millisecond bounds based on target timezone offset (e.g. `Asia/Kolkata` +05:30), converting `2026-09-24` start-of-day to `2026-09-23T18:30:00.000Z` and end-of-day to `2026-09-24T18:29:59.999Z`.
-- In `getOrgAnalytics` (lines 83-88):
-  Use `parseDateInTimezone(startDate, clientTimezone, false)` and `parseDateInTimezone(endDate, clientTimezone, true)` instead of appending `T00:00:00.000Z` / `T23:59:59.999Z`.
-- In `getPeakAnalytics` (lines 994-996):
-  Use `parseDateInTimezone` for exact timezone-aware bounds.
+#### [MODIFY] [OrgAdminDashboard.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/dashboard/OrgAdminDashboard.tsx)
+- In `getPresetDates(preset)`: Replace all `toISOString().split('T')[0]` calls with `formatLocalDate()`.
+- In "Reset to Today" button onClick: Sets today's date using `getPresetDates('today').startDate` (`formatLocalDate(new Date())`).
+- Add the "Food & Order Metrics" section inside the Overview container:
+  - Food Sales (`formatCurrency(analytics?.totalPurchaseVolume || 0)`, subtitle `${orders} orders`)
+  - Items Sold (`${analytics?.productsSoldCount || 0} Units`, subtitle 'Units sold')
+  - Dishes Ordered (`${analytics?.dishesOrderedCount || 0} Ordered`, subtitle 'Dish varieties')
+  - Cancelled Orders (`${analytics?.cancelledOrdersCount || 0} Cancels`)
+  - Button to navigate to `/analytics?tab=menu`.
 
-#### [MODIFY] [staff.controller.ts](file:///d:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/staff.controller.ts)
-- In `createStaffMember`: Release phone if existing user is deactivated or belongs to a deleted/inactive org.
-- In `deleteStaffMember`: When deactivating a user, set `phone: null` to free the phone number for re-registration.
+#### [MODIFY] [OrgAdminCardsView.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/cards/OrgAdminCardsView.tsx)
+- Replace `new Date().toISOString().split('T')[0]` with `formatLocalDate(new Date())` in `customStartDate`, `customEndDate`, `appliedStartDate`, `appliedEndDate`, and in `handleResetToToday`.
 
----
+#### [MODIFY] [CounterStaffCardsView.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/cards/CounterStaffCardsView.tsx)
+- Replace `new Date().toISOString().split('T')[0]` with `formatLocalDate(new Date())` in `customStartDate`, `customEndDate`, `appliedStartDate`, `appliedEndDate`, and in `handleResetToToday`.
 
-### Mobile POS App (`Flutter Money card/`)
+#### [MODIFY] [PeakPage.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/peak/PeakPage.tsx)
+- Replace `new Date().toISOString().split('T')[0]` with `formatLocalDate(new Date())` in `handleResetToToday` and date initializers.
 
-#### [MODIFY] [home_screen.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/home/home_screen.dart)
-- In `initState`: Call `ref.read(analyticsNotifierProvider.notifier).loadAnalytics()` on startup so Today's Sales box populates immediately.
-- In `RefreshIndicator.onRefresh`: Include `ref.read(analyticsNotifierProvider.notifier).loadAnalytics()`.
-- Wrap the Today at a Glance summary card with `InkWell(onTap: () => _safePush('/app/analytics'))` so tapping the box opens the Analytics screen.
+#### [MODIFY] [SuperAdminAnalyticsView.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/analytics/SuperAdminAnalyticsView.tsx)
+- Use standard `formatLocalDate` from `src/utils`.
+- Add 3rd tab button: `Menu Analytics`.
+- When `activeTab === 'menu'`, render `<OrgAdminMenuAnalyticsSection />`.
 
-#### [MODIFY] [digital_receipt_dialog.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/widgets/receipt/digital_receipt_dialog.dart)
-- Recharge receipts (`isRecharge == true`): Omit `Card No:` and `Receipt No:`.
-- Sales receipts (`!isRecharge`): Omit `Bill No:` and omit `Payment: Card Session`.
+#### [MODIFY] [StaffPage.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/staff/StaffPage.tsx)
+- Replace local `getTodayDateStr` with shared `formatLocalDate`.
 
-#### [MODIFY] [bill_receipt_screen.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/receipt/bill_receipt_screen.dart)
-- In header metadata, remove `_buildReceiptRow('Bill No:', bill.displayBillNo)`.
-- In payment metadata, omit `Payment:` if `bill.paymentMethod` is `'Card Session'`.
-
-#### [MODIFY] [digital_receipt_service.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/services/digital_receipt_service.dart)
-- Recharge PDF: Omit `Receipt No` and `Card No`.
-- Sales Bill PDF: Omit `Bill No` and `Payment: Card Session`.
-
-#### [MODIFY] [pos_scan_purchase_screen.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/pos/pos_scan_purchase_screen.dart)
-- In `_handleEditOrder` dialog: Remove the lengthy sentence (`This will cancel the order, auto-refund the balance back to the card...`).
-- In `_showSessionStatsSheet`: Rename `Voided Recharges` to `Cancelled Recharges`.
-- After order edit or cancel, trigger `ref.read(analyticsNotifierProvider.notifier).loadAnalytics()`.
-
-#### [MODIFY] [pos_checkout_screen.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/pos/pos_checkout_screen.dart)
-- After checkout succeeds, trigger `ref.read(analyticsNotifierProvider.notifier).loadAnalytics()`.
-
-#### [MODIFY] [recharge_screen.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/payments/recharge_screen.dart)
-- After recharge completes, trigger `ref.read(analyticsNotifierProvider.notifier).loadAnalytics()`.
+#### [MODIFY] [staffActivityFilter.test.ts](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/__tests__/staffActivityFilter.test.ts)
+- Update test expectations to verify that `getPresetDates` outputs local dates (`formatLocalDate`) accurately.
 
 ---
 
-### Frontend Web Admin (`Frontend Money Card/`)
+### Backend Sub-Project (`Backend Money Card/`)
 
-#### [MODIFY] [ProfileMenu.tsx](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/components/ui/ProfileMenu.tsx)
-- Update lines 64-66 to display "Counter Admin" when `user?.role === 'STAFF'`.
+#### [MODIFY] [analytics.controller.ts](file:///D:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/analytics.controller.ts)
+- In `getOrgAnalytics`:
+  - Fetch existing products for the organization/tenant to resolve prices (`prisma.product.findMany`).
+  - Track `totalPurchaseCount` (food orders count), `rootProductsSoldCount` (total dish units sold across filtered orders), and `allProductDemandMap`.
+  - Process items inside active `PURCHASE` transactions:
+    - Aggregate `quantitySold`, `totalRevenue`, and `orderCount` per product into `allProductDemandMap`.
+  - Format `allProductDemand`: Array of `{ productId, productName, unitPrice, quantitySold, totalRevenue, orderCount }` sorted by `quantitySold` descending.
+  - Return in `sendSuccess`:
+    - `foodOrdersCount`: Total purchase orders placed.
+    - `productsSoldCount`: Total units/dishes sold.
+    - `dishesOrderedCount`: Number of unique menu item varieties ordered (`allProductDemand.length`).
+    - `allProductDemand`: Full array of ordered menu items.
+    - `cancelledOrdersCount`: Already tracked count.
+    - `cancelledOrdersVolume`: Already tracked volume.
 
-#### [MODIFY] [OrganizationsPage.tsx](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/organizations/OrganizationsPage.tsx)
-- Remove the "Pending Email Activation" container and cards.
+---
 
-#### [MODIFY] [CounterViewEditMenuModal.tsx](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/products/CounterViewEditMenuModal.tsx) & [ProductsPage.tsx](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/products/ProductsPage.tsx)
-- Remove the green "Add Menu" button from inside the View / Edit Counter Menu modal.
+### Frontend UI Components & Types (`Frontend Money Card/`)
 
-#### [MODIFY] [StaffPage.tsx](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/staff/StaffPage.tsx)
-- In Step 3 (Review & Create), display "Manager" or "Staff" directly based on the selected role preset.
+#### [MODIFY] [analytics.ts](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/types/analytics.ts)
+- Add `ProductDemandItem` interface:
+  ```ts
+  export interface ProductDemandItem {
+    productId: string;
+    productName: string;
+    unitPrice: number;
+    quantitySold: number;
+    totalRevenue: number;
+    orderCount: number;
+  }
+  ```
+- Enrich `AnalyticsOverview` with `productsSoldCount`, `dishesOrderedCount`, `foodOrdersCount`, and `allProductDemand`.
+
+#### [MODIFY] [mock handlers (analytics.ts)](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/services/mock/handlers/analytics.ts)
+- Include mock values for `productsSoldCount`, `dishesOrderedCount`, `foodOrdersCount`, and sample `allProductDemand` records.
+
+#### [MODIFY] [OrgAdminAnalyticsComponents.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/analytics/OrgAdminAnalyticsComponents.tsx)
+- Create `OrgAdminMenuAnalyticsSection` component:
+  - 4 KPI summary cards:
+    - **Food Sales**: `formatCurrency(totalPurchaseVolume)`, subtitle `${orders} orders` (no "Total amount").
+    - **Items Sold**: `${productsSoldCount} Units`, subtitle `Units sold`.
+    - **Dishes Ordered**: `${dishesOrderedCount} Ordered`, subtitle `Dish varieties`.
+    - **Cancelled Orders**: `${cancelledOrdersCount} Cancels` (no voided amount subtitle).
+  - Search bar for filtering item names.
+  - Strictly 4-column clean table:
+    1. `Dish Name`
+    2. `Price`
+    3. `Quantity Sold`
+    4. `Total Revenue` (strictly no `(R)` in header)
+  - Zero category column, zero status column, zero cancelled quantity column.
+  - Responsive horizontal scroll wrapper with minimum width for mobile compatibility.
+  - Clean empty state when no items were ordered in the date window.
+
+#### [MODIFY] [OrgAdminAnalyticsView.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/analytics/OrgAdminAnalyticsView.tsx)
+- Add 3rd tab button: `Menu Analytics` with `UtensilsCrossed` icon.
+- When `activeTab === 'menu'`, render `<OrgAdminMenuAnalyticsSection />`.
+
+#### [MODIFY] [SuperAdminDashboard.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/dashboard/SuperAdminDashboard.tsx)
+- Fetch `apiService.analytics.getOverview()` in `fetchPlatformData`.
+- Display a dedicated "Platform Food & Order Performance" section with 4 KPI cards: Platform Food Sales, Total Items Sold, Dishes Ordered (`${count} Ordered`), Cancelled Orders (`${count} Cancels`).
+
+---
 
 ## Verification Plan
 
 ### Automated Tests
-- Mobile Tests: Proactively run `flutter test` and `flutter analyze --no-pub` in `Flutter Money card/`.
-- Backend Tests: Proactively run `npm test` in `Backend Money Card/` (100 tests must pass).
-- Backend Build: Proactively run `npm run build` in `Backend Money Card/` (0 TypeScript errors).
-- Frontend Tests: Run `npm test -- --run` in `Frontend Money Card/` (267 tests must pass).
-- Frontend Typecheck: Run `npx tsc --noEmit` in `Frontend Money Card/` (0 errors).
+1. **Frontend Vitest Suite**:
+   ```bash
+   cd "D:\Money Card Project\Frontend Money Card"
+   npm test -- --run
+   ```
+   Verify all 267+ tests pass.
+2. **Frontend Type Check**:
+   ```bash
+   cd "D:\Money Card Project\Frontend Money Card"
+   npx tsc --noEmit
+   ```
+   Verify 0 TypeScript errors.
+3. **Backend Vitest Suite**:
+   ```bash
+   cd "D:\Money Card Project\Backend Money Card"
+   npm test
+   ```
+   Verify all 100 backend tests pass.
+4. **Flutter Mobile Suite**:
+   ```bash
+   cd "D:\Money Card Project\Flutter Money card"
+   flutter test
+   flutter analyze --no-pub
+   ```
+   Verify 0 issues and all tests passing.
 
 ### Manual Verification
-1. Deleted Organizations & Counters: Verify only active client cafeterias (Acme Cafeterias and Test Org) appear in Organizations and Counters tables. Verify no old/deleted organizations or counters pop up.
-2. Mobile Home Today's Sales: Open mobile app, verify Today's Sales box immediately displays today's volume (e.g. ₹1,560) and order count, and verify tapping the box navigates directly to the Analytics screen.
-3. Mobile Analytics Recharges & Menu: Open Analytics, verify Recharge tab shows all today's cash and UPI recharges and net collections, and verify Menu tab lists all sold dishes and quantities.
-4. Mobile Receipts: Complete a recharge and purchase, verify absence of Card No/Receipt No on recharge dialog, and absence of Bill No/Payment: Card Session on bill screen.
-5. Mobile Edit Order & Stats: Verify edit order dialog has no long sentence, and Card Info displays "Cancelled Recharges".
-6. Web Admin Counter Profile & Cleanup: Confirm Counter Admin role badge, absence of Pending Email Activation box, absence of Add Menu button in modal, and role preset label in staff creation.
+1. **Reset to Today Verification**:
+   - In Counter Dashboard, Org Admin Dashboard, Analytics Page, and Cards Page, click "Reset to Today".
+   - Verify start and end dates immediately set to `2026-09-24` (and never `2026-09-23`).
+2. **KPI Labels & Subtitles Verification**:
+   - Verify Food Sales displays clean orders count without "Total amount".
+   - Verify Items Sold displays small subtitle "Units sold".
+   - Verify Dishes Ordered displays `${count} Ordered` with small subtitle "Dish varieties".
+   - Verify Cancelled Orders displays `${count} Cancels` without voided amount subtitle.
+3. **Menu Items Table Verification**:
+   - Verify table has strictly 4 columns: `Dish Name`, `Price`, `Quantity Sold`, `Total Revenue`.
+   - Verify `Total Revenue` header does not contain `(R)`.

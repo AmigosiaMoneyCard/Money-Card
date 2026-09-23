@@ -125,6 +125,22 @@ export interface AnalyticsOverview {
   cardsReturned?: number;
   cancelledOrdersCount?: number;
   cancelledOrdersVolume?: number;
+
+  // Menu Analytics & Food Order Metrics
+  foodOrdersCount?: number;
+  purchaseCount?: number;
+  productsSoldCount?: number;
+  dishesOrderedCount?: number;
+  allProductDemand?: ProductDemandItem[];
+}
+
+export interface ProductDemandItem {
+  productId: string;
+  productName: string;
+  unitPrice: number;
+  quantitySold: number;
+  totalRevenue: number;
+  orderCount?: number;
 }
 
 export interface CardFleetTrackItem {

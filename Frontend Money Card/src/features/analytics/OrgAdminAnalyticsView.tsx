@@ -1,9 +1,10 @@
-import { Eye, RefreshCw, BarChart3, CreditCard, Store } from 'lucide-react';
+import { Eye, RefreshCw, BarChart3, CreditCard, Store, UtensilsCrossed } from 'lucide-react';
 import { useAuth } from '@/hooks';
 import { Button, Select, LoadingState, ErrorState } from '@/components/ui';
 import {
   OrgAdminFinancialSection,
   OrgAdminPdfModal,
+  OrgAdminMenuAnalyticsSection,
 } from './OrgAdminAnalyticsComponents';
 import { OrgAdminCardTracker } from './OrgAdminCardTracker';
 import type { SortMetric } from './OrgAdminAnalyticsComponents';
@@ -183,6 +184,19 @@ export function OrgAdminAnalyticsView() {
           <CreditCard className="h-4 w-4 text-indigo-600" />
           <span>Card Analytics</span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabChange('menu')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+            activeTab === 'menu'
+              ? 'border-emerald-600 text-emerald-700 bg-emerald-50/50 rounded-t-lg'
+              : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+          }`}
+        >
+          <UtensilsCrossed className="h-4 w-4 text-emerald-600" />
+          <span>Menu Analytics</span>
+        </button>
       </div>
 
       {/* ─── Main Content ─── */}
@@ -199,7 +213,7 @@ export function OrgAdminAnalyticsView() {
             totalRefund={analytics.totalRefundVolume ?? 0}
           />
         ) : null
-      ) : (
+      ) : activeTab === 'cards' ? (
         <OrgAdminCardTracker
           cardFleet={analytics?.cardFleetAnalytics}
           closedCardsCount={analytics?.closedCardsCount}
@@ -207,6 +221,10 @@ export function OrgAdminAnalyticsView() {
           activeCardsRechargeCount={analytics?.activeCardsRechargeCount}
           reRechargedCardsCount={analytics?.reRechargedCardsCount}
         />
+      ) : (
+        analytics ? (
+          <OrgAdminMenuAnalyticsSection analytics={analytics} />
+        ) : null
       )}
 
       {/* PDF Viewer Modal */}

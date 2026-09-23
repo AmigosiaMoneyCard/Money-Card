@@ -351,6 +351,16 @@ export async function getOrgAnalytics(req: Request, res: Response) {
   let cancelledUpiTopUpsVolume = 0;
   let cancelledOrdersCount = 0;
   let cancelledOrdersVolume = 0;
+  let foodOrdersCount = 0;
+  let rootProductsSoldCount = 0;
+  const allProductDemandMap = new Map<string, {
+    productId: string;
+    productName: string;
+    unitPrice: number;
+    quantitySold: number;
+    totalRevenue: number;
+    orderCount: number;
+  }>();
 
   const branchMetricsMap = new Map<string, {
     branchId: string;
@@ -510,6 +520,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
 
     if (txType === 'PURCHASE') {
       totalPurchaseVolume += tx.amount;
+      foodOrdersCount++;
       if (bm) {
         bm.transactionCount++;
         bm.purchaseCount++;
@@ -531,27 +542,49 @@ export async function getOrgAnalytics(req: Request, res: Response) {
         : Array.isArray((rawItems as any)?.orderItems)
         ? (rawItems as any).orderItems
         : [];
-      if (orderList.length > 0 && branchKey) {
-        let pMap = branchProductDemandMap.get(branchKey);
-        if (!pMap) {
+      if (orderList.length > 0) {
+        let pMap = branchKey ? branchProductDemandMap.get(branchKey) : undefined;
+        if (!pMap && branchKey) {
           pMap = new Map();
           branchProductDemandMap.set(branchKey, pMap);
         }
         orderList.forEach((it) => {
           const pId = String(it.productId || it.id || it.product_id || 'unknown');
           const pName = String(it.itemName || it.productName || it.name || it.item_name || 'Food Item');
-          const qty = Number(it.quantity || it.qty || 1);
-          const rev = Number(it.subtotal || it.total || (it.unitPrice ? it.unitPrice * qty : (it.price ? it.price * qty : 0)));
+          const qty = Math.max(1, Number(it.quantity || it.qty || 1));
+          const unitPrice = Number(it.unitPrice || it.price || 0);
+          const rev = Number(it.subtotal || it.total || (unitPrice ? unitPrice * qty : 0));
+          rootProductsSoldCount += qty;
           if (bm) {
             bm.productsSoldCount += qty;
           }
-          const curr = pMap!.get(pId) || { productId: pId, productName: pName, quantitySold: 0, totalRevenue: 0 };
-          curr.quantitySold += qty;
-          curr.totalRevenue = Number((curr.totalRevenue + rev).toFixed(2));
-          pMap!.set(pId, curr);
+          if (pMap) {
+            const curr = pMap.get(pId) || { productId: pId, productName: pName, quantitySold: 0, totalRevenue: 0 };
+            curr.quantitySold += qty;
+            curr.totalRevenue = Number((curr.totalRevenue + rev).toFixed(2));
+            pMap.set(pId, curr);
+          }
+          const overall = allProductDemandMap.get(pId) || {
+            productId: pId,
+            productName: pName,
+            unitPrice: unitPrice > 0 ? unitPrice : (qty > 0 && rev > 0 ? Number((rev / qty).toFixed(2)) : 0),
+            quantitySold: 0,
+            totalRevenue: 0,
+            orderCount: 0,
+          };
+          overall.quantitySold += qty;
+          overall.totalRevenue = Number((overall.totalRevenue + rev).toFixed(2));
+          overall.orderCount += 1;
+          if (!overall.unitPrice && unitPrice > 0) {
+            overall.unitPrice = unitPrice;
+          }
+          allProductDemandMap.set(pId, overall);
         });
-      } else if (bm) {
-        bm.productsSoldCount++;
+      } else {
+        rootProductsSoldCount++;
+        if (bm) {
+          bm.productsSoldCount++;
+        }
       }
     } else if (txType === 'RECHARGE_CASH' || paymentMethod === 'CASH' || paymentMethod === 'CARD' || txType === 'CASH') {
       totalRechargeVolume += tx.amount;
@@ -978,6 +1011,14 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     cancelledOrdersVolume: Number(cancelledOrdersVolume.toFixed(2)),
     rechargeCount: totalRechargeCount,
     refundCount: totalRefundCount,
+
+    // Menu Analytics & Food Order Metrics
+    foodOrdersCount,
+    productsSoldCount: rootProductsSoldCount,
+    dishesOrderedCount: allProductDemandMap.size,
+    allProductDemand: Array.from(allProductDemandMap.values()).sort(
+      (a, b) => b.quantitySold - a.quantitySold || b.totalRevenue - a.totalRevenue,
+    ),
   });
 }
 

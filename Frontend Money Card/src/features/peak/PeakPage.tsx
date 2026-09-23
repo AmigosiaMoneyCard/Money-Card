@@ -286,7 +286,7 @@ function usePeakPageData() {
   };
 
   const handleResetToToday = () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = formatLocalDate(new Date());
     setCustomStartDate(today);
     setCustomEndDate(today);
     setStartDate(today);

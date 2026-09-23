@@ -3,6 +3,7 @@
 // Structured with Financial Overview and Card Analytics tabs matching Org Admin design.
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { apiService } from '@/services/api';
 import type {
   AnalyticsOverview,
@@ -17,10 +18,11 @@ import {
   LoadingState,
   ErrorState,
 } from '@/components/ui';
-import { notify } from '@/utils';
+import { notify, formatLocalDate } from '@/utils';
 import {
   OrgAdminFinancialSection,
   OrgAdminPdfModal,
+  OrgAdminMenuAnalyticsSection,
 } from './OrgAdminAnalyticsComponents';
 import { OrgAdminCardTracker } from './OrgAdminCardTracker';
 import {
@@ -37,14 +39,8 @@ import {
   Eye,
   CreditCard,
   BarChart3,
+  UtensilsCrossed,
 } from 'lucide-react';
-
-function formatLocalDate(d: Date): string {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
 
 export function SuperAdminAnalyticsView() {
   const [analytics, setAnalytics] = useState<AnalyticsOverview | null>(null);
@@ -52,8 +48,25 @@ export function SuperAdminAnalyticsView() {
   const [orgs, setOrgs] = useState<OrganizationOverview[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
 
-  // Active Tab: Financial Overview vs Card Analytics
-  const [activeTab, setActiveTab] = useState<'overview' | 'cards'>('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Active Tab: Financial Overview vs Card Analytics vs Menu Analytics
+  const [activeTab, setActiveTab] = useState<'overview' | 'cards' | 'menu'>(() => {
+    const t = searchParams.get('tab');
+    if (t === 'cards') return 'cards';
+    if (t === 'menu') return 'menu';
+    return 'overview';
+  });
+
+  const handleTabChange = (tab: 'overview' | 'cards' | 'menu') => {
+    setActiveTab(tab);
+    const newParams = new URLSearchParams(searchParams);
+    if (tab === 'overview') {
+      newParams.delete('tab');
+    } else {
+      newParams.set('tab', tab);
+    }
+    setSearchParams(newParams);
+  };
 
   // Cafeteria Filter & Custom Date Range Only
   const [selectedOrgId, setSelectedOrgId] = useState<string>('');
@@ -327,11 +340,11 @@ export function SuperAdminAnalyticsView() {
         </div>
       </div>
 
-      {/* ── Tab Navigation: Financial Overview & Card Analytics ── */}
+      {/* ── Tab Navigation: Financial Overview, Card Analytics & Menu Analytics ── */}
       <div className="flex items-center gap-2 border-b border-slate-200">
         <button
           type="button"
-          onClick={() => setActiveTab('overview')}
+          onClick={() => handleTabChange('overview')}
           className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer ${
             activeTab === 'overview'
               ? 'border-emerald-600 text-emerald-700 bg-emerald-50/50 rounded-t-lg'
@@ -344,7 +357,7 @@ export function SuperAdminAnalyticsView() {
 
         <button
           type="button"
-          onClick={() => setActiveTab('cards')}
+          onClick={() => handleTabChange('cards')}
           className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer ${
             activeTab === 'cards'
               ? 'border-emerald-600 text-emerald-700 bg-emerald-50/50 rounded-t-lg'
@@ -353,6 +366,19 @@ export function SuperAdminAnalyticsView() {
         >
           <CreditCard className="h-4 w-4 text-indigo-600" />
           <span>Card Analytics</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabChange('menu')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+            activeTab === 'menu'
+              ? 'border-emerald-600 text-emerald-700 bg-emerald-50/50 rounded-t-lg'
+              : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+          }`}
+        >
+          <UtensilsCrossed className="h-4 w-4 text-emerald-600" />
+          <span>Menu Analytics</span>
         </button>
       </div>
 
@@ -389,7 +415,7 @@ export function SuperAdminAnalyticsView() {
             }
           />
         )
-      ) : (
+      ) : activeTab === 'cards' ? (
         <OrgAdminCardTracker
           cardFleet={analytics?.cardFleetAnalytics}
           closedCardsCount={analytics?.closedCardsCount}
@@ -397,6 +423,8 @@ export function SuperAdminAnalyticsView() {
           activeCardsRechargeCount={analytics?.activeCardsRechargeCount}
           reRechargedCardsCount={analytics?.reRechargedCardsCount}
         />
+      ) : (
+        analytics && <OrgAdminMenuAnalyticsSection analytics={analytics} />
       )}
 
       {/* ── PDF Viewer Modal (OrgAdminPdfModal with Financial and Card tiles) ── */}

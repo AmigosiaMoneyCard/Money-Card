@@ -242,11 +242,12 @@ describe('Staff Activity Log Filtering by Branch Scope and Time Window', () => {
   describe('Org Admin Analytics Date Presets (getPresetDates)', () => {
     it('calculates yesterday preset accurately', async () => {
       const { getPresetDates } = await import('@/features/analytics/OrgAdminAnalyticsView');
+      const { formatLocalDate } = await import('@/utils');
       const dates = getPresetDates('yesterday');
 
       const yest = new Date();
       yest.setDate(yest.getDate() - 1);
-      const expectedYest = yest.toISOString().split('T')[0];
+      const expectedYest = formatLocalDate(yest);
 
       expect(dates.startDate).toBe(expectedYest);
       expect(dates.endDate).toBe(expectedYest);
@@ -254,12 +255,13 @@ describe('Staff Activity Log Filtering by Branch Scope and Time Window', () => {
 
     it('calculates today, thisMonth and range presets accurately', async () => {
       const { getPresetDates } = await import('@/features/analytics/OrgAdminAnalyticsView');
+      const { formatLocalDate } = await import('@/utils');
       const todayDates = getPresetDates('today');
       const thisMonthDates = getPresetDates('thisMonth');
 
       const now = new Date();
-      const todayStr = now.toISOString().split('T')[0];
-      const startOfMonthStr = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const todayStr = formatLocalDate(now);
+      const startOfMonthStr = formatLocalDate(new Date(now.getFullYear(), now.getMonth(), 1));
 
       expect(todayDates.startDate).toBe(todayStr);
       expect(todayDates.endDate).toBe(todayStr);
