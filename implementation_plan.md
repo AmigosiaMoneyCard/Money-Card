@@ -37,6 +37,9 @@ The `showStaffDetailsModal` (minimal modal) already shows only essential info: N
 ## Visual Summary
 
 ### Counter Staff View (STAFF Role)
+
+![Counter Staff Clean Minimal UI Sketch](file:///C:/Users/damie/.gemini/antigravity-ide/brain/9635058f-8784-4982-b40a-c7e9d921ee9b/counter_staff_clean_ui_sketch_1790137218124.jpg)
+
 ```
 ┌────────────────────────────────────────────────────────┐
 │  Staff Management                          [Add Staff]   │
