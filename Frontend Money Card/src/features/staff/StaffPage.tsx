@@ -1186,9 +1186,14 @@ export function StaffPage() {
       header: 'Staff Name',
       className: 'min-w-[180px]',
       render: (staff: Staff) => (
-        <span className="font-semibold text-slate-900 text-sm">
-          {formatStaffDisplayName(staff.name, staff.assignedBranchIds)}
-        </span>
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <User className="h-4 w-4" />
+          </div>
+          <span className="font-semibold text-slate-900 text-sm">
+            {formatStaffDisplayName(staff.name, staff.assignedBranchIds)}
+          </span>
+        </div>
       ),
     },
     {
@@ -1398,41 +1403,37 @@ export function StaffPage() {
               <span>Overview</span>
             </button>
 
-            {!isCounterView && (
-              <button
-                type="button"
-                onClick={() => setStaffTab('permissions')}
-                className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
-                  staffTab === 'permissions'
-                    ? 'border-emerald-600 text-emerald-700 font-semibold'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <ShieldCheck className="h-4 w-4" />
-                <span>Permissions</span>
-                <Badge variant="outline" className="text-[10px] ml-1">
-                  {formPermissions.length} / 20
-                </Badge>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setStaffTab('permissions')}
+              className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
+                staffTab === 'permissions'
+                  ? 'border-emerald-600 text-emerald-700 font-semibold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <ShieldCheck className="h-4 w-4" />
+              <span>Permissions</span>
+              <Badge variant="outline" className="text-[10px] ml-1">
+                {formPermissions.length} / 20
+              </Badge>
+            </button>
 
-            {!isCounterView && (
-              <button
-                type="button"
-                onClick={() => setStaffTab('branches')}
-                className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
-                  staffTab === 'branches'
-                    ? 'border-emerald-600 text-emerald-700 font-semibold'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <Building2 className="h-4 w-4" />
-                <span>Counters</span>
-                <Badge variant="outline" className="text-[10px] ml-1">
-                  {formBranchIds.length}
-                </Badge>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setStaffTab('branches')}
+              className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
+                staffTab === 'branches'
+                  ? 'border-emerald-600 text-emerald-700 font-semibold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Building2 className="h-4 w-4" />
+              <span>Counters</span>
+              <Badge variant="outline" className="text-[10px] ml-1">
+                {formBranchIds.length}
+              </Badge>
+            </button>
           </div>
 
           {/* Tab Content Panes */}
@@ -1663,7 +1664,7 @@ export function StaffPage() {
             )}
 
             {/* ── TAB 3: COUNTERS ── */}
-            {!isCounterView && staffTab === 'branches' && (
+            {staffTab === 'branches' && (
               <div className="space-y-4">
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
@@ -1744,7 +1745,7 @@ export function StaffPage() {
                 Save Permissions
               </Button>
             )}
-            {canManage && !isCounterView && staffTab === 'branches' && (
+            {canManage && staffTab === 'branches' && (
               <Button type="button" variant="primary" onClick={handleSaveBranches} isLoading={isSubmitting} disabled={isSubmitting} leftIcon={<Building2 className="h-4 w-4" />}>
                 Save Branches
               </Button>
