@@ -40,8 +40,6 @@ class ApiClient {
       baseURL: API_BASE_URL,
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache',
       },
       withCredentials: true,
       timeout: 30000,

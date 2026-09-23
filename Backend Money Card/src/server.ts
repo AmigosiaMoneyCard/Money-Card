@@ -23,7 +23,14 @@ app.use(
     origin: true, // Allow dev origins including localhost:5173
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Idempotency-Key'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Idempotency-Key',
+      'Cache-Control',
+      'Pragma',
+    ],
   }),
 );
 
