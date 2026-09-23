@@ -73,7 +73,7 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
     label: 'Analytics',
     path: '/analytics',
     iconName: 'BarChart3',
-    roles: ['ORG_ADMIN', 'STAFF'],
+    roles: ['SUPER_ADMIN', 'ORG_ADMIN', 'STAFF'],
     permission: 'VIEW_ANALYTICS',
   },
   {
