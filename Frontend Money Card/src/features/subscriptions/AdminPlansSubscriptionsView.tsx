@@ -625,10 +625,11 @@ export function AdminPlansSubscriptionsView() {
       render: (plan: Plan) => (
         <div className="flex items-center justify-end gap-2">
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={() => openEditPlanModal(plan)}
             leftIcon={<Edit2 className="h-3.5 w-3.5" />}
+            className="border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 font-medium"
           >
             Edit/View
           </Button>
@@ -1066,7 +1067,8 @@ export function AdminPlansSubscriptionsView() {
       )}
 
       {/* ── Create Plan Modal ── */}
-      <Modal isOpen={showCreatePlanModal} onClose={() => setShowCreatePlanModal(false)} title="Create New Plan">
+      {/* ── Create Plan Modal ── */}
+      <Modal isOpen={showCreatePlanModal} onClose={() => setShowCreatePlanModal(false)} title="Create New Plan" size="lg">
         <form onSubmit={handleCreatePlanSubmit} className="space-y-4 py-2">
           {modalApiError && (
             <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
@@ -1110,51 +1112,59 @@ export function AdminPlansSubscriptionsView() {
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <Input
-              label="Default Counter Limit"
-              type="number"
-              min="0"
-              value={formBranchLimit}
-              onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') e.preventDefault(); }}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val === '' || parseInt(val, 10) >= 0) setFormBranchLimit(val);
-              }}
-            />
-            <Input
-              label="Default Staff Limit"
-              type="number"
-              min="0"
-              value={formStaffLimit}
-              onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') e.preventDefault(); }}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val === '' || parseInt(val, 10) >= 0) setFormStaffLimit(val);
-              }}
-            />
-            <Input
-              label="Default Card Limit"
-              type="number"
-              min="0"
-              value={formCardLimit}
-              onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') e.preventDefault(); }}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val === '' || parseInt(val, 10) >= 0) setFormCardLimit(val);
-              }}
-            />
+          <div className="space-y-1.5">
+            <span className="text-xs font-semibold text-slate-700 block">Default Resource Limits</span>
+            <div className="grid grid-cols-3 gap-3">
+              <Input
+                label="Counter Limit"
+                type="number"
+                min="0"
+                value={formBranchLimit}
+                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') e.preventDefault(); }}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '' || parseInt(val, 10) >= 0) setFormBranchLimit(val);
+                }}
+              />
+              <Input
+                label="Staff Limit"
+                type="number"
+                min="0"
+                value={formStaffLimit}
+                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') e.preventDefault(); }}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '' || parseInt(val, 10) >= 0) setFormStaffLimit(val);
+                }}
+              />
+              <Input
+                label="Card Limit"
+                type="number"
+                min="0"
+                value={formCardLimit}
+                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') e.preventDefault(); }}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '' || parseInt(val, 10) >= 0) setFormCardLimit(val);
+                }}
+              />
+            </div>
           </div>
 
           <ModalFooter>
-            <Button variant="outline" type="button" onClick={() => setShowCreatePlanModal(false)}>Cancel</Button>
-            <Button variant="primary" type="submit" isLoading={isSubmitting}>Create New Plan</Button>
+            <Button variant="outline" size="sm" type="button" onClick={() => setShowCreatePlanModal(false)} className="whitespace-nowrap">Cancel</Button>
+            <Button variant="primary" size="sm" type="submit" isLoading={isSubmitting} className="whitespace-nowrap">Create New Plan</Button>
           </ModalFooter>
         </form>
       </Modal>
 
       {/* ── Edit Global Plan Modal ── */}
-      <Modal isOpen={showEditPlanModal} onClose={() => setShowEditPlanModal(false)} title={`Edit / View Global Plan: ${selectedPlan?.name}`}>
+      <Modal
+        isOpen={showEditPlanModal}
+        onClose={() => setShowEditPlanModal(false)}
+        title={`Edit / View Global Plan: ${selectedPlan?.name}`}
+        size="lg"
+      >
         <form onSubmit={handleEditPlanSubmit} className="space-y-4 py-2">
           {modalApiError && (
             <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
@@ -1164,25 +1174,28 @@ export function AdminPlansSubscriptionsView() {
           )}
 
           {/* Subscribed Tenants */}
-          <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 space-y-1.5">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3.5 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Subscribed Tenants
-              </span>
-              <Badge variant="outline" className="font-semibold text-xs">
+              <div className="flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-emerald-600" />
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Subscribed Tenants
+                </span>
+              </div>
+              <Badge variant="outline" className="font-semibold text-xs border-slate-300 bg-white">
                 {subscribedOrgsForSelectedPlan.length} Cafeterias
               </Badge>
             </div>
             {subscribedOrgsForSelectedPlan.length === 0 ? (
               <p className="text-xs text-slate-500">No cafeterias currently subscribed to this plan.</p>
             ) : (
-              <div className="flex flex-wrap gap-1.5 pt-1">
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
                 {subscribedOrgsForSelectedPlan.map((o) => (
                   <span
                     key={o.id}
-                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs bg-white border border-slate-200 text-slate-800 font-medium"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs bg-white border border-slate-200 text-slate-800 font-medium shadow-2xs"
                   >
-                    <Building2 className="h-3 w-3 text-emerald-600" />
+                    <Building2 className="h-3.5 w-3.5 text-emerald-600" />
                     {o.name}
                   </span>
                 ))}
@@ -1225,61 +1238,78 @@ export function AdminPlansSubscriptionsView() {
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <Input
-              label="Default Counter Limit"
-              type="number"
-              min="0"
-              value={formBranchLimit}
-              onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') e.preventDefault(); }}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val === '' || parseInt(val, 10) >= 0) setFormBranchLimit(val);
-              }}
-            />
-            <Input
-              label="Default Staff Limit"
-              type="number"
-              min="0"
-              value={formStaffLimit}
-              onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') e.preventDefault(); }}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val === '' || parseInt(val, 10) >= 0) setFormStaffLimit(val);
-              }}
-            />
-            <Input
-              label="Default Card Limit"
-              type="number"
-              min="0"
-              value={formCardLimit}
-              onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') e.preventDefault(); }}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val === '' || parseInt(val, 10) >= 0) setFormCardLimit(val);
-              }}
-            />
+          <div className="space-y-1.5">
+            <span className="text-xs font-semibold text-slate-700 block">Default Resource Limits</span>
+            <div className="grid grid-cols-3 gap-3">
+              <Input
+                label="Counter Limit"
+                type="number"
+                min="0"
+                value={formBranchLimit}
+                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') e.preventDefault(); }}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '' || parseInt(val, 10) >= 0) setFormBranchLimit(val);
+                }}
+              />
+              <Input
+                label="Staff Limit"
+                type="number"
+                min="0"
+                value={formStaffLimit}
+                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') e.preventDefault(); }}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '' || parseInt(val, 10) >= 0) setFormStaffLimit(val);
+                }}
+              />
+              <Input
+                label="Card Limit"
+                type="number"
+                min="0"
+                value={formCardLimit}
+                onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') e.preventDefault(); }}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '' || parseInt(val, 10) >= 0) setFormCardLimit(val);
+                }}
+              />
+            </div>
           </div>
 
           <p className="text-xs text-slate-400">
             Note: Changing default limits updates the global template. Organization-specific overrides will remain intact.
           </p>
 
-          <ModalFooter className="flex items-center justify-between w-full">
+          <ModalFooter className="flex items-center justify-between w-full pt-2">
             <Button
               variant="danger"
+              size="sm"
               type="button"
               onClick={handleDeletePlan}
               isLoading={isDeleting}
               leftIcon={<Trash2 className="h-4 w-4" />}
+              className="whitespace-nowrap"
             >
               Delete Plan
             </Button>
             <div className="flex items-center gap-2">
-              <Button variant="outline" type="button" onClick={() => setShowEditPlanModal(false)}>
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                onClick={() => setShowEditPlanModal(false)}
+                className="whitespace-nowrap"
+              >
                 Cancel
               </Button>
-              <Button variant="primary" type="submit" isLoading={isSubmitting}>
+              <Button
+                variant="primary"
+                size="sm"
+                type="submit"
+                isLoading={isSubmitting}
+                className="whitespace-nowrap"
+              >
                 Save Global Plan
               </Button>
             </div>
