@@ -38,6 +38,7 @@ interface FinancialSectionProps {
   cashRecharge?: number;
   upiRecharge?: number;
   totalRefund?: number;
+  leadingCard?: React.ReactNode;
 }
 
 export interface KpiCardsProps {
@@ -49,6 +50,7 @@ export function OrgAdminFinancialSection({
   cashRecharge = 0,
   upiRecharge = 0,
   totalRefund = 0,
+  leadingCard,
 }: FinancialSectionProps) {
   const moneyAdded = analytics.moneyAdded ?? (cashRecharge + upiRecharge);
   const moneyRefunded = analytics.moneyRefunded ?? totalRefund;
@@ -66,8 +68,9 @@ export function OrgAdminFinancialSection({
 
   return (
     <div className="space-y-4">
-      {/* Financial Summaries (3 Uniform Cards) */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      {/* Financial Summaries (3 or 4 Uniform Cards) */}
+      <div className={`grid gap-4 ${leadingCard ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-3'}`}>
+        {leadingCard}
         {/* Net Money Collected */}
         <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">

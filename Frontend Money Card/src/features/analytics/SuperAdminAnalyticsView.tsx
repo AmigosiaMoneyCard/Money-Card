@@ -354,39 +354,34 @@ export function SuperAdminAnalyticsView() {
       ) : error ? (
         <ErrorState title="Failed to load platform analytics" message={error} onRetry={() => fetchPlatformData(false)} />
       ) : activeTab === 'overview' ? (
-        <div className="space-y-6">
-          {/* Organization Metric Card styled identically to Money Refunded card */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Organization
-                </span>
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-                  <Building2 className="h-4 w-4" />
+        analytics && (
+          <OrgAdminFinancialSection
+            analytics={analytics}
+            cashRecharge={analytics.cashMoney ?? analytics.cashRechargeVolume ?? 0}
+            upiRecharge={analytics.upiMoney ?? analytics.upiRechargeVolume ?? 0}
+            totalRefund={analytics.totalRefundVolume ?? 0}
+            leadingCard={
+              <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    Organization
+                  </span>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                    <Building2 className="h-4 w-4" />
+                  </div>
                 </div>
-              </div>
-              <div className="mt-2">
-                <p className="font-mono text-2xl font-bold text-slate-900">
-                  {selectedOrgId ? '1 Cafeteria' : `${orgs.length} Cafeterias`}
-                </p>
-                <p className="mt-1 text-xs text-slate-500 leading-snug">
-                  {selectedOrg ? selectedOrg.name : 'Total registered client cafeterias'}
-                </p>
-              </div>
-            </Card>
-          </div>
-
-          {/* Financial Summaries & Activity Flow */}
-          {analytics && (
-            <OrgAdminFinancialSection
-              analytics={analytics}
-              cashRecharge={analytics.cashMoney ?? analytics.cashRechargeVolume ?? 0}
-              upiRecharge={analytics.upiMoney ?? analytics.upiRechargeVolume ?? 0}
-              totalRefund={analytics.totalRefundVolume ?? 0}
-            />
-          )}
-        </div>
+                <div className="mt-2">
+                  <p className="font-mono text-2xl font-bold text-slate-900">
+                    {selectedOrgId ? '1 Cafeteria' : `${orgs.length} Cafeterias`}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500 leading-snug">
+                    {selectedOrg ? selectedOrg.name : 'Total registered client cafeterias'}
+                  </p>
+                </div>
+              </Card>
+            }
+          />
+        )
       ) : (
         <OrgAdminCardTracker
           cardFleet={analytics?.cardFleetAnalytics}
