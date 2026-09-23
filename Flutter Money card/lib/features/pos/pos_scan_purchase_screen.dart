@@ -816,8 +816,8 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     final session = _activeSession!;
     final permissions = ref.watch(permissionCheckerProvider);
 
-    const canPurchase = true; // Always allow food purchase for counter staff and manager
-    const canRecharge = true; // Always allow card recharge
+    final canPurchase = permissions.hasPermission(AppPermission.purchase);
+    final canRecharge = permissions.hasPermission(AppPermission.recharge);
     final canViewSession = permissions.hasPermission(AppPermission.sessionView);
     final canSettleReturn = permissions.hasPermission(AppPermission.cardReturn) ||
         permissions.hasPermission(AppPermission.refund);

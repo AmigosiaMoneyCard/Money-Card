@@ -47,7 +47,6 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     final notifier = ref.read(posCatalogNotifierProvider.notifier);
     final branchState = ref.watch(branchNotifierProvider);
     final currentBranch = branchState.currentBranch;
-    final assignedBranches = branchState.assignedBranches;
 
     return Scaffold(
       appBar: AppBar(

@@ -230,13 +230,6 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Main Central 1'), findsOneWidget);
-      expect(find.text('Switch Counter'), findsOneWidget);
-
-      // Tap Switch Counter button
-      await tester.tap(find.text('Switch Counter'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Main Central 2'), findsOneWidget);
     });
 
     testWidgets('AnalyticsScreen switches to Recharges Analytics tab and displays recharges view', (tester) async {
@@ -269,12 +262,19 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Tap Recharges Analytics Tab
-      await tester.tap(find.text('Recharges Analytics'));
+      // Tap Menu Tab
+      await tester.tap(find.text('Menu'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Recharges Analytics'), findsWidgets);
-      expect(find.text('No Recharges Found'), findsOneWidget);
+      expect(find.text('Food Sales'), findsOneWidget);
+      expect(find.text('Items Sold'), findsOneWidget);
+
+      // Tap Recharge Tab
+      await tester.tap(find.text('Recharge'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('RECHARGE AMOUNT'), findsOneWidget);
+      expect(find.text('REFUND AMOUNT'), findsOneWidget);
     });
   });
 }

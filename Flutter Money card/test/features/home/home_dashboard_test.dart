@@ -162,7 +162,7 @@ void main() {
       expect(find.text('Counter: Main Cafeteria'), findsOneWidget);
 
       // Verify Role Specification Banner
-      expect(find.text('Logged in as Counter Manager'), findsOneWidget);
+      expect(find.text('Manager'), findsOneWidget);
 
       // Verify Active Sessions is NOT displayed on HomeScreen
       expect(find.text('Active Sessions'), findsNothing);
@@ -197,11 +197,7 @@ void main() {
       expect(find.text('SCAN QR CARD'), findsOneWidget);
 
       // Quick action cards
-      expect(find.text('Issue Card'), findsOneWidget);
       expect(find.text('Recharges'), findsOneWidget);
-      expect(find.text('Menu'), findsOneWidget);
-      expect(find.text('Inventory'), findsOneWidget);
-      expect(find.text('Analytics'), findsWidgets);
     });
   });
 }

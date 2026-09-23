@@ -667,7 +667,11 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
               icon: Icons.search_off,
             ),
           ],
-          return RefreshIndicator(
+        ),
+      );
+    }
+
+    return RefreshIndicator(
       onRefresh: () => ref.read(posCatalogNotifierProvider.notifier).loadCatalog(),
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),

@@ -3,11 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/permission_constants.dart';
-import '../../core/utils/formatters.dart';
 import '../../models/analytics.dart';
 import '../../models/branch.dart';
 import '../../providers/analytics_provider.dart';
-import '../../providers/api_providers.dart';
 import '../../providers/branch_provider.dart';
 import '../../widgets/analytics/analytics_pdf_preview_dialog.dart';
 import '../../widgets/guards/permission_guard.dart';
@@ -26,10 +24,6 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   late String _startDate;
   late String _endDate;
 
-  bool _isLoadingRecharges = false;
-  List<dynamic> _rechargesList = [];
-  String? _rechargesError;
-
   static String _todayStr() {
     final now = DateTime.now();
     final y = now.year.toString().padLeft(4, '0');
@@ -45,39 +39,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     _endDate = _todayStr();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
-      _fetchRecharges();
     });
-  }
-
-  Future<void> _fetchRecharges() async {
-    setState(() {
-      _isLoadingRecharges = true;
-      _rechargesError = null;
-    });
-
-    try {
-      final currentBranch = ref.read(currentBranchProvider);
-      final sessionService = ref.read(sessionServiceProvider);
-      final res = await sessionService.listRecharges(
-        branchId: currentBranch?.id,
-        startDate: _startDate,
-        endDate: _endDate,
-      );
-
-      if (mounted) {
-        setState(() {
-          _isLoadingRecharges = false;
-          _rechargesList = (res['items'] as List<dynamic>?) ?? [];
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoadingRecharges = false;
-          _rechargesError = e.toString().replaceAll('ApiException: ', '');
-        });
-      }
-    }
   }
 
   void _openPdfPreview(
@@ -94,18 +56,11 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
-  String _formatDateTime(String? raw) {
-    if (raw == null || raw.isEmpty) return '—';
-    final formatted = AppFormatters.formatIsoDate(raw);
-    return formatted == '-' ? '—' : formatted;
-  }
-
   @override
   Widget build(BuildContext context) {
     ref.listen<Branch?>(currentBranchProvider, (previous, next) {
       if (next != null && next.id != previous?.id) {
         ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
-        _fetchRecharges();
       }
     });
 
@@ -113,7 +68,6 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     final notifier = ref.read(analyticsNotifierProvider.notifier);
     final branchState = ref.watch(branchNotifierProvider);
     final currentBranch = branchState.currentBranch;
-    final assignedBranches = branchState.assignedBranches;
 
     return PermissionGuard.single(
       permission: AppPermission.viewAnalytics,
@@ -279,7 +233,6 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                         ElevatedButton(
                           onPressed: () {
                             notifier.setCustomRange(_startDate, _endDate);
-                            _fetchRecharges();
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
@@ -305,7 +258,6 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                               _endDate = today;
                             });
                             notifier.setCustomRange(today, today);
-                            _fetchRecharges();
                           },
                           icon: const Icon(Icons.today, size: 13, color: AppColors.primary),
                           label: const Text(
@@ -369,7 +321,6 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     RefreshIndicator(
                       onRefresh: () async {
                         await notifier.loadAnalytics();
-                        await _fetchRecharges();
                       },
                       child: _buildOverviewTab(context, analyticsState, notifier),
                     ),

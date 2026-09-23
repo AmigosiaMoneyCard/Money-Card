@@ -38,12 +38,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  void _safeGo(String route) {
-    if (GoRouter.maybeOf(context) != null) {
-      context.go(route);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     ref.listen(currentBranchProvider, (previous, next) {

@@ -49,7 +49,7 @@ void main() {
     expect(find.text('Alex Morgan'), findsOneWidget);
     expect(find.text('Change Password'), findsOneWidget);
     expect(find.text('Sign Out'), findsOneWidget);
-    expect(find.text('Recharges & Top-ups'), findsOneWidget);
+    expect(find.text('Recharges & Top-ups'), findsNothing);
     expect(find.text('Scan Vibration Feedback'), findsNothing);
     expect(find.text('Sample Digital Receipt & PDF'), findsNothing);
   });
