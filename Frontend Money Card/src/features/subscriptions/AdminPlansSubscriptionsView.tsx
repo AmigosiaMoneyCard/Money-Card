@@ -573,11 +573,20 @@ export function AdminPlansSubscriptionsView() {
   // Selected Plan for Org Sub Modal (for real-time default vs override preview)
   const previewSelectedPlan = plans.find((p) => p.id === subFormPlanId) || plans[0];
 
+  const subscribedOrgsForSelectedPlan = useMemo(() => {
+    if (!selectedPlan) return [];
+    return orgs.filter((o) => {
+      const s = subscriptions.find((sub) => sub.organizationId === o.id);
+      return (s?.planId || o.planId) === selectedPlan.id;
+    });
+  }, [selectedPlan, orgs, subscriptions]);
+
   // ── Column Definitions ─────────────────────────────────────
   const planColumns = [
     {
       key: 'name',
       header: 'Plan Name',
+      className: 'w-[25%]',
       render: (plan: Plan) => (
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
@@ -592,6 +601,7 @@ export function AdminPlansSubscriptionsView() {
     {
       key: 'price',
       header: 'Default Price',
+      className: 'w-[25%]',
       render: (plan: Plan) => (
         <span className="font-mono text-sm font-bold text-emerald-700">
           {formatCurrency(plan.price)} <span className="text-xs text-slate-500 font-normal">/{(plan.billingInterval || 'MONTHLY').toLowerCase()}</span>
@@ -601,6 +611,7 @@ export function AdminPlansSubscriptionsView() {
     {
       key: 'limits',
       header: 'Default Technical Limits',
+      className: 'w-[35%]',
       render: (plan: Plan) => (
         <span className="text-xs text-slate-600 font-mono">
           {plan.branchLimit} Branches • {plan.staffLimit} Staff • {plan.cardLimit} Cards
@@ -608,21 +619,9 @@ export function AdminPlansSubscriptionsView() {
       ),
     },
     {
-      key: 'tenants',
-      header: 'Subscribed Tenants',
-      render: (plan: Plan) => {
-        const count = orgs.filter((o) => {
-          const s = subscriptions.find((sub) => sub.organizationId === o.id);
-          return (s?.planId || o.planId) === plan.id;
-        }).length;
-        return <Badge variant="outline">{count} Cafeterias</Badge>;
-      },
-    },
-
-    {
       key: 'actions',
       header: 'Actions',
-      className: 'text-right',
+      className: 'w-[15%] text-right',
       render: (plan: Plan) => (
         <div className="flex items-center justify-end gap-2">
           <Button
@@ -631,7 +630,7 @@ export function AdminPlansSubscriptionsView() {
             onClick={() => openEditPlanModal(plan)}
             leftIcon={<Edit2 className="h-3.5 w-3.5" />}
           >
-            Edit Definition
+            Edit/View
           </Button>
         </div>
       ),
@@ -1155,7 +1154,7 @@ export function AdminPlansSubscriptionsView() {
       </Modal>
 
       {/* ── Edit Global Plan Modal ── */}
-      <Modal isOpen={showEditPlanModal} onClose={() => setShowEditPlanModal(false)} title={`Edit Global Plan: ${selectedPlan?.name}`}>
+      <Modal isOpen={showEditPlanModal} onClose={() => setShowEditPlanModal(false)} title={`Edit / View Global Plan: ${selectedPlan?.name}`}>
         <form onSubmit={handleEditPlanSubmit} className="space-y-4 py-2">
           {modalApiError && (
             <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
@@ -1163,6 +1162,33 @@ export function AdminPlansSubscriptionsView() {
               <span>{modalApiError}</span>
             </div>
           )}
+
+          {/* Subscribed Tenants */}
+          <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Subscribed Tenants
+              </span>
+              <Badge variant="outline" className="font-semibold text-xs">
+                {subscribedOrgsForSelectedPlan.length} Cafeterias
+              </Badge>
+            </div>
+            {subscribedOrgsForSelectedPlan.length === 0 ? (
+              <p className="text-xs text-slate-500">No cafeterias currently subscribed to this plan.</p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {subscribedOrgsForSelectedPlan.map((o) => (
+                  <span
+                    key={o.id}
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs bg-white border border-slate-200 text-slate-800 font-medium"
+                  >
+                    <Building2 className="h-3 w-3 text-emerald-600" />
+                    {o.name}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
 
           <Input
             label="Plan Name *"
