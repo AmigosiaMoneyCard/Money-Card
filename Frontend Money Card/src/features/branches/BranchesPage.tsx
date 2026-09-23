@@ -195,11 +195,26 @@ export function BranchesPage() {
     }
   };
 
-  const storePassword = (branchId: string, password: string) => {
+  const storePassword = (branchId: string, password: string, phone?: string, managerId?: string) => {
     try {
+      if (!password) return;
       const stored = getStoredPasswords();
-      stored[branchId] = password;
+      if (branchId) stored[branchId] = password;
+      if (phone) {
+        const clean = phone.replace(/\D/g, '').slice(-10);
+        if (clean) stored[clean] = password;
+      }
       localStorage.setItem(PASS_STORAGE_KEY, JSON.stringify(stored));
+
+      // Also mirror to mc_staff_passwords for counter dashboard parity
+      const staffMap = JSON.parse(localStorage.getItem('mc_staff_passwords') || '{}');
+      if (managerId) staffMap[managerId] = password;
+      if (phone) {
+        const clean = phone.replace(/\D/g, '').slice(-10);
+        if (clean) staffMap[clean] = password;
+      }
+      if (branchId) staffMap[branchId] = password;
+      localStorage.setItem('mc_staff_passwords', JSON.stringify(staffMap));
     } catch {
       // ignore storage errors
     }
@@ -340,7 +355,7 @@ export function BranchesPage() {
       fetchBranches();
 
       // Persist password in localStorage for this branch
-      storePassword(result.data.id, branchPasswordInput);
+      storePassword(result.data.id, branchPasswordInput, cleanPhone);
 
       // Open WhatsApp Dispatch Modal
       setCreatedBranchCredentials({
@@ -395,7 +410,20 @@ export function BranchesPage() {
     setEditNameInput(branch.name);
     const initialPhone = (branch.manager?.phone || branch.credentials?.phone || '').replace(/\D/g, '').slice(-10);
     setEditPhoneInput(initialPhone);
-    const storedPassword = getStoredPasswords()[branch.id] || branch.credentials?.password || '';
+    const branchPasswords = getStoredPasswords();
+    let staffPasswords: Record<string, string> = {};
+    try {
+      staffPasswords = JSON.parse(localStorage.getItem('mc_staff_passwords') || '{}');
+    } catch {}
+
+    const storedPassword =
+      branchPasswords[branch.id] ||
+      (initialPhone && branchPasswords[initialPhone]) ||
+      (branch.manager?.id && staffPasswords[branch.manager.id]) ||
+      (initialPhone && staffPasswords[initialPhone]) ||
+      staffPasswords[branch.id] ||
+      branch.credentials?.password ||
+      '';
     setCurrentBranchPassword(storedPassword);
     setShowCurrentPassword(false);
     setEditPasswordInput('');
@@ -445,8 +473,9 @@ export function BranchesPage() {
       }
 
       if (editPasswordInput.trim()) {
-        setCurrentBranchPassword(editPasswordInput.trim());
-        storePassword(selectedBranch.id, editPasswordInput.trim());
+        const pass = editPasswordInput.trim();
+        setCurrentBranchPassword(pass);
+        storePassword(selectedBranch.id, pass, editPhoneInput, selectedBranch.manager?.id);
       }
       notify.success('Counter details updated successfully');
       setShowViewEditModal(false);

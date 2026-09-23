@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiService } from '@/services/api';
 import { usePermissions, useAuth, useBranch } from '@/hooks';
 import type { Branch, ProductWithInventory } from '@/types';
-import { Button, LoadingState, EmptyState, Badge } from '@/components/ui';
+import { Button, LoadingState, EmptyState } from '@/components/ui';
 import { notify, formatCurrency } from '@/utils';
 import { UnauthorizedPage } from '@/features/auth';
 import {
@@ -137,9 +137,6 @@ function CounterStaffMenuView({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-4">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-bold text-slate-900">{branch.name} Menu</h1>
-          <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold text-xs px-2.5 py-0.5">
-            Counter Scope
-          </Badge>
         </div>
 
         {canManage && (
@@ -179,6 +176,14 @@ function CounterStaffMenuView({
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs divide-y divide-slate-100 overflow-hidden">
+          {/* Table Headers */}
+          <div className="bg-slate-50 border-b border-slate-200 px-4 py-2.5 flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            <div className="flex-1">Menu Item</div>
+            <div className="w-24 text-right pr-6">Price</div>
+            <div className="w-20 text-center">Status</div>
+            {canManage && <div className="w-20 text-right">Actions</div>}
+          </div>
+
           {filtered.map((p) => {
             const isEditing = editingId === p.id;
             const isVeg = Array.isArray(p.category) && p.category.some((c) => c.toLowerCase() === 'veg');
@@ -220,12 +225,14 @@ function CounterStaffMenuView({
 
             return (
               <div key={p.id} className="p-3 flex items-center justify-between hover:bg-slate-50/60">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span>{isDrink ? '☕' : isVeg ? '🟢' : '🔴'}</span>
-                  <span className="font-semibold text-xs text-slate-900">{p.itemName}</span>
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <span className={`inline-block h-2 w-2 rounded-full shrink-0 ${isDrink ? 'bg-amber-500' : isVeg ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                  <span className="font-semibold text-xs text-slate-900 truncate">{p.itemName}</span>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="w-24 text-right pr-6">
                   <span className="font-mono text-xs font-bold text-slate-900">{formatCurrency(p.price)}</span>
+                </div>
+                <div className="w-20 flex justify-center">
                   <button
                     type="button"
                     onClick={() => handleToggle(p)}
@@ -239,25 +246,25 @@ function CounterStaffMenuView({
                       }`}
                     />
                   </button>
-                  {canManage && (
+                </div>
+                {canManage && (
+                  <div className="w-20 flex items-center justify-end gap-1.5">
                     <button
                       type="button"
                       onClick={() => handleStartEdit(p)}
-                      className="p-1 text-slate-400 hover:text-emerald-700"
+                      className="p-1 text-slate-400 hover:text-emerald-700 cursor-pointer"
                     >
                       <Edit2 className="h-3.5 w-3.5" />
                     </button>
-                  )}
-                  {canManage && (
                     <button
                       type="button"
                       onClick={() => handleDelete(p.id, p.itemName)}
-                      className="p-1 text-slate-400 hover:text-rose-600"
+                      className="p-1 text-slate-400 hover:text-rose-600 cursor-pointer"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -327,10 +334,18 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
     return <UnauthorizedPage />;
   }
 
+  if (isLoading) {
+    return (
+      <div className="py-12 bg-white rounded-2xl border border-slate-200/80 max-w-5xl mx-auto">
+        <LoadingState message="Loading menu..." />
+      </div>
+    );
+  }
+
   // If user is Staff (Counter Admin / Terminal View), show Counter Staff Menu View
   if (isCounterView) {
     const userBranchId = user?.assignedBranchIds?.[0] || currentBranch?.id;
-    const staffBranch = branches.find((b) => b.id === userBranchId) || branches[0] || null;
+    const staffBranch = currentBranch || branches.find((b) => b.id === userBranchId) || branches[0] || null;
     return <CounterStaffMenuView branch={staffBranch} canManage={canManageProducts} />;
   }
 

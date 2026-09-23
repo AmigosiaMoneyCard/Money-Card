@@ -88,6 +88,6 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
     label: 'Settings',
     path: '/settings',
     iconName: 'Settings',
-    roles: ['STAFF'],
+    roles: [],
   },
 ];

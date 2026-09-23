@@ -131,6 +131,7 @@ export function StaffPage() {
     setStaffList((prev) =>
       prev.map((s) => (s.id === staff.id ? { ...s, status: newStatus } : s)),
     );
+    setSelectedStaff((prev) => (prev && prev.id === staff.id ? { ...prev, status: newStatus } : prev));
     if (selectedCounterGroup) {
       setSelectedCounterGroup((prev) =>
         prev
@@ -148,6 +149,7 @@ export function StaffPage() {
         setStaffList((prev) =>
           prev.map((s) => (s.id === staff.id ? { ...s, status: staff.status } : s)),
         );
+        setSelectedStaff((prev) => (prev && prev.id === staff.id ? { ...prev, status: staff.status } : prev));
         if (selectedCounterGroup) {
           setSelectedCounterGroup((prev) =>
             prev
@@ -169,6 +171,7 @@ export function StaffPage() {
       setStaffList((prev) =>
         prev.map((s) => (s.id === staff.id ? { ...s, status: staff.status } : s)),
       );
+      setSelectedStaff((prev) => (prev && prev.id === staff.id ? { ...prev, status: staff.status } : prev));
       notify.error('An unexpected error occurred while updating status.');
     } finally {
       setTogglingStaffId(null);
@@ -190,28 +193,45 @@ export function StaffPage() {
   const STAFF_PASSWORDS_KEY = 'mc_staff_passwords';
   const BRANCH_PASSWORDS_KEY = 'mc_branch_passwords';
 
-  const getStoredStaffPassword = (staffId?: string, branchIds?: string[]): string | null => {
+  const getStoredStaffPassword = (staffId?: string, branchIds?: string[], phone?: string): string | null => {
     try {
-      if (staffId) {
-        const staffMap = JSON.parse(localStorage.getItem(STAFF_PASSWORDS_KEY) || '{}');
-        if (staffMap[staffId]) return staffMap[staffId];
-      }
+      const staffMap = JSON.parse(localStorage.getItem(STAFF_PASSWORDS_KEY) || '{}');
+      const branchMap = JSON.parse(localStorage.getItem(BRANCH_PASSWORDS_KEY) || '{}');
+      const cleanPhone = phone ? phone.replace(/\D/g, '').slice(-10) : '';
+
+      if (staffId && staffMap[staffId]) return staffMap[staffId];
+      if (cleanPhone && staffMap[cleanPhone]) return staffMap[cleanPhone];
+      if (cleanPhone && branchMap[cleanPhone]) return branchMap[cleanPhone];
       if (branchIds && branchIds.length > 0) {
-        const branchMap = JSON.parse(localStorage.getItem(BRANCH_PASSWORDS_KEY) || '{}');
         for (const bid of branchIds) {
           if (branchMap[bid]) return branchMap[bid];
+          if (staffMap[bid]) return staffMap[bid];
         }
       }
     } catch {}
     return null;
   };
 
-  const storeStaffPassword = (staffId: string, pass: string): void => {
+  const storeStaffPassword = (staffId: string, pass: string, phone?: string, branchIds?: string[]): void => {
     try {
-      if (!staffId || !pass) return;
+      if (!pass) return;
       const staffMap = JSON.parse(localStorage.getItem(STAFF_PASSWORDS_KEY) || '{}');
-      staffMap[staffId] = pass;
+      const branchMap = JSON.parse(localStorage.getItem(BRANCH_PASSWORDS_KEY) || '{}');
+      const cleanPhone = phone ? phone.replace(/\D/g, '').slice(-10) : '';
+
+      if (staffId) staffMap[staffId] = pass;
+      if (cleanPhone) {
+        staffMap[cleanPhone] = pass;
+        branchMap[cleanPhone] = pass;
+      }
+      if (branchIds && branchIds.length > 0) {
+        for (const bid of branchIds) {
+          branchMap[bid] = pass;
+          staffMap[bid] = pass;
+        }
+      }
       localStorage.setItem(STAFF_PASSWORDS_KEY, JSON.stringify(staffMap));
+      localStorage.setItem(BRANCH_PASSWORDS_KEY, JSON.stringify(branchMap));
     } catch {}
   };
 
@@ -565,7 +585,7 @@ export function StaffPage() {
     setStaffTab(initialTab);
     setFormErrors({});
     setModalApiError(null);
-    const savedPassword = getStoredStaffPassword(staff.id, staff.assignedBranchIds);
+    const savedPassword = getStoredStaffPassword(staff.id, staff.assignedBranchIds, staff.phone);
     const initialPassword = savedPassword || staff.credentials?.password || '123456';
     setCurrentStaffPassword(initialPassword);
     setShowCurrentPassword(false);
@@ -617,7 +637,7 @@ export function StaffPage() {
         `Staff password changed successfully for ${selectedStaff.name}. All active mobile app and web sessions have been invalidated.`,
       );
       if (formNewPassword.trim()) {
-        storeStaffPassword(selectedStaff.id, formNewPassword.trim());
+        storeStaffPassword(selectedStaff.id, formNewPassword.trim(), selectedStaff.phone, selectedStaff.assignedBranchIds);
         setCurrentStaffPassword(formNewPassword.trim());
       }
       setFormNewPassword('');
@@ -634,8 +654,8 @@ export function StaffPage() {
     if (!selectedStaff) return;
     const pwdText =
       formNewPassword.trim() ||
-      getStoredStaffPassword(selectedStaff.id, formBranchIds) ||
       currentStaffPassword ||
+      getStoredStaffPassword(selectedStaff.id, formBranchIds, selectedStaff.phone) ||
       '123456';
     const cleanPhone = (formPhone || selectedStaff.phone || '').replace(/\D/g, '').slice(-10);
     const assignedBranchesText =
@@ -667,8 +687,8 @@ export function StaffPage() {
 
     const pwdText =
       formNewPassword.trim() ||
-      getStoredStaffPassword(selectedStaff.id, formBranchIds) ||
       currentStaffPassword ||
+      getStoredStaffPassword(selectedStaff.id, formBranchIds, selectedStaff.phone) ||
       '123456';
     const assignedBranchesText =
       branches
@@ -778,6 +798,8 @@ export function StaffPage() {
         if (!pwdRes.success) {
           setPasswordChangeError(pwdRes.error?.message || 'Profile saved, but failed to update password');
         } else {
+          storeStaffPassword(selectedStaff.id, formNewPassword.trim(), cleanPhone || selectedStaff.phone, selectedStaff.assignedBranchIds);
+          setCurrentStaffPassword(formNewPassword.trim());
           setPasswordChangeSuccess('Password updated successfully.');
         }
       }
@@ -940,9 +962,13 @@ export function StaffPage() {
   // ── Staff Performance & Operational Audit Helpers ────────
   const formatStaffDisplayName = (name?: string, _assignedBranchIds?: string[], _fallbackCounterName?: string): string => {
     if (!name) return '';
-    const cleaned = name.trim().replace(/^\s*counter\s*manager\s*[-:]?\s*/i, '').trim();
-    if (cleaned && cleaned !== name.trim()) return cleaned;
-    return name.trim();
+    let cleaned = name.trim();
+    cleaned = cleaned.replace(/^(counter\s*)+manager\s*[-:]?\s*/i, '');
+    cleaned = cleaned.replace(/^counter\s*counter\s*manager\s*[-:]?\s*/i, '');
+    cleaned = cleaned.replace(/^counter\s*manager\s*[-:]?\s*/i, '');
+    cleaned = cleaned.trim();
+    if (!cleaned) return name.trim();
+    return cleaned;
   };
 
   const getStaffRoleLabel = (staff: Staff): string => {
@@ -1154,30 +1180,69 @@ export function StaffPage() {
     },
   ];
 
-  // ── Table Columns for Counter Staff (Flat Staff List - 2 Columns Only) ─────────
+  // ── Table Columns for Counter Staff (Table View: Staff Name, Role, Actions) ─────────
   const counterStaffColumns = [
     {
       key: 'name',
       header: 'Staff Name',
-      className: 'w-full',
+      className: 'min-w-[180px]',
       render: (staff: Staff) => (
-        <span className="font-medium text-slate-900 text-sm">{formatStaffDisplayName(staff.name, staff.assignedBranchIds)}</span>
+        <span className="font-semibold text-slate-900 text-sm">
+          {formatStaffDisplayName(staff.name, staff.assignedBranchIds)}
+        </span>
+      ),
+    },
+    {
+      key: 'role',
+      header: 'Role',
+      className: 'w-32',
+      render: (staff: Staff) => (
+        <Badge
+          variant="outline"
+          className={
+            getStaffRoleLabel(staff) === 'Manager'
+              ? 'border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold text-xs'
+              : 'border-slate-200 bg-slate-50 text-slate-700 text-xs'
+          }
+        >
+          {getStaffRoleLabel(staff)}
+        </Badge>
       ),
     },
     {
       key: 'actions',
       header: 'Actions',
-      className: 'w-32 text-right',
+      className: 'text-right min-w-[280px]',
       render: (staff: Staff) => (
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-end gap-1.5">
           <Button
             variant="outline"
             size="sm"
             onClick={() => handleOpenStaffDetails(staff)}
-            className="text-xs font-semibold py-1.5 px-3 rounded-lg border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 transition-all shadow-2xs cursor-pointer"
-            leftIcon={<Eye className="h-3.5 w-3.5 text-emerald-600" />}
+            className="text-xs h-7 px-2.5 rounded-lg border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 transition-all shadow-2xs cursor-pointer"
+            leftIcon={<Eye className="h-3 w-3 text-emerald-600" />}
           >
-            Details
+            View Details
+          </Button>
+          {canManage && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleOpenStaffModal(staff, 'overview')}
+              className="text-xs h-7 px-2.5 rounded-lg border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 transition-all shadow-2xs cursor-pointer"
+              leftIcon={<Edit2 className="h-3 w-3 text-emerald-600" />}
+            >
+              Edit
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleOpenStaffAudit(staff)}
+            className="text-xs h-7 px-2.5 rounded-lg border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 transition-all shadow-2xs cursor-pointer"
+            leftIcon={<FileSpreadsheet className="h-3 w-3 text-emerald-600" />}
+          >
+            Performance & Audit
           </Button>
         </div>
       ),
@@ -1187,18 +1252,8 @@ export function StaffPage() {
   return (
     <div className="space-y-5 max-w-6xl mx-auto pb-10">
       {/* ─── Minimal Header ─── */}
-      <div className="flex items-center justify-between border-b border-slate-200/80 pb-4">
+      <div className="border-b border-slate-200/80 pb-4">
         <h1 className="text-xl font-bold text-slate-900 tracking-tight">Staff Management</h1>
-        {canManage && (
-          <Button
-            variant="primary"
-            onClick={() => handleOpenAdd()}
-            leftIcon={<UserPlus className="h-4 w-4" />}
-            className="text-xs h-8 px-3"
-          >
-            Add Staff
-          </Button>
-        )}
       </div>
 
       {/* Plan Resource Usage Indicator */}
@@ -1295,11 +1350,15 @@ export function StaffPage() {
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
           {isCounterView ? (
-            <DataTable<Staff>
-              data={filteredStaff}
-              columns={counterStaffColumns}
-              keyExtractor={(item: Staff) => item.id}
-            />
+            <div className="overflow-x-auto">
+              <div className="min-w-[600px]">
+                <DataTable<Staff>
+                  data={filteredStaff}
+                  columns={counterStaffColumns}
+                  keyExtractor={(item: Staff) => item.id}
+                />
+              </div>
+            </div>
           ) : (
             <DataTable<CounterStaffGroup>
               data={counterStaffGroups}
@@ -1416,6 +1475,38 @@ export function StaffPage() {
                       error={formErrors.phone}
                       disabled={!canManage || isSubmitting}
                     />
+
+                    {/* Status Slide Toggle Switch inside Edit Modal */}
+                    <div className="sm:col-span-2 flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50/70">
+                      <div>
+                        <div className="text-xs font-semibold text-slate-800">Account Status</div>
+                        <div className="text-[11px] text-slate-500">
+                          {selectedStaff?.status === 'ACTIVE'
+                            ? 'Account is active and permitted to use the counter terminal.'
+                            : 'Account is deactivated and cannot log in.'}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-semibold ${selectedStaff?.status === 'ACTIVE' ? 'text-emerald-700' : 'text-slate-500'}`}>
+                          {selectedStaff?.status === 'ACTIVE' ? 'Active' : 'Inactive'}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={!canManage || togglingStaffId === selectedStaff?.id}
+                          onClick={() => selectedStaff && handleToggleStaffStatus(selectedStaff)}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                            selectedStaff?.status === 'ACTIVE' ? 'bg-emerald-600' : 'bg-slate-300'
+                          }`}
+                          aria-label="Toggle staff status"
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition shadow-xs ${
+                              selectedStaff?.status === 'ACTIVE' ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
