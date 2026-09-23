@@ -38,7 +38,33 @@ This document catalogs real-time operational scenarios, technical edge cases, ar
   - Question: Can multiple customers share a single card by screenshotting the QR code?
   - Technical Answer: The QR code points to a single active session pool. While a screenshot can be scanned, all purchases deduct from the exact same balance. In addition, the active session records the customer name and phone number, which cashiers can verify on high-value orders.
 
-## 3. Hardware, Printing, and Network Scenarios
+## 3. End-User Diner and Customer Experience Scenarios (Customer POV)
+
+- Scenario: Insufficient Balance at the Counter During Lunch Rush
+  - Question: A student reaches the front of a 30-person line, orders a meal worth 150 rupees, but has only 90 rupees on the card. Does this freeze the line?
+  - Technical Answer: The mobile POS immediately flags INSUFFICIENT_FUNDS and displays the exact shortage (60 rupees). The cashier has two zero-friction paths: tap Quick Top-up right from the active session hub to accept 60 rupees via cash or UPI without discarding the cart, or remove an item to complete the transaction instantly.
+
+- Scenario: Customer Suspects Overcharging on a Past Meal
+  - Question: A customer believes the cashier charged 180 rupees instead of 120 rupees yesterday. How do they verify this without confronting staff blindly?
+  - Technical Answer: The customer scans their physical card QR using their phone camera. The customer portal displays an itemized historical breakdown showing the exact dish names, unit prices, timestamp, and counter name. If an error occurred, the customer presents the digital transaction ID to the counter manager, who can trace the exact order in the audit ledger.
+
+- Scenario: Physical Card Damaged, Bent, or QR Smudged
+  - Question: What happens if a card gets wet, bent in a wallet, or the QR ink is scratched off so camera scanners cannot read it?
+  - Technical Answer: Every card has a human-readable identifier (e.g. MC-001) printed beneath the QR code. Cashiers can manually enter this identifier into the POS search bar to pull up the active session. If the card is physically destroyed, the staff can issue a fresh physical card token and transfer the active session, balance, and customer profile to the new card in under 30 seconds.
+
+- Scenario: Phone Battery Dead or Diner Has No Smartphone
+  - Question: Can school children, elderly diners, or visitors whose phone battery died still use the cafeteria without a phone?
+  - Technical Answer: Yes. The customer portal is an optional convenience, not a requirement. The physical card operates autonomously. The cashier scans the card, completes purchases, and provides an optional printed thermal receipt displaying the remaining balance.
+
+- Scenario: Forgotten Card and Inactive Balance on Campus Departure
+  - Question: A visiting student leaves campus without returning the card or claiming an unspent 300 rupee balance. Does the money vanish?
+  - Technical Answer: No. Balance belongs to the database session, not physical hardware. The session remains active with funds securely recorded. If the customer returns next semester, their balance is fully intact. Org Admins also have access to a Dormant Sessions report to contact customers or execute policy-governed settlements.
+
+- Scenario: Zero-App Friction vs Mobile App Downloads
+  - Question: Why not force customers to download an Android or iOS application from Google Play or Apple App Store?
+  - Technical Answer: In fast-paced dining environments, forcing app downloads leads to 60%+ abandonment due to slow campus Wi-Fi, low phone storage, and forgotten passwords. Money Card web portal requires zero app install, zero password signup, and loads in under 1 second on any standard mobile browser via encrypted HTTPS.
+
+## 4. Hardware, Printing, and Network Scenarios
 
 - Scenario: Thermal Printer Runs Out of Paper Mid-Transaction
   - Question: Payment was deducted from the card, but the thermal printer jammed or ran out of paper. Did the customer lose money, and how do they get a bill?
@@ -52,7 +78,7 @@ This document catalogs real-time operational scenarios, technical edge cases, ar
   - Question: How do you prevent staging test data from polluting production, or mobile devices hitting the wrong server?
   - Technical Answer: The mobile app enforces entry point separation (main_production.dart vs main_staging.dart). ServerConfigStorage contains an active guard that automatically purges any hardcoded staging URLs if running in a production flavor, and vice versa.
 
-## 4. Cafeteria Owner and Manager Reconciliation Scenarios
+## 5. Cafeteria Owner and Manager Reconciliation Scenarios
 
 - Scenario: End-of-Day Cash Drawer Discrepancy
   - Question: At 9:00 PM, the cashier has 14,200 rupees cash in the drawer, but the system reports 15,000 rupees in Cash Recharges. How does the manager trace the difference?
@@ -66,7 +92,15 @@ This document catalogs real-time operational scenarios, technical edge cases, ar
   - Question: What happens if a counter manager deletes a product that was sold earlier in the day?
   - Technical Answer: Soft-delete and referential integrity protection prevent historical transaction breakage. The product is deactivated or hidden from future POS carts, but existing transaction rows retain the product name, price, and quantity for accurate historical reporting.
 
-## 5. SaaS Platform and Super Admin Governance Scenarios
+- Scenario: Cashier Shift Handover and Accountability
+  - Question: Shift changes at 3:00 PM. Cashier A leaves and Cashier B takes over the register. How is individual cash liability separated?
+  - Technical Answer: Every staff member logs into the POS with their individual credentials. Every single recharge, purchase, void, and card issuance stamps the createdBy and cashierUserId into the immutable transaction record. The manager can filter analytics and PDF reports by specific staff members to reconcile individual cash drawers.
+
+- Scenario: Cash vs Digital UPI Payment Mode Mixup
+  - Question: A customer pays 500 rupees via UPI, but the cashier accidentally records it as a Cash Recharge. How is this reconciled?
+  - Technical Answer: The cashier voids the incorrect recharge using the reason Wrong Mode / Wrong Amount Entered within the permitted void window, and re-records the top-up as UPI with the UPI transaction reference. Both events are recorded in the audit trail.
+
+## 6. SaaS Platform and Super Admin Governance Scenarios
 
 - Scenario: Cafeteria Account Deletion and Data Cleanup
   - Question: When a cafeteria contract ends and the Super Admin deletes the organization, what happens to live cards, sessions, and analytics?
@@ -80,7 +114,7 @@ This document catalogs real-time operational scenarios, technical edge cases, ar
   - Question: What happens when a cafeteria owner reaches their subscription card or counter limit?
   - Technical Answer: The backend checks organization usage against the active plan limit during card issuance. If cardCount exceeds cardLimit, the API returns a structured LIMIT_EXCEEDED error. The dashboard displays an alert prompting the owner to request a plan upgrade from the Super Admin.
 
-## 6. Architecture and Security Questions
+## 7. Architecture and Security Questions
 
 - Question: Why not store wallet balances directly on physical RFID/NFC/QR cards?
   - Answer: Offline chip balance architectures are vulnerable to physical cloning and tampering. Storing the balance on a centralized database session linked to an opaque token guarantees cryptographic security, real-time balance updates, instant remote blocking if stolen, and phone-based balance checks.
