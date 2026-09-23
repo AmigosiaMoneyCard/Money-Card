@@ -32,6 +32,7 @@ import {
   DollarSign,
   User,
   Phone,
+  ChevronDown,
 } from 'lucide-react';
 
 function getTransactionTitle(tx: Transaction): string {
@@ -68,14 +69,70 @@ export function CardsPage() {
 
   // ─── Counter Pattern & Modal States ──────────────────────────────
   const [counterSearchQuery, setCounterSearchQuery] = useState('');
+  const [counterSearchError, setCounterSearchError] = useState<string | null>(null);
+  const [expandedBranchId, setExpandedBranchId] = useState<string | null>(null);
   const [selectedBranchForDetails, setSelectedBranchForDetails] = useState<Branch | null>(null);
   const [selectedBranchForAnalytics, setSelectedBranchForAnalytics] = useState<Branch | null>(null);
   const [selectedBranchForHistory, setSelectedBranchForHistory] = useState<Branch | null>(null);
 
   const [modalSearchQuery, setModalSearchQuery] = useState('');
+  const [modalSearchError, setModalSearchError] = useState<string | null>(null);
   const [historySearchQuery, setHistorySearchQuery] = useState('');
+  const [historySearchError, setHistorySearchError] = useState<string | null>(null);
+  const [cardModalTab, setCardModalTab] = useState<'LIVE' | 'ALL' | 'AVAILABLE' | 'BLOCKED'>('LIVE');
   const [counterSessions, setCounterSessions] = useState<any[]>([]);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+
+  const handleCounterSearchChange = (val: string) => {
+    if (val.length > 40) {
+      setCounterSearchError('Maximum 40 characters allowed.');
+      return;
+    }
+    const isValid = /^[a-zA-Z0-9\s\-_]*$/.test(val);
+    if (!isValid) {
+      setCounterSearchError('Only letters, numbers, spaces, and hyphens are allowed.');
+    } else {
+      setCounterSearchError(null);
+    }
+    setCounterSearchQuery(val);
+  };
+
+  const handleClearCounterSearch = () => {
+    setCounterSearchQuery('');
+    setCounterSearchError(null);
+  };
+
+  const handleModalSearchChange = (val: string) => {
+    if (val.length > 50) {
+      setModalSearchError('Maximum 50 characters allowed.');
+      return;
+    }
+    const isValid = /^[a-zA-Z0-9\s\-_@.]*$/.test(val);
+    if (!isValid) {
+      setModalSearchError('Disallowed characters detected.');
+    } else {
+      setModalSearchError(null);
+    }
+    setModalSearchQuery(val);
+  };
+
+  const handleHistorySearchChange = (val: string) => {
+    if (val.length > 50) {
+      setHistorySearchError('Maximum 50 characters allowed.');
+      return;
+    }
+    const isValid = /^[a-zA-Z0-9\s\-_+.]*$/.test(val);
+    if (!isValid) {
+      setHistorySearchError('Disallowed characters detected.');
+    } else {
+      setHistorySearchError(null);
+    }
+    setHistorySearchQuery(val);
+  };
+
+  const toggleExpandBranch = (branchId: string) => {
+    setExpandedBranchId((prev) => (prev === branchId ? null : branchId));
+  };
 
   // Detail modal for a single customer session
   const [selectedSessionForDetail, setSelectedSessionForDetail] = useState<any | null>(null);
@@ -202,8 +259,9 @@ export function CardsPage() {
   // ─── Filtered Counters ───────────────────────────────────────────
   const filteredBranches = useMemo(() => {
     if (!counterSearchQuery.trim()) return branches;
-    const q = counterSearchQuery.toLowerCase().trim();
-    return branches.filter((b) => b.name.toLowerCase().includes(q));
+    const sanitized = counterSearchQuery.replace(/[^a-zA-Z0-9\s\-_]/g, '').toLowerCase().trim();
+    if (!sanitized) return branches;
+    return branches.filter((b) => b.name.toLowerCase().includes(sanitized));
   }, [branches, counterSearchQuery]);
 
   const getBranchCards = useCallback((branchId: string) => {
@@ -215,9 +273,35 @@ export function CardsPage() {
     });
   }, [allCards]);
 
+  const getBranchLiveCards = useCallback((branchId: string) => {
+    return allCards.filter((c) => {
+      const isLive = c.status === 'ACTIVE' || Boolean(c.activeSession);
+      const belongsToBranch = c.activeSession?.branchId === branchId || c.currentBranchId === branchId;
+      return isLive && belongsToBranch;
+    });
+  }, [allCards]);
+
+  const modalTabCounts = useMemo(() => {
+    if (!selectedBranchForDetails) return { live: 0, all: 0, available: 0, blocked: 0 };
+    const all = getBranchCards(selectedBranchForDetails.id);
+    const live = all.filter((c) => c.status === 'ACTIVE' || Boolean(c.activeSession)).length;
+    const available = all.filter((c) => c.status === 'AVAILABLE' && !c.activeSession).length;
+    const blocked = all.filter((c) => c.status === 'BLOCKED').length;
+    return { live, all: all.length, available, blocked };
+  }, [selectedBranchForDetails, getBranchCards]);
+
   const branchCardsForDetails = useMemo(() => {
     if (!selectedBranchForDetails) return [];
-    const cards = getBranchCards(selectedBranchForDetails.id);
+    let cards = getBranchCards(selectedBranchForDetails.id);
+
+    if (cardModalTab === 'LIVE') {
+      cards = cards.filter((c) => c.status === 'ACTIVE' || Boolean(c.activeSession));
+    } else if (cardModalTab === 'AVAILABLE') {
+      cards = cards.filter((c) => c.status === 'AVAILABLE' && !c.activeSession);
+    } else if (cardModalTab === 'BLOCKED') {
+      cards = cards.filter((c) => c.status === 'BLOCKED');
+    }
+
     if (!modalSearchQuery.trim()) return cards;
     const q = modalSearchQuery.toLowerCase().trim();
     return cards.filter((c) => {
@@ -227,7 +311,7 @@ export function CardsPage() {
       const status = (c.status || '').toLowerCase();
       return couponId.includes(q) || customer.includes(q) || phone.includes(q) || status.includes(q);
     });
-  }, [selectedBranchForDetails, getBranchCards, modalSearchQuery]);
+  }, [selectedBranchForDetails, getBranchCards, cardModalTab, modalSearchQuery]);
 
   const filteredCounterSessions = useMemo(() => {
     if (!historySearchQuery.trim()) return counterSessions;
@@ -268,25 +352,44 @@ export function CardsPage() {
         </div>
       </div>
 
-      {/* ─── ONLY Search Bar: Search by counter name ─────────────────── */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-        <input
-          type="text"
-          placeholder="Search by counter name..."
-          value={counterSearchQuery}
-          onChange={(e) => setCounterSearchQuery(e.target.value)}
-          className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-8 py-2 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none"
-        />
-        {counterSearchQuery && (
-          <button
-            type="button"
-            onClick={() => setCounterSearchQuery('')}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-            title="Clear search"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
+      {/* ─── Search Bar with Validation ─────────────────── */}
+      <div className="flex flex-col gap-1 max-w-md">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Search by counter name..."
+            value={counterSearchQuery}
+            maxLength={40}
+            onChange={(e) => handleCounterSearchChange(e.target.value)}
+            className={`w-full rounded-xl border bg-white pl-9 pr-16 py-2 text-xs text-slate-900 placeholder-slate-400 transition-colors focus:outline-none ${
+              counterSearchError
+                ? 'border-rose-400 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
+                : 'border-slate-200 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20'
+            }`}
+          />
+          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+            {counterSearchQuery.length >= 25 && (
+              <span className="text-[10px] font-mono text-slate-400">
+                {counterSearchQuery.length}/40
+              </span>
+            )}
+            {counterSearchQuery && (
+              <button
+                type="button"
+                onClick={handleClearCounterSearch}
+                className="text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                title="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+        {counterSearchError && (
+          <p className="text-[11px] text-rose-500 font-medium pl-1 flex items-center gap-1">
+            <span>⚠️</span> {counterSearchError}
+          </p>
         )}
       </div>
 
@@ -305,10 +408,22 @@ export function CardsPage() {
             title={counterSearchQuery ? 'No matching counters' : 'No counters found'}
             description={
               counterSearchQuery
-                ? 'Try adjusting your search query.'
+                ? `No counters found matching "${counterSearchQuery}".`
                 : 'Counters configured in your organization will appear here.'
             }
           />
+          {counterSearchQuery && (
+            <div className="text-center mt-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearCounterSearch}
+                className="text-xs px-3"
+              >
+                Clear Search
+              </Button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
@@ -316,65 +431,165 @@ export function CardsPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  <th className="py-3 px-4 w-1/2 min-w-[240px]">Counter Name</th>
+                  <th className="py-3 px-4 w-1/2 min-w-[240px]">Counter Name & Live Status</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredBranches.map((branch) => {
-                  const count = getBranchCards(branch.id).length;
+                  const branchCards = getBranchCards(branch.id);
+                  const totalCount = branchCards.length;
+                  const liveBranchCards = getBranchLiveCards(branch.id);
+                  const liveCount = liveBranchCards.length;
+                  const isExpanded = expandedBranchId === branch.id;
+
                   return (
-                    <tr key={branch.id} className="hover:bg-slate-50/60 transition-colors">
-                      {/* Counter Name */}
-                      <td className="py-3.5 px-4 w-1/2 min-w-[240px]">
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
-                            <Building2 className="h-4 w-4" />
+                    <tr key={branch.id} className="group hover:bg-slate-50/50 transition-colors">
+                      <td colSpan={2} className="p-0">
+                        <div className="flex flex-col">
+                          {/* Main Row Content */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3.5 px-4">
+                            {/* Counter Name & Live Indicator */}
+                            <div className="flex items-center gap-3">
+                              <div className="h-9 w-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 shrink-0 shadow-2xs">
+                                <Building2 className="h-4 w-4" />
+                              </div>
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
+                                <span className="font-semibold text-sm text-slate-900">
+                                  {branch.name}
+                                </span>
+                                {liveCount > 0 ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <span className="relative flex h-2 w-2">
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                    </span>
+                                    {liveCount} Live Card{liveCount !== 1 ? 's' : ''} ({totalCount} Total)
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-500 border border-slate-200">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
+                                    0 Live Cards ({totalCount} Total)
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="inline-flex items-center gap-2 flex-wrap self-end sm:self-auto">
+                              {/* 1. Customer History */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenCustomerHistory(branch)}
+                                className="text-xs h-8 px-3 rounded-lg border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
+                                leftIcon={<History className="h-3.5 w-3.5 text-emerald-600" />}
+                              >
+                                Customer History
+                              </Button>
+
+                              {/* 2. Card Analytics */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenAnalytics(branch)}
+                                className="text-xs h-8 px-3 rounded-lg border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
+                                leftIcon={<BarChart2 className="h-3.5 w-3.5 text-emerald-600" />}
+                              >
+                                Card Analytics
+                              </Button>
+
+                              {/* 3. Live Cards Quick Toggle (if live cards exist) */}
+                              {liveCount > 0 && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => toggleExpandBranch(branch.id)}
+                                  className={`text-xs h-8 px-2.5 rounded-lg border-emerald-200 font-medium cursor-pointer transition-colors ${
+                                    isExpanded
+                                      ? 'bg-emerald-100/80 text-emerald-800 border-emerald-300'
+                                      : 'bg-emerald-50/70 hover:bg-emerald-100/60 text-emerald-700'
+                                  }`}
+                                  rightIcon={<ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />}
+                                >
+                                  {isExpanded ? 'Hide Live Cards' : `Live Cards (${liveCount})`}
+                                </Button>
+                              )}
+
+                              {/* 4. Card Details Button */}
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedBranchForDetails(branch);
+                                  setModalSearchQuery('');
+                                  setCardModalTab(liveCount > 0 ? 'LIVE' : 'ALL');
+                                }}
+                                className="text-xs h-8 px-3.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold cursor-pointer shadow-2xs"
+                                leftIcon={<CreditCard className="h-3.5 w-3.5" />}
+                              >
+                                Card Details ({totalCount})
+                              </Button>
+                            </div>
                           </div>
-                          <span className="font-semibold text-sm text-slate-900">
-                            Cards - {branch.name}
-                          </span>
-                        </div>
-                      </td>
 
-                      {/* 3 Action Buttons on Far Right: [ Customer History ] [ Card Analytics ] [ Card Details (N) ] */}
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                        <div className="inline-flex items-center gap-2">
-                          {/* 1. Customer History (to the left of Card Analytics) */}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleOpenCustomerHistory(branch)}
-                            className="text-xs h-8 px-3 rounded-lg border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
-                            leftIcon={<History className="h-3.5 w-3.5 text-emerald-600" />}
-                          >
-                            Customer History
-                          </Button>
-
-                          {/* 2. Card Analytics */}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleOpenAnalytics(branch)}
-                            className="text-xs h-8 px-3 rounded-lg border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
-                            leftIcon={<BarChart2 className="h-3.5 w-3.5 text-emerald-600" />}
-                          >
-                            Card Analytics
-                          </Button>
-
-                          {/* 3. Card Details */}
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedBranchForDetails(branch);
-                              setModalSearchQuery('');
-                            }}
-                            className="text-xs h-8 px-3.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold cursor-pointer"
-                            leftIcon={<CreditCard className="h-3.5 w-3.5" />}
-                          >
-                            Card Details ({count})
-                          </Button>
+                          {/* Inline Live Cards Drawer */}
+                          {isExpanded && liveBranchCards.length > 0 && (
+                            <div className="bg-slate-50/80 border-t border-slate-100 p-3 sm:px-6 sm:py-3 transition-all">
+                              <div className="bg-white rounded-xl border border-emerald-200/80 p-3 shadow-2xs space-y-2.5">
+                                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                    <span className="relative flex h-2 w-2">
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                    </span>
+                                    Active Live Cards in {branch.name} ({liveBranchCards.length})
+                                  </span>
+                                  <span className="text-[11px] text-slate-500 font-medium">
+                                    Total Live Balance:{' '}
+                                    <span className="font-mono font-bold text-emerald-600">
+                                      {formatCurrency(
+                                        liveBranchCards.reduce((acc, c) => acc + (c.activeSession?.balance || 0), 0)
+                                      )}
+                                    </span>
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                                  {liveBranchCards.map((card) => {
+                                    const couponId = card.physicalCardNumber || card.qrToken;
+                                    return (
+                                      <div
+                                        key={card.id}
+                                        className="flex items-center justify-between p-2.5 rounded-lg border border-slate-100 bg-slate-50/60 hover:bg-emerald-50/40 hover:border-emerald-200 transition-colors text-xs"
+                                      >
+                                        <div className="min-w-0 pr-2">
+                                          <span className="font-mono font-bold text-slate-900 block truncate">
+                                            {couponId}
+                                          </span>
+                                          <p className="text-[11px] text-slate-600 truncate mt-0.5">
+                                            {card.activeSession?.customerName || 'Walk-in Customer'}
+                                          </p>
+                                          {card.activeSession?.customerPhone && (
+                                            <p className="text-[10px] text-slate-400 font-mono">
+                                              {card.activeSession.customerPhone}
+                                            </p>
+                                          )}
+                                        </div>
+                                        <div className="text-right shrink-0">
+                                          <span className="font-mono font-bold text-emerald-600 block">
+                                            {formatCurrency(card.activeSession?.balance || 0)}
+                                          </span>
+                                          <Badge variant="success" className="text-[9px] px-1.5 py-0 mt-0.5">
+                                            Active
+                                          </Badge>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -396,20 +611,32 @@ export function CardsPage() {
         >
           <div className="space-y-4">
             {/* Search Bar inside Customer History Modal */}
-            <div className="flex items-center justify-between gap-3">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Search by customer, phone, or coupon ID..."
-                  value={historySearchQuery}
-                  onChange={(e) => setHistorySearchQuery(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:outline-none"
-                />
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between gap-3">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Search by customer, phone, or coupon ID..."
+                    value={historySearchQuery}
+                    maxLength={50}
+                    onChange={(e) => handleHistorySearchChange(e.target.value)}
+                    className={`w-full rounded-lg border bg-white pl-8 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none ${
+                      historySearchError
+                        ? 'border-rose-400 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
+                        : 'border-slate-200 focus:border-emerald-600'
+                    }`}
+                  />
+                </div>
+                <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold text-xs px-2.5 py-0.5">
+                  {filteredCounterSessions.length} Sessions
+                </Badge>
               </div>
-              <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold text-xs px-2.5 py-0.5">
-                {filteredCounterSessions.length} Sessions
-              </Badge>
+              {historySearchError && (
+                <p className="text-[11px] text-rose-500 font-medium pl-1">
+                  ⚠️ {historySearchError}
+                </p>
+              )}
             </div>
 
             {isLoadingSessions ? (
@@ -605,21 +832,87 @@ export function CardsPage() {
           size="xl"
         >
           <div className="space-y-4">
+            {/* Filter Tabs in Card Details Modal */}
+            <div className="flex items-center gap-1.5 border-b border-slate-200 pb-2.5 overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => setCardModalTab('LIVE')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  cardModalTab === 'LIVE'
+                    ? 'bg-emerald-700 text-white shadow-2xs'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <span className="relative flex h-2 w-2">
+                  {modalTabCounts.live > 0 && (
+                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${cardModalTab === 'LIVE' ? 'bg-white' : 'bg-emerald-400'}`}></span>
+                  )}
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${cardModalTab === 'LIVE' ? 'bg-white' : 'bg-emerald-500'}`}></span>
+                </span>
+                Live Active Cards ({modalTabCounts.live})
+              </button>
+              <button
+                type="button"
+                onClick={() => setCardModalTab('ALL')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
+                  cardModalTab === 'ALL'
+                    ? 'bg-emerald-700 text-white shadow-2xs'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                All Cards ({modalTabCounts.all})
+              </button>
+              <button
+                type="button"
+                onClick={() => setCardModalTab('AVAILABLE')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
+                  cardModalTab === 'AVAILABLE'
+                    ? 'bg-emerald-700 text-white shadow-2xs'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                Available ({modalTabCounts.available})
+              </button>
+              <button
+                type="button"
+                onClick={() => setCardModalTab('BLOCKED')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
+                  cardModalTab === 'BLOCKED'
+                    ? 'bg-emerald-700 text-white shadow-2xs'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                Blocked ({modalTabCounts.blocked})
+              </button>
+            </div>
+
             {/* Search Bar inside Details Modal */}
-            <div className="flex items-center justify-between gap-3">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Search by coupon ID or customer name..."
-                  value={modalSearchQuery}
-                  onChange={(e) => setModalSearchQuery(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:outline-none"
-                />
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between gap-3">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Search by coupon ID or customer name..."
+                    value={modalSearchQuery}
+                    maxLength={50}
+                    onChange={(e) => handleModalSearchChange(e.target.value)}
+                    className={`w-full rounded-lg border bg-white pl-8 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none ${
+                      modalSearchError
+                        ? 'border-rose-400 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
+                        : 'border-slate-200 focus:border-emerald-600'
+                    }`}
+                  />
+                </div>
+                <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold text-xs px-2.5 py-0.5">
+                  {branchCardsForDetails.length} Cards
+                </Badge>
               </div>
-              <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold text-xs px-2.5 py-0.5">
-                {branchCardsForDetails.length} Cards
-              </Badge>
+              {modalSearchError && (
+                <p className="text-[11px] text-rose-500 font-medium pl-1">
+                  ⚠️ {modalSearchError}
+                </p>
+              )}
             </div>
 
             {branchCardsForDetails.length === 0 ? (
