@@ -96,7 +96,6 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
 
     final nameCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
-    String? nameError;
     String? phoneError;
 
     final confirm = await showDialog<bool>(
@@ -163,7 +162,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 const Text(
-                  'Customer Details (Required for Customer History):',
+                  'Customer Details (Optional):',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
                 ),
                 const SizedBox(height: 8),
@@ -172,20 +171,12 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                   autofocus: true,
                   textInputAction: TextInputAction.next,
                   scrollPadding: const EdgeInsets.only(bottom: 140),
-                  onChanged: (val) {
-                    if (nameError != null) {
-                      setDialogState(() {
-                        nameError = null;
-                      });
-                    }
-                  },
-                  decoration: InputDecoration(
-                    labelText: 'Customer Name *',
-                    hintText: 'e.g. John Doe',
-                    errorText: nameError,
-                    prefixIcon: const Icon(Icons.person_outline, size: 18),
+                  decoration: const InputDecoration(
+                    labelText: 'Customer Name (Optional)',
+                    hintText: 'e.g. John Doe (default: Walk-in)',
+                    prefixIcon: Icon(Icons.person_outline, size: 18),
                     isDense: true,
-                    border: const OutlineInputBorder(),
+                    border: OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -206,7 +197,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                     }
                   },
                   decoration: InputDecoration(
-                    labelText: 'Phone Number (10 Digits) *',
+                    labelText: 'Phone Number (Optional, 10 Digits)',
                     hintText: 'e.g. 9876543210',
                     prefixIcon: const Icon(Icons.phone_outlined, size: 18),
                     errorText: phoneError,
@@ -217,7 +208,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 const Text(
-                  'Customer details are saved to Customer History. Then the card becomes active.',
+                  'Customer details are optional. Then the card becomes active.',
                   style: TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
                 ),
               ],
@@ -230,29 +221,11 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
             ),
             ElevatedButton(
               onPressed: () {
-                final name = nameCtrl.text.trim();
                 final phone = phoneCtrl.text.trim();
 
-                bool hasError = false;
-                String? newNameError;
-                String? newPhoneError;
-
-                if (name.isEmpty) {
-                  newNameError = 'Customer name is required';
-                  hasError = true;
-                }
-                if (phone.isEmpty) {
-                  newPhoneError = 'Phone number is required';
-                  hasError = true;
-                } else if (phone.length != 10) {
-                  newPhoneError = 'Phone number must be exactly 10 digits';
-                  hasError = true;
-                }
-
-                if (hasError) {
+                if (phone.isNotEmpty && phone.length != 10) {
                   setDialogState(() {
-                    nameError = newNameError;
-                    phoneError = newPhoneError;
+                    phoneError = 'Phone number must be exactly 10 digits';
                   });
                   return;
                 }
@@ -268,10 +241,11 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
 
     if (confirm != true) return;
 
+    final customerNameVal = nameCtrl.text.trim().isNotEmpty ? nameCtrl.text.trim() : 'Walk-in Customer';
     final session = await ref.read(sessionDetailsNotifierProvider.notifier).createSession(
           cardId: card.id,
           branchId: branch.id,
-          customerName: nameCtrl.text.trim(),
+          customerName: customerNameVal,
           customerPhone: phoneCtrl.text.trim(),
         );
 

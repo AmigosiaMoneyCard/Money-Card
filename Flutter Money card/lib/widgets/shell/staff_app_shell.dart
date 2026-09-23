@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
+import '../../core/constants/permission_constants.dart';
 import '../../models/branch.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/branch_provider.dart';
 import '../../providers/card_operations_provider.dart';
+import '../../providers/permission_provider.dart';
 import '../../providers/session_operations_provider.dart';
 import '../no_internet_banner.dart';
 
@@ -51,14 +53,14 @@ class _StaffAppShellState extends ConsumerState<StaffAppShell> with WidgetsBindi
     }
   }
 
-  int _calculateSelectedIndex() {
+  int _calculateSelectedIndex(bool isManager) {
     if (widget.currentPath.startsWith('/app/cards')) return 1;
     if (widget.currentPath.startsWith('/app/products')) return 2;
-    if (widget.currentPath.startsWith('/app/analytics')) return 3;
+    if (isManager && widget.currentPath.startsWith('/app/analytics')) return 3;
     return 0; // Home
   }
 
-  void _onItemTapped(int index, BuildContext context) {
+  void _onItemTapped(int index, BuildContext context, bool isManager) {
     switch (index) {
       case 0:
         context.go('/app/home');
@@ -70,7 +72,9 @@ class _StaffAppShellState extends ConsumerState<StaffAppShell> with WidgetsBindi
         context.go('/app/products');
         break;
       case 3:
-        context.go('/app/analytics');
+        if (isManager) {
+          context.go('/app/analytics');
+        }
         break;
     }
   }
@@ -78,6 +82,11 @@ class _StaffAppShellState extends ConsumerState<StaffAppShell> with WidgetsBindi
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
+    final permissionChecker = ref.watch(permissionCheckerProvider);
+    final isManager = user?.role == 'STAFF'
+        ? permissionChecker.hasPermission(AppPermission.recharge)
+        : (user?.role == 'ORG_ADMIN' || user?.role == 'SUPER_ADMIN');
+
     final branchState = ref.watch(branchNotifierProvider);
     final currentBranch = branchState.currentBranch;
     final assignedBranches = branchState.assignedBranches;
@@ -119,29 +128,30 @@ class _StaffAppShellState extends ConsumerState<StaffAppShell> with WidgetsBindi
         ],
       ),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _calculateSelectedIndex(),
-        onDestinationSelected: (idx) => _onItemTapped(idx, context),
-        destinations: const [
-          NavigationDestination(
+        selectedIndex: _calculateSelectedIndex(isManager),
+        onDestinationSelected: (idx) => _onItemTapped(idx, context, isManager),
+        destinations: [
+          const NavigationDestination(
             icon: Icon(Icons.home_outlined),
             selectedIcon: Icon(Icons.home),
             label: 'Home',
           ),
-          NavigationDestination(
+          const NavigationDestination(
             icon: Icon(Icons.credit_card_outlined),
             selectedIcon: Icon(Icons.credit_card),
             label: 'Cards',
           ),
-          NavigationDestination(
+          const NavigationDestination(
             icon: Icon(Icons.restaurant_menu_outlined),
             selectedIcon: Icon(Icons.restaurant_menu),
             label: 'Menu',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.bar_chart_outlined),
-            selectedIcon: Icon(Icons.bar_chart),
-            label: 'Analytics',
-          ),
+          if (isManager)
+            const NavigationDestination(
+              icon: Icon(Icons.bar_chart_outlined),
+              selectedIcon: Icon(Icons.bar_chart),
+              label: 'Analytics',
+            ),
         ],
       ),
     );

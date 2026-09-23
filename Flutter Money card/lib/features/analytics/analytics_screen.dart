@@ -142,14 +142,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     ],
                   ),
                 ),
-                if (assignedBranches.length > 1 && currentBranch != null)
-                  _buildBranchSwitcher(context, ref, currentBranch, assignedBranches),
               ],
             ),
             bottom: const TabBar(
               tabs: [
-                Tab(icon: Icon(Icons.dashboard_outlined, size: 18), text: 'Overview'),
-                Tab(icon: Icon(Icons.receipt_long_outlined, size: 18), text: 'Recharges Analytics'),
+                Tab(icon: Icon(Icons.receipt_long_outlined, size: 18), text: 'Recharge'),
+                Tab(icon: Icon(Icons.restaurant_menu_outlined, size: 18), text: 'Menu'),
               ],
               labelColor: AppColors.primary,
               unselectedLabelColor: AppColors.textSecondaryLight,
@@ -375,10 +373,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                       },
                       child: _buildOverviewTab(context, analyticsState, notifier),
                     ),
-                    // Tab 2: Recharges Analytics List with Cancel Option
+                    // Tab 2: Menu Analytics & Demand
                     RefreshIndicator(
-                      onRefresh: _fetchRecharges,
-                      child: _buildRechargesAnalyticsTab(context),
+                      onRefresh: () async {
+                        await notifier.loadAnalytics();
+                      },
+                      child: _buildMenuAnalyticsTab(context, analyticsState, notifier),
                     ),
                   ],
                 ),
@@ -390,68 +390,6 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
-  Widget _buildBranchSwitcher(
-    BuildContext context,
-    WidgetRef ref,
-    Branch currentBranch,
-    List<Branch> assignedBranches,
-  ) {
-    return PopupMenuButton<Branch>(
-      initialValue: currentBranch,
-      onSelected: (branch) {
-        ref.read(branchNotifierProvider.notifier).selectBranch(branch);
-      },
-      itemBuilder: (context) {
-        return assignedBranches.map((branch) {
-          final isSelected = branch.id == currentBranch.id;
-          return PopupMenuItem<Branch>(
-            value: branch,
-            child: Row(
-              children: [
-                Icon(
-                  Icons.storefront,
-                  size: 18,
-                  color: isSelected ? AppColors.primary : AppColors.textSecondaryLight,
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Text(
-                  branch.name,
-                  style: TextStyle(
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    color: isSelected ? AppColors.primaryDark : AppColors.textPrimaryLight,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList();
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: AppColors.primaryLight,
-          borderRadius: AppSpacing.roundedSm,
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.swap_horiz, size: 16, color: AppColors.primaryDark),
-            const SizedBox(width: 4),
-            const Text(
-              'Switch Counter',
-              style: TextStyle(
-                color: AppColors.primaryDark,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const Icon(Icons.arrow_drop_down, size: 16, color: AppColors.primaryDark),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildOverviewTab(
     BuildContext context,
@@ -719,13 +657,17 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
-  // ─── Tab 2: Recharges Analytics List with Cancel Dropdown ───
-  Widget _buildRechargesAnalyticsTab(BuildContext context) {
-    if (_isLoadingRecharges) {
-      return const AppLoadingView(message: 'Loading recharges history...');
+  // ─── Tab 2: Menu Analytics Tab ───
+  Widget _buildMenuAnalyticsTab(
+    BuildContext context,
+    AnalyticsState state,
+    AnalyticsNotifier notifier,
+  ) {
+    if (state.isLoading) {
+      return const AppLoadingView(message: 'Loading menu analytics...');
     }
 
-    if (_rechargesError != null) {
+    if (state.errorMessage != null) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
@@ -739,13 +681,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   const Icon(Icons.error_outline, size: 48, color: AppColors.error),
                   const SizedBox(height: AppSpacing.md),
                   Text(
-                    _rechargesError!,
+                    state.errorMessage!,
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: AppColors.error),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   ElevatedButton(
-                    onPressed: _fetchRecharges,
+                    onPressed: notifier.loadAnalytics,
                     child: const Text('Retry'),
                   ),
                 ],
@@ -756,260 +698,229 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       );
     }
 
-    if (_rechargesList.isEmpty) {
+    final data = state.analytics;
+    if (data == null) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         children: const [
           SizedBox(height: 80),
           AppEmptyState(
-            title: 'No Recharges Found',
-            description: 'No recharge records match the selected date filter.',
-            icon: Icons.receipt_long_outlined,
+            title: 'No Menu Analytics',
+            description: 'No menu performance metrics available for this counter.',
+            icon: Icons.restaurant_menu_outlined,
           ),
         ],
       );
     }
 
-    return ListView.builder(
+    final demands = data.productDemand ?? [];
+
+    return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 16),
-      itemCount: _rechargesList.length,
-      itemBuilder: (ctx, index) {
-        final item = _rechargesList[index] as Map<String, dynamic>;
-        return _buildRechargeListItem(item);
-      },
+      children: [
+        // Summary Cards
+        Row(
+          children: [
+            Expanded(
+              child: _buildMenuSummaryCard(
+                title: 'Food Sales',
+                value: '₹${data.purchaseVolume.toStringAsFixed(2)}',
+                subtitle: '${data.purchaseCount} orders placed',
+                icon: Icons.payments_outlined,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildMenuSummaryCard(
+                title: 'Items Sold',
+                value: '${data.productsSoldCount}',
+                subtitle: 'Total dishes/items',
+                icon: Icons.fastfood_outlined,
+                color: AppColors.success,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _buildMenuSummaryCard(
+                title: 'Avg Order Value',
+                value: '₹${data.avgPurchaseValue.toStringAsFixed(2)}',
+                subtitle: 'Per food order',
+                icon: Icons.receipt_outlined,
+                color: Colors.indigo,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildMenuSummaryCard(
+                title: 'Cancelled Orders',
+                value: '${data.cancelledOrdersCount}',
+                subtitle: '₹${data.cancelledOrdersVolume.toStringAsFixed(2)} voided',
+                icon: Icons.remove_shopping_cart_outlined,
+                color: AppColors.error,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        // Popular Menu Items / Demand Header
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'POPULAR MENU ITEMS',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+                color: AppColors.textSecondaryLight,
+              ),
+            ),
+            Text(
+              '${demands.length} items',
+              style: const TextStyle(fontSize: 12, color: AppColors.textTertiaryLight),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        if (demands.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.borderLight),
+            ),
+            child: const Center(
+              child: Text(
+                'No menu items sold yet in this period',
+                style: TextStyle(color: AppColors.textSecondaryLight, fontSize: 13),
+              ),
+            ),
+          )
+        else
+          ...demands.map((item) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.borderLight),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryLight,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.restaurant_menu,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.productName,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimaryLight,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${item.quantitySold} units sold',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondaryLight,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    '₹${item.totalRevenue.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primaryDark,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        const SizedBox(height: 16),
+      ],
     );
   }
 
-  Widget _buildRechargeListItem(Map<String, dynamic> item) {
-    final txId = item['id'] as String? ?? '';
-    final displayId = txId.length > 8 ? txId.substring(0, 8).toUpperCase() : txId.toUpperCase();
-    final cardNum = item['cardNumber'] as String? ?? 'MC-Card';
-    final staff = item['staffName'] as String? ?? 'Staff';
-    final amount = (item['amount'] as num?)?.toDouble() ?? 0.0;
-    final method = item['paymentMethod'] as String? ?? 'CASH';
-    final isCancelled = item['isCancelled'] == true;
-    final createdAt = item['createdAt'] as String?;
-    final dateStr = createdAt != null ? _formatDateTime(createdAt) : '—';
-
+  Widget _buildMenuSummaryCard({
+    required String title,
+    required String value,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+  }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isCancelled ? Colors.grey.shade100 : Colors.white,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: isCancelled ? Colors.grey.shade300 : AppColors.borderLight),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Text(
-                    'Coupon ID: #$displayId',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: isCancelled ? Colors.grey : AppColors.textPrimaryLight,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: method == 'CASH' ? AppColors.successLight : Colors.purple.shade50,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      method,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: method == 'CASH' ? AppColors.primaryDark : Colors.purple.shade700,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (isCancelled)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Text(
-                    'CANCELLED',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black54),
-                  ),
-                )
-              else
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, size: 20, color: AppColors.textSecondaryLight),
-                  onSelected: (val) {
-                    if (val == 'CANCEL') {
-                      _handleCancelRechargeFromAnalytics(item);
-                    }
-                  },
-                  itemBuilder: (ctx) => [
-                    const PopupMenuItem(
-                      value: 'CANCEL',
-                      child: Row(
-                        children: [
-                          Icon(Icons.cancel_outlined, size: 16, color: AppColors.error),
-                          SizedBox(width: 8),
-                          Text('Cancel Recharge', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Card: $cardNum', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 6),
               Text(
-                '₹${amount.toStringAsFixed(2)}',
-                style: TextStyle(
-                  fontSize: 16,
+                title,
+                style: const TextStyle(
+                  fontSize: 11,
                   fontWeight: FontWeight.bold,
-                  color: isCancelled ? Colors.grey : AppColors.success,
-                  decoration: isCancelled ? TextDecoration.lineThrough : null,
+                  color: AppColors.textSecondaryLight,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Staff: $staff', style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight)),
-              Text(dateStr, style: const TextStyle(fontSize: 11, color: AppColors.textTertiaryLight)),
-            ],
-          ),
-          if (isCancelled && item['cancellationReason'] != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              'Reason: ${item['cancellationReason']}',
-              style: const TextStyle(fontSize: 11, color: Colors.black54, fontStyle: FontStyle.italic),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: color,
             ),
-          ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.textTertiaryLight,
+            ),
+          ),
         ],
       ),
     );
-  }
-
-  Future<void> _handleCancelRechargeFromAnalytics(Map<String, dynamic> item) async {
-    final txId = item['id'] as String;
-    final amount = (item['amount'] as num?)?.toDouble() ?? 0.0;
-    final cardNum = item['cardNumber'] ?? 'Card';
-
-    String selectedReason = 'Wrong Amount Entered';
-    final customReasonCtrl = TextEditingController();
-
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (dialogCtx, setModalState) => AlertDialog(
-          title: Row(
-            children: const [
-              Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 24),
-              SizedBox(width: 8),
-              Text('Cancel Recharge?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Cancel recharge of ₹${amount.toStringAsFixed(2)} on $cardNum? This will void the top-up and deduct ₹${amount.toStringAsFixed(2)} from the card balance.',
-                style: const TextStyle(fontSize: 14, color: AppColors.textPrimaryLight),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Select Cancellation Reason:',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                initialValue: selectedReason,
-                items: const [
-                  DropdownMenuItem(value: 'Wrong Amount Entered', child: Text('Wrong Amount Entered')),
-                  DropdownMenuItem(value: 'Customer Changed Mind', child: Text('Customer Changed Mind')),
-                  DropdownMenuItem(value: 'Duplicate Scan', child: Text('Duplicate Scan')),
-                  DropdownMenuItem(value: 'Other Reason', child: Text('Other Reason')),
-                ],
-                onChanged: (val) {
-                  if (val != null) {
-                    setModalState(() => selectedReason = val);
-                  }
-                },
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                ),
-              ),
-              if (selectedReason == 'Other Reason') ...[
-                const SizedBox(height: 10),
-                TextField(
-                  controller: customReasonCtrl,
-                  decoration: InputDecoration(
-                    hintText: 'Enter specific reason...',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Keep Recharge'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Confirm Cancel', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (confirm != true) return;
-
-    final reason = selectedReason == 'Other Reason' && customReasonCtrl.text.trim().isNotEmpty
-        ? customReasonCtrl.text.trim()
-        : selectedReason;
-
-    try {
-      final sessionService = ref.read(sessionServiceProvider);
-      await sessionService.cancelRecharge(transactionId: txId, reason: reason);
-      await _fetchRecharges();
-      ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Recharge of ₹${amount.toStringAsFixed(2)} cancelled successfully.'),
-          backgroundColor: AppColors.success,
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Cancellation failed: $e'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-    }
   }
 }

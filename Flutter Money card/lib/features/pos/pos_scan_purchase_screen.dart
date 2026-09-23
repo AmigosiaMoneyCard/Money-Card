@@ -98,7 +98,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
 
           final nameCtrl = TextEditingController();
           final phoneCtrl = TextEditingController();
-          String? nameError;
           String? phoneError;
 
           final confirm = await showDialog<bool>(
@@ -143,7 +142,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       const Text(
-                        'Customer Details (Required for Customer History):',
+                        'Customer Details (Optional):',
                         style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
                       ),
                       const SizedBox(height: 8),
@@ -152,16 +151,12 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                         autofocus: true,
                         textInputAction: TextInputAction.next,
                         scrollPadding: const EdgeInsets.only(bottom: 140),
-                        onChanged: (val) {
-                          if (nameError != null) setDialogState(() => nameError = null);
-                        },
-                        decoration: InputDecoration(
-                          labelText: 'Customer Name *',
-                          hintText: 'e.g. John Doe',
-                          errorText: nameError,
-                          prefixIcon: const Icon(Icons.person_outline, size: 18),
+                        decoration: const InputDecoration(
+                          labelText: 'Customer Name (Optional)',
+                          hintText: 'e.g. John Doe (default: Walk-in)',
+                          prefixIcon: Icon(Icons.person_outline, size: 18),
                           isDense: true,
-                          border: const OutlineInputBorder(),
+                          border: OutlineInputBorder(),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -178,7 +173,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                           if (phoneError != null) setDialogState(() => phoneError = null);
                         },
                         decoration: InputDecoration(
-                          labelText: 'Phone Number (10 Digits) *',
+                          labelText: 'Phone Number (Optional, 10 Digits)',
                           hintText: 'e.g. 9876543210',
                           prefixIcon: const Icon(Icons.phone_outlined, size: 18),
                           errorText: phoneError,
@@ -189,7 +184,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                       ),
                       const SizedBox(height: AppSpacing.xs),
                       const Text(
-                        'Customer details are saved to Customer History. Then the card becomes active.',
+                        'Customer details are optional. Then the card becomes active.',
                         style: TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
                       ),
                     ],
@@ -202,26 +197,10 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                   ),
                   ElevatedButton(
                     onPressed: () {
-                      final name = nameCtrl.text.trim();
                       final phone = phoneCtrl.text.trim();
-                      bool hasError = false;
-                      String? nError;
-                      String? pError;
-                      if (name.isEmpty) {
-                        nError = 'Customer name is required';
-                        hasError = true;
-                      }
-                      if (phone.isEmpty) {
-                        pError = 'Phone number is required';
-                        hasError = true;
-                      } else if (phone.length != 10) {
-                        pError = 'Phone number must be exactly 10 digits';
-                        hasError = true;
-                      }
-                      if (hasError) {
+                      if (phone.isNotEmpty && phone.length != 10) {
                         setDialogState(() {
-                          nameError = nError;
-                          phoneError = pError;
+                          phoneError = 'Phone number must be exactly 10 digits';
                         });
                         return;
                       }
@@ -244,10 +223,11 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
           }
 
           final sessionRepo = ref.read(sessionRepositoryProvider);
+          final customerNameVal = nameCtrl.text.trim().isNotEmpty ? nameCtrl.text.trim() : 'Walk-in Customer';
           final newSession = await sessionRepo.createSession(
             cardId: result.card.id,
             branchId: branch.id,
-            customerName: nameCtrl.text.trim(),
+            customerName: customerNameVal,
             customerPhone: phoneCtrl.text.trim(),
           );
 
@@ -299,6 +279,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
 
       if (result.session != null) {
         ref.read(sessionDetailsNotifierProvider.notifier).loadSessionById(result.session!.id);
+        _refreshSession();
       }
     } catch (e) {
       if (!mounted) return;
@@ -835,8 +816,8 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     final session = _activeSession!;
     final permissions = ref.watch(permissionCheckerProvider);
 
-    final canPurchase = permissions.hasPermission(AppPermission.purchase);
-    final canRecharge = permissions.hasPermission(AppPermission.recharge);
+    const canPurchase = true; // Always allow food purchase for counter staff and manager
+    const canRecharge = true; // Always allow card recharge
     final canViewSession = permissions.hasPermission(AppPermission.sessionView);
     final canSettleReturn = permissions.hasPermission(AppPermission.cardReturn) ||
         permissions.hasPermission(AppPermission.refund);
@@ -1011,39 +992,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
             ),
             const SizedBox(height: AppSpacing.sm),
 
-            // OPTION 1: ADD PRODUCTS
-            if (canPurchase) ...[
-              _buildActionTile(
-                icon: Icons.add_shopping_cart,
-                iconColor: AppColors.primary,
-                title: 'Add Products',
-                subtitle: 'Order food items from menu catalog',
-                onTap: _openAddProducts,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-            ],
-
-            // OPTION: CANCEL / EDIT RECENT ORDER
-            _buildActionTile(
-              icon: Icons.edit_note_outlined,
-              iconColor: AppColors.error,
-              title: 'Cancel / Edit Order',
-              subtitle: 'Cancel current order with auto-refund & re-order',
-              onTap: _handleQuickCancelRecentOrder,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-
-            // OPTION: CARD INFO & STATISTICS
-            _buildActionTile(
-              icon: Icons.info_outline,
-              iconColor: AppColors.info,
-              title: 'Card Info & Statistics',
-              subtitle: 'Number of recharges, refunds, and card summary',
-              onTap: () => _showCardSessionInfoSheet(context, session),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-
-            // OPTION 2: RECHARGE CARD (ADD MONEY)
+            // OPTION 1: RECHARGE CARD (ADD MONEY) - FIRST OPTION
             if (canRecharge) ...[
               _buildActionTile(
                 icon: Icons.account_balance_wallet_outlined,
@@ -1055,7 +1004,29 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
               const SizedBox(height: AppSpacing.sm),
             ],
 
-            // OPTION 3: TOP-UP HISTORY (WITH CANCEL TOP-UP FLOW)
+            // OPTION 2: ADD PRODUCTS (FOOD PURCHASE) - SECOND OPTION
+            if (canPurchase) ...[
+              _buildActionTile(
+                icon: Icons.add_shopping_cart,
+                iconColor: AppColors.primary,
+                title: 'Add Products',
+                subtitle: 'Order food items from menu catalog',
+                onTap: _openAddProducts,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+
+            // OPTION 3: CANCEL / EDIT RECENT ORDER
+            _buildActionTile(
+              icon: Icons.edit_note_outlined,
+              iconColor: AppColors.error,
+              title: 'Cancel / Edit Order',
+              subtitle: 'Cancel current order with auto-refund',
+              onTap: _handleQuickCancelRecentOrder,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+
+            // OPTION 4: TOP-UP HISTORY
             _buildActionTile(
               icon: Icons.receipt_long_outlined,
               iconColor: Colors.purple,
@@ -1065,13 +1036,23 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
             ),
             const SizedBox(height: AppSpacing.sm),
 
-            // OPTION 4: FOOD ORDERS (WITH CANCEL ORDER FLOW)
+            // OPTION 5: FOOD ORDERS
             _buildActionTile(
               icon: Icons.fastfood_outlined,
               iconColor: AppColors.primaryDark,
               title: 'Food Orders',
               subtitle: 'View total orders placed or cancel order',
               onTap: () => _showFoodOrdersSheet(context, session),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+
+            // OPTION 6: CARD INFO & STATISTICS
+            _buildActionTile(
+              icon: Icons.info_outline,
+              iconColor: AppColors.info,
+              title: 'Card Info & Statistics',
+              subtitle: 'Number of recharges, refunds, and card summary',
+              onTap: () => _showCardSessionInfoSheet(context, session),
             ),
             const SizedBox(height: AppSpacing.sm),
 
@@ -1807,7 +1788,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
         ? items.map((i) => '${i.quantity}x ${i.itemName ?? "Item"}').join(', ')
         : 'Order #${latestOrder.displayTransactionId}';
 
-    final confirmAction = await showDialog<String>(
+    final confirmAction = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Row(
@@ -1839,23 +1820,19 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop(null),
+            onPressed: () => Navigator.of(ctx).pop(false),
             child: const Text('Keep Order'),
-          ),
-          OutlinedButton(
-            onPressed: () => Navigator.of(ctx).pop('CANCEL_ONLY'),
-            child: const Text('Cancel Only'),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            onPressed: () => Navigator.of(ctx).pop('CANCEL_AND_REORDER'),
-            child: const Text('Cancel & Re-order', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Cancel Order', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     );
 
-    if (confirmAction == null) return;
+    if (confirmAction != true) return;
 
     try {
       final sessionService = ref.read(sessionServiceProvider);
@@ -1869,10 +1846,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
           backgroundColor: AppColors.success,
         ),
       );
-
-      if (confirmAction == 'CANCEL_AND_REORDER') {
-        await _openAddProducts();
-      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

@@ -135,7 +135,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 const Text(
-                  'Customer Details (Required for Customer History):',
+                  'Customer Details (Optional):',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
                 ),
                 const SizedBox(height: 8),
@@ -152,8 +152,8 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                     }
                   },
                   decoration: InputDecoration(
-                    labelText: 'Customer Name *',
-                    hintText: 'e.g. John Doe',
+                    labelText: 'Customer Name (Optional)',
+                    hintText: 'e.g. Walk-in Customer',
                     errorText: nameError,
                     prefixIcon: const Icon(Icons.person_outline, size: 18),
                     isDense: true,
@@ -178,7 +178,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                     }
                   },
                   decoration: InputDecoration(
-                    labelText: 'Phone Number (10 Digits) *',
+                    labelText: 'Phone Number (Optional - 10 Digits)',
                     hintText: 'e.g. 9876543210',
                     prefixIcon: const Icon(Icons.phone_outlined, size: 18),
                     errorText: phoneError,
@@ -202,28 +202,18 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
             ),
             ElevatedButton(
               onPressed: () {
-                final name = nameCtrl.text.trim();
                 final phone = phoneCtrl.text.trim();
 
                 bool hasError = false;
-                String? newNameError;
                 String? newPhoneError;
 
-                if (name.isEmpty) {
-                  newNameError = 'Customer name is required';
-                  hasError = true;
-                }
-                if (phone.isEmpty) {
-                  newPhoneError = 'Phone number is required';
-                  hasError = true;
-                } else if (phone.length != 10) {
+                if (phone.isNotEmpty && phone.length != 10) {
                   newPhoneError = 'Phone number must be exactly 10 digits';
                   hasError = true;
                 }
 
                 if (hasError) {
                   setDialogState(() {
-                    nameError = newNameError;
                     phoneError = newPhoneError;
                   });
                   return;
@@ -240,11 +230,14 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
 
     if (confirm != true) return;
 
+    final resolvedName = nameCtrl.text.trim().isEmpty ? 'Walk-in Customer' : nameCtrl.text.trim();
+    final resolvedPhone = phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim();
+
     final session = await ref.read(cardDetailsNotifierProvider.notifier).issueCardSession(
           cardId: card.id,
           branchId: branch.id,
-          customerName: nameCtrl.text.trim(),
-          customerPhone: phoneCtrl.text.trim(),
+          customerName: resolvedName,
+          customerPhone: resolvedPhone,
         );
 
     if (session != null && mounted) {
