@@ -6,11 +6,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { apiService } from '@/services/api';
-import { generateSecureNumericCode } from '@/utils/cryptoRandom';
 import type {
   Plan,
   Subscription,
-  SubscriptionPayment,
   OrganizationOverview,
   PlanChangeRequest,
   SubscriptionStatus,
@@ -33,7 +31,6 @@ import { notify, formatDate, formatCurrency } from '@/utils';
 import {
   Layers,
   Building2,
-  Receipt,
   Plus,
   Edit2,
   Trash2,
@@ -41,7 +38,6 @@ import {
   Check,
   Zap,
   Inbox,
-  DollarSign,
   Sliders,
   RotateCcw,
   Users,
@@ -85,16 +81,15 @@ function findPlanInList(plans: Plan[], id?: string, name?: string): Plan | undef
 
 export function AdminPlansSubscriptionsView() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const urlTab = searchParams.get('tab') as 'plans' | 'org_subscriptions' | 'requests' | 'payments' | null;
-  const initialTab = urlTab && ['plans', 'org_subscriptions', 'requests', 'payments'].includes(urlTab)
+  const urlTab = searchParams.get('tab') as 'plans' | 'org_subscriptions' | 'requests' | null;
+  const initialTab = urlTab && ['plans', 'org_subscriptions', 'requests'].includes(urlTab)
     ? urlTab
     : 'plans';
 
-  const [activeTab, setActiveTab] = useState<'plans' | 'org_subscriptions' | 'requests' | 'payments'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'plans' | 'org_subscriptions' | 'requests'>(initialTab);
 
   const [plans, setPlans] = useState<Plan[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-  const [payments, setPayments] = useState<SubscriptionPayment[]>([]);
   const [planRequests, setPlanRequests] = useState<PlanChangeRequest[]>([]);
   const [orgs, setOrgs] = useState<OrganizationOverview[]>([]);
 
@@ -111,13 +106,13 @@ export function AdminPlansSubscriptionsView() {
 
   // Sync activeTab when searchParams change
   useEffect(() => {
-    const currentTab = searchParams.get('tab') as 'plans' | 'org_subscriptions' | 'requests' | 'payments' | null;
-    if (currentTab && ['plans', 'org_subscriptions', 'requests', 'payments'].includes(currentTab)) {
+    const currentTab = searchParams.get('tab') as 'plans' | 'org_subscriptions' | 'requests' | null;
+    if (currentTab && ['plans', 'org_subscriptions', 'requests'].includes(currentTab)) {
       setActiveTab(currentTab);
     }
   }, [searchParams]);
 
-  const handleTabChange = (tab: 'plans' | 'org_subscriptions' | 'requests' | 'payments') => {
+  const handleTabChange = (tab: 'plans' | 'org_subscriptions' | 'requests') => {
     setActiveTab(tab);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
@@ -131,7 +126,6 @@ export function AdminPlansSubscriptionsView() {
   const [showEditPlanModal, setShowEditPlanModal] = useState(false);
   const [showOrgSubModal, setShowOrgSubModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
-  const [showRecordPaymentModal, setShowRecordPaymentModal] = useState(false);
 
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [selectedOrg, setSelectedOrg] = useState<OrganizationOverview | null>(null);
@@ -160,12 +154,6 @@ export function AdminPlansSubscriptionsView() {
   const [reviewStatus, setReviewStatus] = useState<'APPROVED' | 'REJECTED'>('APPROVED');
   const [reviewNotes, setReviewNotes] = useState('');
 
-  // Form State - Record Direct Payment
-  const [payOrgId, setPayOrgId] = useState('');
-  const [payAmount, setPayAmount] = useState('1499');
-  const [payMethod, setPayMethod] = useState('DIRECT_BANK_TRANSFER');
-  const [payReference, setPayReference] = useState('');
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [modalApiError, setModalApiError] = useState<string | null>(null);
@@ -174,10 +162,9 @@ export function AdminPlansSubscriptionsView() {
   const fetchUnifiedData = useCallback(async () => {
     setError(null);
     try {
-      const [plansRes, subsRes, payRes, reqsRes, orgsRes] = await Promise.all([
+      const [plansRes, subsRes, reqsRes, orgsRes] = await Promise.all([
         apiService.plans.getPlans(),
         apiService.subscriptions.getAllSubscriptions(),
-        apiService.subscriptions.getAllPayments(),
         apiService.subscriptions.getPlanRequests(),
         apiService.organizations.getOrganizations(),
       ]);
@@ -189,7 +176,6 @@ export function AdminPlansSubscriptionsView() {
 
       setPlans(plansRes.data || []);
       if (subsRes.success) setSubscriptions(subsRes.data || []);
-      if (payRes.success) setPayments(payRes.data || []);
       if (reqsRes.success) setPlanRequests(reqsRes.data || []);
       if (orgsRes.success) {
         const orgItems = (orgsRes.data as any)?.items || (Array.isArray(orgsRes.data) ? orgsRes.data : []);
@@ -207,10 +193,9 @@ export function AdminPlansSubscriptionsView() {
     const load = async () => {
       setError(null);
       try {
-        const [plansRes, subsRes, payRes, reqsRes, orgsRes] = await Promise.all([
+        const [plansRes, subsRes, reqsRes, orgsRes] = await Promise.all([
           apiService.plans.getPlans(),
           apiService.subscriptions.getAllSubscriptions(),
-          apiService.subscriptions.getAllPayments(),
           apiService.plans.getAllPlanRequests(),
           apiService.organizations.getOrganizations(),
         ]);
@@ -223,7 +208,6 @@ export function AdminPlansSubscriptionsView() {
 
         setPlans(plansRes.data || []);
         if (subsRes.success) setSubscriptions(subsRes.data || []);
-        if (payRes.success) setPayments(payRes.data || []);
         if (reqsRes.success) setPlanRequests(reqsRes.data || []);
         if (orgsRes.success) {
           const orgItems = (orgsRes.data as any)?.items || (Array.isArray(orgsRes.data) ? orgsRes.data : []);
@@ -295,16 +279,6 @@ export function AdminPlansSubscriptionsView() {
     setReviewNotes('');
     setModalApiError(null);
     setShowReviewModal(true);
-  };
-
-  const openRecordPaymentModal = (orgId?: string) => {
-    const targetOrgId = orgId || (orgs[0] ? orgs[0].id : 'org_001');
-    setPayOrgId(targetOrgId);
-    setPayAmount('1499');
-    setPayMethod('DIRECT_BANK_TRANSFER');
-    setPayReference(`DIRECT_NEFT_${generateSecureNumericCode(6)}`);
-    setModalApiError(null);
-    setShowRecordPaymentModal(true);
   };
 
   // ── Form Handlers ─────────────────────────────────────────
@@ -524,56 +498,17 @@ export function AdminPlansSubscriptionsView() {
     }
   };
 
-  const handleRecordPaymentSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const amountNum = parseFloat(payAmount);
-    if (isNaN(amountNum) || amountNum <= 0) {
-      setModalApiError('Please enter a valid positive payment amount.');
-      return;
-    }
-    if (!payReference.trim()) {
-      setModalApiError('Payment reference or invoice ID is required.');
-      return;
-    }
-
-    const orgSub = subscriptions.find((s) => s.organizationId === payOrgId);
-    if (!orgSub) {
-      setModalApiError('Could not find active subscription for this cafeteria.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setModalApiError(null);
-    try {
-      const res = await apiService.subscriptions.recordDirectPayment({
-        organizationId: payOrgId,
-        subscriptionId: orgSub.id,
-        amount: amountNum,
-        paymentMethod: payMethod,
-        paymentReference: payReference.trim(),
-      });
-
-      if (!res.success) {
-        setModalApiError(res.error.message || 'Failed to record direct payment.');
-        return;
-      }
-
-      notify.success(`Direct payment of ${formatCurrency(amountNum)} recorded and subscription verified.`);
-      setShowRecordPaymentModal(false);
-      fetchUnifiedData();
-    } catch {
-      setModalApiError('An unexpected error occurred.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   // Metrics
   const activeSubsCount = subscriptions.filter((s) => s.status === 'ACTIVE').length;
   const pendingRequestsCount = planRequests.filter((r) => r.status === 'PENDING').length;
-  const totalVerifiedRevenue = payments
-    .filter((p) => p.status === 'SUCCESS')
-    .reduce((sum, p) => sum + p.amount, 0);
+  const recurringMrr = orgs
+    .filter((o) => o.status === 'ACTIVE')
+    .reduce((sum, o) => {
+      const sub = subscriptions.find((s) => s.organizationId === o.id) || o.subscription;
+      const plan = plans.find((p) => p.id === (sub?.planId || o.planId)) || o.plan;
+      const price = plan?.price || 0;
+      return sum + (plan?.billingInterval === 'YEARLY' ? Math.round(price / 12) : price);
+    }, 0);
 
   // Filtered Organization Subscriptions
   const filteredOrgs = useMemo(() => {
@@ -655,7 +590,7 @@ export function AdminPlansSubscriptionsView() {
   const planColumns = [
     {
       key: 'name',
-      header: 'Global Plan Definition',
+      header: 'Plan Name',
       render: (plan: Plan) => (
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
@@ -822,14 +757,6 @@ export function AdminPlansSubscriptionsView() {
             >
               Edit Limits
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => openRecordPaymentModal(org.id)}
-              leftIcon={<DollarSign className="h-3.5 w-3.5" />}
-            >
-              Record Payment
-            </Button>
           </div>
         ),
       },
@@ -942,89 +869,12 @@ export function AdminPlansSubscriptionsView() {
     },
   ];
 
-  const payColumns = [
-    {
-      key: 'id',
-      header: 'Payment ID',
-      render: (p: SubscriptionPayment) => (
-        <span className="font-mono text-xs font-bold text-slate-800">PAY-#{p.id.slice(0, 8).toUpperCase()}</span>
-      ),
-    },
-    {
-      key: 'amount',
-      header: 'Amount',
-      render: (p: SubscriptionPayment) => (
-        <span className="font-mono text-sm font-bold text-emerald-700">{formatCurrency(p.amount)}</span>
-      ),
-    },
-    {
-      key: 'method',
-      header: 'Direct Payment Method',
-      render: (p: SubscriptionPayment) => (
-        <Badge variant="outline" className="text-slate-600">
-          {(p.paymentMethod || 'DIRECT_BANK_TRANSFER').replace(/_/g, ' ')}
-        </Badge>
-      ),
-    },
-    {
-      key: 'reference',
-      header: 'Reference ID',
-      render: (p: SubscriptionPayment) => (
-        <span className="font-mono text-xs text-slate-500">
-          {p.paymentReference || p.externalReference || '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (p: SubscriptionPayment) => (
-        <Badge variant={p.status === 'SUCCESS' ? 'success' : 'danger'}>{p.status}</Badge>
-      ),
-    },
-    {
-      key: 'verifiedBy',
-      header: 'Verified By',
-      render: (p: SubscriptionPayment) => (
-        <span className="text-xs text-emerald-600 font-medium">
-          {p.verifiedBy || 'Super Admin'}
-        </span>
-      ),
-    },
-    {
-      key: 'createdAt',
-      header: 'Date',
-      render: (p: SubscriptionPayment) => (
-        <span className="text-xs text-slate-500">{formatDate(p.createdAt)}</span>
-      ),
-    },
-  ];
-
   return (
     <div className="space-y-8">
       {/* Header Bar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Plans & Subscriptions Management</h1>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => openRecordPaymentModal()}
-            leftIcon={<DollarSign className="h-4 w-4" />}
-          >
-            Record Tenant Payment
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={openCreatePlanModal}
-            leftIcon={<Plus className="h-4 w-4" />}
-          >
-            Create Global Plan
-          </Button>
         </div>
       </div>
 
@@ -1041,18 +891,18 @@ export function AdminPlansSubscriptionsView() {
           icon={<Inbox className="h-5 w-5 text-amber-500" />}
         />
         <StatCard
-          label="Global Plan Catalog"
+          label="Plan Catalog"
           value={plans.length}
           icon={<Zap className="h-5 w-5 text-sky-500" />}
         />
         <StatCard
-          label="Verified Direct Revenue"
-          value={formatCurrency(totalVerifiedRevenue)}
-          icon={<Receipt className="h-5 w-5 text-emerald-600" />}
+          label="Monthly Recurring Revenue"
+          value={`${formatCurrency(recurringMrr)} / mo`}
+          icon={<CreditCard className="h-5 w-5 text-emerald-600" />}
         />
       </div>
 
-      {/* Navigation Tabs (Distinct Global Plans vs Org Subscriptions) */}
+      {/* Navigation Tabs */}
       <div className="flex border-b border-slate-200 text-sm overflow-x-auto">
         <button
           onClick={() => handleTabChange('plans')}
@@ -1062,7 +912,7 @@ export function AdminPlansSubscriptionsView() {
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          Global Plans ({plans.length})
+          Plans ({plans.length})
         </button>
         <button
           onClick={() => handleTabChange('org_subscriptions')}
@@ -1089,16 +939,6 @@ export function AdminPlansSubscriptionsView() {
             </Badge>
           )}
         </button>
-        <button
-          onClick={() => handleTabChange('payments')}
-          className={`px-4 py-2.5 font-medium border-b-2 whitespace-nowrap transition-colors cursor-pointer ${
-            activeTab === 'payments'
-              ? 'border-emerald-600 text-emerald-700 font-semibold'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          Payment History ({payments.length})
-        </button>
       </div>
 
       {isLoading ? (
@@ -1107,15 +947,15 @@ export function AdminPlansSubscriptionsView() {
         <ErrorState title="Failed to load data" message={error} onRetry={fetchUnifiedData} />
       ) : (
         <div className="space-y-8">
-          {/* TAB 1: GLOBAL PLANS DEFINITION */}
+          {/* TAB 1: PLANS DEFINITION */}
           {activeTab === 'plans' && (
             <div className="space-y-4">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">Global Plan Catalog Definitions</h2>
+                  <h2 className="text-lg font-bold text-slate-900">Plan Catalog</h2>
                 </div>
                 <Button variant="primary" size="sm" onClick={openCreatePlanModal} leftIcon={<Plus className="h-4 w-4" />}>
-                  Create Plan Definition
+                  Create New Plan
                 </Button>
               </div>
 
@@ -1259,33 +1099,11 @@ export function AdminPlansSubscriptionsView() {
             </div>
           )}
 
-          {/* TAB 5: PAYMENT HISTORY */}
-          {activeTab === 'payments' && (
-            <div className="space-y-4">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">Direct Payment Ledger</h2>
-                  <p className="text-xs text-slate-500">Audited offline direct bank transfers and offline invoices verified by Super Admin.</p>
-                </div>
-                <Button variant="primary" size="sm" onClick={() => openRecordPaymentModal()} leftIcon={<DollarSign className="h-4 w-4" />}>
-                  Record Direct Payment
-                </Button>
-              </div>
-
-              <Card padding="none">
-                <DataTable<SubscriptionPayment>
-                  data={payments}
-                  columns={payColumns}
-                  keyExtractor={(item: SubscriptionPayment) => item.id}
-                />
-              </Card>
-            </div>
-          )}
         </div>
       )}
 
-      {/* ── Create Global Plan Modal ── */}
-      <Modal isOpen={showCreatePlanModal} onClose={() => setShowCreatePlanModal(false)} title="Create Global Plan Definition">
+      {/* ── Create Plan Modal ── */}
+      <Modal isOpen={showCreatePlanModal} onClose={() => setShowCreatePlanModal(false)} title="Create New Plan">
         <form onSubmit={handleCreatePlanSubmit} className="space-y-4 py-2">
           {modalApiError && (
             <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
@@ -1367,7 +1185,7 @@ export function AdminPlansSubscriptionsView() {
 
           <ModalFooter>
             <Button variant="outline" type="button" onClick={() => setShowCreatePlanModal(false)}>Cancel</Button>
-            <Button variant="primary" type="submit" isLoading={isSubmitting}>Create Global Plan</Button>
+            <Button variant="primary" type="submit" isLoading={isSubmitting}>Create New Plan</Button>
           </ModalFooter>
         </form>
       </Modal>
@@ -1796,65 +1614,6 @@ export function AdminPlansSubscriptionsView() {
             </ModalFooter>
           </form>
         )}
-      </Modal>
-
-      {/* ── Record Direct Payment Modal ── */}
-      <Modal isOpen={showRecordPaymentModal} onClose={() => setShowRecordPaymentModal(false)} title="Record Direct Offline Payment">
-        <form onSubmit={handleRecordPaymentSubmit} className="space-y-4 py-2">
-          {modalApiError && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
-              <span>{modalApiError}</span>
-            </div>
-          )}
-
-          <Select
-            label="Cafeteria *"
-            value={payOrgId}
-            onChange={(e) => setPayOrgId(e.target.value)}
-            options={orgs.map((o) => ({ value: o.id, label: `${o.name} (${o.plan?.name || 'Standard'})` }))}
-          />
-
-          <Input
-            label="Payment Amount (₹) *"
-            type="number"
-            min="0"
-            value={payAmount}
-            onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') e.preventDefault(); }}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val === '' || parseFloat(val) >= 0) setPayAmount(val);
-            }}
-            required
-          />
-
-          <Select
-            label="Payment Method *"
-            value={payMethod}
-            onChange={(e) => setPayMethod(e.target.value)}
-            options={[
-              { value: 'DIRECT_BANK_TRANSFER', label: 'Direct Bank Transfer / NEFT / RTGS' },
-              { value: 'OFFLINE_INVOICE', label: 'Offline Corporate Invoice' },
-              { value: 'DIRECT_CASH', label: 'Direct Cash Receipt' },
-              { value: 'DIRECT_UPI', label: 'Direct Verified UPI Transfer' },
-            ]}
-          />
-
-          <Input
-            label="Payment Reference / Invoice Number *"
-            value={payReference}
-            onChange={(e) => setPayReference(e.target.value)}
-            placeholder="e.g. NEFT_REF_998822, INV-2026-001"
-            required
-          />
-
-          <ModalFooter>
-            <Button variant="outline" type="button" onClick={() => setShowRecordPaymentModal(false)}>Cancel</Button>
-            <Button variant="primary" type="submit" isLoading={isSubmitting} leftIcon={<Check className="h-4 w-4" />}>
-              Verify & Record Payment
-            </Button>
-          </ModalFooter>
-        </form>
       </Modal>
     </div>
   );
