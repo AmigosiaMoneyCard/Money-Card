@@ -22,6 +22,7 @@ import {
   UtensilsCrossed,
   Ban,
   Search,
+  ChevronDown,
 } from 'lucide-react';
 import { Card, StatCard, Badge, Button, Select, Modal, ModalFooter } from '@/components/ui';
 import { formatCurrency } from '@/utils/formatters';
@@ -892,6 +893,7 @@ export interface MenuAnalyticsSectionProps {
 
 export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSectionProps) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [isTableOpen, setIsTableOpen] = useState(true);
 
   const foodSales = analytics.totalPurchaseVolume ?? 0;
   const foodOrders = analytics.foodOrdersCount ?? analytics.purchaseCount ?? 0;
@@ -910,6 +912,13 @@ export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSection
       item.productName.toLowerCase().includes(lower)
     );
   }, [rawDemandList, searchTerm]);
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    if (!isTableOpen && value.trim()) {
+      setIsTableOpen(true);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -989,76 +998,103 @@ export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSection
         </Card>
       </div>
 
-      {/* All Ordered Menu Items Table */}
-      <div className="space-y-3">
+      {/* All Ordered Menu Items Collapsible Table */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <h2 className="text-base font-bold text-slate-900">
+          <button
+            type="button"
+            onClick={() => setIsTableOpen(!isTableOpen)}
+            className="flex items-center gap-2 text-left cursor-pointer group select-none"
+            aria-expanded={isTableOpen}
+          >
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100 transition-colors">
+              <UtensilsCrossed className="h-4 w-4" />
+            </div>
+            <h2 className="text-base font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
               All Ordered Menu Items
             </h2>
             <Badge variant="default" className="text-xs font-semibold">
               {filteredItems.length} Dishes
             </Badge>
-          </div>
+            <div className={`p-1 rounded text-slate-400 group-hover:text-slate-600 transition-transform duration-200 ${isTableOpen ? 'rotate-180' : 'rotate-0'}`}>
+              <ChevronDown className="h-4 w-4" />
+            </div>
+          </button>
 
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search dishes..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-8 w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-xs text-slate-800 placeholder-slate-400 focus:border-emerald-500 focus:outline-none"
-            />
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search dishes..."
+                value={searchTerm}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="h-8 w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-xs text-slate-800 placeholder-slate-400 focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsTableOpen(!isTableOpen)}
+              className="h-8 px-2.5 text-xs font-semibold shrink-0 cursor-pointer"
+            >
+              {isTableOpen ? 'Hide' : 'Show'}
+            </Button>
           </div>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
-          <table className="w-full text-left text-xs text-slate-600">
-            <thead className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-              <tr>
-                <th scope="col" className="px-4 py-3 text-left">
-                  Dish Name
-                </th>
-                <th scope="col" className="px-4 py-3 text-right">
-                  Price
-                </th>
-                <th scope="col" className="px-4 py-3 text-right">
-                  Quantity Sold
-                </th>
-                <th scope="col" className="px-4 py-3 text-right">
-                  Total Revenue
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredItems.length > 0 ? (
-                filteredItems.map((item, idx) => (
-                  <tr key={item.productId || idx} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="px-4 py-3 font-semibold text-slate-900">
-                      {item.productName}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-slate-700">
-                      {formatCurrency(item.unitPrice)}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono font-medium text-slate-900">
-                      {item.quantitySold}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono font-semibold text-emerald-600">
-                      {formatCurrency(item.totalRevenue)}
+        {isTableOpen ? (
+          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
+            <table className="w-full text-left text-xs text-slate-600">
+              <thead className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th scope="col" className="px-4 py-3 text-left">
+                    Dish Name
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-right">
+                    Price
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-right">
+                    Quantity Sold
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-right">
+                    Total Revenue
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredItems.length > 0 ? (
+                  filteredItems.map((item, idx) => (
+                    <tr key={item.productId || idx} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="px-4 py-3 font-semibold text-slate-900">
+                        {item.productName}
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-slate-700">
+                        {formatCurrency(item.unitPrice)}
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono font-medium text-slate-900">
+                        {item.quantitySold}
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono font-semibold text-emerald-600">
+                        {formatCurrency(item.totalRevenue)}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
+                      No ordered dishes found for this period.
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
-                    No ordered dishes found for this period.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-xs text-slate-400 py-1">
+            Table collapsed. Tap Show or the header to view all ordered dishes.
+          </div>
+        )}
       </div>
     </div>
   );
