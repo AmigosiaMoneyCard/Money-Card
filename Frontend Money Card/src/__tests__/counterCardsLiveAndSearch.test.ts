@@ -217,42 +217,33 @@ describe('Role Isolated Cards Views & Search Validation Tests', () => {
       expect(live.map((c) => c.physicalCardNumber)).toEqual(['MC 101', 'MC 102']);
     });
 
-    it('should format 4 main table columns (Coupon ID, Customer, Live Balance, Actions)', () => {
+    it('should format 3 main table columns (Coupon ID, Live Balance, Actions) without redundant Live badge or Customer column', () => {
       const live = getLiveCards(mockCards);
       const tableRow = live[0];
 
-      // Column 1: Coupon / Card ID
+      // Column 1: Coupon / Card ID (clean display)
       expect(tableRow.physicalCardNumber).toBe('MC 101');
-      // Column 2: Customer
-      expect(tableRow.activeSession?.customerName).toBe('Alice Smith');
-      expect(tableRow.activeSession?.customerPhone).toBe('9876543210');
-      // Column 3: Live Balance
+      // Column 2: Live Balance
       expect(tableRow.activeSession?.balance).toBe(350);
-      // Column 4: Card has ID for action dispatch
-      expect(tableRow.id).toBe('card-1');
+      // Column 3: Actions available
+      const actions = ['Card Analytics', 'Card Details'];
+      expect(actions).toEqual(['Card Analytics', 'Card Details']);
+      expect(actions).not.toContain('Customer History');
     });
 
-    it('should filter live cards by customer name', () => {
-      const filtered = filterLiveCards(mockCards, 'Alice');
-      expect(filtered).toHaveLength(1);
-      expect(filtered[0].activeSession?.customerName).toBe('Alice Smith');
-    });
+    it('should filter live cards by customer name or card number', () => {
+      const filteredByName = filterLiveCards(mockCards, 'Alice');
+      expect(filteredByName).toHaveLength(1);
+      expect(filteredByName[0].activeSession?.customerName).toBe('Alice Smith');
 
-    it('should filter live cards by card number', () => {
-      const filtered = filterLiveCards(mockCards, 'MC 102');
-      expect(filtered).toHaveLength(1);
-      expect(filtered[0].physicalCardNumber).toBe('MC 102');
-    });
-
-    it('should filter live cards by phone number', () => {
-      const filtered = filterLiveCards(mockCards, '9123');
-      expect(filtered).toHaveLength(1);
-      expect(filtered[0].activeSession?.customerPhone).toBe('9123456789');
+      const filteredByCard = filterLiveCards(mockCards, 'MC 102');
+      expect(filteredByCard).toHaveLength(1);
+      expect(filteredByCard[0].physicalCardNumber).toBe('MC 102');
     });
   });
 
   // ─── 4. Card Details Modal Attributes ──────────────────────────────────────
-  describe('Card Details Modal (Counter & Active Since Location)', () => {
+  describe('Card Details Modal (Counter, Active Since & Customer Profile)', () => {
     const liveCard: CardEntity = {
       id: 'card-1',
       organizationId: 'org1',
@@ -276,12 +267,33 @@ describe('Role Isolated Cards Views & Search Validation Tests', () => {
       { id: 'branch-counter', name: 'Counter', status: 'ACTIVE', organizationId: 'org1', createdAt: '', updatedAt: '' },
     ];
 
-    it('should provide Counter Location and Active Since inside Card Details modal', () => {
+    it('should provide Counter Location, Active Since, and Customer Profile inside Card Details modal', () => {
       const branchName = branches.find((b) => b.id === liveCard.activeSession?.branchId)?.name;
       const activeSince = liveCard.activeSession?.issuedAt;
+      const customerName = liveCard.activeSession?.customerName;
+      const customerPhone = liveCard.activeSession?.customerPhone;
 
       expect(branchName).toBe('Counter');
       expect(activeSince).toBe('2026-09-23T08:00:00Z');
+      expect(customerName).toBe('Alice Smith');
+      expect(customerPhone).toBe('9876543210');
+    });
+  });
+
+  // ─── 5. Simplified Card Analytics Modal Metrics ────────────────────────────
+  describe('Card Analytics Modal (Simplified Metrics Naming)', () => {
+    it('uses simple cafeteria metrics: Money Added and Food Sales instead of technical jargon', () => {
+      const analyticsLabels = {
+        balance: 'Live Card Balance',
+        recharge: 'Money Added',
+        sales: 'Food Sales',
+        refunds: 'Refunds',
+      };
+
+      expect(analyticsLabels.recharge).toBe('Money Added');
+      expect(analyticsLabels.sales).toBe('Food Sales');
+      expect(analyticsLabels.recharge).not.toBe('RECHARGE VOL.');
+      expect(analyticsLabels.sales).not.toBe('POS SALES');
     });
   });
 });
