@@ -21,7 +21,6 @@ import {
   Badge,
   Modal,
   ModalFooter,
-  StatCard,
   LoadingState,
   EmptyState,
   ErrorState,
@@ -36,12 +35,11 @@ import {
   Trash2,
   AlertCircle,
   Check,
-  Zap,
-  Inbox,
   Sliders,
   RotateCcw,
   Users,
   CreditCard,
+  Inbox,
 } from 'lucide-react';
 
 const TIER_ORDER: Record<string, number> = {
@@ -498,17 +496,6 @@ export function AdminPlansSubscriptionsView() {
     }
   };
 
-  // Metrics
-  const activeSubsCount = subscriptions.filter((s) => s.status === 'ACTIVE').length;
-  const pendingRequestsCount = planRequests.filter((r) => r.status === 'PENDING').length;
-  const recurringMrr = orgs
-    .filter((o) => o.status === 'ACTIVE')
-    .reduce((sum, o) => {
-      const sub = subscriptions.find((s) => s.organizationId === o.id) || o.subscription;
-      const plan = plans.find((p) => p.id === (sub?.planId || o.planId)) || o.plan;
-      const price = plan?.price || 0;
-      return sum + (plan?.billingInterval === 'YEARLY' ? Math.round(price / 12) : price);
-    }, 0);
 
   // Filtered Organization Subscriptions
   const filteredOrgs = useMemo(() => {
@@ -869,6 +856,8 @@ export function AdminPlansSubscriptionsView() {
     },
   ];
 
+  const pendingRequestsCount = planRequests.filter((r) => r.status === 'PENDING').length;
+
   return (
     <div className="space-y-8">
       {/* Header Bar */}
@@ -877,31 +866,6 @@ export function AdminPlansSubscriptionsView() {
           <h1 className="text-2xl font-bold text-slate-900">Plans & Subscriptions Management</h1>
         </div>
       </div>
-
-      {/* KPI Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Active Subscriptions"
-          value={activeSubsCount}
-          icon={<Layers className="h-5 w-5 text-emerald-600" />}
-        />
-        <StatCard
-          label="Pending Plan Requests"
-          value={pendingRequestsCount}
-          icon={<Inbox className="h-5 w-5 text-amber-500" />}
-        />
-        <StatCard
-          label="Plan Catalog"
-          value={plans.length}
-          icon={<Zap className="h-5 w-5 text-sky-500" />}
-        />
-        <StatCard
-          label="Monthly Recurring Revenue"
-          value={`${formatCurrency(recurringMrr)} / mo`}
-          icon={<CreditCard className="h-5 w-5 text-emerald-600" />}
-        />
-      </div>
-
       {/* Navigation Tabs */}
       <div className="flex border-b border-slate-200 text-sm overflow-x-auto">
         <button
