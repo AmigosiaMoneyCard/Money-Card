@@ -186,6 +186,36 @@ export function StaffPage() {
   const [passwordChangeError, setPasswordChangeError] = useState<string | null>(null);
   const [passwordChangeSuccess, setPasswordChangeSuccess] = useState<string | null>(null);
 
+  // ── Persistent Staff Password Cache ──────────────────────────
+  const STAFF_PASSWORDS_KEY = 'mc_staff_passwords';
+  const BRANCH_PASSWORDS_KEY = 'mc_branch_passwords';
+
+  const getStoredStaffPassword = (staffId?: string, branchIds?: string[]): string | null => {
+    try {
+      if (staffId) {
+        const staffMap = JSON.parse(localStorage.getItem(STAFF_PASSWORDS_KEY) || '{}');
+        if (staffMap[staffId]) return staffMap[staffId];
+      }
+      if (branchIds && branchIds.length > 0) {
+        const branchMap = JSON.parse(localStorage.getItem(BRANCH_PASSWORDS_KEY) || '{}');
+        for (const bid of branchIds) {
+          if (branchMap[bid]) return branchMap[bid];
+        }
+      }
+    } catch {}
+    return null;
+  };
+
+  const storeStaffPassword = (staffId: string, pass: string): void => {
+    try {
+      if (!staffId || !pass) return;
+      const staffMap = JSON.parse(localStorage.getItem(STAFF_PASSWORDS_KEY) || '{}');
+      staffMap[staffId] = pass;
+      localStorage.setItem(STAFF_PASSWORDS_KEY, JSON.stringify(staffMap));
+    } catch {}
+  };
+
+
   // ── Delete Staff Confirmation State ─────────────────────────
   const [showDeleteStaffConfirmModal, setShowDeleteStaffConfirmModal] = useState(false);
   const [staffToDelete, setStaffToDelete] = useState<Staff | null>(null);
@@ -502,6 +532,9 @@ export function StaffPage() {
       }
 
       notify.success(`Staff member ${res.data.name} created and activated!`);
+      if (res.data?.id && formPassword.trim()) {
+        storeStaffPassword(res.data.id, formPassword.trim());
+      }
       setCreatedStaffCredentials({
         name: res.data.name,
         phone: formPhone.trim().replace(/\D/g, ''),
@@ -532,7 +565,8 @@ export function StaffPage() {
     setStaffTab(initialTab);
     setFormErrors({});
     setModalApiError(null);
-    const initialPassword = staff.credentials?.password || '123456';
+    const savedPassword = getStoredStaffPassword(staff.id, staff.assignedBranchIds);
+    const initialPassword = savedPassword || staff.credentials?.password || '123456';
     setCurrentStaffPassword(initialPassword);
     setShowCurrentPassword(false);
     setFormNewPassword('');
@@ -583,6 +617,7 @@ export function StaffPage() {
         `Staff password changed successfully for ${selectedStaff.name}. All active mobile app and web sessions have been invalidated.`,
       );
       if (formNewPassword.trim()) {
+        storeStaffPassword(selectedStaff.id, formNewPassword.trim());
         setCurrentStaffPassword(formNewPassword.trim());
       }
       setFormNewPassword('');
@@ -597,7 +632,11 @@ export function StaffPage() {
   // ── Share & Copy Staff Credentials from Edit Modal ────────
   const handleCopyCredentialsFromEdit = () => {
     if (!selectedStaff) return;
-    const pwdText = formNewPassword.trim() || currentStaffPassword || '123456';
+    const pwdText =
+      formNewPassword.trim() ||
+      getStoredStaffPassword(selectedStaff.id, formBranchIds) ||
+      currentStaffPassword ||
+      '123456';
     const cleanPhone = (formPhone || selectedStaff.phone || '').replace(/\D/g, '').slice(-10);
     const assignedBranchesText =
       branches
@@ -626,7 +665,11 @@ export function StaffPage() {
       return;
     }
 
-    const pwdText = formNewPassword.trim() || currentStaffPassword || '123456';
+    const pwdText =
+      formNewPassword.trim() ||
+      getStoredStaffPassword(selectedStaff.id, formBranchIds) ||
+      currentStaffPassword ||
+      '123456';
     const assignedBranchesText =
       branches
         .filter((b) => formBranchIds.includes(b.id))
@@ -635,14 +678,14 @@ export function StaffPage() {
     const loginUrl = `${window.location.origin}/login`;
 
     const message =
-      `🍽️ *Money Card Staff Credentials*\n\n` +
+      `*Money Card Staff Credentials*\n\n` +
       `Hello ${formName.trim() || selectedStaff.name},\n\n` +
       `Here are your updated staff login credentials:\n\n` +
-      `• *Counter:* ${assignedBranchesText}\n` +
-      `• *Mobile Number:* ${cleanPhone}\n` +
-      `• *Password:* ${pwdText}\n\n` +
-      `🌐 *POS Login Link:* ${loginUrl}\n\n` +
-      `_Log in using your Mobile Number and Password to access your counter POS._`;
+      `*Counter:* ${assignedBranchesText}\n` +
+      `*Mobile Number:* ${cleanPhone}\n` +
+      `*Password:* ${pwdText}\n\n` +
+      `*POS Login Link:* ${loginUrl}\n\n` +
+      `Log in using your Mobile Number and Password to access your counter POS.`;
 
     const waUrl = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(message)}`;
     window.open(waUrl, '_blank', 'noopener,noreferrer');
@@ -1725,88 +1768,22 @@ export function StaffPage() {
               </div>
             </div>
 
-            {/* Status Slide Switch */}
-            <div className="flex items-center gap-3">
-              <span className={`text-sm font-semibold ${selectedStaff.status === 'ACTIVE' ? 'text-emerald-700' : 'text-slate-400'}`}>
-                {selectedStaff.status === 'ACTIVE' ? 'Active' : 'Inactive'}
-              </span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={selectedStaff.status === 'ACTIVE'}
-                disabled={!canManage || togglingStaffId === selectedStaff.id}
-                onClick={() => handleToggleStaffStatus(selectedStaff)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500/40 disabled:opacity-50 disabled:cursor-not-allowed ${selectedStaff.status === 'ACTIVE' ? 'bg-emerald-600' : 'bg-slate-300'}`}
-              >
-                <span
-                  aria-hidden="true"
-                  className={`pointer-events-none inline-block h-4 w-4 mt-[3px] rounded-full bg-white shadow-md transform ring-0 transition duration-200 ease-in-out ${selectedStaff.status === 'ACTIVE' ? 'translate-x-[21px]' : 'translate-x-[3px]'}`}
-                />
-              </button>
-            </div>
-
             {/* Quick Action Footer */}
             <ModalFooter>
-              {selectedCounterGroup && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setShowStaffDetailsModal(false);
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowStaffDetailsModal(false);
+                  if (selectedCounterGroup) {
                     setShowCounterStaffModal(true);
-                  }}
-                  leftIcon={<ArrowLeft className="h-3.5 w-3.5" />}
-                  className="mr-auto text-xs font-medium border-slate-300 text-slate-700 hover:bg-slate-100"
-                >
-                  Back
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowStaffDetailsModal(false)}
-                className="text-xs font-medium"
-              >
-                Close
-              </Button>
-              {canManage && (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => {
-                    setShowStaffDetailsModal(false);
-                    handleOpenStaffModal(selectedStaff, 'overview');
-                  }}
-                  leftIcon={<Edit2 className="h-3.5 w-3.5" />}
-                  className="text-xs font-medium"
-                >
-                  Edit
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setShowStaffDetailsModal(false);
-                  handleOpenStaffAudit(selectedStaff);
+                  }
                 }}
-                leftIcon={<FileSpreadsheet className="h-3.5 w-3.5" />}
-                className="text-xs font-medium border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50"
+                leftIcon={<ArrowLeft className="h-3.5 w-3.5" />}
+                className="text-xs font-medium border-slate-300 text-slate-700 hover:bg-slate-100"
               >
-                Performance & Audit
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setShowStaffDetailsModal(false);
-                  handleOpenStaffDetails(selectedStaff);
-                }}
-                leftIcon={<Eye className="h-3.5 w-3.5" />}
-                className="text-xs font-medium border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50"
-              >
-                View Details
+                Back
               </Button>
             </ModalFooter>
           </div>
