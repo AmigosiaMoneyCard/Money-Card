@@ -713,14 +713,6 @@ export function OrganizationsPage() {
       },
     },
     {
-      key: 'createdAt',
-      header: 'Created Date',
-      sortable: true,
-      render: (org: OrganizationOverview) => (
-        <span className="text-xs text-slate-500">{formatDate(org.createdAt)}</span>
-      ),
-    },
-    {
       key: 'actions',
       header: 'Actions',
       className: 'text-right',
@@ -1149,6 +1141,9 @@ export function OrganizationsPage() {
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <div>
                 <h3 className="text-lg font-bold text-slate-900">{selectedOrg.name}</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Created Date: <span className="font-medium text-slate-700">{formatDate(selectedOrg.createdAt)}</span>
+                </p>
               </div>
               {selectedOrg.status === 'PENDING_ACTIVATION' ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-xs font-medium text-amber-700 shadow-sm">
@@ -1186,17 +1181,6 @@ export function OrganizationsPage() {
                     {selectedOrg.adminUser?.email || 'admin@' + selectedOrg.name.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com'}
                   </p>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setShowDetailsModal(false);
-                    handleOpenResetPasswordModal(selectedOrg);
-                  }}
-                  leftIcon={<KeyRound className="h-3.5 w-3.5 text-amber-600" />}
-                >
-                  Reset Password
-                </Button>
               </div>
             </div>
 
@@ -1261,16 +1245,6 @@ export function OrganizationsPage() {
             <ModalFooter>
               <Button variant="outline" onClick={() => setShowDetailsModal(false)}>
                 Close
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  setShowDetailsModal(false);
-                  handleOpenEditModal(selectedOrg);
-                }}
-                leftIcon={<Edit2 className="h-3.5 w-3.5" />}
-              >
-                Edit Organization
               </Button>
             </ModalFooter>
           </div>
