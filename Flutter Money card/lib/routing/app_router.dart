@@ -173,21 +173,21 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
 
-      // Standalone nested routes for More items
+      // Standalone nested routes
       GoRoute(
-        path: '/app/products',
+        path: '/app/profile',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const ProductsScreen(),
+        builder: (context, state) => const MoreScreen(),
+      ),
+      GoRoute(
+        path: '/app/sessions',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const SessionsScreen(),
       ),
       GoRoute(
         path: '/app/inventory',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const ProductsScreen(),
-      ),
-      GoRoute(
-        path: '/app/analytics',
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const AnalyticsScreen(),
       ),
       GoRoute(
         path: '/app/recharges',
@@ -216,7 +216,7 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         redirect: (context, state) => '/app/home',
       ),
 
-      // Four-Section Protected Shell Routes
+      // Four-Section Protected Shell Routes (Home - Cards - Menu - Analytics)
       ShellRoute(
         navigatorKey: shellNavigatorKey,
         builder: (context, state, child) {
@@ -239,16 +239,20 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
             ),
           ),
           GoRoute(
-            path: '/app/sessions',
+            path: '/app/products',
             pageBuilder: (context, state) => const NoTransitionPage(
-              child: SessionsScreen(),
+              child: ProductsScreen(),
+            ),
+          ),
+          GoRoute(
+            path: '/app/analytics',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: AnalyticsScreen(),
             ),
           ),
           GoRoute(
             path: '/app/more',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: MoreScreen(),
-            ),
+            redirect: (context, state) => '/app/profile',
           ),
         ],
       ),

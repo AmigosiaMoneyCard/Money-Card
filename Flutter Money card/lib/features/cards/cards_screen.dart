@@ -53,7 +53,7 @@ class _CardsScreenState extends ConsumerState<CardsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Counter Cards'),
+        title: const Text('Active Cards'),
       ),
       body: Column(
         children: [
@@ -89,7 +89,7 @@ class _CardsScreenState extends ConsumerState<CardsScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        '${cardListState.cards.length} Cards',
+                        '${cardListState.cards.length} Active Cards',
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -101,35 +101,16 @@ class _CardsScreenState extends ConsumerState<CardsScreen> {
               ),
             ),
           ),
-          // Search & Filter Header
+          // Search Header
           Padding(
             padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              children: [
-                // Search Input
-                TextField(
-                  onChanged: notifier.setSearchQuery,
-                  decoration: const InputDecoration(
-                    hintText: 'Search by card number...',
-                    prefixIcon: Icon(Icons.search, size: 20),
-                    isDense: true,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-
-                // Status Filter Chips
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _buildFilterChip('ALL', 'All', cardListState.selectedStatusFilter, notifier),
-                      _buildFilterChip('AVAILABLE', 'Available', cardListState.selectedStatusFilter, notifier),
-                      _buildFilterChip('ACTIVE', 'Active', cardListState.selectedStatusFilter, notifier),
-                      _buildFilterChip('BLOCKED', 'Blocked', cardListState.selectedStatusFilter, notifier),
-                    ],
-                  ),
-                ),
-              ],
+            child: TextField(
+              onChanged: notifier.setSearchQuery,
+              decoration: const InputDecoration(
+                hintText: 'Search active cards by card number...',
+                prefixIcon: Icon(Icons.search, size: 20),
+                isDense: true,
+              ),
             ),
           ),
           const Divider(height: 1),
@@ -146,24 +127,6 @@ class _CardsScreenState extends ConsumerState<CardsScreen> {
     );
   }
 
-  Widget _buildFilterChip(
-    String value,
-    String label,
-    String current,
-    CardListNotifier notifier,
-  ) {
-    final isSelected = current == value;
-    return Padding(
-      padding: const EdgeInsets.only(right: AppSpacing.xs),
-      child: FilterChip(
-        label: Text(label),
-        selected: isSelected,
-        onSelected: (_) => notifier.setStatusFilter(value),
-        selectedColor: AppColors.primaryLight,
-        checkmarkColor: AppColors.primary,
-      ),
-    );
-  }
 
   Widget _buildListContent(
     BuildContext context,

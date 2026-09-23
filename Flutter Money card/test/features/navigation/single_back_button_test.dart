@@ -119,14 +119,13 @@ void main() {
   );
 
   group('Single Back Button & Navigation Integrity Tests', () {
-    testWidgets('/app/analytics has exactly ONE AppBar and exactly ONE Back button', (tester) async {
+    testWidgets('/app/profile has exactly ONE AppBar and exactly ONE Back button', (tester) async {
       final container = ProviderContainer(
         overrides: [
           currentUserProvider.overrideWithValue(mockUser),
           currentBranchProvider.overrideWithValue(mockBranch),
           sessionRepositoryProvider.overrideWithValue(FakeSessionRepository()),
           cardRepositoryProvider.overrideWithValue(FakeCardRepository()),
-          analyticsRepositoryProvider.overrideWithValue(FakeAnalyticsRepository()),
         ],
       );
       addTearDown(container.dispose);
@@ -144,8 +143,8 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Navigate to /app/analytics
-      router.push('/app/analytics');
+      // Navigate to /app/profile
+      router.push('/app/profile');
       await tester.pumpAndSettle();
 
       // Verify exactly ONE AppBar exists on the screen
@@ -159,17 +158,16 @@ void main() {
       await tester.tap(backButtons);
       await tester.pumpAndSettle();
 
-      expect(find.text('Branch Analytics'), findsNothing);
+      expect(find.text('Staff Profile'), findsNothing);
     });
 
-    testWidgets('/app/inventory has exactly ONE AppBar and exactly ONE Back button', (tester) async {
+    testWidgets('/app/cards/issue has exactly ONE AppBar and exactly ONE Back button', (tester) async {
       final container = ProviderContainer(
         overrides: [
           currentUserProvider.overrideWithValue(mockUser),
           currentBranchProvider.overrideWithValue(mockBranch),
           sessionRepositoryProvider.overrideWithValue(FakeSessionRepository()),
           cardRepositoryProvider.overrideWithValue(FakeCardRepository()),
-          inventoryRepositoryProvider.overrideWithValue(FakeInventoryRepository()),
         ],
       );
       addTearDown(container.dispose);
@@ -187,8 +185,8 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Navigate to /app/inventory
-      router.push('/app/inventory');
+      // Navigate to /app/cards/issue
+      router.push('/app/cards/issue');
       await tester.pumpAndSettle();
 
       // Verify exactly ONE AppBar exists on the screen
@@ -202,7 +200,7 @@ void main() {
       await tester.tap(backButtons);
       await tester.pumpAndSettle();
 
-      expect(find.text('Branch Inventory'), findsNothing);
+      expect(find.text('Issue New Card'), findsNothing);
     });
   });
 }

@@ -4,13 +4,11 @@ import 'package:go_router/go_router.dart';
 import '../../core/config/app_config.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
-import '../../core/constants/permission_constants.dart';
 import '../../core/network/interceptors/mock_api_interceptor.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/branch_provider.dart';
 import '../../widgets/common/app_card.dart';
 import '../../widgets/common/section_header.dart';
-import '../../widgets/guards/permission_guard.dart';
 
 class MoreScreen extends ConsumerWidget {
   const MoreScreen({super.key});
@@ -20,8 +18,13 @@ class MoreScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     final branch = ref.watch(currentBranchProvider);
 
-    return RefreshIndicator(
-      onRefresh: () async {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Staff Profile'),
+      ),
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () async {
         await ref.read(authNotifierProvider.notifier).refreshCurrentUser();
       },
       child: ListView(
@@ -82,41 +85,8 @@ class MoreScreen extends ConsumerWidget {
         ),
         const SizedBox(height: AppSpacing.lg),
 
-        // Features Section
-        const SectionHeader(title: 'Operations & Management'),
-        const SizedBox(height: AppSpacing.xs),
-
-        PermissionGuard(
-          mode: PermissionGuardMode.any,
-          permissions: const [AppPermission.inventoryView, AppPermission.productView],
-          child: _buildMenuTile(
-            icon: Icons.restaurant_menu,
-            title: 'Menu Catalog',
-            onTap: () => context.push('/app/products'),
-          ),
-        ),
-
-        PermissionGuard.single(
-          permission: AppPermission.viewAnalytics,
-          child: _buildMenuTile(
-            icon: Icons.bar_chart_outlined,
-            title: 'Analytics',
-            onTap: () => context.push('/app/analytics'),
-          ),
-        ),
-
-        _buildMenuTile(
-          icon: Icons.receipt_long_outlined,
-          title: 'Recharges & Top-ups',
-          subtitle: 'UPI and Cash top-up history & voiding',
-          onTap: () => context.push('/app/recharges'),
-        ),
-
-
-        const SizedBox(height: AppSpacing.lg),
-
-        // Account / Session Section
-        const SectionHeader(title: 'Account'),
+        // Account Settings Section
+        const SectionHeader(title: 'Account Settings'),
         const SizedBox(height: AppSpacing.xs),
 
         _buildMenuTile(
@@ -131,6 +101,19 @@ class MoreScreen extends ConsumerWidget {
           iconColor: AppColors.error,
           titleColor: AppColors.error,
           onTap: () => ref.read(authNotifierProvider.notifier).logout(),
+        ),
+
+        const SizedBox(height: AppSpacing.lg),
+
+        // Operations Section
+        const SectionHeader(title: 'Operations'),
+        const SizedBox(height: AppSpacing.xs),
+
+        _buildMenuTile(
+          icon: Icons.receipt_long_outlined,
+          title: 'Recharges & Top-ups',
+          subtitle: 'UPI and Cash top-up history & voiding',
+          onTap: () => context.push('/app/recharges'),
         ),
 
         // Development Tools Section (Mock Mode only)
@@ -175,6 +158,8 @@ class MoreScreen extends ConsumerWidget {
         ],
       ],
     ),
+  ),
+  ),
   );
 }
 

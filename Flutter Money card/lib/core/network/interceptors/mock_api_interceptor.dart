@@ -986,6 +986,10 @@ class MockApiInterceptor extends Interceptor {
         return _reject(handler, options, 400, 'VALIDATION_ERROR', 'QR token is required');
       }
 
+      if (qrToken == 'QR-UNKNOWN-RANDOM-TOKEN-999' || qrToken.contains('NOT-FOUND')) {
+        return _reject(handler, options, 404, 'NOT_FOUND', 'Card not registered');
+      }
+
       // Match strictly by qrToken or physicalCardNumber or id
       var card = mockCards.firstWhere(
         (c) =>

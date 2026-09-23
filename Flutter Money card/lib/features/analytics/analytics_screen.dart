@@ -3,14 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/permission_constants.dart';
+import '../../core/utils/formatters.dart';
 import '../../models/analytics.dart';
 import '../../models/branch.dart';
 import '../../providers/analytics_provider.dart';
+import '../../providers/api_providers.dart';
 import '../../providers/branch_provider.dart';
 import '../../widgets/analytics/analytics_pdf_preview_dialog.dart';
-import '../../widgets/common/app_badge.dart';
-import '../../widgets/common/app_card.dart';
-import '../../widgets/common/section_header.dart';
 import '../../widgets/guards/permission_guard.dart';
 import '../../widgets/states/app_empty_state.dart';
 import '../../widgets/states/app_loading_view.dart';
@@ -27,6 +26,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   late String _startDate;
   late String _endDate;
 
+  bool _isLoadingRecharges = false;
+  List<dynamic> _rechargesList = [];
+  String? _rechargesError;
+
   static String _todayStr() {
     final now = DateTime.now();
     final y = now.year.toString().padLeft(4, '0');
@@ -42,7 +45,39 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     _endDate = _todayStr();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
+      _fetchRecharges();
     });
+  }
+
+  Future<void> _fetchRecharges() async {
+    setState(() {
+      _isLoadingRecharges = true;
+      _rechargesError = null;
+    });
+
+    try {
+      final currentBranch = ref.read(currentBranchProvider);
+      final sessionService = ref.read(sessionServiceProvider);
+      final res = await sessionService.listRecharges(
+        branchId: currentBranch?.id,
+        startDate: _startDate,
+        endDate: _endDate,
+      );
+
+      if (mounted) {
+        setState(() {
+          _isLoadingRecharges = false;
+          _rechargesList = (res['items'] as List<dynamic>?) ?? [];
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingRecharges = false;
+          _rechargesError = e.toString().replaceAll('ApiException: ', '');
+        });
+      }
+    }
   }
 
   void _openPdfPreview(
@@ -59,11 +94,18 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
+  String _formatDateTime(String? raw) {
+    if (raw == null || raw.isEmpty) return '—';
+    final formatted = AppFormatters.formatIsoDate(raw);
+    return formatted == '-' ? '—' : formatted;
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen<Branch?>(currentBranchProvider, (previous, next) {
       if (next != null && next.id != previous?.id) {
         ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
+        _fetchRecharges();
       }
     });
 
@@ -106,8 +148,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             ),
             bottom: const TabBar(
               tabs: [
-                Tab(icon: Icon(Icons.account_balance, size: 18), text: 'Financial Overview'),
-                Tab(icon: Icon(Icons.credit_card, size: 18), text: 'Card Analytics'),
+                Tab(icon: Icon(Icons.dashboard_outlined, size: 18), text: 'Overview'),
+                Tab(icon: Icon(Icons.receipt_long_outlined, size: 18), text: 'Recharges Analytics'),
               ],
               labelColor: AppColors.primary,
               unselectedLabelColor: AppColors.textSecondaryLight,
@@ -119,7 +161,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           ),
           body: Column(
             children: [
-              // Filter Toolbar: Custom Date Range & View PDF Action
+              // Filter Toolbar: Custom Date Range & Actions
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.md,
@@ -182,10 +224,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                             ),
                           ),
                         ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 6),
-                          child: Text('to', style: TextStyle(fontSize: 11, color: AppColors.textSecondaryLight)),
-                        ),
+                        const SizedBox(width: AppSpacing.sm),
                         Expanded(
                           child: GestureDetector(
                             onTap: () async {
@@ -242,6 +281,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                         ElevatedButton(
                           onPressed: () {
                             notifier.setCustomRange(_startDate, _endDate);
+                            _fetchRecharges();
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
@@ -267,6 +307,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                               _endDate = today;
                             });
                             notifier.setCustomRange(today, today);
+                            _fetchRecharges();
                           },
                           icon: const Icon(Icons.today, size: 13, color: AppColors.primary),
                           label: const Text(
@@ -324,9 +365,22 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
               // Main Tab Content
               Expanded(
-                child: RefreshIndicator(
-                  onRefresh: notifier.loadAnalytics,
-                  child: _buildBody(context, analyticsState, notifier),
+                child: TabBarView(
+                  children: [
+                    // Tab 1: Consolidated Single-Box Metrics Overview
+                    RefreshIndicator(
+                      onRefresh: () async {
+                        await notifier.loadAnalytics();
+                        await _fetchRecharges();
+                      },
+                      child: _buildOverviewTab(context, analyticsState, notifier),
+                    ),
+                    // Tab 2: Recharges Analytics List with Cancel Option
+                    RefreshIndicator(
+                      onRefresh: _fetchRecharges,
+                      child: _buildRechargesAnalyticsTab(context),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -399,7 +453,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
-  Widget _buildBody(
+  Widget _buildOverviewTab(
     BuildContext context,
     AnalyticsState state,
     AnalyticsNotifier notifier,
@@ -454,356 +508,508 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       );
     }
 
-    return TabBarView(
-      children: [
-        _buildFinancialOverview(context, data),
-        _buildCardAnalytics(context, data),
-      ],
-    );
-  }
-
-  // ─── Tab 1: Financial Overview (Easy Words Layout) ───
-  Widget _buildFinancialOverview(BuildContext context, BranchPerformanceMetric data) {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 16),
       children: [
-        // 1. Primary Highlight Card: Net Money Collected
-        AppCard(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Net Money Collected',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textSecondaryLight,
-                    ),
-                  ),
-                  AppBadge(
-                    label: data.status,
-                    variant: data.status == 'ACTIVE'
-                        ? AppBadgeVariant.success
-                        : AppBadgeVariant.neutral,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '₹${data.netMoneyCollected.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  fontSize: 34,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primaryDark,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Money Added (₹${data.moneyAdded.toStringAsFixed(0)}) minus Money Refunded (₹${data.moneyRefunded.toStringAsFixed(0)})',
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
-              ),
-            ],
-          ),
+        // 1. RECHARGE AMOUNT
+        _buildConsolidatedMetricBox(
+          title: 'Recharge Amount',
+          totalText: '₹${data.rechargeVolume.toStringAsFixed(2)}',
+          cashSubtext: 'Cash: ₹${data.cashMoney.toStringAsFixed(2)}',
+          upiSubtext: 'UPI: ₹${data.upiMoney.toStringAsFixed(2)}',
+          icon: Icons.account_balance_wallet_outlined,
+          accentColor: AppColors.primaryDark,
         ),
-        const SizedBox(height: 14),
 
-        // 2. Online UPI vs Cash Money Side-by-Side Comparison
-        Row(
-          children: [
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5F3FF),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFDDD6FE)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Online UPI Money',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF6D28D9)),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '₹${data.upiMoney.toStringAsFixed(2)}',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF4C1D95)),
-                    ),
-                    Text(
-                      '${data.upiCount} top-ups',
-                      style: const TextStyle(fontSize: 11, color: Color(0xFF7C3AED)),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0FDF4),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFBBF7D0)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Cash Money',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF15803D)),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '₹${data.cashMoney.toStringAsFixed(2)}',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
-                    ),
-                    Text(
-                      '${data.cashCount} top-ups',
-                      style: const TextStyle(fontSize: 11, color: Color(0xFF15803D)),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+        // 2. REFUND AMOUNT
+        _buildConsolidatedMetricBox(
+          title: 'Refund Amount',
+          totalText: '₹${data.refundVolume.toStringAsFixed(2)}',
+          cashSubtext: 'Cash: ₹${data.refundVolume.toStringAsFixed(2)}',
+          upiSubtext: 'UPI: ₹0.00',
+          icon: Icons.assignment_return_outlined,
+          accentColor: AppColors.error,
         ),
-        const SizedBox(height: 14),
 
-        // 4. Core Money Grid: Money Added & Money Refunded
-        Row(
-          children: [
-            Expanded(
-              child: _buildMetricTile(
-                icon: Icons.add_card,
-                label: 'Money Added',
-                value: '₹${data.moneyAdded.toStringAsFixed(0)}',
-                subValue: '${data.rechargeCount} total top-ups',
-                color: AppColors.success,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: _buildMetricTile(
-                icon: Icons.assignment_return,
-                label: 'Money Refunded',
-                value: '₹${data.moneyRefunded.toStringAsFixed(0)}',
-                subValue: '${data.refundCount} cards returned',
-                color: AppColors.error,
-              ),
-            ),
-          ],
+        // 3. CANCELED RECHARGE AMOUNT
+        _buildConsolidatedMetricBox(
+          title: 'Canceled Recharge Amount',
+          totalText: '₹${data.cancelledTopUps.toStringAsFixed(2)}',
+          cashSubtext: 'Cash Voided: ₹${data.cancelledTopUps.toStringAsFixed(2)}',
+          upiSubtext: 'UPI Voided: ₹0.00',
+          icon: Icons.cancel_outlined,
+          accentColor: Colors.deepOrange,
         ),
-        const SizedBox(height: AppSpacing.sm),
 
-        // 5. Cancellations & Voided Activity
-        Row(
-          children: [
-            Expanded(
-              child: _buildMetricTile(
-                icon: Icons.cancel_outlined,
-                label: 'Cancelled Top-ups',
-                value: '₹${data.cancelledTopUps.toStringAsFixed(0)}',
-                subValue: '${data.cancelledTopUpsCount} voided top-ups',
-                color: Colors.orange.shade700,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: _buildMetricTile(
-                icon: Icons.remove_shopping_cart_outlined,
-                label: 'Cancelled Food Orders',
-                value: '₹${data.cancelledOrdersVolume.toStringAsFixed(0)}',
-                subValue: '${data.cancelledOrdersCount} voided orders',
-                color: Colors.deepOrange,
-              ),
-            ),
-          ],
+        // 4. NET AMOUNT
+        _buildConsolidatedMetricBox(
+          title: 'Net Amount',
+          totalText: '₹${data.netMoneyCollected.toStringAsFixed(2)}',
+          cashSubtext: 'Net Cash: ₹${data.cashInDrawer.toStringAsFixed(2)}',
+          upiSubtext: 'Net UPI: ₹${data.upiMoney.toStringAsFixed(2)}',
+          icon: Icons.payments_outlined,
+          accentColor: AppColors.success,
         ),
-        const SizedBox(height: AppSpacing.sm),
 
-        // 6. Food Sales (POS)
-        _buildMetricTile(
-          icon: Icons.restaurant,
-          label: 'Food Sales (POS)',
-          value: '₹${data.purchaseVolume.toStringAsFixed(0)}',
-          subValue: '${data.purchaseCount} orders served',
-          color: AppColors.primary,
+        // 5. WALLET ACTIVATION
+        _buildConsolidatedMetricBox(
+          title: 'Wallet Activation',
+          totalText: '${data.cardsGivenOut} Cards Issued',
+          cashSubtext: 'Active: ${data.activeSessionsCount}',
+          upiSubtext: 'Settled: ${data.settledSessionsCount}',
+          icon: Icons.credit_card,
+          accentColor: AppColors.primary,
         ),
+
+        // 6. RECHARGE COUNT
+        _buildConsolidatedMetricBox(
+          title: 'Recharge Count',
+          totalText: '${data.rechargeCount} Recharges',
+          cashSubtext: 'Cash: ${data.cashCount} txns',
+          upiSubtext: 'UPI: ${data.upiCount} txns',
+          icon: Icons.sync,
+          accentColor: AppColors.info,
+        ),
+
+        // 7. REFUND COUNT
+        _buildConsolidatedMetricBox(
+          title: 'Refund Count',
+          totalText: '${data.refundCount} Refunds',
+          cashSubtext: 'Processed: ${data.refundCount} cards',
+          upiSubtext: 'Returned: ₹${data.refundVolume.toStringAsFixed(0)}',
+          icon: Icons.keyboard_return,
+          accentColor: AppColors.warning,
+        ),
+
+        // 8. CANCELED ORDERS
+        _buildConsolidatedMetricBox(
+          title: 'Canceled Orders',
+          totalText: '${data.cancelledOrdersCount} Orders',
+          cashSubtext: 'Voided: ${data.cancelledOrdersCount} orders',
+          upiSubtext: 'Refunded: ₹${data.cancelledOrdersVolume.toStringAsFixed(0)}',
+          icon: Icons.remove_shopping_cart_outlined,
+          accentColor: Colors.red.shade700,
+        ),
+
+        // 9. CANCELED RECHARGES
+        _buildConsolidatedMetricBox(
+          title: 'Canceled Recharges',
+          totalText: '${data.cancelledTopUpsCount} Recharges',
+          cashSubtext: 'Voided: ${data.cancelledTopUpsCount} top-ups',
+          upiSubtext: 'Deducted: ₹${data.cancelledTopUps.toStringAsFixed(0)}',
+          icon: Icons.money_off,
+          accentColor: Colors.brown,
+        ),
+
+        const SizedBox(height: 16),
       ],
     );
   }
 
-  // ─── Tab 2: Card Analytics ───
-  Widget _buildCardAnalytics(BuildContext context, BranchPerformanceMetric data) {
-    final totalSessions = data.sessionCount > 0 ? data.sessionCount : (data.activeSessionsCount + data.settledSessionsCount);
-    final activePct = totalSessions > 0 ? ((data.activeSessionsCount / totalSessions) * 100).toStringAsFixed(0) : '0';
-
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: AppSpacing.paddingMd,
-      children: [
-        const SectionHeader(title: 'Card Fleet & Session Lifecycle'),
-        const SizedBox(height: AppSpacing.sm),
-
-        // Card Operations Grid
-        Row(
-          children: [
-            Expanded(
-              child: _buildMetricTile(
-                icon: Icons.credit_card,
-                label: 'In Circulation',
-                value: '${data.activeSessionsCount}',
-                subValue: 'Active card sessions',
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: _buildMetricTile(
-                icon: Icons.check_circle_outline,
-                label: 'Settled Cards',
-                value: '${data.settledSessionsCount}',
-                subValue: 'Returned & settled',
-                color: AppColors.success,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Row(
-          children: [
-            Expanded(
-              child: _buildMetricTile(
-                icon: Icons.history,
-                label: 'Total Sessions',
-                value: '$totalSessions',
-                subValue: 'Lifetime session count',
-                color: AppColors.primaryDark,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: _buildMetricTile(
-                icon: Icons.refresh,
-                label: 'Card Top-Ups',
-                value: '${data.rechargeCount}',
-                subValue: 'Wallet recharge actions',
-                color: AppColors.info,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.md),
-
-        // Session Distribution Card
-        AppCard(
-          padding: AppSpacing.paddingMd,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Circulation vs. Settled Ratio',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                '$activePct% of all recorded card sessions are actively circulating with customers.',
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: totalSessions > 0 ? (data.activeSessionsCount / totalSessions) : 0,
-                  backgroundColor: AppColors.borderLight,
-                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-                  minHeight: 8,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: AppColors.primary,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Active (${data.activeSessionsCount})',
-                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: AppColors.borderLight,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Settled (${data.settledSessionsCount})',
-                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-
-
-  Widget _buildMetricTile({
-    required IconData icon,
-    required String label,
-    required String value,
-    required String subValue,
-    required Color color,
+  Widget _buildConsolidatedMetricBox({
+    required String title,
+    required String totalText,
+    String? cashSubtext,
+    String? upiSubtext,
+    String? extraSubtext,
+    IconData? icon,
+    Color accentColor = AppColors.primary,
   }) {
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-          ),
-          Text(
-            subValue,
-            style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderLight),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 16, color: accentColor),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                title.toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                  color: AppColors.textSecondaryLight,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            totalText,
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: accentColor,
+            ),
+          ),
+          const SizedBox(height: 10),
+          if (cashSubtext != null || upiSubtext != null)
+            Row(
+              children: [
+                if (cashSubtext != null)
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.successLight.withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
+                      ),
+                      child: Text(
+                        cashSubtext,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primaryDark,
+                        ),
+                      ),
+                    ),
+                  ),
+                if (cashSubtext != null && upiSubtext != null)
+                  const SizedBox(width: 8),
+                if (upiSubtext != null)
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.shade50,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.purple.shade200),
+                      ),
+                      child: Text(
+                        upiSubtext,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.purple.shade800,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          if (extraSubtext != null) ...[
+            if (cashSubtext != null || upiSubtext != null)
+              const SizedBox(height: 6),
+            Text(
+              extraSubtext,
+              style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
+            ),
+          ],
+        ],
+      ),
     );
+  }
+
+  // ─── Tab 2: Recharges Analytics List with Cancel Dropdown ───
+  Widget _buildRechargesAnalyticsTab(BuildContext context) {
+    if (_isLoadingRecharges) {
+      return const AppLoadingView(message: 'Loading recharges history...');
+    }
+
+    if (_rechargesError != null) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          const SizedBox(height: 80),
+          Center(
+            child: Padding(
+              padding: AppSpacing.paddingLg,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    _rechargesError!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: AppColors.error),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  ElevatedButton(
+                    onPressed: _fetchRecharges,
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (_rechargesList.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: const [
+          SizedBox(height: 80),
+          AppEmptyState(
+            title: 'No Recharges Found',
+            description: 'No recharge records match the selected date filter.',
+            icon: Icons.receipt_long_outlined,
+          ),
+        ],
+      );
+    }
+
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 16),
+      itemCount: _rechargesList.length,
+      itemBuilder: (ctx, index) {
+        final item = _rechargesList[index] as Map<String, dynamic>;
+        return _buildRechargeListItem(item);
+      },
+    );
+  }
+
+  Widget _buildRechargeListItem(Map<String, dynamic> item) {
+    final txId = item['id'] as String? ?? '';
+    final displayId = txId.length > 8 ? txId.substring(0, 8).toUpperCase() : txId.toUpperCase();
+    final cardNum = item['cardNumber'] as String? ?? 'MC-Card';
+    final staff = item['staffName'] as String? ?? 'Staff';
+    final amount = (item['amount'] as num?)?.toDouble() ?? 0.0;
+    final method = item['paymentMethod'] as String? ?? 'CASH';
+    final isCancelled = item['isCancelled'] == true;
+    final createdAt = item['createdAt'] as String?;
+    final dateStr = createdAt != null ? _formatDateTime(createdAt) : '—';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isCancelled ? Colors.grey.shade100 : Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: isCancelled ? Colors.grey.shade300 : AppColors.borderLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    'Coupon ID: #$displayId',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: isCancelled ? Colors.grey : AppColors.textPrimaryLight,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: method == 'CASH' ? AppColors.successLight : Colors.purple.shade50,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      method,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: method == 'CASH' ? AppColors.primaryDark : Colors.purple.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (isCancelled)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'CANCELLED',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black54),
+                  ),
+                )
+              else
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, size: 20, color: AppColors.textSecondaryLight),
+                  onSelected: (val) {
+                    if (val == 'CANCEL') {
+                      _handleCancelRechargeFromAnalytics(item);
+                    }
+                  },
+                  itemBuilder: (ctx) => [
+                    const PopupMenuItem(
+                      value: 'CANCEL',
+                      child: Row(
+                        children: [
+                          Icon(Icons.cancel_outlined, size: 16, color: AppColors.error),
+                          SizedBox(width: 8),
+                          Text('Cancel Recharge', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Card: $cardNum', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+              Text(
+                '₹${amount.toStringAsFixed(2)}',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: isCancelled ? Colors.grey : AppColors.success,
+                  decoration: isCancelled ? TextDecoration.lineThrough : null,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Staff: $staff', style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight)),
+              Text(dateStr, style: const TextStyle(fontSize: 11, color: AppColors.textTertiaryLight)),
+            ],
+          ),
+          if (isCancelled && item['cancellationReason'] != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Reason: ${item['cancellationReason']}',
+              style: const TextStyle(fontSize: 11, color: Colors.black54, fontStyle: FontStyle.italic),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleCancelRechargeFromAnalytics(Map<String, dynamic> item) async {
+    final txId = item['id'] as String;
+    final amount = (item['amount'] as num?)?.toDouble() ?? 0.0;
+    final cardNum = item['cardNumber'] ?? 'Card';
+
+    String selectedReason = 'Wrong Amount Entered';
+    final customReasonCtrl = TextEditingController();
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogCtx, setModalState) => AlertDialog(
+          title: Row(
+            children: const [
+              Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 24),
+              SizedBox(width: 8),
+              Text('Cancel Recharge?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Cancel recharge of ₹${amount.toStringAsFixed(2)} on $cardNum? This will void the top-up and deduct ₹${amount.toStringAsFixed(2)} from the card balance.',
+                style: const TextStyle(fontSize: 14, color: AppColors.textPrimaryLight),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Select Cancellation Reason:',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                initialValue: selectedReason,
+                items: const [
+                  DropdownMenuItem(value: 'Wrong Amount Entered', child: Text('Wrong Amount Entered')),
+                  DropdownMenuItem(value: 'Customer Changed Mind', child: Text('Customer Changed Mind')),
+                  DropdownMenuItem(value: 'Duplicate Scan', child: Text('Duplicate Scan')),
+                  DropdownMenuItem(value: 'Other Reason', child: Text('Other Reason')),
+                ],
+                onChanged: (val) {
+                  if (val != null) {
+                    setModalState(() => selectedReason = val);
+                  }
+                },
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+              if (selectedReason == 'Other Reason') ...[
+                const SizedBox(height: 10),
+                TextField(
+                  controller: customReasonCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'Enter specific reason...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Keep Recharge'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Confirm Cancel', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirm != true) return;
+
+    final reason = selectedReason == 'Other Reason' && customReasonCtrl.text.trim().isNotEmpty
+        ? customReasonCtrl.text.trim()
+        : selectedReason;
+
+    try {
+      final sessionService = ref.read(sessionServiceProvider);
+      await sessionService.cancelRecharge(transactionId: txId, reason: reason);
+      await _fetchRecharges();
+      ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Recharge of ₹${amount.toStringAsFixed(2)} cancelled successfully.'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Cancellation failed: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 }

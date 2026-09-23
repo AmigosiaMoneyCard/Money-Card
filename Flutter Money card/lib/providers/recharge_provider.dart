@@ -27,7 +27,6 @@ class RechargeState {
 
   bool get canSubmit {
     if (amount <= 0 || isSubmitting) return false;
-    if (paymentMethod == PaymentMethod.upi && !isStaffVerified) return false;
     return true;
   }
 

@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/permission_constants.dart';
-import '../../models/card_session.dart';
 import '../../providers/analytics_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/branch_provider.dart';
@@ -13,9 +11,7 @@ import '../../providers/card_operations_provider.dart';
 import '../../providers/permission_provider.dart';
 import '../../providers/pos_cart_provider.dart';
 import '../../providers/session_operations_provider.dart';
-import '../../widgets/common/app_badge.dart';
 import '../../widgets/common/app_card.dart';
-import '../../widgets/common/section_header.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -34,15 +30,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ref.read(sessionListNotifierProvider.notifier).loadSessions();
       }
     });
-  }
-
-  String _formatDateTime(String dateTimeStr) {
-    try {
-      final dateTime = DateTime.parse(dateTimeStr);
-      return DateFormat('dd MMM, hh:mm a').format(dateTime.toLocal());
-    } catch (_) {
-      return dateTimeStr;
-    }
   }
 
   void _safePush(String route) {
@@ -69,19 +56,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     final user = ref.watch(currentUserProvider);
     final currentBranch = ref.watch(currentBranchProvider);
-    final sessionListState = ref.watch(sessionListNotifierProvider);
     final sessionNotifier = ref.read(sessionListNotifierProvider.notifier);
     final permissionChecker = ref.watch(permissionCheckerProvider);
 
     final canIssueCard = permissionChecker.hasPermission(AppPermission.cardIssue);
     final analyticsState = ref.watch(analyticsNotifierProvider);
     final todayMetric = analyticsState.analytics;
-
-    // Filter strictly for ACTIVE sessions
-    final activeSessions = sessionListState.sessions
-        .where((s) => s.status == SessionStatus.active)
-        .toList();
-    final activeCount = activeSessions.length;
 
     return Scaffold(
       body: SafeArea(
@@ -331,9 +311,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: _buildQuickActionCard(
-                      icon: Icons.credit_card,
-                      label: 'Sessions',
-                      onTap: () => _safeGo('/app/sessions'),
+                      icon: Icons.restaurant_menu_outlined,
+                      label: 'Menu',
+                      onTap: () => _safeGo('/app/products'),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
@@ -349,138 +329,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     child: _buildQuickActionCard(
                       icon: Icons.analytics_outlined,
                       label: 'Analytics',
-                      onTap: () => _safePush('/app/analytics'),
+                      onTap: () => _safeGo('/app/analytics'),
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: AppSpacing.lg),
-
-              // 4. Metric Row: Dynamic Active Sessions Summary
-              AppCard(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: 14,
-                ),
-                onTap: () => _safeGo('/app/sessions'),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(AppSpacing.sm),
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryLight,
-                              borderRadius: AppSpacing.roundedSm,
-                            ),
-                            child: const Icon(
-                              Icons.credit_card_outlined,
-                              color: AppColors.primaryDark,
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.md),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Active Sessions',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                Text(
-                                  currentBranch != null
-                                      ? '${currentBranch.name} • Active only'
-                                      : 'Active card sessions',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: AppColors.textSecondaryLight,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        if (sessionListState.isLoading)
-                          const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        else if (sessionListState.errorMessage != null)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.errorLight,
-                              borderRadius: AppSpacing.roundedSm,
-                            ),
-                            child: const Text(
-                              'Error',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.error,
-                              ),
-                            ),
-                          )
-                        else
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: activeCount > 0
-                                  ? AppColors.primaryLight
-                                  : AppColors.surfaceVariantLight,
-                              borderRadius: AppSpacing.roundedSm,
-                            ),
-                            child: Text(
-                              '$activeCount',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                                color: activeCount > 0
-                                    ? AppColors.primaryDark
-                                    : AppColors.textTertiaryLight,
-                              ),
-                            ),
-                          ),
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.chevron_right,
-                          color: AppColors.textTertiaryLight,
-                          size: 18,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-
-              // 5. Active Sessions Live Preview Section Header
-              SectionHeader(
-                title: 'Active Sessions',
-                actionLabel: activeCount > 0 ? 'View All ($activeCount)' : null,
-                onAction: () => _safeGo('/app/sessions'),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-
-              // 6. Active Sessions Live Content
-              _buildActiveSessionsContent(
-                context,
-                sessionListState,
-                activeSessions,
-                sessionNotifier,
-                currentBranch?.name,
               ),
               const SizedBox(height: AppSpacing.xl),
             ],
@@ -514,231 +366,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildActiveSessionsContent(
-    BuildContext context,
-    SessionListState state,
-    List<CardSession> activeSessions,
-    SessionListNotifier notifier,
-    String? branchName,
-  ) {
-    if (state.isLoading) {
-      return AppCard(
-        padding: AppSpacing.paddingLg,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-            SizedBox(width: AppSpacing.md),
-            Text(
-              'Loading active sessions...',
-              style: TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondaryLight,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (state.errorMessage != null) {
-      return AppCard(
-        padding: AppSpacing.paddingMd,
-        child: Column(
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.error_outline, color: AppColors.error, size: 20),
-                const SizedBox(width: AppSpacing.xs),
-                Expanded(
-                  child: Text(
-                    state.errorMessage!,
-                    style: const TextStyle(color: AppColors.error, fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: notifier.loadSessions,
-                icon: const Icon(Icons.refresh, size: 16),
-                label: const Text('Retry'),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (activeSessions.isEmpty) {
-      return AppCard(
-        padding: AppSpacing.paddingLg,
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: const BoxDecoration(
-                color: AppColors.surfaceLight,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.credit_card_off_outlined,
-                size: 32,
-                color: AppColors.textTertiaryLight,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            const Text(
-              'No Active Sessions',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimaryLight,
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'There are no active customer sessions in this counter right now.',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondaryLight,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Display top active sessions (up to 3 items)
-    final previewSessions = activeSessions.take(3).toList();
-
-    return Column(
-      children: previewSessions.map((session) {
-        final cardIdentifier = session.displayCardNumber;
-
-        return Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-          child: AppCard(
-            padding: AppSpacing.paddingMd,
-            onTap: () => _safePush('/app/sessions/${session.id}'),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  decoration: const BoxDecoration(
-                    color: AppColors.primaryLight,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.credit_card,
-                    color: AppColors.primaryDark,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              'Card: $cardIdentifier',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimaryLight,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (session.balance < 100) ...[
-                            const SizedBox(width: AppSpacing.xs),
-                            const AppBadge(
-                              label: 'LOW BAL',
-                              variant: AppBadgeVariant.warning,
-                            ),
-                          ],
-                          const SizedBox(width: AppSpacing.xs),
-                          const AppBadge(
-                            label: 'ACTIVE',
-                            variant: AppBadgeVariant.success,
-                          ),
-                        ],
-                      ),
-                      if (session.customerName != null && session.customerName!.trim().isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            const Icon(Icons.person, size: 12, color: AppColors.primary),
-                            const SizedBox(width: 3),
-                            Expanded(
-                              child: Text(
-                                session.customerName!.trim(),
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimaryLight,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                      const SizedBox(height: 2),
-                      Text(
-                        'Started: ${_formatDateTime(session.startedAt)}',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSecondaryLight,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '₹${session.balance.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    const Text(
-                      'Balance',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: AppColors.textTertiaryLight,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 4),
-                const Icon(
-                  Icons.chevron_right,
-                  color: AppColors.textTertiaryLight,
-                  size: 18,
-                ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
     );
   }
 
@@ -810,10 +437,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               spacing: 6,
               runSpacing: 4,
               children: [
-                _buildRoleCapabilityChip('💳 Recharge & Issue', AppColors.primaryDark, AppColors.successLight),
-                _buildRoleCapabilityChip('↩️ Refunds', AppColors.primaryDark, AppColors.successLight),
-                _buildRoleCapabilityChip('📋 Menu Management', AppColors.primaryDark, AppColors.successLight),
-                _buildRoleCapabilityChip('📊 Analytics', AppColors.primaryDark, AppColors.successLight),
+                _buildRoleCapabilityChip('Recharge & Issue', AppColors.primaryDark, AppColors.successLight),
+                _buildRoleCapabilityChip('Refunds', AppColors.primaryDark, AppColors.successLight),
+                _buildRoleCapabilityChip('Menu Management', AppColors.primaryDark, AppColors.successLight),
+                _buildRoleCapabilityChip('Analytics', AppColors.primaryDark, AppColors.successLight),
               ],
             ),
           ],
@@ -878,9 +505,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             spacing: 6,
             runSpacing: 4,
             children: [
-              _buildRoleCapabilityChip('🛒 POS Billing', const Color(0xFF0369A1), const Color(0xFFE0F2FE)),
-              _buildRoleCapabilityChip('💳 Deduct Amount', const Color(0xFF0369A1), const Color(0xFFE0F2FE)),
-              _buildRoleCapabilityChip('📋 Menu Catalog', const Color(0xFF0369A1), const Color(0xFFE0F2FE)),
+              _buildRoleCapabilityChip('POS Billing', const Color(0xFF0369A1), const Color(0xFFE0F2FE)),
+              _buildRoleCapabilityChip('Deduct Amount', const Color(0xFF0369A1), const Color(0xFFE0F2FE)),
+              _buildRoleCapabilityChip('Menu Catalog', const Color(0xFF0369A1), const Color(0xFFE0F2FE)),
             ],
           ),
         ],

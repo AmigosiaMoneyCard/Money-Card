@@ -22,7 +22,7 @@ class CardListState {
   const CardListState({
     this.isLoading = false,
     this.cards = const [],
-    this.selectedStatusFilter = 'ALL',
+    this.selectedStatusFilter = 'ACTIVE',
     this.searchQuery = '',
     this.errorMessage,
   });

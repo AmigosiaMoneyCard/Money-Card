@@ -204,7 +204,12 @@ void main() {
       final notifier = CardListNotifier(fakeCardRepo, 'branch-001');
       await notifier.loadCards();
 
-      // Org-demo-001 has 4 cards in branch-001 (excluding other-org card)
+      // By default in mobile app, shows ACTIVE cards only
+      expect(notifier.state.cards.length, 1);
+      expect(notifier.state.cards.first.physicalCardNumber, 'MC-101');
+
+      notifier.setStatusFilter('ALL');
+      await notifier.loadCards();
       expect(notifier.state.cards.length, 4);
 
       notifier.setStatusFilter('AVAILABLE');
@@ -287,11 +292,9 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('Counter Cards'), findsOneWidget);
-      expect(find.text('MC-001'), findsOneWidget);
-      expect(find.text('MC-002'), findsOneWidget);
-      expect(find.text('MC-003'), findsOneWidget);
+      expect(find.text('Active Cards'), findsWidgets);
       expect(find.text('MC-101'), findsOneWidget);
+      expect(find.text('MC-001'), findsNothing);
     });
 
     testWidgets('IssueCardScreen renders Available Cards manual selection and executes issue', (tester) async {

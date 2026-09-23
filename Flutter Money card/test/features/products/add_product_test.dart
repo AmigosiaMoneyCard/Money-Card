@@ -109,15 +109,15 @@ void main() {
 
       // Verify Products Screen Content
       expect(find.text('Products & Menu'), findsOneWidget);
-      expect(find.text('Branch: Main Cafeteria'), findsOneWidget);
+      expect(find.text('Cafeteria: Main Cafeteria'), findsOneWidget);
       expect(find.text('Veg Rice'), findsOneWidget);
       expect(find.text('Chicken Curry'), findsOneWidget);
       expect(find.text('₹80.00'), findsOneWidget);
       expect(find.text('₹120.00'), findsOneWidget);
 
-      // Verify NO "+ Add Product" buttons exist
-      expect(find.text('Add Product'), findsNothing);
-      expect(find.byType(FloatingActionButton), findsNothing);
+      // Verify Add Menu Item button exists for staff menu editing
+      expect(find.text('Add Menu Item'), findsOneWidget);
+      expect(find.byType(FloatingActionButton), findsOneWidget);
 
       // Test Search
       await tester.enterText(find.byType(TextField), 'Chicken');

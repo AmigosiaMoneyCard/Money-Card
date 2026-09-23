@@ -10,7 +10,6 @@ import 'package:money_card_staff/models/transaction.dart';
 import 'package:money_card_staff/providers/hardware_settings_provider.dart';
 import 'package:money_card_staff/services/digital_receipt_service.dart';
 import 'package:money_card_staff/widgets/receipt/digital_receipt_dialog.dart';
-import 'package:printing/printing.dart';
 
 void main() {
   AppConfig.apiMode = ApiMode.mock;
@@ -223,42 +222,17 @@ void main() {
       expect(find.text('SESSION-MOCK-001'), findsNothing);
       expect(find.text('Thank You!'), findsOneWidget);
 
-      // VERIFY: EXACTLY 3 buttons exist
-      expect(find.text('Generate & View PDF'), findsOneWidget);
-      expect(find.text('Download PDF'), findsOneWidget);
+      // VERIFY: Done button only, PDF actions removed
       expect(find.text('Done'), findsOneWidget);
-
-      // VERIFY: All other actions REMOVED
+      expect(find.text('Generate & View PDF'), findsNothing);
+      expect(find.text('Download PDF'), findsNothing);
       expect(find.text('View Bill'), findsNothing);
       expect(find.text('View PDF'), findsNothing);
       expect(find.text('Generate PDF'), findsNothing);
       expect(find.text('Share PDF'), findsNothing);
       expect(find.text('Print'), findsNothing);
 
-      // 1. Tap Generate & View PDF -> opens viewer modal
-      await tester.ensureVisible(find.text('Generate & View PDF'));
-      await tester.tap(find.text('Generate & View PDF'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-
-      expect(find.text('Bill PDF'), findsOneWidget);
-      expect(find.byType(PdfPreview), findsOneWidget);
-
-      // Close modal
-      await tester.tap(find.byIcon(Icons.close));
-      await tester.pumpAndSettle();
-
-      // 2. Tap Download PDF -> generates & saves file to storage
-      await tester.ensureVisible(find.text('Download PDF'));
-      await tester.tap(find.text('Download PDF'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.pump(const Duration(milliseconds: 300));
-
-      // Verify success feedback
-      expect(find.text('Bill PDF downloaded successfully.'), findsOneWidget);
-
-      // 3. Tap Done -> triggers callback
+      // Tap Done -> triggers callback
       await tester.ensureVisible(find.text('Done'));
       await tester.tap(find.text('Done'));
       await tester.pumpAndSettle();
@@ -295,25 +269,15 @@ void main() {
       expect(find.text('MC-001'), findsOneWidget);
       expect(find.text('TXN-MOCK-001'), findsOneWidget);
 
-      // VERIFY: Exactly 3 buttons exist
-      expect(find.text('Generate & View PDF'), findsOneWidget);
-      expect(find.text('Download PDF'), findsOneWidget);
+      // VERIFY: Done button only, PDF actions removed
       expect(find.text('Done'), findsOneWidget);
-
-      // VERIFY: All other actions REMOVED
+      expect(find.text('Generate & View PDF'), findsNothing);
+      expect(find.text('Download PDF'), findsNothing);
       expect(find.text('View Bill'), findsNothing);
       expect(find.text('View PDF'), findsNothing);
       expect(find.text('Generate PDF'), findsNothing);
       expect(find.text('Share PDF'), findsNothing);
       expect(find.text('Print'), findsNothing);
-
-      // Tap Download PDF
-      await tester.tap(find.text('Download PDF'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.pump(const Duration(milliseconds: 300));
-
-      expect(find.text('Bill PDF downloaded successfully.'), findsOneWidget);
 
       // Tap Done
       await tester.tap(find.text('Done'));

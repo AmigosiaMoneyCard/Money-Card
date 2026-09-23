@@ -47,12 +47,10 @@ void main() {
     );
 
     expect(find.text('Alex Morgan'), findsOneWidget);
-    expect(find.text('Menu Catalog'), findsOneWidget);
-    expect(find.text('Analytics'), findsOneWidget);
+    expect(find.text('Change Password'), findsOneWidget);
+    expect(find.text('Sign Out'), findsOneWidget);
+    expect(find.text('Recharges & Top-ups'), findsOneWidget);
     expect(find.text('Scan Vibration Feedback'), findsNothing);
     expect(find.text('Sample Digital Receipt & PDF'), findsNothing);
-
-    await tester.scrollUntilVisible(find.text('Sign Out'), 100);
-    expect(find.text('Sign Out'), findsOneWidget);
   });
 }

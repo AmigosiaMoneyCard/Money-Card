@@ -10,6 +10,8 @@ import 'package:money_card_staff/models/branch.dart';
 import 'package:money_card_staff/providers/analytics_provider.dart';
 import 'package:money_card_staff/providers/auth_provider.dart';
 import 'package:money_card_staff/providers/branch_provider.dart';
+import 'package:money_card_staff/providers/api_providers.dart';
+import 'package:money_card_staff/services/session_service.dart';
 import 'package:money_card_staff/repositories/analytics_repository.dart';
 import 'package:money_card_staff/repositories/branch_repository.dart';
 
@@ -19,6 +21,25 @@ class FakeBranchRepository implements BranchRepository {
 
   @override
   Future<List<Branch>> getBranches({bool forceRefresh = false}) async => const [];
+}
+
+class FakeSessionService implements SessionService {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
+  @override
+  Future<Map<String, dynamic>> listRecharges({
+    String? branchId,
+    String? startDate,
+    String? endDate,
+    String? paymentMethod,
+    String? status,
+    String? search,
+    int? page,
+    int? limit,
+  }) async {
+    return {'items': []};
+  }
 }
 
 class FakeAnalyticsRepository implements AnalyticsRepository {
@@ -112,6 +133,7 @@ void main() {
             currentUserProvider.overrideWithValue(authorizedUser),
             branchNotifierProvider.overrideWith((ref) => BranchNotifier(FakeBranchRepository())),
             analyticsNotifierProvider.overrideWith((ref) => analyticsNotifier),
+            sessionServiceProvider.overrideWithValue(FakeSessionService()),
           ],
           child: const MaterialApp(
             home: AnalyticsScreen(),
@@ -121,12 +143,16 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('₹43250.00'), findsOneWidget);
-      expect(find.text('Net Money Collected'), findsOneWidget);
-      expect(find.text('Money Added'), findsOneWidget);
+      expect(find.text('₹24800.00'), findsOneWidget);
+      expect(find.text('RECHARGE AMOUNT'), findsOneWidget);
       expect(find.text('Reset to Today'), findsOneWidget);
       expect(find.text('Apply'), findsOneWidget);
       expect(find.text('View PDF'), findsOneWidget);
+
+      await tester.drag(find.byType(ListView).first, const Offset(0, -300));
+      await tester.pumpAndSettle();
+      expect(find.text('NET AMOUNT'), findsOneWidget);
+      expect(find.text('₹43250.00'), findsOneWidget);
 
       // Verify tapping Reset to Today
       await tester.tap(find.text('Reset to Today'));
@@ -193,6 +219,7 @@ void main() {
               return notifier;
             }),
             analyticsNotifierProvider.overrideWith((ref) => analyticsNotifier),
+            sessionServiceProvider.overrideWithValue(FakeSessionService()),
           ],
           child: const MaterialApp(
             home: AnalyticsScreen(),
@@ -212,7 +239,7 @@ void main() {
       expect(find.text('Main Central 2'), findsOneWidget);
     });
 
-    testWidgets('AnalyticsScreen switches to Card Analytics tab and displays card fleet metrics', (tester) async {
+    testWidgets('AnalyticsScreen switches to Recharges Analytics tab and displays recharges view', (tester) async {
       const authorizedUser = AuthUser(
         id: 'staff-1',
         email: 'staff@moneycard.io',
@@ -232,6 +259,7 @@ void main() {
             currentUserProvider.overrideWithValue(authorizedUser),
             branchNotifierProvider.overrideWith((ref) => BranchNotifier(FakeBranchRepository())),
             analyticsNotifierProvider.overrideWith((ref) => notifier),
+            sessionServiceProvider.overrideWithValue(FakeSessionService()),
           ],
           child: const MaterialApp(
             home: AnalyticsScreen(),
@@ -241,14 +269,12 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Tap Card Analytics Tab
-      await tester.tap(find.text('Card Analytics'));
+      // Tap Recharges Analytics Tab
+      await tester.tap(find.text('Recharges Analytics'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Card Fleet & Session Lifecycle'), findsOneWidget);
-      expect(find.text('In Circulation'), findsOneWidget);
-      expect(find.text('Settled Cards'), findsOneWidget);
-      expect(find.text('Circulation vs. Settled Ratio'), findsOneWidget);
+      expect(find.text('Recharges Analytics'), findsWidgets);
+      expect(find.text('No Recharges Found'), findsOneWidget);
     });
   });
 }

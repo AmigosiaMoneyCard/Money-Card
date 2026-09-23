@@ -1,146 +1,292 @@
-# Implementation Plan: Staff Real Password Persistence & Staff Details Modal Decluttering
+# Implementation Plan: Mobile POS QR Actions, UPI Simplification, Consolidated Analytics, and Recharges Management
 
-Comprehensive plan to:
-1. Fix "Current Password" in Staff Settings (Org Admin) so it displays and shares the actual real password rather than falling back to static '123456'.
-2. Declutter the Staff Details modal by removing the Active/Inactive slide toggle, and removing Close, Edit, Performance & Audit, and View Details buttons, keeping only the Back button visible.
+Technical specification for mobile app updates including Cancel/Edit order with auto-refund on QR scan, removing UPI verification checkbox and reference box, QR Info and More showing recharge/refund counts, consolidated single-box mobile analytics (Total heading with Cash/UPI subheadings), 2-tab Analytics with Recharges list and Cancel dropdown, Done-only transaction completion, and Shorebird staging release.
 
-![Staff Details Minimal Modal & Password Management](file:///C:/Users/damie/.gemini/antigravity-ide/brain/9635058f-8784-4982-b40a-c7e9d921ee9b/staff_details_minimal_and_password_sketch_1790137490495.jpg)
+## Architecture and Visual Design
+![Mobile Analytics and QR Action Hub](file:///C:/Users/damie/.gemini/antigravity-ide/brain/9c70217b-9240-4d11-907e-eaaf4a37b746/mobile_analytics_recharges_and_qr_actions_1790149326416.jpg)
 
-## User Review Required
+![Recharge and Purchase Done Only Receipt](file:///C:/Users/damie/.gemini/antigravity-ide/brain/9c70217b-9240-4d11-907e-eaaf4a37b746/recharge_purchase_done_only_1790148435433.jpg)
 
-> [!IMPORTANT]
-> - **Staff Password Persistence**:
->   - Passwords for staff created directly or via counter creation will now be stored in persistent local cache (`mc_staff_passwords` and cross-referenced with `mc_branch_passwords`).
->   - When changing a staff password, the updated password is saved immediately into persistent storage so it stays accurate across page reloads and modal opens.
->   - The "Current Password" field and the "Copy Credentials" action will always use the real password.
-> - **Staff Details Modal Simplification**:
->   - The Active/Inactive toggle switch is removed from inside the modal.
->   - The buttons Close, Edit, Performance & Audit, and View Details are removed from the footer.
->   - Only the Back button remains visible, navigating back to the previous list or closing the dialog.
+![Mobile Dashboard Redesign](file:///C:/Users/damie/.gemini/antigravity-ide/brain/9c70217b-9240-4d11-907e-eaaf4a37b746/mobile_dashboard_nav_and_profile_redesign_1790146443555.jpg)
 
 ---
 
-## ASCII Wireframes
+## ASCII Layout Wireframes
 
-### Staff Details Modal (Minimal & Clean)
+### Scanned QR Action Screen: Cancel/Edit Order & Info Buttons
 ```
 +-------------------------------------------------------------+
-| Staff Details                                           [X] |
+| [<] Card: MC-1042                               [Scan QR]   |
 +-------------------------------------------------------------+
-|  [Avatar]  Robert Chen                        [Active]      |
-|            Counter Staff                                    |
-|                                                             |
-|  +-------------------------------------------------------+  |
-|  | Assigned Counter      Robert Chen                     |  |
-|  | Phone Number          (512) 654-6393                  |  |
-|  | Role & Position       Counter Staff                   |  |
-|  +-------------------------------------------------------+  |
-|                                                             |
-|  [<- Back]                                                  |
+|   MC-1042                                          [ACTIVE] |
+|   Customer: John Doe • 9876543210                           |
+|   Balance: ₹350.00                              Active Now  |
 +-------------------------------------------------------------+
-(Active toggle removed; Close, Edit, Audit, View Details removed)
+|   CARD ACTIONS & OPERATIONS                                 |
+|                                                             |
+|   +-----------------------------------------------------+   |
+|   | [Cart] Add Products                             [>] |   |
+|   | Order food items from menu catalog                  |   |
+|   +-----------------------------------------------------+   |
+|                                                             |
+|   +-----------------------------------------------------+   |
+|   | [Cancel] Cancel / Edit Recent Order             [>] |   |
+|   | Void latest order (₹120) & auto-refund to card      |   |
+|   +-----------------------------------------------------+   |
+|                                                             |
+|   +-----------------------------------------------------+   |
+|   | [Info] Card Info & Statistics                   [>] |   |
+|   | Recharges: 3 • Refunds: 1 • Total Spent: ₹450       |   |
+|   +-----------------------------------------------------+   |
+|                                                             |
+|   +-----------------------------------------------------+   |
+|   | [Wallet] Recharge Card                          [>] |   |
+|   | Load cash or online UPI balance onto card           |   |
+|   +-----------------------------------------------------+   |
+|                                                             |
+|   +-----------------------------------------------------+   |
+|   | [Return] Settle / Return Card                   [>] |   |
+|   +-----------------------------------------------------+   |
++-------------------------------------------------------------+
 ```
 
-### Org Admin Staff Settings — Real Password Section
+### Streamlined UPI Recharge Screen (Checkbox & Verification Box Removed)
 ```
 +-------------------------------------------------------------+
-| Current Password Card:                                      |
+| [<] Recharge Card                                           |
++-------------------------------------------------------------+
+|   Card: MC-1042                                             |
+|   Current Balance: ₹150.00                                  |
+|                                                             |
+|   Payment Method:                                           |
+|   ( ) Cash          (*) UPI                                 |
+|                                                             |
+|   (UPI verification box and checkbox completely removed)    |
+|                                                             |
+|   Recharge Amount (₹):                                      |
+|   [ 200                                                   ] |
+|   Quick picks: [+₹100]  [+₹200]  [+₹500]  [+₹1000]          |
+|                                                             |
+|   New Balance Preview: ₹350.00                              |
+|                                                             |
+|   [                (v) Confirm Recharge                   ] |
++-------------------------------------------------------------+
+```
+
+### Mobile Analytics: Consolidated Single-Box Metric Cards
+```
++-------------------------------------------------------------+
+| Analytics - Main Cafeteria                                  |
+| [  Overview  ]                    [ Recharges Analytics ]   |
++-------------------------------------------------------------+
+| Date Filter: Today (23 Sep 2026)                            |
++-------------------------------------------------------------+
+|                                                             |
 | +---------------------------------------------------------+ |
-| | CURRENT PASSWORD                                        | |
-| | actual_real_password_here               [Reveal / Hide] | |
-| | Copying or sharing credentials will use this password.  | |
+| | RECHARGE AMOUNT                                         | |
+| | ₹18,450.00                                              | |
+| | Cash: ₹11,200.00    |    UPI: ₹7,250.00                 | |
 | +---------------------------------------------------------+ |
 |                                                             |
-| [Update Password]    [Copy Credentials]                     |
+| +---------------------------------------------------------+ |
+| | REFUND AMOUNT                                           | |
+| | ₹1,200.00                                               | |
+| | Cash: ₹900.00       |    UPI: ₹300.00                   | |
+| +---------------------------------------------------------+ |
+|                                                             |
+| +---------------------------------------------------------+ |
+| | CANCELED RECHARGE AMOUNT                                | |
+| | ₹500.00                                                 | |
+| | Cash: ₹500.00       |    UPI: ₹0.00                     | |
+| +---------------------------------------------------------+ |
+|                                                             |
+| +---------------------------------------------------------+ |
+| | NET AMOUNT                                              | |
+| | ₹16,750.00                                              | |
+| | Net Cash: ₹9,800.00 |    Net UPI: ₹6,950.00             | |
+| +---------------------------------------------------------+ |
+|                                                             |
+| +---------------------------------------------------------+ |
+| | WALLET ACTIVATION                                       | |
+| | 42 Cards Issued                                         | |
+| | Active: 36          |    Settled: 6                     | |
+| +---------------------------------------------------------+ |
+|                                                             |
+| +---------------------------------------------------------+ |
+| | RECHARGE COUNT                                          | |
+| | 38 Recharges                                            | |
+| | Cash: 22 txns       |    UPI: 16 txns                   | |
+| +---------------------------------------------------------+ |
+|                                                             |
+| +---------------------------------------------------------+ |
+| | REFUND COUNT                                            | |
+| | 4 Refunds Processed                                     | |
+| | Total Returned: ₹1,200.00                               | |
+| +---------------------------------------------------------+ |
+|                                                             |
+| +---------------------------------------------------------+ |
+| | CANCELED ORDERS                                         | |
+| | 3 Orders Canceled                                       | |
+| | Total Refunded: ₹360.00                                 | |
+| +---------------------------------------------------------+ |
+|                                                             |
+| +---------------------------------------------------------+ |
+| | CANCELED RECHARGES                                      | |
+| | 1 Top-up Voided                                         | |
+| | Total Deducted: ₹500.00                                 | |
+| +---------------------------------------------------------+ |
 +-------------------------------------------------------------+
-(Uses persistent mc_staff_passwords and mc_branch_passwords)
+```
+
+### Recharges Analytics Tab with Cancel Dropdown Option
+```
++-------------------------------------------------------------+
+| Analytics - Main Cafeteria                                  |
+| [  Overview  ]                    [ Recharges Analytics ]*  |
++-------------------------------------------------------------+
+| Filter: All Recharges (38 records)                          |
++-------------------------------------------------------------+
+| Coupon / Txn ID: RCH-94810234               [  (v) Cancel ] |
+| Card: MC-1042                                               |
+| Date & Time: 23 Sep 2026, 11:42 AM                          |
+| Staff: Alex Kumar (Counter 1)                               |
+| Amount: ₹500.00 [UPI Badge]                    [ SUCCESS ]  |
+| ----------------------------------------------------------- |
+| Coupon / Txn ID: RCH-94801129               [  (v) Cancel ] |
+| Card: MC-1008                                               |
+| Date & Time: 23 Sep 2026, 10:15 AM                          |
+| Staff: Alex Kumar (Counter 1)                               |
+| Amount: ₹200.00 [Cash Badge]                   [ SUCCESS ]  |
+| ----------------------------------------------------------- |
+| Coupon / Txn ID: RCH-94799014                               |
+| Card: MC-1025                                               |
+| Date & Time: 23 Sep 2026, 09:30 AM                          |
+| Staff: Priya Sharma (Counter 1)                             |
+| Amount: ₹300.00 [UPI Badge]                  [ CANCELLED ]  |
++-------------------------------------------------------------+
 ```
 
 ---
 
-## Proposed Changes
+## Technical Scope and File Breakdown
 
-### Frontend — `Frontend Money Card/`
+1. Cancel / Edit Order Button with Auto-Refund upon QR Scan
+- User Requirement: When a person orders something but asks to cancel or order something else, provide a direct Cancel/Edit order button when the QR code is scanned to cancel the current order and auto-refund the balance back to the QR card session.
+- Files:
+  - `Flutter Money card/lib/features/pos/pos_scan_purchase_screen.dart`:
+    - Add a dedicated action tile: `[ Cancel / Edit Recent Order ]` directly on the scanned card hub.
+    - Handler `_handleQuickCancelRecentOrder()`:
+      - Inspects `_activeSession.transactions` for the most recent order with `type == TransactionType.purchase` and `!isCancelled`.
+      - If found: opens confirmation dialog stating the order items and total amount, with two options:
+        - "Refund & Cancel Order"
+        - "Cancel & Re-order Items" (auto-refunds order amount to card and navigates directly to POS Menu Catalog `/app/pos/:sessionId`).
+      - Calls `sessionService.cancelOrder(transactionId: latestOrder.id, reason: 'Customer changed mind')`.
+      - Automatically reloads the session balance and shows confirmation toast.
+      - If no recent order exists: shows informational snackbar "No active recent orders found on this card."
 
-#### [StaffPage.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/staff/StaffPage.tsx)
+2. UPI Payment Option Streamlining (Remove Checkbox and Verification Box)
+- User Requirement: In UPI payment option, remove the checkbox and the UPI payment verification box entirely.
+- Files:
+  - `Flutter Money card/lib/features/payments/recharge_screen.dart`:
+    - Delete lines 349-430 rendering the UPI payment verification text field (`Payment Reference / UTR`) and the staff verification checkbox (`rechargeState.isStaffVerified`).
+    - Remove `isStaffVerified` requirement from `_handleConfirmRecharge` validation.
+    - Make UPI selection completely direct: selecting UPI simply sets `paymentMethod = PaymentMethod.upi` without prompting for UTR reference or verification toggle.
+  - `Flutter Money card/lib/providers/recharge_provider.dart`:
+    - Update `canSubmit` getter so it does not mandate reference or verification flags.
 
-1. **Persistent Staff Password Storage**:
-   - Define storage constants:
-     ```ts
-     const STAFF_PASSWORDS_KEY = 'mc_staff_passwords';
-     const BRANCH_PASSWORDS_KEY = 'mc_branch_passwords';
-     ```
-   - Implement storage helper methods:
-     ```ts
-     const getStoredStaffPassword = (staffId: string, branchIds?: string[]): string | null => {
-       try {
-         const staffMap = JSON.parse(localStorage.getItem(STAFF_PASSWORDS_KEY) || '{}');
-         if (staffMap[staffId]) return staffMap[staffId];
-         if (branchIds && branchIds.length > 0) {
-           const branchMap = JSON.parse(localStorage.getItem(BRANCH_PASSWORDS_KEY) || '{}');
-           for (const bid of branchIds) {
-             if (branchMap[bid]) return branchMap[bid];
-           }
-         }
-       } catch {}
-       return null;
-     };
+3. Scanned QR Info & More Button (Recharge Count and Refund Count)
+- User Requirement: When QR code is scanned, provide an Info and More button displaying number of recharges and number of refunds in a separate button/view.
+- Files:
+  - `Flutter Money card/lib/features/pos/pos_scan_purchase_screen.dart`:
+    - Add action tile: `[ Card Info & Statistics ]`.
+    - Handler `_showCardSessionInfoSheet()`:
+      - Calculates metrics from `session.transactions`:
+        - Number of successful recharges and total recharge volume.
+        - Number of refunds and total refunded amount.
+        - Number of food orders placed and total food purchases.
+        - Card issue date, session token, customer details, and current balance.
+      - Displays these metrics in a clean modal bottom sheet with distinct stat cards.
 
-     const storeStaffPassword = (staffId: string, pass: string): void => {
-       try {
-         const staffMap = JSON.parse(localStorage.getItem(STAFF_PASSWORDS_KEY) || '{}');
-         staffMap[staffId] = pass;
-         localStorage.setItem(STAFF_PASSWORDS_KEY, JSON.stringify(staffMap));
-       } catch {}
-     };
-     ```
-   - In `handleAddStaff`: After successful staff creation, call `storeStaffPassword(res.data.id, formPassword.trim())`.
-   - In `handleChangeStaffPassword`: After successful password change, call `storeStaffPassword(selectedStaff.id, formNewPassword.trim())` and update `setCurrentStaffPassword(formNewPassword.trim())`.
-   - In `handleOpenStaffModal`: Look up `const saved = getStoredStaffPassword(staff.id, staff.assignedBranchIds)` and set `setCurrentStaffPassword(saved || staff.credentials?.password || '123456')`.
+4. Mobile Analytics Single-Box Consolidated Metric Cards
+- User Requirement: In mobile analytics, provide Recharge amount, refund amount, canceled recharge amount, net amount, wallet activation, recharge count, refund count, canceled orders, canceled recharges in terms of Total as the main heading and Cash, UPI in subheading in a single box.
+- Files:
+  - `Flutter Money card/lib/features/analytics/analytics_screen.dart`:
+    - Create a reusable widget `_buildConsolidatedMetricBox({required String title, required String totalText, String? cashSubtext, String? upiSubtext, IconData? icon, Color? accentColor})`.
+    - Layout:
+      - Title row: Small muted uppercase title with subtle icon.
+      - Main heading: High-contrast large bold Total figure (e.g. `₹18,450.00` or `42 Cards`).
+      - Subheadings in the same box: Clean horizontal badges displaying Cash and UPI breakdown.
+    - Implement all requested metric cards:
+      1. Recharge Amount: Total (heading), Cash & UPI (subheading)
+      2. Refund Amount: Total (heading), Cash & UPI (subheading)
+      3. Canceled Recharge Amount: Total (heading), Cash & UPI (subheading)
+      4. Net Amount: Total (heading), Cash & UPI (subheading)
+      5. Wallet Activation: Total Cards Issued (heading), Active & Settled (subheading)
+      6. Recharge Count: Total Recharges (heading), Cash & UPI counts (subheading)
+      7. Refund Count: Total Refunds (heading), Total volume refunded (subheading)
+      8. Canceled Orders: Total Canceled Orders (heading), Total volume refunded (subheading)
+      9. Canceled Recharges: Total Voided Recharges (heading), Total volume deducted (subheading)
 
-2. **Staff Details Modal Decluttering (`showStaffDetailsModal`)**:
-   - Remove the status slide switch block (lines 1729–1746).
-   - In `ModalFooter` (lines 1749–1811):
-     - Remove `Close` button.
-     - Remove `Edit` button.
-     - Remove `Performance & Audit` button.
-     - Remove `View Details` button.
-     - Make `Back` button unconditionally visible:
-       ```tsx
-       <ModalFooter>
-         <Button
-           type="button"
-           variant="outline"
-           size="sm"
-           onClick={() => {
-             setShowStaffDetailsModal(false);
-             if (selectedCounterGroup) {
-               setShowCounterStaffModal(true);
-             }
-           }}
-           leftIcon={<ArrowLeft className="h-3.5 w-3.5" />}
-           className="text-xs font-medium border-slate-300 text-slate-700 hover:bg-slate-100"
-         >
-           Back
-         </Button>
-       </ModalFooter>
-       ```
+5. Recharges Analytics Tab with List and Cancel Dropdown Option
+- User Requirement: In Analytics, provide 2 buttons (tabs) including Recharges analytics where coupon/transaction id, date, time, staff name, amount are shown, and a dropdown with Cancel option to cancel recharges.
+- Files:
+  - `Flutter Money card/lib/features/analytics/analytics_screen.dart`:
+    - Change TabBar in AppBar to 2 tabs:
+      - Tab 1: `Overview`
+      - Tab 2: `Recharges Analytics`
+    - Recharges Analytics Tab View:
+      - Calls `ref.read(sessionServiceProvider).listRecharges(branchId: currentBranch?.id, startDate: _startDate, endDate: _endDate)`.
+      - Renders list of recharges displaying:
+        - Coupon / Transaction ID (`displayTransactionId`)
+        - Physical Card Number / Identifier
+        - Date & Time formatted cleanly
+        - Staff Name who performed the recharge
+        - Amount with Cash/UPI badge
+        - Status badge: `SUCCESS` vs `CANCELLED`
+        - Action Dropdown / Popup Menu:
+          - Option: `[ Cancel Recharge ]` (enabled only for non-cancelled recharges)
+          - Selecting opens confirmation dialog explaining that the amount will be voided and deducted from the card.
+          - Calls `sessionService.cancelRecharge(transactionId: t.id, reason: selectedReason)`.
+          - Automatically refreshes the recharges list and analytics metrics.
+
+6. Transaction Done-Only Completion Flow (No Preview / Download PDF)
+- Files:
+  - `Flutter Money card/lib/widgets/receipt/digital_receipt_dialog.dart` (recharge & return flow)
+  - `Flutter Money card/lib/features/receipt/bill_receipt_screen.dart` (POS checkout flow)
+  - Both retain strictly a single full-width `AppButton(label: 'Done', icon: Icons.check, onPressed: _handleDone)`. Preview and download PDF buttons are absent.
+  - Test Updates:
+    - Update `hardware_hardening_test.dart`, `recharge_test.dart`, and `return_card_test.dart` to assert only `Done` button is present.
+
+7. Navigation & Profile Screen
+- Files: `staff_app_shell.dart`, `app_router.dart`, `more_screen.dart`
+  - Bottom navigation: Home - Cards - Menu - Analytics
+  - Dedicated Profile Screen accessed via top-right profile avatar.
+
+8. Cards Filtering & Home Screen Cleanup
+- Files: `card_operations_provider.dart`, `cards_screen.dart`, `home_screen.dart`
+  - Cards screen displays Active cards by default.
+  - Active Sessions preview container removed from Home.
+
+9. Password Relaxation & Analytics PDF Peak Table Removal
+- Files: `change_password_screen.dart`, `analytics_pdf_service.dart`
+  - Remove password complexity checks.
+  - Remove peak activity periods table from PDF generator.
+
+10. Shorebird Staging Patch Execution
+- Command: `"y" | shorebird patch android --target lib/main_staging.dart --flavor staging --release-version 1.0.2+3 --allow-asset-diffs`
 
 ---
 
 ## Verification Plan
 
-### Automated Tests
-- Type checking: `npx tsc --noEmit` in `Frontend Money Card/` (0 errors required)
-- Vitest suite: `npm test -- --run` in `Frontend Money Card/` (255/255 passing required)
-- Backend suite: `npm test` in `Backend Money Card/` (100/100 passing required)
+Automated Tests:
+- Flutter Code Analysis: `flutter analyze --no-pub` in `Flutter Money card/` (0 issues required)
+- Flutter Unit & Widget Tests: `flutter test` in `Flutter Money card/` (all passing)
 
-### Manual Verification
-1. Create a staff member with custom password, e.g. `SecretPass123`.
-2. Open staff settings for that member: Click "Reveal" on Current Password, verify it shows `SecretPass123` instead of `123456`.
-3. Update password to `NewPass456`: Verify Current Password updates immediately and persists when reloading page.
-4. Open a counter manager created in Counters page: Verify Current Password reflects the counter's password from `mc_branch_passwords`.
-5. Open Staff Details modal:
-   - Verify Active/Inactive toggle switch is gone.
-   - Verify Close, Edit, Performance & Audit, and View Details buttons are gone.
-   - Verify only the Back button is visible and works properly.
+Manual Verification:
+- Cancel / Edit Order on QR: Scan QR card, tap Cancel / Edit Order, verify latest order is cancelled and auto-refunded to card balance.
+- UPI Recharge Flow: Open recharge screen, select UPI, verify checkbox and reference text fields are completely gone and recharge confirms cleanly.
+- Card Info & Statistics: Scan QR card, tap Card Info & Statistics, verify recharge count and refund count display accurately.
+- Mobile Analytics Consolidated Cards: Open Analytics -> Overview, verify all 9 metric cards display Total as main heading and Cash/UPI in subheading within single boxes.
+- Recharges Analytics Tab: Open Analytics -> Recharges Analytics, verify list displays Coupon/Txn ID, date/time, staff name, amount, and Cancel dropdown option voids recharge correctly.
+- Shorebird CodePush: Verify patch deployment completes cleanly to staging flavor.

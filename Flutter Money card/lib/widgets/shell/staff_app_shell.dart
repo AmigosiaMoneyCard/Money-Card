@@ -53,8 +53,8 @@ class _StaffAppShellState extends ConsumerState<StaffAppShell> with WidgetsBindi
 
   int _calculateSelectedIndex() {
     if (widget.currentPath.startsWith('/app/cards')) return 1;
-    if (widget.currentPath.startsWith('/app/sessions')) return 2;
-    if (widget.currentPath.startsWith('/app/more')) return 3;
+    if (widget.currentPath.startsWith('/app/products')) return 2;
+    if (widget.currentPath.startsWith('/app/analytics')) return 3;
     return 0; // Home
   }
 
@@ -67,10 +67,10 @@ class _StaffAppShellState extends ConsumerState<StaffAppShell> with WidgetsBindi
         context.go('/app/cards');
         break;
       case 2:
-        context.go('/app/sessions');
+        context.go('/app/products');
         break;
       case 3:
-        context.go('/app/more');
+        context.go('/app/analytics');
         break;
     }
   }
@@ -133,14 +133,14 @@ class _StaffAppShellState extends ConsumerState<StaffAppShell> with WidgetsBindi
             label: 'Cards',
           ),
           NavigationDestination(
-            icon: Icon(Icons.account_balance_wallet_outlined),
-            selectedIcon: Icon(Icons.account_balance_wallet),
-            label: 'Sessions',
+            icon: Icon(Icons.restaurant_menu_outlined),
+            selectedIcon: Icon(Icons.restaurant_menu),
+            label: 'Menu',
           ),
           NavigationDestination(
-            icon: Icon(Icons.more_horiz_outlined),
-            selectedIcon: Icon(Icons.more_horiz),
-            label: 'More',
+            icon: Icon(Icons.bar_chart_outlined),
+            selectedIcon: Icon(Icons.bar_chart),
+            label: 'Analytics',
           ),
         ],
       ),
@@ -233,54 +233,17 @@ class _StaffAppShellState extends ConsumerState<StaffAppShell> with WidgetsBindi
   }
 
   Widget _buildUserProfileMenu(BuildContext context, WidgetRef ref, String userName) {
-    return PopupMenuButton<String>(
-      tooltip: 'Staff Profile',
-      onSelected: (value) {
-        if (value == 'logout') {
-          ref.read(authNotifierProvider.notifier).logout();
-        }
-      },
-      itemBuilder: (context) => [
-        PopupMenuItem<String>(
-          enabled: false,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                userName,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimaryLight,
-                ),
-              ),
-              const Text(
-                'Role: STAFF',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondaryLight,
-                ),
-              ),
-            ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Center(
+        child: InkWell(
+          onTap: () => context.push('/app/profile'),
+          borderRadius: BorderRadius.circular(20),
+          child: const CircleAvatar(
+            radius: 16,
+            backgroundColor: AppColors.primaryLight,
+            child: Icon(Icons.person, size: 18, color: AppColors.primary),
           ),
-        ),
-        const PopupMenuDivider(),
-        const PopupMenuItem<String>(
-          value: 'logout',
-          child: Row(
-            children: [
-              Icon(Icons.logout, size: 18, color: AppColors.error),
-              SizedBox(width: AppSpacing.sm),
-              Text('Logout', style: TextStyle(color: AppColors.error)),
-            ],
-          ),
-        ),
-      ],
-      child: const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 12),
-        child: CircleAvatar(
-          radius: 16,
-          backgroundColor: AppColors.primaryLight,
-          child: Icon(Icons.person, size: 18, color: AppColors.primary),
         ),
       ),
     );

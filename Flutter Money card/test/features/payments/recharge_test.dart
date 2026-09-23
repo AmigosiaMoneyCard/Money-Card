@@ -72,15 +72,11 @@ void main() {
 
       // Switch to UPI
       notifier.setPaymentMethod(PaymentMethod.upi);
-      expect(notifier.state.canSubmit, isFalse); // Requires staff verification for UPI
+      expect(notifier.state.canSubmit, isTrue); // Streamlined UPI without verification checkbox
 
-      // Set Reference
+      // Set Reference (optional)
       notifier.setPaymentReference('UTR-123456');
       expect(notifier.state.paymentReference, 'UTR-123456');
-      expect(notifier.state.canSubmit, isFalse); // Still requires verification
-
-      // Staff verifies
-      notifier.setStaffVerified(true);
       expect(notifier.state.canSubmit, isTrue);
 
       // Execute Recharge
@@ -151,8 +147,8 @@ void main() {
       expect(find.text('Recharge Successful'), findsOneWidget);
       expect(find.text('₹100.00'), findsWidgets);
       expect(find.text('₹300.00'), findsWidgets);
-      expect(find.text('Generate & View PDF'), findsOneWidget);
-      expect(find.text('Download PDF'), findsOneWidget);
+      expect(find.text('Generate & View PDF'), findsNothing);
+      expect(find.text('Download PDF'), findsNothing);
       expect(find.text('Share PDF'), findsNothing);
       expect(find.text('Done'), findsOneWidget);
     });
@@ -196,20 +192,8 @@ void main() {
       await tester.tap(find.text('UPI'));
       await tester.pumpAndSettle();
 
-      // Check UPI manual verification card is shown
-      expect(find.text('UPI Payment Verification'), findsOneWidget);
-      expect(find.text('Customer pays using the store\'s existing counter UPI QR code.'), findsOneWidget);
-
       // Tap quick amount +₹200
       await tester.tap(find.text('+₹200'));
-      await tester.pumpAndSettle();
-
-      // Enter optional reference in UPI verification card
-      await tester.enterText(find.byType(TextField).first, 'UPI987654');
-      await tester.pumpAndSettle();
-
-      // Toggle verification checkbox
-      await tester.tap(find.byType(CheckboxListTile));
       await tester.pumpAndSettle();
 
       // Scroll ListView down to reveal Confirm Recharge button
@@ -220,8 +204,7 @@ void main() {
 
       expect(find.text('Confirm Recharge'), findsWidgets);
       expect(find.text('+₹200.00'), findsOneWidget);
-      expect(find.text('UPI (Manual Verification)'), findsOneWidget);
-      expect(find.text('UPI987654'), findsWidgets);
+      expect(find.text('UPI'), findsWidgets);
 
       // Confirm dialog
       await tester.tap(find.widgetWithText(ElevatedButton, 'Confirm'));
@@ -229,8 +212,8 @@ void main() {
 
       expect(find.text('Recharge Successful'), findsOneWidget);
       expect(find.text('₹200.00'), findsWidgets);
-      expect(find.text('Generate & View PDF'), findsOneWidget);
-      expect(find.text('Download PDF'), findsOneWidget);
+      expect(find.text('Generate & View PDF'), findsNothing);
+      expect(find.text('Download PDF'), findsNothing);
       expect(find.text('Share PDF'), findsNothing);
       expect(find.text('Done'), findsOneWidget);
     });

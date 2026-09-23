@@ -324,9 +324,11 @@ void main() {
       expect(find.textContaining('Balance: ₹750.00'), findsOneWidget);
       expect(find.text('Session Active'), findsOneWidget);
 
-      // Verify prominent action buttons are visible immediately below it
+      // Verify prominent action buttons are visible
       expect(find.text('Add Products'), findsOneWidget);
       expect(find.text('Recharge Card'), findsOneWidget);
+      await tester.drag(find.byType(ListView), const Offset(0, -300));
+      await tester.pumpAndSettle();
       expect(find.text('Settle / Return Card'), findsOneWidget);
     });
 

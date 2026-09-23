@@ -220,6 +220,7 @@ class Transaction {
         if (cancelledByUserName != null) 'cancelledByUserName': cancelledByUserName,
         if (cardNumber != null) 'cardNumber': cardNumber,
         if (customerName != null) 'customerName': customerName,
-        if (customerPhone != null) 'customerPhone': customerPhone,
       };
+
+  String get displayTransactionId => id.length > 8 ? id.substring(0, 8).toUpperCase() : id.toUpperCase();
 }

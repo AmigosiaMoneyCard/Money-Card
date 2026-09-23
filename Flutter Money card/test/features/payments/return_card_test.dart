@@ -99,8 +99,8 @@ void main() {
       // Return Success dialog renders
       expect(find.text('Card Returned Successfully'), findsOneWidget);
       expect(find.text('₹320.00'), findsWidgets);
-      expect(find.text('Generate & View PDF'), findsOneWidget);
-      expect(find.text('Download PDF'), findsOneWidget);
+      expect(find.text('Generate & View PDF'), findsNothing);
+      expect(find.text('Download PDF'), findsNothing);
       expect(find.text('Share PDF'), findsNothing);
       expect(find.text('Done'), findsOneWidget);
     });

@@ -33,7 +33,6 @@ class RechargeScreen extends ConsumerStatefulWidget {
 
 class _RechargeScreenState extends ConsumerState<RechargeScreen> {
   final _amountController = TextEditingController();
-  final _referenceController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
   final List<double> _quickAmounts = [50.0, 100.0, 200.0, 500.0];
@@ -50,17 +49,12 @@ class _RechargeScreenState extends ConsumerState<RechargeScreen> {
   @override
   void dispose() {
     _amountController.dispose();
-    _referenceController.dispose();
     super.dispose();
   }
 
   void _onAmountChanged(String val) {
     final parsed = double.tryParse(val.trim()) ?? 0.0;
     ref.read(rechargeNotifierProvider.notifier).setAmount(parsed);
-  }
-
-  void _onReferenceChanged(String val) {
-    ref.read(rechargeNotifierProvider.notifier).setPaymentReference(val);
   }
 
   void _addQuickAmount(double amount) {
@@ -116,7 +110,7 @@ class _RechargeScreenState extends ConsumerState<RechargeScreen> {
                 const Text('Payment Method:'),
                 Text(
                   rechargeState.paymentMethod == PaymentMethod.upi
-                      ? 'UPI (Manual Verification)'
+                      ? 'UPI'
                       : 'CASH',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
@@ -345,92 +339,7 @@ class _RechargeScreenState extends ConsumerState<RechargeScreen> {
               ),
               const SizedBox(height: AppSpacing.lg),
 
-              // UPI Manual Verification Section (when UPI selected)
-              if (rechargeState.paymentMethod == PaymentMethod.upi) ...[
-                AppCard(
-                  padding: AppSpacing.paddingLg,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: const [
-                          Icon(Icons.verified_outlined, size: 20, color: AppColors.primary),
-                          SizedBox(width: AppSpacing.xs),
-                          Text(
-                            'UPI Payment Verification',
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Container(
-                        padding: AppSpacing.paddingSm,
-                        decoration: BoxDecoration(
-                          color: AppColors.infoLight,
-                          borderRadius: AppSpacing.roundedSm,
-                          border: Border.all(color: AppColors.borderLight),
-                        ),
-                        child: Row(
-                          children: const [
-                            Icon(Icons.storefront_outlined, size: 18, color: AppColors.info),
-                            SizedBox(width: AppSpacing.xs),
-                            Expanded(
-                              child: Text(
-                                'Customer pays using the store\'s existing counter UPI QR code.',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppColors.textPrimaryLight,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
 
-                      // Optional Payment Reference Input
-                      const Text(
-                        'Payment Reference / UTR (Optional)',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: AppSpacing.xxs),
-                      TextFormField(
-                        controller: _referenceController,
-                        onChanged: _onReferenceChanged,
-                        decoration: const InputDecoration(
-                          hintText: 'e.g. UTR number / Transaction Ref',
-                          prefixIcon: Icon(Icons.tag, size: 18),
-                          isDense: true,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-
-                      // Staff Verification Checkbox
-                      Material(
-                        type: MaterialType.transparency,
-                        child: CheckboxListTile(
-                          value: rechargeState.isStaffVerified,
-                          onChanged: (val) =>
-                              rechargeNotifier.setStaffVerified(val ?? false),
-                          title: const Text(
-                            'Payment received and verified by Staff',
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                          ),
-                          subtitle: const Text(
-                            'Confirm transaction success on customer\'s phone',
-                            style: TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
-                          ),
-                          controlAffinity: ListTileControlAffinity.leading,
-                          contentPadding: EdgeInsets.zero,
-                          activeColor: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-              ],
 
               // Amount Input Field
               const Text(

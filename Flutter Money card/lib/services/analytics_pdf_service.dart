@@ -355,7 +355,7 @@ class AnalyticsPdfService {
                   border: pw.Border.all(color: borderColor, width: 0.8),
                 ),
                 child: pw.Text(
-                  '3. Top Selling Products & Peak Demand',
+                  '3. Top Selling Products',
                   style: pw.TextStyle(
                     fontSize: 11,
                     fontWeight: pw.FontWeight.bold,
@@ -395,37 +395,6 @@ class AnalyticsPdfService {
                   ],
                 ),
                 pw.SizedBox(height: 12),
-              ],
-
-              if (analytics.peakPeriods != null && analytics.peakPeriods!.isNotEmpty) ...[
-                pw.Text(
-                  'Peak Activity Periods & Throughput',
-                  style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: textMuted),
-                ),
-                pw.SizedBox(height: 4),
-                pw.Table(
-                  border: pw.TableBorder.all(color: borderColor, width: 0.8),
-                  children: [
-                    pw.TableRow(
-                      decoration: pw.BoxDecoration(color: bgLight),
-                      children: [
-                        _buildHeaderCell('Time Slot'),
-                        _buildHeaderCell('Activity Level'),
-                        _buildHeaderCell('Transactions', alignRight: true),
-                        _buildHeaderCell('Volume Handled', alignRight: true),
-                      ],
-                    ),
-                    for (final peak in analytics.peakPeriods!)
-                      pw.TableRow(
-                        children: [
-                          _buildCell(peak.timeSlot.replaceAll(RegExp(r'\s*\([^)]*\)'), '').trim(), isBold: true),
-                          _buildCell(peak.activityLevel),
-                          _buildCell('${peak.transactionCount} txns', alignRight: true),
-                          _buildCell(currencyFmt.format(peak.purchaseVolume), alignRight: true),
-                        ],
-                      ),
-                  ],
-                ),
               ],
             ],
 

@@ -55,12 +55,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
 
     if (!_formKey.currentState!.validate()) return;
 
-    if (_newPasswordController.text.trim().length < 4) {
-      setState(() {
-        _localError = 'Password must be at least 4 characters long.';
-      });
-      return;
-    }
+
 
     if (!_passwordsMatch) {
       setState(() {
@@ -257,9 +252,6 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                       validator: (val) {
                         if (val == null || val.isEmpty) {
                           return 'New password is required';
-                        }
-                        if (val.length < 4) {
-                          return 'Password must be at least 4 characters';
                         }
                         return null;
                       },
