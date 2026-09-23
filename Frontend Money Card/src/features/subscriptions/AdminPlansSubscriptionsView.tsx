@@ -700,20 +700,15 @@ export function AdminPlansSubscriptionsView() {
         const effCards = cOvr ?? plan?.cardLimit ?? 250;
 
         return (
-          <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-xs font-bold text-slate-900">
-                {effBranches} Branches • {effStaff} Staff • {effCards} Cards
-              </span>
-              {hasOverrides && (
-                <Badge variant="warning" className="text-[9px] px-1 py-0">
-                  Custom Overrides
-                </Badge>
-              )}
-            </div>
-            <p className="text-[11px] text-slate-500">
-              Usage: {org.usage?.branchCount ?? 0}b / {org.usage?.staffCount ?? 0}s / {org.usage?.cardCount ?? 0}c
-            </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-xs font-bold text-slate-900">
+              {effBranches} Branches • {effStaff} Staff • {effCards} Cards
+            </span>
+            {hasOverrides && (
+              <Badge variant="warning" className="text-[9px] px-1 py-0">
+                Custom Overrides
+              </Badge>
+            )}
           </div>
         );
       },
@@ -771,10 +766,7 @@ export function AdminPlansSubscriptionsView() {
       key: 'planTransition',
       header: 'Plan Request',
       render: (req: PlanChangeRequest) => (
-        <div>
-          <span className="font-bold text-slate-900">{req.requestedPlanName}</span>
-          <p className="text-[11px] text-slate-500">From {req.currentPlanName}</p>
-        </div>
+        <span className="font-bold text-slate-900">{req.requestedPlanName}</span>
       ),
     },
     {
@@ -1010,16 +1002,11 @@ export function AdminPlansSubscriptionsView() {
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
                       <AlertCircle className="h-5 w-5" />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-slate-900">
-                          {pendingRequestsList.length} Request{pendingRequestsList.length > 1 ? 's' : ''} Awaiting Approval
-                        </span>
-                        <Badge variant="warning" className="text-[10px] font-bold">ATTENTION NEEDED</Badge>
-                      </div>
-                      <p className="text-xs text-slate-600 mt-0.5">
-                        Highlighted below in gold. Click "Review / Approve" on any request to accept or decline.
-                      </p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-slate-900">
+                        {pendingRequestsList.length} Request{pendingRequestsList.length > 1 ? 's' : ''} Awaiting Approval
+                      </span>
+                      <Badge variant="warning" className="text-[10px] font-bold">ATTENTION NEEDED</Badge>
                     </div>
                   </div>
                 </div>
