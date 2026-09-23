@@ -680,39 +680,7 @@ export function AdminPlansSubscriptionsView() {
         );
       },
     },
-    {
-      key: 'effectiveLimits',
-      header: 'Effective Limits (Default vs Override)',
-      render: (org: OrganizationOverview) => {
-        const sub = subscriptions.find((s) => s.organizationId === org.id) || org.subscription;
-        const plan = plans.find((p) => p.id === (sub?.planId || org.planId)) || org.plan;
 
-        const bOvr = sub?.overrides?.branchLimit ?? (sub as any)?.branchLimitOverride;
-        const sOvr = sub?.overrides?.staffLimit ?? (sub as any)?.staffLimitOverride;
-        const cOvr = sub?.overrides?.cardLimit ?? (sub as any)?.cardLimitOverride;
-
-        const hasOverrides = (bOvr !== undefined && bOvr !== null) ||
-                             (sOvr !== undefined && sOvr !== null) ||
-                             (cOvr !== undefined && cOvr !== null);
-
-        const effBranches = bOvr ?? plan?.branchLimit ?? 1;
-        const effStaff = sOvr ?? plan?.staffLimit ?? 10;
-        const effCards = cOvr ?? plan?.cardLimit ?? 250;
-
-        return (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-xs font-bold text-slate-900">
-              {effBranches} Branches • {effStaff} Staff • {effCards} Cards
-            </span>
-            {hasOverrides && (
-              <Badge variant="warning" className="text-[9px] px-1 py-0">
-                Custom Overrides
-              </Badge>
-            )}
-          </div>
-        );
-      },
-    },
     {
       key: 'renewal',
       header: 'Renewal Date',
