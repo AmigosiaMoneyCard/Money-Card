@@ -1,5 +1,5 @@
 // ─── Super Admin Analytics View (Platform Scope) ─────────────────────────
-// Global platform metrics across all organizations, subscription plans, and POS transactions.
+// Global platform metrics across organizations and POS transactions.
 // Structured with Financial Overview and Card Analytics tabs matching Org Admin design.
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -7,23 +7,17 @@ import { apiService } from '@/services/api';
 import type {
   AnalyticsOverview,
   OrganizationOverview,
-  SubscriptionPayment,
-  Plan,
   Branch,
   PeakAnalyticsOverview,
-  PlanChangeRequest,
 } from '@/types';
 import {
   Button,
   Card,
-  Badge,
-  StatCard,
   Select,
   LoadingState,
   ErrorState,
 } from '@/components/ui';
-import { DataTable } from '@/components/tables';
-import { notify, formatCurrency } from '@/utils';
+import { notify } from '@/utils';
 import {
   OrgAdminFinancialSection,
   OrgAdminPdfModal,
@@ -39,10 +33,8 @@ import {
 } from './analyticsPdfExport';
 import {
   Building2,
-  Layers,
   RefreshCw,
   Eye,
-  Users,
   CreditCard,
   BarChart3,
 } from 'lucide-react';
@@ -59,9 +51,6 @@ export function SuperAdminAnalyticsView() {
   const [peakData, setPeakData] = useState<PeakAnalyticsOverview | null>(null);
   const [orgs, setOrgs] = useState<OrganizationOverview[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [payments, setPayments] = useState<SubscriptionPayment[]>([]);
-  const [plans, setPlans] = useState<Plan[]>([]);
-  const [, setPlanRequests] = useState<PlanChangeRequest[]>([]);
 
   // Active Tab: Financial Overview vs Card Analytics
   const [activeTab, setActiveTab] = useState<'overview' | 'cards'>('overview');
@@ -104,7 +93,7 @@ export function SuperAdminAnalyticsView() {
     setIsRefreshing(true);
     setError(null);
     try {
-      const [analyticsRes, peakRes, orgsRes, branchesRes, payRes, plansRes, reqsRes] = await Promise.all([
+      const [analyticsRes, peakRes, orgsRes, branchesRes] = await Promise.all([
         apiService.analytics.getOverview({
           organizationId: selectedOrgId || undefined,
           branchId: undefined,
@@ -118,9 +107,6 @@ export function SuperAdminAnalyticsView() {
         }),
         apiService.organizations.getOrganizations({ limit: 100 }),
         apiService.branches.getBranches(),
-        apiService.subscriptions.getPayments(),
-        apiService.plans.getPlans(),
-        apiService.subscriptions.getPlanRequests(),
       ]);
 
       if (!analyticsRes.success) {
@@ -132,9 +118,6 @@ export function SuperAdminAnalyticsView() {
       if (peakRes.success) setPeakData(peakRes.data);
       if (orgsRes.success) setOrgs(orgsRes.data.items);
       if (branchesRes.success) setBranches(branchesRes.data.items);
-      if (payRes.success) setPayments(payRes.data);
-      if (plansRes.success) setPlans(plansRes.data);
-      if (reqsRes.success) setPlanRequests(reqsRes.data || []);
     } catch {
       setError('Unable to connect to the server. Please try again.');
     } finally {
@@ -146,50 +129,6 @@ export function SuperAdminAnalyticsView() {
   useEffect(() => {
     fetchPlatformData(false);
   }, [fetchPlatformData]);
-
-  // Monthly Gateway Revenue
-  const monthlyGatewayRevenue = useMemo(() => {
-    const successPayments = payments.filter((p) => {
-      if (p.status !== 'SUCCESS') return false;
-      if (selectedOrgId && p.organizationId !== selectedOrgId) return false;
-      return true;
-    });
-
-    if (startDate && endDate) {
-      return successPayments
-        .filter((p) => {
-          if (!p.createdAt) return true;
-          const payDate = p.createdAt.split('T')[0];
-          return payDate >= startDate && payDate <= endDate;
-        })
-        .reduce((sum, p) => sum + p.amount, 0);
-    }
-
-    const now = new Date();
-    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const currentMonthPayments = successPayments.filter((p) => {
-      if (!p.createdAt) return true;
-      return p.createdAt.startsWith(currentMonthKey);
-    });
-
-    if (currentMonthPayments.length > 0) {
-      return currentMonthPayments.reduce((sum, p) => sum + p.amount, 0);
-    }
-
-    return successPayments.reduce((sum, p) => sum + p.amount, 0);
-  }, [payments, selectedOrgId, startDate, endDate]);
-
-  const recurringMrr = useMemo(() => {
-    return orgs
-      .filter((o) => (selectedOrgId ? o.id === selectedOrgId : true) && o.status === 'ACTIVE')
-      .reduce((sum, o) => {
-        const price = o.plan?.price || 0;
-        return sum + (o.plan?.billingInterval === 'YEARLY' ? Math.round(price / 12) : price);
-      }, 0);
-  }, [orgs, selectedOrgId]);
-
-  const subscriptionRevenue = monthlyGatewayRevenue > 0 ? monthlyGatewayRevenue : recurringMrr;
-  const activeOrgsCount = orgs.filter((o) => o.status === 'ACTIVE').length;
 
   const selectedOrg = useMemo(() => orgs.find((o) => o.id === selectedOrgId), [orgs, selectedOrgId]);
   const cafeteriaDisplayName = selectedOrg ? selectedOrg.name : `${orgs.length} Cafeterias`;
@@ -287,50 +226,6 @@ export function SuperAdminAnalyticsView() {
     downloadOrgAnalyticsPdf(options, `MoneyCard_SuperAdmin_Analytics_${dateStr}.pdf`);
     notify.success('Analytics report downloaded.');
   };
-
-  const orgColumns = [
-    {
-      key: 'name',
-      header: 'Cafeteria',
-      render: (org: OrganizationOverview) => (
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-            <Building2 className="h-4 w-4" />
-          </div>
-          <div>
-            <p className="font-semibold text-slate-900">{org.name}</p>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: 'plan',
-      header: 'Subscribed Plan',
-      render: (org: OrganizationOverview) => (
-        <Badge variant="outline" className="border-emerald-200 text-emerald-700 bg-emerald-50/50">
-          {org.plan?.name || 'Standard'}
-        </Badge>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (org: OrganizationOverview) => (
-        <Badge variant={org.status === 'ACTIVE' ? 'success' : 'danger'}>
-          {org.status}
-        </Badge>
-      ),
-    },
-    {
-      key: 'usage',
-      header: 'Quota Utilization',
-      render: (org: OrganizationOverview) => (
-        <span className="text-xs text-slate-600 font-mono">
-          {org.usage?.branchCount ?? 0} Branches • {org.usage?.staffCount ?? 0} Staff • {org.usage?.cardCount ?? 0} Cards
-        </span>
-      ),
-    },
-  ];
 
   return (
     <div className="space-y-6">
@@ -459,32 +354,27 @@ export function SuperAdminAnalyticsView() {
       ) : error ? (
         <ErrorState title="Failed to load platform analytics" message={error} onRetry={() => fetchPlatformData(false)} />
       ) : activeTab === 'overview' ? (
-        <div className="space-y-8">
-          {/* Top Platform KPI Cards (Including Total Cafeterias) */}
+        <div className="space-y-6">
+          {/* Organization Metric Card styled identically to Money Refunded card */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              label="Total Cafeterias"
-              value={`${orgs.length} Cafeterias`}
-              icon={<Building2 className="h-5 w-5 text-emerald-600" />}
-            />
-
-            <StatCard
-              label="Cafeteria Admins"
-              value={`${orgs.filter((o) => Boolean(o.adminUser)).length} Admins`}
-              icon={<Users className="h-5 w-5 text-teal-600" />}
-            />
-
-            <StatCard
-              label="Active Subscriptions"
-              value={`${activeOrgsCount} Active`}
-              icon={<Layers className="h-5 w-5 text-emerald-600" />}
-            />
-
-            <StatCard
-              label="Subscription Revenue"
-              value={`${formatCurrency(subscriptionRevenue)} / mo`}
-              icon={<CreditCard className="h-5 w-5 text-emerald-600" />}
-            />
+            <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Organization
+                </span>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                  <Building2 className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="mt-2">
+                <p className="font-mono text-2xl font-bold text-slate-900">
+                  {selectedOrgId ? '1 Cafeteria' : `${orgs.length} Cafeterias`}
+                </p>
+                <p className="mt-1 text-xs text-slate-500 leading-snug">
+                  {selectedOrg ? selectedOrg.name : 'Total registered client cafeterias'}
+                </p>
+              </div>
+            </Card>
           </div>
 
           {/* Financial Summaries & Activity Flow */}
@@ -496,39 +386,6 @@ export function SuperAdminAnalyticsView() {
               totalRefund={analytics.totalRefundVolume ?? 0}
             />
           )}
-
-          {/* Section: Platform Cafeterias Performance */}
-          <div className="space-y-4">
-            <h2 className="text-lg font-bold text-slate-900">Platform Cafeterias Performance</h2>
-            <Card padding="none">
-              <DataTable<OrganizationOverview>
-                data={selectedOrgId ? orgs.filter((o) => o.id === selectedOrgId) : orgs}
-                columns={orgColumns}
-                keyExtractor={(item: OrganizationOverview) => item.id}
-              />
-            </Card>
-          </div>
-
-          {/* Section: Catalog Plans Overview */}
-          <div className="space-y-4">
-            <h2 className="text-lg font-bold text-slate-900">Subscription Plans Distribution</h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {plans.map((plan) => {
-                const count = orgs.filter((o) => o.plan?.id === plan.id || o.plan?.name === plan.name).length;
-                return (
-                  <div key={plan.id} className="rounded-xl border border-slate-200 bg-white p-4 space-y-2 shadow-sm">
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold text-slate-900">{plan.name}</span>
-                      <Badge variant="outline">{count} Tenants</Badge>
-                    </div>
-                    <p className="font-mono text-lg font-bold text-emerald-600">
-                      {formatCurrency(plan.price)} <span className="text-xs text-slate-500 font-normal">/{plan.billingInterval.toLowerCase()}</span>
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
         </div>
       ) : (
         <OrgAdminCardTracker
