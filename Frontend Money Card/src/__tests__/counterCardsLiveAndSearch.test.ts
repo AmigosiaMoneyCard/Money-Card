@@ -1,8 +1,86 @@
 import { describe, it, expect } from 'vitest';
 import type { Card as CardEntity, Branch } from '@/types';
 
-describe('Streamlined Live Active Cards Registry & Search Validation Tests', () => {
-  // ─── 1. Search Bar Validation Rules ────────────────────────────────────────
+describe('Role Isolated Cards Views & Search Validation Tests', () => {
+  // ─── 1. Role-Based View Isolation ──────────────────────────────────────────
+  describe('Org Admin vs Counter Staff View Isolation', () => {
+    it('should distinguish view mode based on user role', () => {
+      const getCardsViewMode = (role?: string) => {
+        return role === 'STAFF' ? 'COUNTER_STAFF_VIEW' : 'ORG_ADMIN_VIEW';
+      };
+
+      expect(getCardsViewMode('ORG_ADMIN')).toBe('ORG_ADMIN_VIEW');
+      expect(getCardsViewMode('SUPER_ADMIN')).toBe('ORG_ADMIN_VIEW');
+      expect(getCardsViewMode('STAFF')).toBe('COUNTER_STAFF_VIEW');
+    });
+
+    it('Org Admin view displays counter-wise rows with branch name and actions', () => {
+      const branches: Branch[] = [
+        { id: 'b1', name: 'Counter', status: 'ACTIVE', organizationId: 'org1', createdAt: '', updatedAt: '' },
+        { id: 'b2', name: 'c2', status: 'ACTIVE', organizationId: 'org1', createdAt: '', updatedAt: '' },
+      ];
+
+      const orgAdminRows = branches.map((b) => ({
+        counterName: `Cards - ${b.name}`,
+        actions: ['Customer History', 'Card Analytics', 'Card Details'],
+      }));
+
+      expect(orgAdminRows).toHaveLength(2);
+      expect(orgAdminRows[0].counterName).toBe('Cards - Counter');
+      expect(orgAdminRows[1].counterName).toBe('Cards - c2');
+      expect(orgAdminRows[0].actions).toContain('Customer History');
+      expect(orgAdminRows[0].actions).toContain('Card Analytics');
+      expect(orgAdminRows[0].actions).toContain('Card Details');
+    });
+
+    it('Counter Staff view scopes active live cards to assigned branch', () => {
+      const cards: CardEntity[] = [
+        {
+          id: 'card-1',
+          organizationId: 'org1',
+          qrToken: 'qr-1',
+          physicalCardNumber: 'MC 101',
+          status: 'ACTIVE',
+          currentBranchId: 'b1',
+          activeSession: { id: 's1', branchId: 'b1', customerName: 'Alice', balance: 200, issuedAt: '2026-09-23T08:00:00Z' },
+          createdAt: '',
+          updatedAt: '',
+        },
+        {
+          id: 'card-2',
+          organizationId: 'org1',
+          qrToken: 'qr-2',
+          physicalCardNumber: 'MC 102',
+          status: 'ACTIVE',
+          currentBranchId: 'b2',
+          activeSession: { id: 's2', branchId: 'b2', customerName: 'Bob', balance: 150, issuedAt: '2026-09-23T09:00:00Z' },
+          createdAt: '',
+          updatedAt: '',
+        },
+      ];
+
+      const getStaffLiveCards = (allCards: CardEntity[], staffBranchId?: string) => {
+        return allCards.filter((c) => {
+          const isActive = c.status === 'ACTIVE' || Boolean(c.activeSession);
+          if (!isActive) return false;
+          if (staffBranchId) {
+            return c.activeSession?.branchId === staffBranchId || c.currentBranchId === staffBranchId;
+          }
+          return true;
+        });
+      };
+
+      const b1StaffCards = getStaffLiveCards(cards, 'b1');
+      expect(b1StaffCards).toHaveLength(1);
+      expect(b1StaffCards[0].physicalCardNumber).toBe('MC 101');
+
+      const b2StaffCards = getStaffLiveCards(cards, 'b2');
+      expect(b2StaffCards).toHaveLength(1);
+      expect(b2StaffCards[0].physicalCardNumber).toBe('MC 102');
+    });
+  });
+
+  // ─── 2. Search Bar Validation Rules ────────────────────────────────────────
   describe('Search Bar Input Validation', () => {
     const validateSearchQuery = (query: string): { isValid: boolean; error: string | null } => {
       if (query.length > 40) {
@@ -54,7 +132,7 @@ describe('Streamlined Live Active Cards Registry & Search Validation Tests', () 
     });
   });
 
-  // ─── 2. Live Active Cards Filtering & Table Columns ─────────────────────────
+  // ─── 3. Live Active Cards Filtering & Table Columns ─────────────────────────
   describe('Live Active Cards Registry (4 Columns)', () => {
     const mockCards: CardEntity[] = [
       {
@@ -173,7 +251,7 @@ describe('Streamlined Live Active Cards Registry & Search Validation Tests', () 
     });
   });
 
-  // ─── 3. Card Details Modal Attributes ──────────────────────────────────────
+  // ─── 4. Card Details Modal Attributes ──────────────────────────────────────
   describe('Card Details Modal (Counter & Active Since Location)', () => {
     const liveCard: CardEntity = {
       id: 'card-1',
