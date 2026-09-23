@@ -11,6 +11,7 @@ import '../../models/card.dart';
 import '../../models/card_session.dart';
 import '../../models/product.dart';
 import '../../models/transaction.dart';
+import '../../providers/analytics_provider.dart';
 import '../../providers/api_providers.dart';
 import '../../providers/branch_provider.dart';
 import '../../providers/card_operations_provider.dart';
@@ -330,6 +331,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       await context.push('/app/pos/${session.id}');
     }
     await _refreshSession();
+    ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
   }
 
   Future<void> _openRecharge() async {
@@ -340,6 +342,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       await context.push('/app/recharge/${session.id}');
     }
     await _refreshSession();
+    ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
   }
 
   Future<void> _handleSettleReturn() async {
@@ -370,6 +373,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       // Refresh global stores
       ref.read(sessionListNotifierProvider.notifier).loadSessions();
       ref.read(cardListNotifierProvider.notifier).loadCards();
+      ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
 
       if (mounted) {
         setState(() {
@@ -1634,6 +1638,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       await sessionService.cancelRecharge(transactionId: txId, reason: reason);
       await _refreshSession();
       ref.read(sessionListNotifierProvider.notifier).loadSessions();
+      ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1738,6 +1743,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       await sessionService.cancelOrder(transactionId: txId, reason: reason);
       await _refreshSession();
       ref.read(sessionListNotifierProvider.notifier).loadSessions();
+      ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1786,11 +1792,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
               'Amount to refund: ₹${orderTx.amount.toStringAsFixed(2)}',
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.primaryDark),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'This will cancel the order, auto-refund the balance back to the card, and open the food menu with these items pre-loaded in your cart so you can modify and re-order.',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
-            ),
           ],
         ),
         actions: [
@@ -1817,6 +1818,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       );
       await _refreshSession();
       ref.read(sessionListNotifierProvider.notifier).loadSessions();
+      ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
 
       // Pre-fill the cart with items from this order
       final catalogProducts = ref.read(posCatalogNotifierProvider).products;
@@ -2021,7 +2023,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
             Text('Session Started: ${_formatDateTime(session.startedAt)}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight)),
             if (cancelledRecharges.isNotEmpty) ...[
               const SizedBox(height: 4),
-              Text('Voided Recharges: ${cancelledRecharges.length}', style: const TextStyle(fontSize: 12, color: AppColors.error)),
+              Text('Cancelled Recharges: ${cancelledRecharges.length}', style: const TextStyle(fontSize: 12, color: AppColors.error)),
             ],
           ],
         ),

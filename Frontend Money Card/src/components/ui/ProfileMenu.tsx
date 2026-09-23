@@ -62,7 +62,7 @@ export function ProfileMenu() {
             {user?.name || 'Admin'}
           </p>
           <p className="text-[10px] text-slate-500 font-medium">
-            {user?.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Org Admin'}
+            {user?.role === 'SUPER_ADMIN' ? 'Super Admin' : user?.role === 'STAFF' ? 'Counter Admin' : 'Org Admin'}
           </p>
         </div>
         <ChevronDown

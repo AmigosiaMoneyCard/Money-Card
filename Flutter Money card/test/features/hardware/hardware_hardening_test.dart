@@ -199,7 +199,7 @@ void main() {
       expect(find.text('MONEY CARD'), findsOneWidget);
       expect(find.text('MAIN CAFETERIA'), findsOneWidget);
       expect(find.text('SALES RECEIPT'), findsOneWidget);
-      expect(find.text('TXN-MOCK-001'), findsOneWidget);
+      expect(find.text('TXN-MOCK-001'), findsNothing);
       expect(find.text('MC-001'), findsOneWidget);
 
       // Verify item list
@@ -218,7 +218,7 @@ void main() {
       expect(find.text('Deducted'), findsOneWidget);
       expect(find.text('Remaining Balance'), findsOneWidget);
       expect(find.text('₹450.00'), findsOneWidget);
-      expect(find.text('Card Session'), findsOneWidget);
+      expect(find.text('Card Session'), findsNothing);
       expect(find.text('SESSION-MOCK-001'), findsNothing);
       expect(find.text('Thank You!'), findsOneWidget);
 
@@ -267,7 +267,7 @@ void main() {
       expect(find.text('₹300.00'), findsWidgets);
       expect(find.text('₹450.00'), findsOneWidget);
       expect(find.text('MC-001'), findsOneWidget);
-      expect(find.text('TXN-MOCK-001'), findsOneWidget);
+      expect(find.text('TXN-MOCK-001'), findsNothing);
 
       // VERIFY: Done button only, PDF actions removed
       expect(find.text('Done'), findsOneWidget);

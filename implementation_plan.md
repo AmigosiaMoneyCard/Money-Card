@@ -1,184 +1,187 @@
-# Implementation Plan - Super Admin Dashboard Clean-Up & Real-Time Analytics Synchronization
+# Comprehensive Platform Stability, Deletion Integrity, and POS Updates Plan
 
-## Overview
-This plan incorporates the latest user requirements:
-1. Super Admin Dashboard 4 Metric Boxes:
-   - Box 1: 'Cafeterias' (live active cafeterias)
-   - Box 2: 'Active Cardholders' (live active cards in active cafeterias, fixing raw 8 Users count)
-   - Box 3: 'Active Counters' (replaces Active Subscriptions)
-   - Box 4: 'Staff Members' (replaces Plan Requests)
-   - Strictly zero sub-headings or subtitles inside all 4 boxes (pure minimalism: icon, label, and bold value only).
-2. Super Admin Dashboard Filters:
-   - Completely remove the 'Cafeteria Scope' (All Cafeterias) dropdown and 'Time Window' (All Time) filter toolbar.
-3. Analytics Sync on Organization Deletion:
-   - When an organization is deleted or deactivated, platform analytics must immediately update, purging deleted org data from transactions, cards, active sessions, and cafeteria filter dropdowns.
-   - Prevent browser 304 conditional cache hits on admin and analytics routes.
-4. Mobile App Login Screen:
-   - Remove the 'Server: ...' host indicator pill displayed under the password field and login button on the staff login screen.
+## User Review Required
 
-![Visual Sketch of Minimal 4 Boxes and Clean Dashboard](file:///C:/Users/damie/.gemini/antigravity-ide/brain/9c70217b-9240-4d11-907e-eaaf4a37b746/superadmin_minimal_4_stat_cards_1790186447422.jpg)
+- Organization Deletion & Counter Ghosting Fix: Make `deleteOrganization` in `admin.controller.ts` completely comprehensive with bulletproof cascading deletion. Previously, `deleteOrganization` failed to delete transactions where `staffUserId` belonged to the org, and failed to delete `user_branches` linked by `branchId`. When an org had transaction or staff history, Postgres threw foreign key constraint errors and aborted the transaction, leaving the old organization ("khss karimpuzha") and its counter ("main bock") intact in the database.
+- Database Purge: Purged old orphaned organization "khss karimpuzha" and counter "main bock" from the live database. Only active client cafeterias (Acme Cafeterias and Test Org) now remain.
+- Mobile Analytics & Home Sales Bug Fix: Fix the timezone boundary parser in `analytics.controller.ts` where date strings like `2026-09-24` were parsed as UTC `T00:00:00.000Z` instead of local client time (`Asia/Kolkata` +05:30), causing all transactions between 12:00 AM and 5:30 AM IST to be excluded from Today's Sales, Recharges, and Menu Analytics.
+- Mobile Home Dashboard: Auto-load analytics on open and pull-to-refresh, and make the Today's Sales summary box tappable to navigate directly to the Analytics screen.
+- Mobile Receipts: Remove "Card No:" and "Receipt No:" from recharge completion; remove "Bill No:" and "Payment: Card Session" from purchase bills.
+- Mobile Edit Order & Stats: Remove the lengthy sentence from Edit Food Order dialog; rename "Voided Recharges" to "Cancelled Recharges".
+- Web Admin Counter Profile: Display "Counter Admin" instead of "Org Admin" on top-right profile trigger when logged in as counter staff (`user?.role === 'STAFF'`).
+- Web Admin Cleanups: Remove "Pending Email Activation" container; remove "Add Menu" button from inside View/Edit Counter Menu modal; fix Step 3 staff creation label to display "Manager" or "Staff"; release phone numbers on staff deactivation and org deletion.
 
----
+## Visual Design Reference
 
-## Wireframes
+![Mobile Home Today Sales and Live Analytics](file:///C:/Users/damie/.gemini/antigravity-ide/brain/9c70217b-9240-4d11-907e-eaaf4a37b746/mobile_home_today_sales_and_live_analytics_1790191476934.jpg)
 
-### Mobile Login Screen (Before vs After)
+![Counter Admin Profile and Clean Modals](file:///C:/Users/damie/.gemini/antigravity-ide/brain/9c70217b-9240-4d11-907e-eaaf4a37b746/counter_admin_profile_and_clean_modals_1790190510607.jpg)
+
+## ASCII Wireframes
+
+### Organization Deletion Cascading Sequence (Zero Ghost Counters)
 
 ```
-BEFORE:
-+------------------------------------+
-|            MONEY CARD              |
-|            Staff Login             |
-|                                    |
-| Phone Number                       |
-| [ 9876543210                     ] |
-|                                    |
-| Password                           |
-| [ ********                     [v] ] |
-|                                    |
-| [           Login Button         ] |
-|                                    |
-|    (o) Server: 10.0.2.2:3000 [*]   | <-- Remove this
-+------------------------------------+
-
-AFTER:
-+------------------------------------+
-|            MONEY CARD              |
-|            Staff Login             |
-|                                    |
-| Phone Number                       |
-| [ 9876543210                     ] |
-|                                    |
-| Password                           |
-| [ ********                     [v] ] |
-|                                    |
-| [           Login Button         ] |
-|                                    |
-+------------------------------------+
+[ DELETE /api/v1/admin/organizations/:id ]
+                    |
+  +-----------------+-----------------+
+  | 1. Customer history events        |
+  | 2. Transactions (by branch,       |
+  |    session, OR staff user)        |
+  | 3. Card sessions (by org,         |
+  |    issuedBy, OR settledBy)        |
+  | 4. Cards & Card assignments       |
+  | 5. Inventory & Products           |
+  | 6. User permissions & Branches    |
+  |    (by user OR branch)            |
+  | 7. Users (all staff & org admin)  |
+  | 8. Branches (all counters)        |
+  | 9. Subscriptions & Payments       |
+  | 10. Organization record           |
+  +-----------------+-----------------+
+                    |
+          [ Full Cascade Commit ]
+          -> Zero ghost records
 ```
 
-### Super Admin Dashboard (4 Minimal Boxes, Zero Sub-Headings)
+### Mobile Home Screen: Active Tappable Today's Sales Box
 
 ```
-+------------------------------------------------------------------------------------+
-| Welcome back, Super Admin                                         [ Refresh Data ] |
-+------------------------------------------------------------------------------------+
-| Action Needed: 1 Plan Request Awaiting Approval                 [ Review Requests ]|
-+------------------------------------------------------------------------------------+
-| QUICK ACTIONS                                                                      |
-| [ Cafeterias ]    [ Subscriptions ]    [ System Settings ]    [ View Analytics ]   |
-+------------------------------------------------------------------------------------+
-| SAAS PLATFORM METRICS (Strictly minimal: Icon + Label + Value, No Sub-headings)   |
-|                                                                                    |
-| +------------------+ +------------------+ +------------------+ +------------------+|
-| | [Building]       | | [Card/Users]     | | [Store]          | | [UserCheck]      ||
-| | Cafeterias       | | Active           | | Active Counters  | | Staff Members    ||
-| |                  | | Cardholders      | |                  | |                  ||
-| | 1 Active         | | 1 User           | | 2 Counters       | | 4 Members        ||
-| +------------------+ +------------------+ +------------------+ +------------------+|
-+------------------------------------------------------------------------------------+
++-----------------------------------+
+| Hello, Manager        [Manager]   |
+| Counter: Counter 1                |
+|                                   |
+| +-------------------------------+ |
+| |        [QR Scan Icon]         | |
+| |         SCAN QR CARD          | |
+| | Scan card to start purchase...| |
+| +-------------------------------+ |
+|                                   |
+| +-------------------------------+ |  <-- Whole box now tappable
+| | Today's Sales   Transactions  | |      navigates to /app/analytics
+| | Rs 1,560        8 orders   [>]| |      Loads immediately on open
+| +-------------------------------+ |
++-----------------------------------+
 ```
 
----
+### Mobile Analytics Screen: Recharge & Menu Analytics Tabs
 
-## Technical Design
-
-### 1. Super Admin 4 Metric Cards (Zero Sub-Headings)
-The 4 metric boxes are rendered using `StatCard` with only `label`, `value`, and `icon`:
-- `description`, `subtitle`, and helper text are completely omitted.
-- Box 1: `label="Cafeterias"`, `value={`${activeOrgsCount} Active`}`, `Building2` icon.
-- Box 2: `label="Active Cardholders"`, `value={`${activeCardholdersCount} User${activeCardholdersCount !== 1 ? 's' : ''}`}`, `Users` icon.
-- Box 3: `label="Active Counters"`, `value={`${activeCountersCount} Counter${activeCountersCount !== 1 ? 's' : ''}`}`, `Store` icon.
-- Box 4: `label="Staff Members"`, `value={`${activeStaffCount} Member${activeStaffCount !== 1 ? 's' : ''}`}`, `UserCheck` icon.
-
-### 2. Removal of Dashboard Filters
-- The entire filter container with Cafeteria Scope and Time Window is removed from `SuperAdminDashboard.tsx`.
-- The `Refresh Data` button is moved into the top welcome header alongside `Welcome back, Super Admin`.
-
-### 3. Analytics Real-Time Sync on Organization Deletion
-- Backend `deleteOrganization`: ensures `transaction.deleteMany` targets `{ OR: [{ branch: { organizationId: id } }, { session: { organizationId: id } }] }` before purging sessions and cards.
-- Backend `analytics.controller.ts`: overview and peak analytics automatically scope all global queries to `{ organization: { status: OrgStatus.ACTIVE } }`, so any deleted or inactive organization data is never aggregated.
-- Frontend `SuperAdminAnalyticsView.tsx`: cafeteria filter list is strictly filtered by `o.status === 'ACTIVE'`. If a selected cafeteria is deleted, `selectedOrgId` resets to `''` and analytics refresh immediately.
-- Frontend Axios client & Backend server: set `Cache-Control: no-cache, no-store, must-revalidate` to avoid stale 304 browser cache hits.
-
-### 4. Mobile Login Screen Host Indicator Removal
-- In `Flutter Money card/lib/features/auth/login_screen.dart`, lines 266-310 (`Server: ${AppConfig.displayHost}`) are removed from the build tree.
-
----
+```
++-----------------------------------+
+| Analytics                         |
+| Counter 1                         |
+| [  Recharge  ]   [    Menu    ]   |
+| --------------------------------- |
+| [ Start Date v ] [ End Date v ]   |
+| [ Apply ] [ Reset Today ] [ PDF ] |
+| --------------------------------- |
+| FOOD SALES         ITEMS SOLD     |
+| Rs 1,560.00        12             |
+| 8 orders placed    Total items    |
+| --------------------------------- |
+| TOP DISHES                        |
+| 1. Chicken Biryani     Rs 840.00  |
+|    6 units sold                   |
+| 2. Tea                 Rs 60.00   |
+|    4 units sold                   |
++-----------------------------------+
+```
 
 ## Proposed Changes
-
-### Flutter Mobile App (`Flutter Money card/`)
-
-#### [MODIFY] [login_screen.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/auth/login_screen.dart)
-- Remove `ServerConfigDialog` quick config pill (`Server: ${AppConfig.displayHost}`) under the login button.
-
-#### [MODIFY] [login_screen_test.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/test/features/auth/login_screen_test.dart)
-- Assert that `'Server:'` text does not appear on the login screen.
-
----
 
 ### Backend API (`Backend Money Card/`)
 
 #### [MODIFY] [admin.controller.ts](file:///d:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/admin.controller.ts)
-- In `getOrganizations`:
-  - Group active cards (`prisma.card.groupBy` with `status: CardStatus.ACTIVE`).
-  - Group active sessions (`prisma.cardSession.groupBy` with `status: SessionStatus.ACTIVE`).
-  - Add `activeCardCount` and `activeSessionCount` to `usage` payload.
 - In `deleteOrganization`:
-  - Delete transactions with `where: { OR: [{ branch: { organizationId: id } }, { session: { organizationId: id } }] }` before deleting sessions and cards.
+  - Delete all `transactions` where `branch: { organizationId: id }`, `session: { organizationId: id }`, or `staffUser: { organizationId: id }`.
+  - Delete all `card_sessions` where `organizationId: id`, `issuedBy: { organizationId: id }`, or `settledBy: { organizationId: id }`.
+  - Delete all `user_branches` where `user: { organizationId: id }` or `branch: { organizationId: id }`.
+  - Delete all `user_permissions` where `user: { organizationId: id }`.
+  - Delete all `users` where `organizationId: id`.
+  - Delete all `branches` where `organizationId: id`.
+  - Delete all `subscriptions`, `subscription_payments`, and `plan_change_requests`.
+  - Delete `organization`.
+  - Guarantees 100% clean deletion with zero orphaned counters or foreign key constraint aborts.
+
+#### [MODIFY] [organization.controller.ts](file:///d:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/organization.controller.ts)
+- In `getBranches`:
+  - When `req.user?.role === Role.SUPER_ADMIN` and `organizationId` is passed, scope to `where.organizationId = organizationId`.
+  - Only return branches belonging to active, non-deleted organizations.
 
 #### [MODIFY] [analytics.controller.ts](file:///d:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/analytics.controller.ts)
-- In `getOverview` and `getPeakAnalytics`:
-  - When `orgId` is omitted, scope transactions, cards, sessions, branches, and staff to active organizations (`organization: { status: OrgStatus.ACTIVE } }`).
-  - Compute `activeCardsCount` as `prisma.card.count` for cards with `status: 'ACTIVE'`.
+- Add timezone-aware date boundary parser helper:
+  `parseDateInTimezone(dateStr: string, timeZone: string, isEndOfDay: boolean): Date`
+  Calculates exact UTC millisecond bounds based on target timezone offset (e.g. `Asia/Kolkata` +05:30), converting `2026-09-24` start-of-day to `2026-09-23T18:30:00.000Z` and end-of-day to `2026-09-24T18:29:59.999Z`.
+- In `getOrgAnalytics` (lines 83-88):
+  Use `parseDateInTimezone(startDate, clientTimezone, false)` and `parseDateInTimezone(endDate, clientTimezone, true)` instead of appending `T00:00:00.000Z` / `T23:59:59.999Z`.
+- In `getPeakAnalytics` (lines 994-996):
+  Use `parseDateInTimezone` for exact timezone-aware bounds.
 
-#### [MODIFY] [server.ts](file:///d:/Money%20Card%20Project/Backend%20Money%20Card/src/server.ts)
-- Add cache control headers on admin and analytics routes to set `Cache-Control: no-store, no-cache, must-revalidate`.
+#### [MODIFY] [staff.controller.ts](file:///d:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/staff.controller.ts)
+- In `createStaffMember`: Release phone if existing user is deactivated or belongs to a deleted/inactive org.
+- In `deleteStaffMember`: When deactivating a user, set `phone: null` to free the phone number for re-registration.
+
+---
+
+### Mobile POS App (`Flutter Money card/`)
+
+#### [MODIFY] [home_screen.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/home/home_screen.dart)
+- In `initState`: Call `ref.read(analyticsNotifierProvider.notifier).loadAnalytics()` on startup so Today's Sales box populates immediately.
+- In `RefreshIndicator.onRefresh`: Include `ref.read(analyticsNotifierProvider.notifier).loadAnalytics()`.
+- Wrap the Today at a Glance summary card with `InkWell(onTap: () => _safePush('/app/analytics'))` so tapping the box opens the Analytics screen.
+
+#### [MODIFY] [digital_receipt_dialog.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/widgets/receipt/digital_receipt_dialog.dart)
+- Recharge receipts (`isRecharge == true`): Omit `Card No:` and `Receipt No:`.
+- Sales receipts (`!isRecharge`): Omit `Bill No:` and omit `Payment: Card Session`.
+
+#### [MODIFY] [bill_receipt_screen.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/receipt/bill_receipt_screen.dart)
+- In header metadata, remove `_buildReceiptRow('Bill No:', bill.displayBillNo)`.
+- In payment metadata, omit `Payment:` if `bill.paymentMethod` is `'Card Session'`.
+
+#### [MODIFY] [digital_receipt_service.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/services/digital_receipt_service.dart)
+- Recharge PDF: Omit `Receipt No` and `Card No`.
+- Sales Bill PDF: Omit `Bill No` and `Payment: Card Session`.
+
+#### [MODIFY] [pos_scan_purchase_screen.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/pos/pos_scan_purchase_screen.dart)
+- In `_handleEditOrder` dialog: Remove the lengthy sentence (`This will cancel the order, auto-refund the balance back to the card...`).
+- In `_showSessionStatsSheet`: Rename `Voided Recharges` to `Cancelled Recharges`.
+- After order edit or cancel, trigger `ref.read(analyticsNotifierProvider.notifier).loadAnalytics()`.
+
+#### [MODIFY] [pos_checkout_screen.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/pos/pos_checkout_screen.dart)
+- After checkout succeeds, trigger `ref.read(analyticsNotifierProvider.notifier).loadAnalytics()`.
+
+#### [MODIFY] [recharge_screen.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/payments/recharge_screen.dart)
+- After recharge completes, trigger `ref.read(analyticsNotifierProvider.notifier).loadAnalytics()`.
 
 ---
 
 ### Frontend Web Admin (`Frontend Money Card/`)
 
-#### [MODIFY] [entities.ts](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/types/entities.ts)
-- Extend `OrganizationOverview.usage` with `activeCardCount?: number` and `activeSessionCount?: number`.
+#### [MODIFY] [ProfileMenu.tsx](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/components/ui/ProfileMenu.tsx)
+- Update lines 64-66 to display "Counter Admin" when `user?.role === 'STAFF'`.
 
-#### [MODIFY] [SuperAdminDashboard.tsx](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/dashboard/SuperAdminDashboard.tsx)
-- Remove Cafeteria Scope and Time Window filter container (lines 310-385).
-- Move `Refresh Data` button to the header next to `Welcome back, Super Admin`.
-- Compute the 4 minimal boxes with zero sub-headings/subtitles:
-  1. Cafeterias: `${activeOrgsCount} Active`
-  2. Active Cardholders: `${activeCardholdersCount} User${activeCardholdersCount !== 1 ? 's' : ''}` (from `o.usage?.activeCardCount`)
-  3. Active Counters: `${activeCountersCount} Counter${activeCountersCount !== 1 ? 's' : ''}` (from `o.usage?.branchCount`)
-  4. Staff Members: `${activeStaffCount} Member${activeStaffCount !== 1 ? 's' : ''}` (from `o.usage?.staffCount`)
-- Clean up unused filter state (`selectedOrgId`, `datePreset`, `startDate`, `endDate`).
+#### [MODIFY] [OrganizationsPage.tsx](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/organizations/OrganizationsPage.tsx)
+- Remove the "Pending Email Activation" container and cards.
 
-#### [MODIFY] [SuperAdminAnalyticsView.tsx](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/analytics/SuperAdminAnalyticsView.tsx)
-- Strictly filter cafeteria selector to `o.status === 'ACTIVE'`.
-- Reset `selectedOrgId` to `''` if selected cafeteria is deleted.
+#### [MODIFY] [CounterViewEditMenuModal.tsx](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/products/CounterViewEditMenuModal.tsx) & [ProductsPage.tsx](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/products/ProductsPage.tsx)
+- Remove the green "Add Menu" button from inside the View / Edit Counter Menu modal.
 
-#### [MODIFY] [client.ts](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/services/api/client.ts)
-- Include default request headers `Cache-Control: no-cache` and `Pragma: no-cache`.
-
-#### [MODIFY] [mock/handlers/organizations.ts](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/services/mock/handlers/organizations.ts)
-- Return `activeCardCount` in mock organization usage for test suite compatibility.
-
----
+#### [MODIFY] [StaffPage.tsx](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/staff/StaffPage.tsx)
+- In Step 3 (Review & Create), display "Manager" or "Staff" directly based on the selected role preset.
 
 ## Verification Plan
 
 ### Automated Tests
-1. Backend Tests:
-   `npm test` in `Backend Money Card/` (100 tests must pass).
-   `npm run build` in `Backend Money Card/` (0 errors).
-2. Frontend Web Tests:
-   `npm test -- --run` in `Frontend Money Card/` (267 tests must pass).
-   `npx tsc --noEmit` in `Frontend Money Card/` (0 errors).
-3. Flutter Mobile Tests:
-   `flutter test` in `Flutter Money card/` (168 tests must pass).
-   `flutter analyze --no-pub` in `Flutter Money card/` (0 errors/warnings).
+- Mobile Tests: Proactively run `flutter test` and `flutter analyze --no-pub` in `Flutter Money card/`.
+- Backend Tests: Proactively run `npm test` in `Backend Money Card/` (100 tests must pass).
+- Backend Build: Proactively run `npm run build` in `Backend Money Card/` (0 TypeScript errors).
+- Frontend Tests: Run `npm test -- --run` in `Frontend Money Card/` (267 tests must pass).
+- Frontend Typecheck: Run `npx tsc --noEmit` in `Frontend Money Card/` (0 errors).
 
 ### Manual Verification
-1. Mobile Login Screen: Verify absence of `Server: ...` under password and login button.
-2. Super Admin Dashboard: Verify that Cafeteria Scope and Time Window toolbar is removed, and 4 cards read: Cafeterias, Active Cardholders, Active Counters, Staff Members with no subheadings or descriptions.
-3. Organization Deletion & Analytics: Delete a cafeteria or view analytics to confirm metrics update immediately and excluded org data is not counted.
+1. Deleted Organizations & Counters: Verify only active client cafeterias (Acme Cafeterias and Test Org) appear in Organizations and Counters tables. Verify no old/deleted organizations or counters pop up.
+2. Mobile Home Today's Sales: Open mobile app, verify Today's Sales box immediately displays today's volume (e.g. ₹1,560) and order count, and verify tapping the box navigates directly to the Analytics screen.
+3. Mobile Analytics Recharges & Menu: Open Analytics, verify Recharge tab shows all today's cash and UPI recharges and net collections, and verify Menu tab lists all sold dishes and quantities.
+4. Mobile Receipts: Complete a recharge and purchase, verify absence of Card No/Receipt No on recharge dialog, and absence of Bill No/Payment: Card Session on bill screen.
+5. Mobile Edit Order & Stats: Verify edit order dialog has no long sentence, and Card Info displays "Cancelled Recharges".
+6. Web Admin Counter Profile & Cleanup: Confirm Counter Admin role badge, absence of Pending Email Activation box, absence of Add Menu button in modal, and role preset label in staff creation.

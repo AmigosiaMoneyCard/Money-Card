@@ -465,11 +465,6 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
         onClose={() => setSelectedBranchForViewEdit(null)}
         branch={selectedBranchForViewEdit}
         onChanged={fetchData}
-        onOpenAddModal={() => {
-          if (selectedBranchForViewEdit) {
-            setSelectedBranchForAdd(selectedBranchForViewEdit);
-          }
-        }}
       />
     </div>
   );

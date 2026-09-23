@@ -29,6 +29,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (sessionState.sessions.isEmpty && !sessionState.isLoading) {
         ref.read(sessionListNotifierProvider.notifier).loadSessions();
       }
+      ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
     });
   }
 
@@ -62,6 +63,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           onRefresh: () async {
             await Future.wait([
               sessionNotifier.loadSessions(),
+              ref.read(analyticsNotifierProvider.notifier).loadAnalytics(),
               ref.read(authNotifierProvider.notifier).refreshCurrentUser(),
             ]);
           },
@@ -188,95 +190,102 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
 
-              // 2b. Today at a Glance Summary Card
-              AppCard(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 14),
-                child: Row(
-                  children: [
-                    // Revenue
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Today\'s Sales',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondaryLight,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          analyticsState.isLoading
-                              ? const Text(
-                                  '···',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.primary,
-                                  ),
-                                )
-                              : Text(
-                                  todayMetric != null
-                                      ? '₹${todayMetric.purchaseVolume.toStringAsFixed(0)}'
-                                      : '—',
-                                  style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.primary,
-                                  ),
+              // 2b. Today at a Glance Summary Card (Clickable to Analytics)
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _safePush('/app/analytics'),
+                  borderRadius: AppSpacing.roundedMd,
+                  child: AppCard(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 14),
+                    child: Row(
+                      children: [
+                        // Revenue
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Today\'s Sales',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textSecondaryLight,
+                                  fontWeight: FontWeight.w500,
                                 ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      width: 1,
-                      height: 36,
-                      color: AppColors.borderLight,
-                      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                    ),
-                    // Transactions
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Transactions',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondaryLight,
-                              fontWeight: FontWeight.w500,
-                            ),
+                              ),
+                              const SizedBox(height: 2),
+                              analyticsState.isLoading
+                                  ? const Text(
+                                      '···',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primary,
+                                      ),
+                                    )
+                                  : Text(
+                                      todayMetric != null
+                                          ? '₹${todayMetric.purchaseVolume.toStringAsFixed(0)}'
+                                          : '—',
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                            ],
                           ),
-                          const SizedBox(height: 2),
-                          analyticsState.isLoading
-                              ? const Text(
-                                  '···',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.textPrimaryLight,
-                                  ),
-                                )
-                              : Text(
-                                  todayMetric != null
-                                      ? '${todayMetric.purchaseCount} orders'
-                                      : '—',
-                                  style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.textPrimaryLight,
-                                  ),
+                        ),
+                        Container(
+                          width: 1,
+                          height: 36,
+                          color: AppColors.borderLight,
+                          margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                        ),
+                        // Transactions
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Transactions',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textSecondaryLight,
+                                  fontWeight: FontWeight.w500,
                                 ),
-                        ],
-                      ),
+                              ),
+                              const SizedBox(height: 2),
+                              analyticsState.isLoading
+                                  ? const Text(
+                                      '···',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.textPrimaryLight,
+                                      ),
+                                    )
+                                  : Text(
+                                      todayMetric != null
+                                          ? '${todayMetric.purchaseCount} orders'
+                                          : '—',
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.textPrimaryLight,
+                                      ),
+                                    ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          color: AppColors.textTertiaryLight,
+                          size: 14,
+                        ),
+                      ],
                     ),
-                    const Icon(
-                      Icons.bar_chart_rounded,
-                      color: AppColors.primary,
-                      size: 22,
-                    ),
-                  ],
+                  ),
                 ),
               ),
               const SizedBox(height: AppSpacing.xl),

@@ -103,10 +103,8 @@ class DigitalReceiptService {
                 pw.SizedBox(height: 5),
 
                 // Metadata
-                _buildMetaRow('Receipt:', bill.displayBillNo),
                 _buildMetaRow('Date:', dateStr),
                 _buildMetaRow('Time:', timeStr),
-                _buildMetaRow('Card:', bill.displayCardId),
                 if (bill.staffName != null && bill.staffName!.isNotEmpty)
                   _buildMetaRow('Cashier:', bill.staffName!),
 
@@ -224,7 +222,6 @@ class DigitalReceiptService {
               pw.SizedBox(height: 5),
 
               // Metadata
-              _buildMetaRow('Bill No:', bill.displayBillNo),
               _buildMetaRow('Date:', dateStr),
               _buildMetaRow('Time:', timeStr),
               _buildMetaRow('Card:', bill.displayCardId),
@@ -346,7 +343,8 @@ class DigitalReceiptService {
               pw.SizedBox(height: 4),
 
               // Payment & Branch Information (Session removed as requested)
-              _buildMetaRow('Payment:', bill.paymentMethod),
+              if (bill.paymentMethod != 'Card Session' && !bill.paymentMethod.toLowerCase().contains('session'))
+                _buildMetaRow('Payment:', bill.paymentMethod),
               if (bill.paymentReference != null && bill.paymentReference!.trim().isNotEmpty)
                 _buildMetaRow('Reference:', bill.paymentReference!.trim()),
               _buildMetaRow('Counter:', bill.branchName),

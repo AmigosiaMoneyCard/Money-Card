@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/utils/formatters.dart';
 import '../../models/transaction.dart';
+import '../../providers/analytics_provider.dart';
 import '../../providers/branch_provider.dart';
 import '../../providers/recharges_provider.dart';
 import '../../widgets/states/app_loading_view.dart';
@@ -145,6 +146,7 @@ class _RechargesScreenState extends ConsumerState<RechargesScreen> {
 
     if (!mounted) return;
     if (success) {
+      ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Top-up of ₹${tx.amount.toStringAsFixed(2)} cancelled successfully.'),
@@ -216,7 +218,7 @@ class _RechargesScreenState extends ConsumerState<RechargesScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text(
-                              '📱 Online UPI',
+                              'Online UPI',
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
@@ -276,7 +278,7 @@ class _RechargesScreenState extends ConsumerState<RechargesScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text(
-                              '💵 Cash Money',
+                              'Cash Money',
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,

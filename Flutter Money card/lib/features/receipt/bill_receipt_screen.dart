@@ -113,7 +113,6 @@ class _BillReceiptScreenState extends State<BillReceiptScreen> {
                     const SizedBox(height: 10),
 
                     // Bill Metadata
-                    _buildReceiptRow('Bill No:', bill.displayBillNo),
                     _buildReceiptRow('Card:', bill.displayCardId),
                     _buildReceiptRow('Date:', '$dateStr  $timeStr'),
                     if (bill.staffName != null && bill.staffName!.isNotEmpty)
@@ -254,7 +253,8 @@ class _BillReceiptScreenState extends State<BillReceiptScreen> {
                     const SizedBox(height: 10),
 
                     // Payment & Branch Information (Session removed as requested)
-                    _buildReceiptRow('Payment:', bill.paymentMethod),
+                    if (bill.paymentMethod != 'Card Session' && !bill.paymentMethod.toLowerCase().contains('session'))
+                      _buildReceiptRow('Payment:', bill.paymentMethod),
                     if (bill.paymentReference != null && bill.paymentReference!.isNotEmpty)
                       _buildReceiptRow('UPI Reference:', bill.paymentReference!),
                     _buildReceiptRow('Counter:', bill.branchName),

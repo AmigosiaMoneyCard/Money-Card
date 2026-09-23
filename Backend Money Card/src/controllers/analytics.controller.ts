@@ -64,6 +64,29 @@ function getStartAndEndOfDayInTimezone(timeZone: string = 'Asia/Kolkata', dayOff
   }
 }
 
+function parseDateInTimezone(dateStr: string, timeZone: string, isEndOfDay: boolean): Date {
+  const cleanStr = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+  const [year, month, day] = cleanStr.split('-').map(Number);
+  if (!year || !month || !day) {
+    return new Date(dateStr);
+  }
+  const testDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  const tzStr = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'shortOffset' }).format(testDate);
+  let offsetMinutes = 330;
+  const match = tzStr.match(/GMT([+-]\d+)(?::(\d+))?/);
+  if (match) {
+    const hours = parseInt(match[1], 10);
+    const mins = match[2] ? parseInt(match[2], 10) : 0;
+    offsetMinutes = (hours * 60) + (hours >= 0 ? mins : -mins);
+  }
+  const h = isEndOfDay ? 23 : 0;
+  const m = isEndOfDay ? 59 : 0;
+  const s = isEndOfDay ? 59 : 0;
+  const ms = isEndOfDay ? 999 : 0;
+  const utcMs = Date.UTC(year, month - 1, day, h, m, s, ms) - (offsetMinutes * 60000);
+  return new Date(utcMs);
+}
+
 export async function getOrgAnalytics(req: Request, res: Response) {
   const isSuperAdmin = req.user?.role === Role.SUPER_ADMIN;
   const orgId = isSuperAdmin
@@ -81,10 +104,10 @@ export async function getOrgAnalytics(req: Request, res: Response) {
   let toDate: Date | undefined;
 
   if (startDate) {
-    fromDate = new Date(startDate.includes('T') ? startDate : `${startDate}T00:00:00.000Z`);
+    fromDate = parseDateInTimezone(startDate, clientTimezone, false);
   }
   if (endDate) {
-    toDate = new Date(endDate.includes('T') ? endDate : `${endDate}T23:59:59.999Z`);
+    toDate = parseDateInTimezone(endDate, clientTimezone, true);
   }
 
   if (!fromDate && range) {
@@ -992,8 +1015,8 @@ export async function getPeakAnalytics(req: Request, res: Response) {
   }
 
   const dateFilter: any = {};
-  if (startDate) dateFilter.gte = new Date(startDate.includes('T') ? startDate : `${startDate}T00:00:00.000Z`);
-  if (endDate) dateFilter.lte = new Date(endDate.includes('T') ? endDate : `${endDate}T23:59:59.999Z`);
+  if (startDate) dateFilter.gte = parseDateInTimezone(startDate, clientTimezone, false);
+  if (endDate) dateFilter.lte = parseDateInTimezone(endDate, clientTimezone, true);
 
   const peakOrgScope = orgId
     ? { organizationId: orgId }

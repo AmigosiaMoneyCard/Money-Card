@@ -5,7 +5,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../config/database.js';
 import { sendError, sendSuccess } from '../utils/response.js';
 import { hashPassword } from '../utils/crypto.js';
-import { PermissionCode, Role, UserStatus } from '@prisma/client';
+import { OrgStatus, PermissionCode, Role, UserStatus } from '@prisma/client';
 
 export const FROZEN_M0_PERMISSIONS = [
   { code: 'CARD_VIEW', label: 'View Cards', description: 'View card status and list', category: 'Cards' },
@@ -153,10 +153,23 @@ export async function createStaffMember(req: Request, res: Response) {
         { phone: cleanPhone.slice(-10) },
       ],
     },
+    include: {
+      organization: true,
+    },
   });
 
   if (existingPhoneUser) {
-    return sendError(res, 400, 'VALIDATION_ERROR', `Account with phone number '${phone}' already exists`);
+    if (
+      existingPhoneUser.status === UserStatus.DEACTIVATED ||
+      (existingPhoneUser.organization && existingPhoneUser.organization.status === OrgStatus.INACTIVE)
+    ) {
+      await prisma.user.update({
+        where: { id: existingPhoneUser.id },
+        data: { phone: null },
+      });
+    } else {
+      return sendError(res, 400, 'VALIDATION_ERROR', `Account with phone number '${phone}' already exists`);
+    }
   }
 
   let cleanEmail: string | null = null;
@@ -635,6 +648,7 @@ export async function deleteStaffMember(req: Request, res: Response) {
         where: { id: user.id },
         data: {
           status: UserStatus.DEACTIVATED,
+          phone: null,
           tokenVersion: { increment: 1 },
         },
       });

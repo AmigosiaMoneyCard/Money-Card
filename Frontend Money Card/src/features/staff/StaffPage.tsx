@@ -2466,13 +2466,7 @@ export function StaffPage() {
                     <div className="p-3 rounded-lg border border-slate-200 bg-white">
                       <span className="text-slate-500 font-medium block mb-1">Assigned Role Preset</span>
                       <p className="font-semibold text-emerald-700">
-                        {formPermissions.length === 8 && formPermissions.includes('PURCHASE') && !formPermissions.includes('PRODUCT_MANAGE')
-                          ? 'Cashier / POS (8 permissions)'
-                          : formPermissions.length === 16
-                          ? 'Supervisor (16 permissions)'
-                          : formPermissions.length === 20
-                          ? 'Manager / Admin (All 20 permissions)'
-                          : `Custom Role (${formPermissions.length} permissions)`}
+                        {formPermissions.includes('RECHARGE') ? 'Manager' : 'Staff'}
                       </p>
                     </div>
                   </div>

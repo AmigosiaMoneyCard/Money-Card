@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/database.js';
 import { sendError, sendSuccess } from '../utils/response.js';
-import { Role, UserStatus, PermissionCode } from '@prisma/client';
+import { Role, UserStatus, PermissionCode, OrgStatus } from '@prisma/client';
 import { getEffectiveLimits, formatSubscription } from '../utils/limits.js';
 import { hashPassword } from '../utils/crypto.js';
 
@@ -109,6 +109,8 @@ export async function getBranches(req: Request, res: Response) {
   const where: any = {};
   if (orgId) {
     where.organizationId = orgId;
+  } else {
+    where.organization = { status: OrgStatus.ACTIVE };
   }
 
   // Staff only see active branches assigned to them
