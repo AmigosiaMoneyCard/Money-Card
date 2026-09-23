@@ -371,6 +371,11 @@ export const mockAnalyticsHandlers = {
         const pMethod = String((tx as any).paymentMethod || '').toUpperCase();
         const txType = tx.type;
         const branchName = mockStore.branches.find((b) => b.id === tx.branchId)?.name || 'Main Cafeteria';
+        const sess = mockStore.sessions.find((s) => s.id === tx.sessionId);
+        const card = sess ? mockStore.cards.find((c) => c.id === sess.cardId) : undefined;
+        const cardNum = card?.physicalCardNumber || sess?.sessionCardNumber || (tx as any).cardNumber || 'MC-Card';
+        const custName = sess?.customerName || (tx as any).customerName || 'Walk-in Customer';
+        const custPhone = sess?.customerPhone || (tx as any).customerPhone || '—';
 
         if (txType === 'PURCHASE') {
           purchaseCount++;
@@ -385,6 +390,9 @@ export const mockAnalyticsHandlers = {
             branchName,
             timestamp: tx.createdAt,
             paymentMethod: 'CARD_BALANCE',
+            cardNumber: cardNum,
+            customerName: custName,
+            customerPhone: custPhone,
           });
         } else if (txType === 'RECHARGE_CASH' || (txType === 'RECHARGE' && (pMethod === 'CASH' || pMethod === 'CARD' || !pMethod))) {
           cardRechargeCount++;
@@ -399,6 +407,9 @@ export const mockAnalyticsHandlers = {
             branchName,
             timestamp: tx.createdAt,
             paymentMethod: 'CASH',
+            cardNumber: cardNum,
+            customerName: custName,
+            customerPhone: custPhone,
           });
         } else if (txType === 'RECHARGE_UPI' || (txType === 'RECHARGE' && pMethod === 'UPI')) {
           upiRechargeCount++;
@@ -413,6 +424,9 @@ export const mockAnalyticsHandlers = {
             branchName,
             timestamp: tx.createdAt,
             paymentMethod: 'UPI',
+            cardNumber: cardNum,
+            customerName: custName,
+            customerPhone: custPhone,
           });
         } else if (txType === 'REFUND') {
           refundCount++;
@@ -426,6 +440,9 @@ export const mockAnalyticsHandlers = {
             branchId: tx.branchId,
             branchName,
             timestamp: tx.createdAt,
+            cardNumber: cardNum,
+            customerName: custName,
+            customerPhone: custPhone,
           });
         }
       });

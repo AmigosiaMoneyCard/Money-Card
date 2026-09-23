@@ -1039,10 +1039,11 @@ class MockApiInterceptor extends Interceptor {
             .toList();
       }
 
-      return _resolve(handler, options, {
-        'card': card,
-        if (enrichedSession != null) 'session': enrichedSession,
-      });
+      final responseData = <String, dynamic>{'card': card};
+      if (enrichedSession != null) {
+        responseData['session'] = enrichedSession;
+      }
+      return _resolve(handler, options, responseData);
     }
 
     // Issue/Create Card: POST /cards or /cards/issue
@@ -1224,6 +1225,7 @@ class MockApiInterceptor extends Interceptor {
     // ==========================================
     // 4. SESSION ENDPOINTS
     // ==========================================
+
     // Purchase: POST /card-sessions/:id/purchase
     final purchaseRegex = RegExp(r'/card-sessions/([a-zA-Z0-9_-]+)/purchase$');
     final purchaseMatch = purchaseRegex.firstMatch(path);
@@ -2112,6 +2114,30 @@ class MockApiInterceptor extends Interceptor {
             'productName': 'Juice',
             'quantitySold': 24,
             'totalRevenue': 960.0,
+          },
+          {
+            'productId': 'prod-005',
+            'productName': 'Samosa',
+            'quantitySold': 22,
+            'totalRevenue': 440.0,
+          },
+          {
+            'productId': 'prod-006',
+            'productName': 'Tea',
+            'quantitySold': 30,
+            'totalRevenue': 300.0,
+          },
+          {
+            'productId': 'prod-007',
+            'productName': 'Coffee',
+            'quantitySold': 18,
+            'totalRevenue': 360.0,
+          },
+          {
+            'productId': 'prod-008',
+            'productName': 'Paneer Tikka Roll',
+            'quantitySold': 15,
+            'totalRevenue': 1200.0,
           },
         ],
         'peakPeriods': [

@@ -985,15 +985,13 @@ export function StaffPage() {
     setAuditActivityTypeFilter('ALL');
     setAuditSearch('');
 
-    if (staffPerformanceList.length === 0) {
-      try {
-        const res = await apiService.analytics.getOverview();
-        if (res.success && res.data.staffPerformance) {
-          setStaffPerformanceList(res.data.staffPerformance);
-        }
-      } catch {
-        // Ignored
+    try {
+      const res = await apiService.analytics.getOverview();
+      if (res.success && res.data.staffPerformance) {
+        setStaffPerformanceList(res.data.staffPerformance);
       }
+    } catch {
+      // Ignored
     }
   };
 

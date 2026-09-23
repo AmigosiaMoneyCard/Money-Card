@@ -8,11 +8,13 @@ import '../../core/constants/app_spacing.dart';
 import '../../core/constants/permission_constants.dart';
 import '../../models/card.dart';
 import '../../models/card_session.dart';
+import '../../models/product.dart';
 import '../../models/transaction.dart';
 import '../../providers/api_providers.dart';
 import '../../providers/branch_provider.dart';
 import '../../providers/card_operations_provider.dart';
 import '../../providers/permission_provider.dart';
+import '../../providers/pos_cart_provider.dart';
 import '../../providers/session_operations_provider.dart';
 import '../../widgets/common/app_badge.dart';
 import '../../widgets/common/app_button.dart';
@@ -818,7 +820,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
 
     final canPurchase = permissions.hasPermission(AppPermission.purchase);
     final canRecharge = permissions.hasPermission(AppPermission.recharge);
-    final canViewSession = permissions.hasPermission(AppPermission.sessionView);
     final canSettleReturn = permissions.hasPermission(AppPermission.cardReturn) ||
         permissions.hasPermission(AppPermission.refund);
 
@@ -992,97 +993,63 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
             ),
             const SizedBox(height: AppSpacing.sm),
 
-            // OPTION 1: RECHARGE CARD (ADD MONEY) - FIRST OPTION
+            // OPTION 1: RECHARGE CARD
             if (canRecharge) ...[
               _buildActionTile(
                 icon: Icons.account_balance_wallet_outlined,
                 iconColor: AppColors.success,
                 title: 'Recharge Card',
-                subtitle: 'Load cash or online UPI balance onto card',
                 onTap: _openRecharge,
               ),
               const SizedBox(height: AppSpacing.sm),
             ],
 
-            // OPTION 2: ADD PRODUCTS (FOOD PURCHASE) - SECOND OPTION
+            // OPTION 2: ADD PRODUCTS
             if (canPurchase) ...[
               _buildActionTile(
                 icon: Icons.add_shopping_cart,
                 iconColor: AppColors.primary,
                 title: 'Add Products',
-                subtitle: 'Order food items from menu catalog',
                 onTap: _openAddProducts,
               ),
               const SizedBox(height: AppSpacing.sm),
             ],
 
-            // OPTION 3: CANCEL / EDIT RECENT ORDER
-            _buildActionTile(
-              icon: Icons.edit_note_outlined,
-              iconColor: AppColors.error,
-              title: 'Cancel / Edit Order',
-              subtitle: 'Cancel current order with auto-refund',
-              onTap: _handleQuickCancelRecentOrder,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-
-            // OPTION 4: TOP-UP HISTORY
+            // OPTION 3: TOP-UP HISTORY
             _buildActionTile(
               icon: Icons.receipt_long_outlined,
               iconColor: Colors.purple,
               title: 'Top-up History',
-              subtitle: 'View recharges or cancel wrong top-ups',
-              onTap: () => _showTopUpHistorySheet(context, session),
+              onTap: () => _showTopUpHistorySheet(context, _activeSession ?? session),
             ),
             const SizedBox(height: AppSpacing.sm),
 
-            // OPTION 5: FOOD ORDERS
+            // OPTION 4: FOOD ORDERS
             _buildActionTile(
               icon: Icons.fastfood_outlined,
               iconColor: AppColors.primaryDark,
               title: 'Food Orders',
-              subtitle: 'View total orders placed or cancel order',
-              onTap: () => _showFoodOrdersSheet(context, session),
+              onTap: () => _showFoodOrdersSheet(context, _activeSession ?? session),
             ),
             const SizedBox(height: AppSpacing.sm),
 
-            // OPTION 6: CARD INFO & STATISTICS
+            // OPTION 5: CARD INFO & STATISTICS
             _buildActionTile(
               icon: Icons.info_outline,
               iconColor: AppColors.info,
               title: 'Card Info & Statistics',
-              subtitle: 'Number of recharges, refunds, and card summary',
-              onTap: () => _showCardSessionInfoSheet(context, session),
+              onTap: () => _showCardSessionInfoSheet(context, _activeSession ?? session),
             ),
             const SizedBox(height: AppSpacing.sm),
 
-            // OPTION 5: SETTLE / RETURN CARD
+            // OPTION 6: SETTLE / RETURN CARD
             if (canSettleReturn) ...[
               _buildActionTile(
                 icon: Icons.assignment_return_outlined,
                 iconColor: AppColors.warning,
                 title: 'Settle / Return Card',
-                subtitle: session.balance > 0
-                    ? 'Refund ₹${session.balance.toStringAsFixed(2)} and close card'
-                    : 'Close session & return card to available stock',
-                isDestructive: session.balance > 0,
+                isDestructive: (_activeSession ?? session).balance > 0,
                 onTap: _handleSettleReturn,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-            ],
-
-            // OPTION 6: VIEW SESSION & TRANSACTION HISTORY
-            if (canViewSession) ...[
-              _buildActionTile(
-                icon: Icons.history_outlined,
-                iconColor: AppColors.textSecondaryLight,
-                title: 'View Session & Transaction History',
-                subtitle: 'View full audit log of all card events',
-                onTap: () {
-                  if (GoRouter.maybeOf(context) != null) {
-                    context.push('/app/sessions/${session.id}');
-                  }
-                },
               ),
               const SizedBox(height: AppSpacing.md),
             ],
@@ -1462,19 +1429,39 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                                       ),
                                     )
                                   else
-                                    OutlinedButton.icon(
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: AppColors.error,
-                                        side: const BorderSide(color: AppColors.error),
-                                        visualDensity: VisualDensity.compact,
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                                      ),
-                                      icon: const Icon(Icons.remove_shopping_cart_outlined, size: 14),
-                                      label: const Text('Cancel Order', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                      onPressed: () {
-                                        Navigator.of(sheetCtx).pop();
-                                        _handleCancelOrder(t.id, t.amount, session);
-                                      },
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        OutlinedButton.icon(
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: AppColors.primary,
+                                            side: const BorderSide(color: AppColors.primary),
+                                            visualDensity: VisualDensity.compact,
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                          ),
+                                          icon: const Icon(Icons.edit_outlined, size: 14),
+                                          label: const Text('Edit Order', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                          onPressed: () {
+                                            Navigator.of(sheetCtx).pop();
+                                            _handleEditOrder(t, session);
+                                          },
+                                        ),
+                                        const SizedBox(width: 6),
+                                        OutlinedButton.icon(
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: AppColors.error,
+                                            side: const BorderSide(color: AppColors.error),
+                                            visualDensity: VisualDensity.compact,
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                          ),
+                                          icon: const Icon(Icons.remove_shopping_cart_outlined, size: 14),
+                                          label: const Text('Cancel Order', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                          onPressed: () {
+                                            Navigator.of(sheetCtx).pop();
+                                            _handleCancelOrder(t.id, t.amount, session);
+                                          },
+                                        ),
+                                      ],
                                     ),
                                 ],
                               ),
@@ -1548,11 +1535,12 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
   // ==========================================
 
   Future<void> _handleCancelRecharge(String txId, double amount, CardSession session) async {
-    if (session.balance < amount) {
+    final currentBal = _activeSession?.balance ?? session.balance;
+    if (currentBal < amount) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Cannot cancel top-up: Customer already spent ₹${(amount - session.balance).toStringAsFixed(2)}. Current balance is only ₹${session.balance.toStringAsFixed(2)}.',
+            'Cannot cancel top-up: Customer already spent ₹${(amount - currentBal).toStringAsFixed(2)}. Current balance is only ₹${currentBal.toStringAsFixed(2)}.',
           ),
           backgroundColor: AppColors.error,
         ),
@@ -1645,6 +1633,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       final sessionService = ref.read(sessionServiceProvider);
       await sessionService.cancelRecharge(transactionId: txId, reason: reason);
       await _refreshSession();
+      ref.read(sessionListNotifierProvider.notifier).loadSessions();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1748,6 +1737,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       final sessionService = ref.read(sessionServiceProvider);
       await sessionService.cancelOrder(transactionId: txId, reason: reason);
       await _refreshSession();
+      ref.read(sessionListNotifierProvider.notifier).loadSessions();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1766,36 +1756,20 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     }
   }
 
-  Future<void> _handleQuickCancelRecentOrder() async {
-    final session = _activeSession;
-    if (session == null) return;
-
-    final allTx = session.transactions ?? [];
-    final activeOrders = allTx.where((t) => t.type == TransactionType.purchase && !t.isCancelled).toList();
-    if (activeOrders.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No active recent orders found to cancel on this card.'),
-          backgroundColor: AppColors.info,
-        ),
-      );
-      return;
-    }
-
-    final latestOrder = activeOrders.first;
-    final items = latestOrder.items ?? [];
+  Future<void> _handleEditOrder(Transaction orderTx, CardSession session) async {
+    final items = orderTx.items ?? [];
     final itemsSummary = items.isNotEmpty
         ? items.map((i) => '${i.quantity}x ${i.itemName ?? "Item"}').join(', ')
-        : 'Order #${latestOrder.displayTransactionId}';
+        : 'Order #${orderTx.displayTransactionId}';
 
     final confirmAction = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Row(
           children: const [
-            Icon(Icons.remove_shopping_cart_outlined, color: AppColors.error, size: 24),
+            Icon(Icons.edit_note_outlined, color: AppColors.primary, size: 24),
             SizedBox(width: 8),
-            Text('Cancel & Refund Order', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            Text('Edit Food Order?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           ],
         ),
         content: Column(
@@ -1803,17 +1777,17 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Latest Order: $itemsSummary',
+              'Order: $itemsSummary',
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             ),
             const SizedBox(height: 8),
             Text(
-              'Amount to refund: ₹${latestOrder.amount.toStringAsFixed(2)}',
+              'Amount to refund: ₹${orderTx.amount.toStringAsFixed(2)}',
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.primaryDark),
             ),
             const SizedBox(height: 8),
             const Text(
-              'This will immediately cancel the order and auto-refund the balance back to this card.',
+              'This will cancel the order, auto-refund the balance back to the card, and open the food menu with these items pre-loaded in your cart so you can modify and re-order.',
               style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
             ),
           ],
@@ -1824,9 +1798,9 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
             child: const Text('Keep Order'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Cancel Order', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text('Proceed to Edit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -1836,21 +1810,52 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
 
     try {
       final sessionService = ref.read(sessionServiceProvider);
-      await sessionService.cancelOrder(transactionId: latestOrder.id, reason: 'Customer changed mind');
+      await sessionService.cancelOrder(
+        transactionId: orderTx.id,
+        reason: 'Staff edited and revised order',
+      );
       await _refreshSession();
-      if (!mounted) return;
+      ref.read(sessionListNotifierProvider.notifier).loadSessions();
 
+      // Pre-fill the cart with items from this order
+      final catalogProducts = ref.read(posCatalogNotifierProvider).products;
+
+      ref.read(posCartNotifierProvider.notifier).clearCart();
+      for (final it in items) {
+        final matchingProduct = catalogProducts
+            .where((p) => p.id == it.productId || p.itemName.toLowerCase() == (it.itemName ?? '').toLowerCase())
+            .firstOrNull;
+        final product = matchingProduct ??
+            Product(
+              id: it.productId,
+              branchId: session.branchId,
+              itemName: it.itemName ?? 'Food Item',
+              price: it.unitPrice ?? (it.totalAmount != null && it.quantity > 0 ? it.totalAmount! / it.quantity : 0.0),
+              category: const ['General'],
+              status: 'ACTIVE',
+            );
+        for (int q = 0; q < it.quantity; q++) {
+          ref.read(posCartNotifierProvider.notifier).addToCart(product);
+        }
+      }
+
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Order cancelled. ₹${latestOrder.amount.toStringAsFixed(2)} auto-refunded to card.'),
+          content: Text('Order cancelled & ₹${orderTx.amount.toStringAsFixed(2)} refunded. Modifying cart...'),
           backgroundColor: AppColors.success,
         ),
       );
+
+      if (GoRouter.maybeOf(context) != null) {
+        await context.push('/app/pos/${session.id}');
+      }
+      await _refreshSession();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to cancel order: $e'),
+          content: Text('Failed to edit order: $e'),
           backgroundColor: AppColors.error,
         ),
       );

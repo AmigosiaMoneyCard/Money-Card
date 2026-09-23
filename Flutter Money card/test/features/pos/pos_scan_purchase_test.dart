@@ -122,7 +122,8 @@ void main() {
       // Verify all authorized action tiles are present
       expect(find.text('Add Products'), findsOneWidget);
       expect(find.text('Recharge Card'), findsOneWidget);
-      expect(find.text('View Session & Transaction History'), findsOneWidget);
+      expect(find.text('Food Orders'), findsOneWidget);
+      expect(find.text('Top-up History'), findsOneWidget);
       expect(find.text('Settle / Return Card'), findsOneWidget);
 
       // Test Settle / Return Card

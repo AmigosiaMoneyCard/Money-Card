@@ -699,10 +699,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           children: [
             Expanded(
               child: _buildMenuSummaryCard(
-                title: 'Avg Order Value',
-                value: '₹${data.avgPurchaseValue.toStringAsFixed(2)}',
-                subtitle: 'Per food order',
-                icon: Icons.receipt_outlined,
+                title: 'Dishes Ordered',
+                value: '${demands.length} Dishes',
+                subtitle: '${data.productsSoldCount} units sold',
+                icon: Icons.restaurant_outlined,
                 color: Colors.indigo,
               ),
             ),
@@ -720,12 +720,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         ),
         const SizedBox(height: 20),
 
-        // Popular Menu Items / Demand Header
+        // All Ordered Menu Items / Demand Header
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
-              'POPULAR MENU ITEMS',
+              'ALL ORDERED MENU ITEMS',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.bold,

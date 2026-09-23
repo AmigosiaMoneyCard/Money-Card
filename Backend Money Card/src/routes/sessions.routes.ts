@@ -12,13 +12,13 @@ import {
   cancelOrder,
 } from '../controllers/sessions.controller.js';
 import { requireAuth } from '../middlewares/auth.middleware.js';
-import { requirePermission } from '../middlewares/permission.middleware.js';
+import { requirePermission, requireAnyPermission } from '../middlewares/permission.middleware.js';
 import { PermissionCode } from '@prisma/client';
 
 export const sessionsRouter = Router();
 sessionsRouter.use(requireAuth);
 sessionsRouter.get('/transactions/recharges', requirePermission(PermissionCode.SESSION_VIEW), listRecharges);
-sessionsRouter.post('/transactions/:id/cancel-recharge', requirePermission(PermissionCode.RECHARGE), cancelRecharge);
+sessionsRouter.post('/transactions/:id/cancel-recharge', requireAnyPermission(PermissionCode.RECHARGE, PermissionCode.PURCHASE), cancelRecharge);
 sessionsRouter.post('/transactions/:id/cancel-order', requirePermission(PermissionCode.PURCHASE), cancelOrder);
 sessionsRouter.get('/', requirePermission(PermissionCode.SESSION_VIEW), listSessions);
 sessionsRouter.post('/', requirePermission(PermissionCode.CARD_ISSUE), createSession);

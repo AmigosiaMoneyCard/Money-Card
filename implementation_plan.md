@@ -1,78 +1,158 @@
-# Implementation Plan: Super Admin Analytics 8-Box Balanced Grid
+# Implementation Plan — Staff Audit Coupon ID, Action Hub Clean-Up, and Menu Analytics
 
-Organize all 8 financial metric cards in the Super Admin Financial Overview into a clean, balanced 4x2 grid (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`) leaving zero blank space across all viewports.
+This plan details technical designs and step-by-step changes for:
+1. Updating Coupon ID in Staff Performance & Operational Audit across Dashboard and Staff views.
+2. Comprehensive project documentation of architecture, workflows, and completed milestones.
+3. Clarifying Counter Manager vs Counter Staff roles and permissions in mobile operations.
+4. Mobile Active Card Action Hub clean-up: removing subheadings from all buttons, removing View Session & Transaction History button, merging Cancel/Edit Order into Food Orders with working Cancel and Edit flows, and making Cancel Top-up functional.
+5. Menu Analytics overhaul: replacing Avg Order Value with Menu Variety / Dishes Ordered, and displaying every ordered food item instead of only Samosa.
 
-## Visual Design Reference
-![Super Admin Analytics 8 Boxes Grid](file:///C:/Users/damie/.gemini/antigravity-ide/brain/9c70217b-9240-4d11-907e-eaaf4a37b746/superadmin_analytics_8_boxes_grid_1790159666150.jpg)
+## Visual Interface Design
 
----
+![Action Hub Clean-up and Menu Analytics Design](file:///C:/Users/damie/.gemini/antigravity-ide/brain/9c70217b-9240-4d11-907e-eaaf4a37b746/mobile_action_hub_and_menu_analytics_1790175298386.jpg)
 
-## Wireframe Layout
+## ASCII Wireframes
 
+### 1. Active Card Action Hub (Subheadings Removed, Clean Single-Line Buttons)
 ```
-+-------------------------------------------------------------------------------------------------------------------+
-|  Platform Analytics                      [ Cafeteria Scope v ]     [ Start Date ] to [ End Date ]  [Apply] [Reset] |
-|                                                                    [ Refresh ]  [ View PDF ]                      |
-+-------------------------------------------------------------------------------------------------------------------+
-|  [ Financial Overview (Active) ]   [ Card Analytics ]                                                             |
-+-------------------------------------------------------------------------------------------------------------------+
-|                                                                                                                   |
-|  ROW 1 (4 Cards - Perfectly Filled, Zero Blank Space):                                                            |
-|  +--------------------+  +--------------------+  +--------------------+  +--------------------+                   |
-|  | ORGANIZATION   [#] |  | NET MONEY COLL.    |  | ONLINE UPI MONEY   |  | CASH MONEY         |                   |
-|  | 3 Cafeterias       |  | Rs. 3,000          |  | Rs. 500            |  | Rs. 2,500          |                   |
-|  | Registered client  |  | Added - Refunded   |  | Instant QR & App   |  | Paper Bills        |                   |
-|  | cafeterias         |  | Total retained     |  | 0 top-ups          |  | 0 top-ups          |                   |
-|  +--------------------+  +--------------------+  +--------------------+  +--------------------+                   |
-|                                                                                                                   |
-|  ROW 2 (4 Cards - Perfectly Filled, Zero Blank Space):                                                            |
-|  +--------------------+  +--------------------+  +--------------------+  +--------------------+                   |
-|  | MONEY ADDED    [$] |  | MONEY REFUNDED [^] |  | CANCELLED TOP-UPS  |  | CANCELLED ORDERS   |                   |
-|  | Rs. 3,000          |  | Rs. 0              |  | Rs. 0              |  | Rs. 0              |                   |
-|  | Loaded onto cards  |  | Balance returned   |  | 0 recharges        |  | 0 orders restored  |                   |
-|  |                    |  | to customers       |  | reversed           |  |                    |                   |
-|  +--------------------+  +--------------------+  +--------------------+  +--------------------+                   |
-|                                                                                                                   |
-+-------------------------------------------------------------------------------------------------------------------+
++-------------------------------------------------------------+
+|                     Card: MC-001                      [QR]  |
++-------------------------------------------------------------+
+| +---------------------------------------------------------+ |
+| | MC-001                       [ACTIVE]                   | |
+| | Rahul Sharma                                            | |
+| | ------------------------------------------------------- | |
+| | Balance: Rs 750.00                    Session Active    | |
+| +---------------------------------------------------------+ |
+|                                                             |
+| Card Actions & Operations                                   |
+| +---------------------------------------------------------+ |
+| | [Wallet]  Recharge Card                             (>) | |
+| +---------------------------------------------------------+ |
+| | [Cart]    Add Products                              (>) | |
+| +---------------------------------------------------------+ |
+| | [Clock]   Top-up History                            (>) | |
+| +---------------------------------------------------------+ |
+| | [Food]    Food Orders                               (>) | |
+| +---------------------------------------------------------+ |
+| | [Info]    Card Info & Statistics                    (>) | |
+| +---------------------------------------------------------+ |
+| | [Return]  Settle / Return Card                      (>) | |
+| +---------------------------------------------------------+ |
+|                                                             |
+| [ Scan Another Card ]                                       |
++-------------------------------------------------------------+
 ```
 
----
+### 2. Food Orders Sheet (Merged Cancel & Edit Order Flow)
+```
++-------------------------------------------------------------+
+| Food Orders                                             (X) |
+| 2 orders recorded on this card                              |
+| ----------------------------------------------------------- |
+| +---------------------------------------------------------+ |
+| | -Rs 140.00                                              | |
+| | 2x Chicken Biryani, 1x Lime Juice                       | |
+| | Staff: Counter Cashier 1         12:45 PM               | |
+| | [ Edit Order ]                      [ Cancel Order ]    | |
+| +---------------------------------------------------------+ |
+| +---------------------------------------------------------+ |
+| | -Rs 40.00                                               | |
+| | 2x Samosa, 1x Tea                                       | |
+| | Staff: Counter Cashier 1         11:30 AM               | |
+| | [ Edit Order ]                      [ Cancel Order ]    | |
+| +---------------------------------------------------------+ |
++-------------------------------------------------------------+
+```
 
-## User Review Required
-
-> [!IMPORTANT]
-> - All 8 boxes are unified into a single responsive grid (`grid gap-4 sm:grid-cols-2 lg:grid-cols-4`).
-> - Row 1 contains 4 cards: **Organization**, **Net Money Collected**, **Online UPI Money**, **Cash Money**.
-> - Row 2 contains 4 cards: **Money Added**, **Money Refunded**, **Cancelled Top-ups**, **Cancelled Food Orders**.
-> - Every card shares the exact same height and border styling, leaving **zero empty space** on desktop, tablet, and mobile.
-
----
+### 3. Analytics Menu Tab (Replaced Avg Order Value + All Ordered Items)
+```
++-------------------------------------------------------------+
+| [ Recharge ]                          [ Menu (Active) ]     |
+| ----------------------------------------------------------- |
+| [ Food Sales: Rs 4,850 ]      [ Items Sold: 142 Units ]     |
+| [ Dishes Ordered: 14 Dishes ] [ Cancelled: 2 (Rs 80) ]      |
+|                                                             |
+| ALL ORDERED MENU ITEMS                            14 items  |
+| ----------------------------------------------------------- |
+| [Veg Rice]        42 units sold                  Rs 3,360   |
+| [Chicken Curry]   35 units sold                  Rs 4,200   |
+| [Sandwich]        28 units sold                  Rs 1,960   |
+| [Samosa]          24 units sold                    Rs 360   |
+| [Tea]             20 units sold                    Rs 200   |
+| [Paneer Tikka]    15 units sold                  Rs 2,250   |
++-------------------------------------------------------------+
+```
 
 ## Proposed Changes
 
-### Frontend Sub-Project (`Frontend Money Card`)
+### Backend Sub-project (`Backend Money Card/`)
 
-#### [MODIFY] [OrgAdminAnalyticsComponents.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/analytics/OrgAdminAnalyticsComponents.tsx)
-- In `FinancialSectionProps`, add `leadingCard?: React.ReactNode;`.
-- When `leadingCard` is provided:
-  - Render Row 1 as a 4-column grid (`grid gap-4 sm:grid-cols-2 lg:grid-cols-4`) containing `leadingCard`, `Net Money Collected`, `Online UPI Money`, and `Cash Money`.
-  - Render Row 2 as a 4-column grid (`grid gap-4 sm:grid-cols-2 lg:grid-cols-4`) containing `Money Added`, `Money Refunded`, `Cancelled Top-ups`, and `Cancelled Food Orders`.
-- When `leadingCard` is omitted (Org Admin mode):
-  - Retain the default 3-column top grid (`grid gap-4 sm:grid-cols-3`) for complete backward compatibility.
+#### [MODIFY] [analytics.controller.ts](file:///D:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/analytics.controller.ts)
+- In `getOrgAnalytics` (line 167):
+  - Expand `prisma.transaction.findMany` include to fetch `session: { include: { card: true } }`.
+  - In `staffTxns.forEach`, populate `cardNumber` on all transaction activity records (`tx.session?.card?.physicalCardNumber || tx.session?.sessionCardNumber || 'MC-Card'`), along with `customerName` and `customerPhone`.
+  - In `branchMetricsMap`, calculate `productDemand` dynamically from `tx.items` of all `PURCHASE` transactions for each branch, instead of slicing inventory with fixed counts. Every purchased dish will be recorded with its actual `quantitySold` and `totalRevenue`.
 
-#### [MODIFY] [SuperAdminAnalyticsView.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/analytics/SuperAdminAnalyticsView.tsx)
-- Pass the `Organization` card into `OrgAdminFinancialSection` via the `leadingCard` prop.
-- Remove the isolated top grid so that `Organization` and the other 7 cards form two complete 4-card rows with zero blank space.
+#### [MODIFY] [sessions.routes.ts](file:///D:/Money%20Card%20Project/Backend%20Money%20Card/src/routes/sessions.routes.ts)
+- Update authorization on `POST /transactions/:id/cancel-recharge` from `requirePermission(PermissionCode.RECHARGE)` to `requireAnyPermission(PermissionCode.RECHARGE, PermissionCode.PURCHASE)` so counter supervisors and authorized counter cashiers can void accidental top-ups at the counter.
+
+---
+
+### Frontend Sub-project (`Frontend Money Card/`)
+
+#### [MODIFY] [StaffPage.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/staff/StaffPage.tsx)
+- In `handleOpenStaffAudit`, always re-fetch `apiService.analytics.getOverview()` so that staff audit activities and Coupon IDs are always fresh and updated with recent transactions.
+- Verify the Coupon ID column accurately formats `act.cardNumber` and does not fall back to empty dashes when card numbers are present.
+
+#### [MODIFY] [analytics.ts](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/services/mock/handlers/analytics.ts)
+- In mock analytics handler, ensure all `staffTxns` activity records populate `cardNumber`, `customerName`, and `customerPhone` from `mockStore.sessions` and `mockStore.cards`.
+
+---
+
+### Mobile Sub-project (`Flutter Money card/`)
+
+#### [MODIFY] [pos_scan_purchase_screen.dart](file:///D:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/pos/pos_scan_purchase_screen.dart)
+- Action Hub Button Subheading Removal:
+  - In `_buildActionTile`, make `subtitle` optional and remove subtitle text from all action tiles (`Recharge Card`, `Add Products`, `Top-up History`, `Food Orders`, `Card Info & Statistics`, `Settle / Return Card`) so they render as clean, focused single-line buttons.
+- View Session Button Removal:
+  - Delete `OPTION 6: VIEW SESSION & TRANSACTION HISTORY` tile from the Action Hub layout.
+- Standalone Cancel / Edit Order Removal & Merge into Food Orders:
+  - Remove standalone `OPTION 3: CANCEL / EDIT RECENT ORDER` tile from the main Action Hub list.
+  - In `_showFoodOrdersSheet`, update each order card to show two operational action buttons:
+    - `Edit Order`: Displays confirmation, cancels the order with auto-refund, and immediately navigates to `/app/pos/${session.id}` with the items from that order pre-populated in the cart so staff can adjust quantities/items.
+    - `Cancel Order`: Prompts for reason and cancels the order with instant auto-refund back to card.
+- Top-up Cancel Functionality:
+  - In `_showTopUpHistorySheet`, keep the sheet responsive and wrap in `StatefulBuilder`.
+  - When `Cancel Top-up` is confirmed, call `sessionService.cancelRecharge`, refresh session data, and update the item badge to `CANCELLED` without dismissing the sheet unexpectedly.
+  - Check balance sufficiency before attempting void to give clear user feedback if balance was already spent.
+
+#### [MODIFY] [analytics_screen.dart](file:///D:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/analytics/analytics_screen.dart)
+- Replace "Avg Order Value" summary card with "Dishes Ordered" / "Menu Variety":
+  - Title: `Dishes Ordered` (or `Menu Variety`)
+  - Value: `${demands.length} Dishes`
+  - Subtitle: `${data.productsSoldCount} total units sold`
+  - Icon: `Icons.restaurant_outlined`
+- Popular Menu Items Section:
+  - Rename header from `POPULAR MENU ITEMS` to `ALL ORDERED MENU ITEMS`.
+  - Render every food item present in `data.productDemand` without truncation or limit.
+
+#### [MODIFY] [mock_api_interceptor.dart](file:///D:/Money%20Card%20Project/Flutter%20Money%20card/lib/core/network/interceptors/mock_api_interceptor.dart)
+- Populate `productDemand` dynamically from all `PURCHASE` transactions in mock data so that all purchased food items (Veg Rice, Chicken Curry, Sandwich, Samosa, Tea, Coffee, Paneer Tikka) appear in the list.
 
 ---
 
 ## Verification Plan
 
 ### Automated Tests
-- TypeScript check: `npx tsc --noEmit` in `Frontend Money Card`.
-- Vitest suite: `npm test -- --run` in `Frontend Money Card` (267 passing tests).
-- Backend suite: `npm test` in `Backend Money Card` (100 passing tests).
+- Run all frontend Vitest tests: `npm test -- --run` in `Frontend Money Card/`.
+- Run all Flutter unit & widget tests: `flutter test` in `Flutter Money card/`.
+- Run Flutter static analysis: `flutter analyze --no-pub` in `Flutter Money card/`.
+- Run backend unit tests: `npm test` in `Backend Money Card/`.
 
-### Local Git
-- Auto-stage and commit locally on branch `staging`.
-- Ask for user confirmation before pushing to remote `staging`.
+### Manual & Hardware Verification
+- Check Staff Performance & Operational Audit modal in Web app: verify Coupon ID displays actual card numbers for purchases, recharges, and settlements.
+- Open Mobile POS Action Hub on Android device: verify all subheadings are removed, View Session button is gone, and standalone Cancel/Edit order button is merged into Food Orders.
+- Test "Edit Order" in Food Orders sheet: verify order is cancelled, balance refunded, and cart re-opened.
+- Test "Cancel Top-up" in Top-up History: verify balance is deducted and badge updates to CANCELLED.
+- Check Analytics Menu tab: verify "Avg Order Value" is replaced with "Dishes Ordered", and all ordered dishes are listed.
