@@ -26,8 +26,7 @@ import {
 import { DataTable } from '@/components/tables';
 import { notify, formatCurrency } from '@/utils';
 import { filterStaffActivities, calculateScopedStaffMetrics } from '@/features/analytics/staffActivityFilter';
-import { PermissionMatrix } from './PermissionMatrix';
-import { MANAGER_PERMISSIONS, STAFF_PERMISSIONS } from './constants';
+import { MANAGER_PERMISSIONS } from './constants';
 import { UnauthorizedPage } from '@/features/auth';
 import {
   Users,
@@ -36,7 +35,6 @@ import {
   Search,
   Edit2,
   Building2,
-  ShieldCheck,
   RefreshCw,
   AlertCircle,
   Eye, EyeOff,
@@ -52,8 +50,6 @@ import {
   Copy,
   ExternalLink,
   Share2,
-  Phone,
-  CheckCircle2,
   Trash2,
 } from 'lucide-react';
 
@@ -103,7 +99,7 @@ export function StaffPage() {
   // ── Unified Staff Details/Edit Modal State ─────────────────
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [showStaffDetailsModal, setShowStaffDetailsModal] = useState(false);
-  const [staffTab, setStaffTab] = useState<'overview' | 'permissions' | 'branches'>('overview');
+  const [staffTab, setStaffTab] = useState<'overview' | 'branches'>('overview');
 
   // ── Counter Staff Grouping State ───────────────────────────
   const [selectedCounterGroup, setSelectedCounterGroup] = useState<CounterStaffGroup | null>(null);
@@ -243,7 +239,7 @@ export function StaffPage() {
 
   // ── Add Staff Modal State & Multi-step Tabs ─────────────────
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addTab, setAddTab] = useState<'basic' | 'branches' | 'permissions'>('basic');
+  const [addTab, setAddTab] = useState<'basic' | 'branches'>('basic');
 
   const [showStaffCreatedModal, setShowStaffCreatedModal] = useState(false);
   const [createdStaffCredentials, setCreatedStaffCredentials] = useState<{
@@ -548,7 +544,7 @@ export function StaffPage() {
   // ── Open Unified Staff Details/Edit Modal ─────────────────
   const handleOpenStaffModal = (
     staff: Staff,
-    initialTab: 'overview' | 'permissions' | 'branches' = 'overview',
+    initialTab: 'overview' | 'branches' = 'overview',
   ) => {
     setSelectedStaff(staff);
     setFormName(formatStaffDisplayName(staff.name, staff.assignedBranchIds));
@@ -796,65 +792,6 @@ export function StaffPage() {
     }
   };
 
-  //  Save Staff Permissions
-  const handleSavePermissions = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!selectedStaff) return;
-
-    setFormErrors({});
-    setModalApiError(null);
-    setIsSubmitting(true);
-
-    try {
-      const permissionsToSave = new Set(formPermissions);
-      if (permissionsToSave.has('CARD_BLOCK') || permissionsToSave.has('CARD_UNBLOCK')) {
-        permissionsToSave.add('CARD_BLOCK');
-        permissionsToSave.add('CARD_UNBLOCK');
-      }
-      if (permissionsToSave.has('PRODUCT_VIEW')) {
-        permissionsToSave.add('PRODUCT_VIEW');
-      }
-      if (permissionsToSave.has('PRODUCT_MANAGE')) {
-        permissionsToSave.add('PRODUCT_MANAGE');
-        permissionsToSave.add('PRODUCT_VIEW');
-      }
-      if (permissionsToSave.has('BRANCH_VIEW') || permissionsToSave.has('STAFF_VIEW')) {
-        permissionsToSave.add('BRANCH_VIEW');
-        permissionsToSave.add('STAFF_VIEW');
-      }
-      if (
-        permissionsToSave.has('BRANCH_MANAGE') ||
-        permissionsToSave.has('STAFF_MANAGE') ||
-        permissionsToSave.has('VIEW_ANALYTICS') ||
-        permissionsToSave.has('VIEW_REPORTS')
-      ) {
-        permissionsToSave.add('BRANCH_MANAGE');
-        permissionsToSave.add('STAFF_MANAGE');
-        permissionsToSave.add('VIEW_ANALYTICS');
-        permissionsToSave.add('VIEW_REPORTS');
-        permissionsToSave.add('BRANCH_VIEW');
-        permissionsToSave.add('STAFF_VIEW');
-      }
-
-      const res = await apiService.staff.updateStaffPermissions(
-        selectedStaff.id,
-        Array.from(permissionsToSave),
-      );
-
-      if (!res.success) {
-        setModalApiError(res.error.message || 'Failed to update permissions');
-        return;
-      }
-
-      notify.success('Permissions updated successfully.');
-      setSelectedStaff((prev) => (prev ? { ...prev, permissions: Array.from(permissionsToSave) } : null));
-      fetchStaffData();
-    } catch {
-      setModalApiError('An unexpected error occurred. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   //  Save Staff Branch Assignments
   const handleSaveBranches = async (e?: React.FormEvent) => {
@@ -1212,19 +1149,6 @@ export function StaffPage() {
               Edit
             </Button>
           )}
-          {canManage && (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={staff.id === user?.id}
-              onClick={() => handleInitiateDelete(staff)}
-              className="text-xs h-7 px-2.5 rounded-lg border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700 transition-all shadow-2xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-              leftIcon={<Trash2 className="h-3 w-3 text-rose-500" />}
-              title={staff.id === user?.id ? 'Cannot delete your own account' : 'Delete staff account'}
-            >
-              Delete
-            </Button>
-          )}
           <Button
             variant="outline"
             size="sm"
@@ -1387,22 +1311,6 @@ export function StaffPage() {
             >
               <User className="h-4 w-4" />
               <span>Overview</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setStaffTab('permissions')}
-              className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
-                staffTab === 'permissions'
-                  ? 'border-emerald-600 text-emerald-700 font-semibold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <ShieldCheck className="h-4 w-4" />
-              <span>Permissions</span>
-              <Badge variant="outline" className="text-[10px] ml-1">
-                {formPermissions.length} / 20
-              </Badge>
             </button>
 
             <button
@@ -1638,18 +1546,7 @@ export function StaffPage() {
               </div>
             )}
 
-            {/* ── TAB 2: PERMISSIONS ── */}
-            {staffTab === 'permissions' && (
-              <div className="space-y-4">
-                <PermissionMatrix
-                  selectedPermissions={formPermissions}
-                  onChange={(perms) => setFormPermissions(perms)}
-                  readOnly={!canManage}
-                />
-              </div>
-            )}
-
-            {/* ── TAB 3: COUNTERS ── */}
+            {/* ── TAB 2: COUNTERS ── */}
             {staffTab === 'branches' && (
               <div className="space-y-4">
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
@@ -1706,7 +1603,7 @@ export function StaffPage() {
           </div>
 
           <ModalFooter>
-            {canManage && staffTab === 'overview' && selectedStaff && (
+            {canManage && selectedStaff && selectedStaff.id !== user?.id && (
               <Button
                 type="button"
                 variant="danger"
@@ -1724,11 +1621,6 @@ export function StaffPage() {
             {canManage && staffTab === 'overview' && (
               <Button type="button" variant="primary" onClick={handleSaveProfile} isLoading={isSubmitting} disabled={isSubmitting}>
                 Save Staff Information
-              </Button>
-            )}
-            {canManage && staffTab === 'permissions' && (
-              <Button type="button" variant="primary" onClick={handleSavePermissions} isLoading={isSubmitting} disabled={isSubmitting} leftIcon={<ShieldCheck className="h-4 w-4" />}>
-                Save Permissions
               </Button>
             )}
             {canManage && staffTab === 'branches' && (
@@ -1847,21 +1739,6 @@ export function StaffPage() {
 
             {/* Quick Action Footer */}
             <ModalFooter>
-              {canManage && selectedStaff && selectedStaff.id !== user?.id && (
-                <Button
-                  type="button"
-                  variant="danger"
-                  size="sm"
-                  className="mr-auto text-rose-600 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 border border-rose-200 cursor-pointer"
-                  leftIcon={<Trash2 className="h-3.5 w-3.5" />}
-                  onClick={() => {
-                    setShowStaffDetailsModal(false);
-                    handleInitiateDelete(selectedStaff);
-                  }}
-                >
-                  Delete Staff
-                </Button>
-              )}
               <Button
                 type="button"
                 variant="outline"
@@ -2035,22 +1912,6 @@ export function StaffPage() {
                       >
                         Performance & Audit
                       </Button>
-                      {canManage && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={st.id === user?.id}
-                          onClick={() => {
-                            setShowCounterStaffModal(false);
-                            handleInitiateDelete(st);
-                          }}
-                          leftIcon={<Trash2 className="h-3 w-3 text-rose-500" />}
-                          className="text-xs h-7.5 px-2.5 font-medium border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                          title={st.id === user?.id ? 'Cannot delete your own account' : 'Delete staff account'}
-                        >
-                          Delete
-                        </Button>
-                      )}
 
                       {/* Active / Inactive Slide Switch */}
                       <div className="flex items-center gap-2 pl-2.5 border-l border-slate-200">
@@ -2135,84 +1996,65 @@ export function StaffPage() {
             </div>
           )}
 
-          {/* 3-Step Guided Wizard Stepper */}
-          <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/80 px-4 py-3 rounded-xl mb-4">
-            <button
-              type="button"
-              onClick={() => setAddTab('basic')}
-              className="flex items-center gap-2.5 text-left cursor-pointer focus:outline-none"
-            >
-              <div
-                className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all ${
-                  addTab === 'basic'
-                    ? 'bg-emerald-600 text-white ring-4 ring-emerald-100'
-                    : 'bg-emerald-100 text-emerald-800'
-                }`}
+          {/* Stepper for Org Admin (2 steps), or Counter Banner for Counter Admin */}
+          {!isCounterView ? (
+            <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/80 px-4 py-3 rounded-xl mb-4">
+              <button
+                type="button"
+                onClick={() => setAddTab('basic')}
+                className="flex items-center gap-2.5 text-left cursor-pointer focus:outline-none"
               >
-                1
-              </div>
-              <div>
-                <p className={`text-xs font-bold ${addTab === 'basic' ? 'text-emerald-700' : 'text-slate-700'}`}>
-                  1. Account Details
-                </p>
-                <p className="text-[10px] text-slate-400">Name & Phone</p>
-              </div>
-            </button>
+                <div
+                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all ${
+                    addTab === 'basic'
+                      ? 'bg-emerald-600 text-white ring-4 ring-emerald-100'
+                      : 'bg-emerald-100 text-emerald-800'
+                  }`}
+                >
+                  1
+                </div>
+                <div>
+                  <p className={`text-xs font-bold ${addTab === 'basic' ? 'text-emerald-700' : 'text-slate-700'}`}>
+                    1. Account Details
+                  </p>
+                  <p className="text-[10px] text-slate-400">Name & Phone</p>
+                </div>
+              </button>
 
-            <div className="h-0.5 w-8 bg-slate-200 hidden sm:block" />
+              <div className="h-0.5 w-12 bg-slate-200 hidden sm:block" />
 
-            <button
-              type="button"
-              onClick={() => {
-                if (validateBasicInfo()) setAddTab('branches');
-              }}
-              className="flex items-center gap-2.5 text-left cursor-pointer focus:outline-none"
-            >
-              <div
-                className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all ${
-                  addTab === 'branches'
-                    ? 'bg-emerald-600 text-white ring-4 ring-emerald-100'
-                    : addTab === 'permissions'
-                    ? 'bg-emerald-100 text-emerald-800'
-                    : 'bg-slate-200 text-slate-600'
-                }`}
+              <button
+                type="button"
+                onClick={() => {
+                  if (validateBasicInfo()) setAddTab('branches');
+                }}
+                className="flex items-center gap-2.5 text-left cursor-pointer focus:outline-none"
               >
-                2
-              </div>
-              <div>
-                <p className={`text-xs font-bold ${addTab === 'branches' ? 'text-emerald-700' : 'text-slate-700'}`}>
-                  2. Role & Counter
-                </p>
-                <p className="text-[10px] text-slate-400">Counter & preset</p>
-              </div>
-            </button>
-
-            <div className="h-0.5 w-8 bg-slate-200 hidden sm:block" />
-
-            <button
-              type="button"
-              onClick={() => {
-                if (validateBasicInfo()) setAddTab('permissions');
-              }}
-              className="flex items-center gap-2.5 text-left cursor-pointer focus:outline-none"
-            >
-              <div
-                className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all ${
-                  addTab === 'permissions'
-                    ? 'bg-emerald-600 text-white ring-4 ring-emerald-100'
-                    : 'bg-slate-200 text-slate-600'
-                }`}
-              >
-                3
-              </div>
-              <div>
-                <p className={`text-xs font-bold ${addTab === 'permissions' ? 'text-emerald-700' : 'text-slate-700'}`}>
-                  3. Review & Create
-                </p>
-                <p className="text-[10px] text-slate-400">Summary & activate</p>
-              </div>
-            </button>
-          </div>
+                <div
+                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all ${
+                    addTab === 'branches'
+                      ? 'bg-emerald-600 text-white ring-4 ring-emerald-100'
+                      : 'bg-slate-200 text-slate-600'
+                  }`}
+                >
+                  2
+                </div>
+                <div>
+                  <p className={`text-xs font-bold ${addTab === 'branches' ? 'text-emerald-700' : 'text-slate-700'}`}>
+                    2. Assign Counters
+                  </p>
+                  <p className="text-[10px] text-slate-400">Counter Terminal</p>
+                </div>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-emerald-50/70 border border-emerald-200/80 text-xs text-emerald-900 mb-4">
+              <Building2 className="h-4 w-4 text-emerald-600 shrink-0" />
+              <span>
+                Adding staff member for counter: <strong>{scopedBranches[0]?.name || 'Current Counter'}</strong>
+              </span>
+            </div>
+          )}
 
           {/* Form Step Panes (Preserves entered state across tabs) */}
           <div className="max-h-[64vh] overflow-y-auto pr-1">
@@ -2360,146 +2202,6 @@ export function StaffPage() {
                     );
                   })}
                 </div>
-
-                {/* Role Selection inside Step 2 */}
-                <div className="pt-4 border-t border-slate-200">
-                  <div className="mb-3">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                      Choose Role
-                    </h4>
-                  </div>
-
-                  {/* 2 Large Role Preset Cards: Manager & Staff */}
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {/* Manager Card */}
-                    <button
-                      type="button"
-                      onClick={() => setFormPermissions([...MANAGER_PERMISSIONS])}
-                      className={`flex flex-col justify-between p-4 rounded-xl border text-left transition-all cursor-pointer select-none ${
-                        formPermissions.includes('RECHARGE')
-                          ? 'border-emerald-500 bg-emerald-50/80 ring-1 ring-emerald-500'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
-                      }`}
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <h5 className="font-bold text-sm text-slate-900">Manager</h5>
-                          {formPermissions.includes('RECHARGE') && (
-                            <Check className="h-4 w-4 text-emerald-600" />
-                          )}
-                        </div>
-                        <div className="space-y-1.5 text-xs text-slate-700 mt-2">
-                          <div className="flex items-center gap-1.5">
-                            <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                            <span>Recharge & Issue Cards</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                            <span>Settle Cards & Refunds</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                            <span>Manage Products & Menu</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                            <span>Analytics & Reports</span>
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-
-                    {/* Staff Card */}
-                    <button
-                      type="button"
-                      onClick={() => setFormPermissions([...STAFF_PERMISSIONS])}
-                      className={`flex flex-col justify-between p-4 rounded-xl border text-left transition-all cursor-pointer select-none ${
-                        !formPermissions.includes('RECHARGE')
-                          ? 'border-emerald-500 bg-emerald-50/80 ring-1 ring-emerald-500'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
-                      }`}
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <h5 className="font-bold text-sm text-slate-900">Staff</h5>
-                          {!formPermissions.includes('RECHARGE') && (
-                            <Check className="h-4 w-4 text-emerald-600" />
-                          )}
-                        </div>
-                        <div className="space-y-1.5 text-xs text-slate-700 mt-2">
-                          <div className="flex items-center gap-1.5">
-                            <Check className="h-3.5 w-3.5 text-sky-600 shrink-0" />
-                            <span>Deduct Card Amount (POS)</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Check className="h-3.5 w-3.5 text-sky-600 shrink-0" />
-                            <span>Create & Edit Menu Products</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Check className="h-3.5 w-3.5 text-sky-600 shrink-0" />
-                            <span>Add Food Products to Cart</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Check className="h-3.5 w-3.5 text-sky-600 shrink-0" />
-                            <span>Scan & View Card Balance</span>
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ── STEP 3: REVIEW & CREATE ── */}
-            {addTab === 'permissions' && (
-              <div className="space-y-4">
-                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-4">
-                  <div className="flex items-center gap-3 border-b border-slate-200 pb-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 font-bold">
-                      <User className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900 text-base">{formName || 'Staff Member'}</h4>
-                      <p className="text-xs text-slate-500 font-mono flex items-center gap-1">
-                        <Phone className="h-3 w-3" />
-                        {formPhone || 'No phone entered'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    <div className="p-3 rounded-lg border border-slate-200 bg-white">
-                      <span className="text-slate-500 font-medium block mb-1">Assigned Counter(s)</span>
-                      <p className="font-semibold text-slate-900 flex items-center gap-1.5">
-                        <Building2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                        {formBranchIds.length === 0
-                          ? 'No counters selected'
-                          : branches
-                              .filter((b) => formBranchIds.includes(b.id))
-                              .map((b) => b.name)
-                              .join(', ')}
-                      </p>
-                    </div>
-
-                    <div className="p-3 rounded-lg border border-slate-200 bg-white">
-                      <span className="text-slate-500 font-medium block mb-1">Assigned Role Preset</span>
-                      <p className="font-semibold text-emerald-700">
-                        {formPermissions.includes('RECHARGE') ? 'Manager' : 'Staff'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-3.5 text-xs text-emerald-900 flex items-start gap-2.5">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="font-semibold">Ready for immediate mobile activation</p>
-                      <p className="text-emerald-700 mt-0.5">
-                        The staff account will be activated immediately upon creation. The staff member can sign into the mobile POS app using phone number <strong>{formPhone}</strong> and their password.
-                      </p>
-                    </div>
-                  </div>
-                </div>
               </div>
             )}
           </div>
@@ -2509,7 +2211,19 @@ export function StaffPage() {
               Cancel
             </Button>
 
-            {addTab === 'basic' && (
+            {addTab === 'basic' && isCounterView && (
+              <Button
+                type="button"
+                variant="primary"
+                onClick={() => handleAddSubmit()}
+                isLoading={isSubmitting}
+                disabled={isSubmitting}
+              >
+                Create Staff Account
+              </Button>
+            )}
+
+            {addTab === 'basic' && !isCounterView && (
               <Button
                 type="button"
                 variant="primary"
@@ -2518,11 +2232,11 @@ export function StaffPage() {
                 }}
                 rightIcon={<ArrowRight className="h-4 w-4" />}
               >
-                Next: Role & Counter
+                Next: Assign Counters
               </Button>
             )}
 
-            {addTab === 'branches' && (
+            {addTab === 'branches' && !isCounterView && (
               <div className="flex gap-2">
                 <Button
                   type="button"
@@ -2531,27 +2245,6 @@ export function StaffPage() {
                   leftIcon={<ArrowLeft className="h-4 w-4" />}
                 >
                   Back: Account Details
-                </Button>
-                <Button
-                  type="button"
-                  variant="primary"
-                  onClick={() => setAddTab('permissions')}
-                  rightIcon={<ArrowRight className="h-4 w-4" />}
-                >
-                  Next: Review & Create
-                </Button>
-              </div>
-            )}
-
-            {addTab === 'permissions' && (
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setAddTab('branches')}
-                  leftIcon={<ArrowLeft className="h-4 w-4" />}
-                >
-                  Back: Role & Counter
                 </Button>
                 <Button
                   type="button"
