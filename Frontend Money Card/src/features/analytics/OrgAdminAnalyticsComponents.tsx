@@ -71,79 +71,86 @@ export function OrgAdminFinancialSection({
 
   return (
     <div className="space-y-4">
-      {/* 1. Highlighted Total Sales Card (Top Main Metric, Sleek & Minimal) */}
-      <Card
-        padding="md"
-        className="border-emerald-300 bg-gradient-to-r from-emerald-50/60 via-white to-teal-50/30 shadow-xs ring-1 ring-emerald-500/20 transition-all flex flex-col justify-between py-3.5 px-5"
-      >
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wider text-emerald-800">
-            Total Sales
-          </span>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100/70 text-emerald-700">
-            <TrendingUp className="h-4 w-4" />
-          </div>
-        </div>
-        <div className="mt-2">
-          <p className="font-mono text-3xl font-extrabold text-slate-900">
-            {formatCurrency(netMoneyCollected)}
-          </p>
-        </div>
-      </Card>
-
-      {/* 2. Recharge Triad (Small Neutral White Cards) */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        {/* Recharge */}
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Recharge
+      {/* 1. Highlighted Total Sales Card (Centered in the Middle) */}
+      <div className="flex justify-center w-full">
+        <Card
+          padding="md"
+          className="w-full max-w-sm sm:max-w-md border-emerald-300 bg-gradient-to-r from-emerald-50/60 via-white to-teal-50/30 shadow-xs ring-1 ring-emerald-500/20 transition-all flex flex-col items-center justify-center text-center py-4 px-6"
+        >
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-800">
+              Total Sales
             </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-              <Wallet className="h-4 w-4" />
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-emerald-100/70 text-emerald-700">
+              <TrendingUp className="h-3.5 w-3.5" />
             </div>
           </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-slate-900">
-              {formatCurrency(moneyAdded)}
-            </p>
-          </div>
-        </Card>
-
-        {/* UPI Recharge */}
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              UPI Recharge
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-50 text-purple-700">
-              <CreditCard className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-purple-700">
-              {formatCurrency(upiMoney)}
-            </p>
-          </div>
-        </Card>
-
-        {/* Cash Recharge */}
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Cash Recharge
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
-              <DollarSign className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-emerald-700">
-              {formatCurrency(cashMoney)}
+          <div className="mt-1.5">
+            <p className="font-mono text-3xl font-extrabold text-slate-900">
+              {formatCurrency(netMoneyCollected)}
             </p>
           </div>
         </Card>
       </div>
+
+      {/* 2. Unified Single Recharge Box (3 Columns in 1 Box) */}
+      <Card
+        padding="none"
+        className="border-slate-200 bg-white shadow-xs overflow-hidden"
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-100">
+          {/* Recharge Total */}
+          <div className="p-4 sm:p-5 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Recharge
+              </span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                <Wallet className="h-4 w-4" />
+              </div>
+            </div>
+            <div className="mt-2">
+              <p className="font-mono text-2xl font-bold text-slate-900">
+                {formatCurrency(moneyAdded)}
+              </p>
+            </div>
+          </div>
+
+          {/* UPI Recharge */}
+          <div className="p-4 sm:p-5 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                UPI Recharge
+              </span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-50 text-purple-700">
+                <CreditCard className="h-4 w-4" />
+              </div>
+            </div>
+            <div className="mt-2">
+              <p className="font-mono text-2xl font-bold text-purple-700">
+                {formatCurrency(upiMoney)}
+              </p>
+            </div>
+          </div>
+
+          {/* Cash Recharge */}
+          <div className="p-4 sm:p-5 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Cash Recharge
+              </span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+                <DollarSign className="h-4 w-4" />
+              </div>
+            </div>
+            <div className="mt-2">
+              <p className="font-mono text-2xl font-bold text-emerald-700">
+                {formatCurrency(cashMoney)}
+              </p>
+            </div>
+          </div>
+        </div>
+      </Card>
 
       {/* 3. Follow-up Metric Cards Below */}
       <div className={`grid gap-4 sm:grid-cols-2 ${leadingCard ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
