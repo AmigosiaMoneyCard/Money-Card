@@ -74,7 +74,7 @@ export function StaffPage() {
 
   const isCounterView = user?.role === 'STAFF';
   const canView = hasPermission('STAFF_VIEW');
-  const canManage = hasPermission('STAFF_MANAGE');
+  const canManage = hasPermission('STAFF_MANAGE') || isCounterView;
 
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -1602,32 +1602,38 @@ export function StaffPage() {
             )}
           </div>
 
-          <ModalFooter>
-            {canManage && selectedStaff && selectedStaff.id !== user?.id && (
-              <Button
-                type="button"
-                variant="danger"
-                size="sm"
-                className="mr-auto text-rose-600 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 border border-rose-200 cursor-pointer"
-                leftIcon={<Trash2 className="h-3.5 w-3.5" />}
-                onClick={() => handleInitiateDelete(selectedStaff)}
-              >
-                Delete
+          <ModalFooter className="w-full flex items-center justify-between">
+            <div>
+              {canManage && selectedStaff && (
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  disabled={selectedStaff.id === user?.id || isSubmitting}
+                  title={selectedStaff.id === user?.id ? 'Cannot delete your own account' : 'Delete staff member'}
+                  className="text-rose-600 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 border border-rose-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  leftIcon={<Trash2 className="h-3.5 w-3.5" />}
+                  onClick={() => handleInitiateDelete(selectedStaff)}
+                >
+                  Delete Staff
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setShowStaffModal(false)} disabled={isSubmitting}>
+                Close
               </Button>
-            )}
-            <Button variant="outline" onClick={() => setShowStaffModal(false)} disabled={isSubmitting}>
-              Close
-            </Button>
-            {canManage && staffTab === 'overview' && (
-              <Button type="button" variant="primary" onClick={handleSaveProfile} isLoading={isSubmitting} disabled={isSubmitting}>
-                Save Staff Information
-              </Button>
-            )}
-            {canManage && staffTab === 'branches' && (
-              <Button type="button" variant="primary" onClick={handleSaveBranches} isLoading={isSubmitting} disabled={isSubmitting} leftIcon={<Building2 className="h-4 w-4" />}>
-                Save Branches
-              </Button>
-            )}
+              {canManage && staffTab === 'overview' && (
+                <Button type="button" variant="primary" onClick={handleSaveProfile} isLoading={isSubmitting} disabled={isSubmitting}>
+                  Save Staff Information
+                </Button>
+              )}
+              {canManage && staffTab === 'branches' && (
+                <Button type="button" variant="primary" onClick={handleSaveBranches} isLoading={isSubmitting} disabled={isSubmitting} leftIcon={<Building2 className="h-4 w-4" />}>
+                  Save Branches
+                </Button>
+              )}
+            </div>
           </ModalFooter>
         </form>
       </Modal>

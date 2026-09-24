@@ -1,76 +1,118 @@
-# Implementation Plan: Centered Total Sales & Unified Single Recharge Box
+# Implementation Plan: Delete Staff Option in Edit Staff Modal (Org Admin & Counter Dashboard)
 
-Center the highlighted Total Sales box in the middle on top as the primary focal metric, and unify Recharge, UPI Recharge, and Cash Recharge together into one single compact box with internal dividers.
+Add a dedicated Delete Staff button on the far left of the modal footer inside the Edit Staff modal across Org Admin and Counter Dashboard, opposite the Close and Save buttons.
 
 ## Visual Design Sketch
 
-![Centered Total Sales and One Recharge Box Sketch](C:\Users\damie\.gemini\antigravity-ide\brain\9c70217b-9240-4d11-907e-eaaf4a37b746\centered_total_sales_and_one_recharge_box_sketch_1790240538759.jpg)
+![Edit Staff Modal with Delete Button](C:\Users\damie\.gemini\antigravity-ide\brain\9c70217b-9240-4d11-907e-eaaf4a37b746\edit_staff_modal_delete_button_sketch_1790243640386.jpg)
 
 ## User Review Required
 
-- Top Card (Total Sales Centered in the Middle):
-  - Stays at the top as the sole highlighted main card, but instead of being stretched or left-aligned, it is horizontally centered (`max-w-md mx-auto` or `max-w-sm mx-auto`).
-  - Styled with subtle emerald accent border (`border-emerald-300 ring-1 ring-emerald-500/20 bg-gradient-to-r from-emerald-50/60 via-white to-teal-50/30`), centered label 'Total Sales', and centered bold value `formatCurrency(netMoneyCollected)`.
-- Row 2 (Single Unified Recharge Box):
-  - Recharge, UPI Recharge, and Cash Recharge are placed together inside ONE single compact card (`border-slate-200 bg-white shadow-xs`).
-  - Internally divided into 3 equal, side-by-side columns with subtle vertical borders (`divide-y sm:divide-y-0 sm:divide-x divide-slate-100`):
-    - Column 1: `Recharge` with total recharge volume `formatCurrency(moneyAdded)`.
-    - Column 2: `UPI Recharge` with `formatCurrency(upiMoney)`.
-    - Column 3: `Cash Recharge` with `formatCurrency(cashMoney)`.
-  - Zero bloated nested containers, low vertical height (~90px), space-efficient.
-- Row 3 (Follow-up Metric Cards):
-  - Uniform responsive grid below (`Wallet Activations`, `Cafeterias` if Super Admin, `Money Refunded`, `Cancelled Top-ups`, `Cancelled Food Orders`).
+- Delete Button Location:
+  - Inside the Edit Staff modal (`showStaffModal`), placed on the **far left** of the modal footer.
+  - Sits on the opposite end from the **Close** and **Save Staff Information** buttons.
+- Layout & Responsiveness:
+  - Modal footer uses a two-sided flex layout (`w-full flex items-center justify-between`):
+    - Left side: Danger-styled `Delete Staff` button with `Trash2` icon.
+    - Right side: `Close` outline button and `Save Staff Information` primary button.
+- Safety & Guards:
+  - When editing another staff member: `Delete Staff` is active, clicking it opens the confirmation dialog.
+  - When editing own account (`selectedStaff.id === user?.id`): The button remains visible on the far left but is disabled with tooltip "Cannot delete your own account" to prevent accidental lockouts while maintaining visual consistency.
+- Confirmation Flow:
+  - Clicking `Delete Staff` opens the existing delete confirmation modal.
+  - Confirming triggers `apiService.staff.deleteStaff(staffId)`, closes both modals, and shows a success notification.
 
 ## Proposed Changes
 
 ### Frontend Web Admin Dashboard
 
-#### [MODIFY] [OrgAdminAnalyticsComponents.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/analytics/OrgAdminAnalyticsComponents.tsx)
-- In `OrgAdminFinancialSection`:
-  - Top Section:
-    - Wrap `Total Sales` card in a centered container (`flex justify-center w-full`):
-      `Card padding="sm" className="w-full max-w-sm sm:max-w-md border-emerald-300 bg-gradient-to-r from-emerald-50/60 via-white to-teal-50/30 ring-1 ring-emerald-500/20 shadow-xs text-center py-4 px-6"`
-      Centered label 'Total Sales' and centered value `font-mono text-3xl font-extrabold text-slate-900`.
-  - Row 2 (Unified Single Recharge Box):
-    - Single compact Card with a 3-column divided layout:
-      `Card padding="none" className="border-slate-200 bg-white shadow-xs overflow-hidden"`
-      Inside: `grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-100`
-      - Col 1: 'Recharge' with Wallet icon and `formatCurrency(moneyAdded)`.
-      - Col 2: 'UPI Recharge' with CreditCard icon and `formatCurrency(upiMoney)`.
-      - Col 3: 'Cash Recharge' with DollarSign icon and `formatCurrency(cashMoney)`.
-  - Row 3: Follow-up metric cards in a compact grid (`grid gap-4 sm:grid-cols-2 lg:grid-cols-4` or `lg:grid-cols-5`).
+#### [MODIFY] [StaffPage.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/staff/StaffPage.tsx)
+
+- Update `canManage` definition to ensure counter managers in Counter Dashboard have management access:
+  ```ts
+  const canManage = hasPermission('STAFF_MANAGE') || isCounterView;
+  ```
+- Refactor the `ModalFooter` of the Edit Staff modal (`showStaffModal`, around line 1605):
+  - Replace the current single flex list with an explicit two-sided flex container:
+    ```tsx
+    <ModalFooter className="w-full flex items-center justify-between">
+      <div>
+        {canManage && selectedStaff && (
+          <Button
+            type="button"
+            variant="danger"
+            size="sm"
+            disabled={selectedStaff.id === user?.id || isSubmitting}
+            title={selectedStaff.id === user?.id ? 'Cannot delete your own account' : 'Delete staff member'}
+            className="text-rose-600 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 border border-rose-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            leftIcon={<Trash2 className="h-3.5 w-3.5" />}
+            onClick={() => handleInitiateDelete(selectedStaff)}
+          >
+            Delete Staff
+          </Button>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        <Button variant="outline" onClick={() => setShowStaffModal(false)} disabled={isSubmitting}>
+          Close
+        </Button>
+        {canManage && staffTab === 'overview' && (
+          <Button type="button" variant="primary" onClick={handleSaveProfile} isLoading={isSubmitting} disabled={isSubmitting}>
+            Save Staff Information
+          </Button>
+        )}
+        {canManage && staffTab === 'branches' && (
+          <Button type="button" variant="primary" onClick={handleSaveBranches} isLoading={isSubmitting} disabled={isSubmitting} leftIcon={<Building2 className="h-4 w-4" />}>
+            Save Branches
+          </Button>
+        )}
+      </div>
+    </ModalFooter>
+    ```
 
 ---
 
-## Wireframe Comparison
+## Wireframe Layout
 
-### New Layout (Total Sales Centered + 1 Single Recharge Box)
+### Edit Staff Modal Footer Layout
 ```
-+--------------------------------------------------------------------------------------------------------+
-|                                  +------------------------------------+                                |
-|                                  |            Total Sales             |                                |
-|                                  |               Rs 295               |                                |
-|                                  +------------------------------------+                                |
-+--------------------------------------------------------------------------------------------------------+
-| [ ONE SINGLE RECHARGE BOX ]                                                                            |
-| Recharge: Rs 500             | UPI Recharge: Rs 0                  | Cash Recharge: Rs 500             |
-+--------------------------------------------------------------------------------------------------------+
-| [Wallet Activations]        | [Money Refunded]        | [Cancelled Top-ups]   | [Cancelled Food Orders]|
-| 14,352 Wallets              | Rs 384,760              | Rs 126,900            | Rs 97,250              |
-+--------------------------------------------------------------------------------------------------------+
++------------------------------------------------------------------------------------+
+| Staff Settings: Rahul Sharma                                                   [X] |
++------------------------------------------------------------------------------------+
+| [Overview]   [Counters]                                                            |
+|                                                                                    |
+| Staff Name                                                                         |
+| [ Rahul Sharma                                                                   ] |
+|                                                                                    |
+| Phone Number                                                                       |
+| [ 9876543210                                                                     ] |
+|                                                                                    |
+| Account Status                                                                     |
+| (•) Active  ( ) Inactive                                                           |
+|                                                                                    |
++------------------------------------------------------------------------------------+
+| [ Trash2 Delete Staff ]                                 [ Close ] [ Save Changes ] |
++------------------------------------------------------------------------------------+
 ```
+
+---
+
+## Web <-> Mobile App Parity Check
+
+- Mobile POS (`Flutter Money card`):
+  - The Flutter mobile POS app is strictly an operational terminal for issuing cards, recharges, and scanning food purchases.
+  - Staff creation, editing, and deletion are handled exclusively within the Web Admin Dashboard and Counter Dashboard. No Flutter changes required.
 
 ---
 
 ## Verification Plan
 
-### Automated Tests
-- Run `npm test -- --run` in `Frontend Money Card/` to verify all 272 tests continue to pass.
-- Run `npx tsc --noEmit` in `Frontend Money Card/` to verify 0 TypeScript errors.
-- Run `npm test` in `Backend Money Card/` (100 tests).
-- Run `flutter test` in `Flutter Money card/` (168 tests).
+### Automated Test Suites
+- Execute Frontend Vitest tests: `npm test -- --run` in `Frontend Money Card`
+- Execute TypeScript check: `npx tsc --noEmit` in `Frontend Money Card`
+- Ensure all 272+ frontend tests pass with 0 errors.
 
 ### Manual Verification
-- Verify that Total Sales is centered in the middle at the top with emerald highlighting.
-- Verify that Recharge, UPI Recharge, and Cash Recharge are displayed together in ONE compact box with clean divided columns.
-- Verify responsive layout across mobile, tablet, and desktop viewports.
+- Open Org Admin -> Staff -> click Edit on a staff member -> verify "Delete Staff" button is displayed on the far left of the footer, with Close and Save buttons on the far right.
+- Open Counter Dashboard -> Staff -> click Edit on a staff member -> verify "Delete Staff" button is on the far left.
+- Click "Delete Staff" -> verify confirmation dialog opens with warning message and cancel/confirm buttons.
