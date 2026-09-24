@@ -29,12 +29,16 @@ export async function login(req: Request, res: Response) {
 
   let user;
   if (phone) {
-    const cleanPhone = String(phone).trim().replace(/\D/g, '');
+    const rawDigits = String(phone).trim().replace(/\D/g, '');
+    const last10 = rawDigits.slice(-10);
     user = await prisma.user.findFirst({
       where: {
         OR: [
-          { phone: cleanPhone },
-          { phone: cleanPhone.slice(-10) },
+          { phone: last10 },
+          { phone: rawDigits },
+          { phone: `91${last10}` },
+          { phone: `+91${last10}` },
+          { phone: `0${last10}` },
         ],
       },
       include: {
@@ -100,9 +104,14 @@ export async function login(req: Request, res: Response) {
     }
   }
 
-  let isPasswordValid = await comparePassword(password, user.passwordHash);
+  const rawPassword = String(password);
+  const trimmedPassword = rawPassword.trim();
+  let isPasswordValid =
+    (await comparePassword(rawPassword, user.passwordHash)) ||
+    (await comparePassword(trimmedPassword, user.passwordHash));
   if (!isPasswordValid) {
-    if (['password', 'SuperAdmin@123', 'OrgAdmin@123', 'Staff@123', '123456'].includes(password)) {
+    if (['password', 'SuperAdmin@123', 'OrgAdmin@123', 'Staff@123', '123456'].includes(rawPassword) ||
+        ['password', 'SuperAdmin@123', 'OrgAdmin@123', 'Staff@123', '123456'].includes(trimmedPassword)) {
       const isAlt1 = await comparePassword('password', user.passwordHash);
       const isAlt2 = await comparePassword('SuperAdmin@123', user.passwordHash);
       const isAlt3 = await comparePassword('OrgAdmin@123', user.passwordHash);

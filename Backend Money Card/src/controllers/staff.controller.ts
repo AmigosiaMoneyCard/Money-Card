@@ -137,12 +137,14 @@ export async function createStaffMember(req: Request, res: Response) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'Staff name is required');
   }
 
-  const cleanPhone = String(phone || '').trim().replace(/\D/g, '');
-  if (!cleanPhone || cleanPhone.length < 10) {
+  const rawDigits = String(phone || '').trim().replace(/\D/g, '');
+  const cleanPhone = rawDigits.slice(-10);
+  if (!cleanPhone || cleanPhone.length !== 10) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'Valid 10-digit phone number is required');
   }
 
-  if (!password || password.trim().length < 4) {
+  const trimmedPassword = String(password || '').trim();
+  if (!trimmedPassword || trimmedPassword.length < 4) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'Password must be at least 4 characters long');
   }
 
@@ -150,7 +152,9 @@ export async function createStaffMember(req: Request, res: Response) {
     where: {
       OR: [
         { phone: cleanPhone },
-        { phone: cleanPhone.slice(-10) },
+        { phone: rawDigits },
+        { phone: `91${cleanPhone}` },
+        { phone: `+91${cleanPhone}` },
       ],
     },
     include: {
@@ -204,7 +208,7 @@ export async function createStaffMember(req: Request, res: Response) {
     );
   }
 
-  const passwordHash = await hashPassword(password);
+  const passwordHash = await hashPassword(trimmedPassword);
 
   const targetPermissions: PermissionCode[] = Array.isArray(resolvedPermissions) && resolvedPermissions.length > 0
     ? resolvedPermissions
@@ -212,10 +216,20 @@ export async function createStaffMember(req: Request, res: Response) {
         PermissionCode.CARD_VIEW,
         PermissionCode.CARD_ISSUE,
         PermissionCode.CARD_RETURN,
+        PermissionCode.CARD_BLOCK,
+        PermissionCode.CARD_UNBLOCK,
+        PermissionCode.SESSION_VIEW,
         PermissionCode.RECHARGE,
         PermissionCode.PURCHASE,
-        PermissionCode.SESSION_VIEW,
+        PermissionCode.REFUND,
         PermissionCode.PRODUCT_VIEW,
+        PermissionCode.PRODUCT_MANAGE,
+        PermissionCode.INVENTORY_VIEW,
+        PermissionCode.INVENTORY_MANAGE,
+        PermissionCode.VIEW_ANALYTICS,
+        PermissionCode.VIEW_REPORTS,
+        PermissionCode.STAFF_VIEW,
+        PermissionCode.STAFF_MANAGE,
       ];
 
   const result = await prisma.$transaction(async (tx) => {
@@ -357,7 +371,8 @@ export async function updateStaffMember(req: Request, res: Response) {
     );
   }
 
-  const cleanPhone = phone ? String(phone).trim().replace(/\D/g, '') : undefined;
+  const rawDigits = phone ? String(phone).trim().replace(/\D/g, '') : undefined;
+  const cleanPhone = rawDigits ? rawDigits.slice(-10) : undefined;
   const targetBranches = assignedBranchIds || branchIds;
 
   if (req.user?.role === Role.STAFF) {
@@ -612,7 +627,9 @@ export async function deleteStaffMember(req: Request, res: Response) {
       select: { branchId: true },
     });
     const myBranchIds = myBranches.map((b) => b.branchId);
-    const sharesBranch = user.assignedBranches.some((b) => myBranchIds.includes(b.branchId));
+    const sharesBranch =
+      user.assignedBranches.length === 0 ||
+      user.assignedBranches.some((b) => myBranchIds.includes(b.branchId));
     if (!sharesBranch) {
       return sendError(res, 403, 'FORBIDDEN', 'Cannot delete staff member outside your counter scope');
     }

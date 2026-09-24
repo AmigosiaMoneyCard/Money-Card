@@ -444,7 +444,7 @@ export function StaffPage() {
       ? scopedBranches.map((b) => b.id)
       : branches.map((b) => b.id);
     setFormBranchIds(defaultBranchIds);
-    setFormPermissions([...STAFF_PERMISSIONS]);
+    setFormPermissions([...MANAGER_PERMISSIONS]);
     setFormErrors({});
     setModalApiError(null);
     setAddTab('basic');
@@ -462,10 +462,10 @@ export function StaffPage() {
       errors.name = 'Staff name must be at most 50 characters';
     }
 
-    const cleanPhone = formPhone.trim().replace(/\D/g, '');
+    const cleanPhone = formPhone.trim().replace(/\D/g, '').slice(-10);
     if (!cleanPhone) {
       errors.phone = 'Phone number is required';
-    } else if (cleanPhone.length < 10 || cleanPhone.length > 15) {
+    } else if (cleanPhone.length !== 10) {
       errors.phone = 'Please provide a valid 10-digit phone number';
     }
 
@@ -499,39 +499,14 @@ export function StaffPage() {
     setIsSubmitting(true);
 
     try {
+      const clean10Phone = formPhone.trim().replace(/\D/g, '').slice(-10);
       const finalPermissions = new Set(formPermissions);
-      if (finalPermissions.has('CARD_BLOCK') || finalPermissions.has('CARD_UNBLOCK')) {
-        finalPermissions.add('CARD_BLOCK');
-        finalPermissions.add('CARD_UNBLOCK');
-      }
-      if (finalPermissions.has('PRODUCT_VIEW')) {
-        finalPermissions.add('PRODUCT_VIEW');
-      }
-      if (finalPermissions.has('PRODUCT_MANAGE')) {
-        finalPermissions.add('PRODUCT_MANAGE');
-        finalPermissions.add('PRODUCT_VIEW');
-      }
-      if (finalPermissions.has('BRANCH_VIEW') || finalPermissions.has('STAFF_VIEW')) {
-        finalPermissions.add('BRANCH_VIEW');
-        finalPermissions.add('STAFF_VIEW');
-      }
-      if (
-        finalPermissions.has('BRANCH_MANAGE') ||
-        finalPermissions.has('STAFF_MANAGE') ||
-        finalPermissions.has('VIEW_ANALYTICS') ||
-        finalPermissions.has('VIEW_REPORTS')
-      ) {
-        finalPermissions.add('BRANCH_MANAGE');
-        finalPermissions.add('STAFF_MANAGE');
-        finalPermissions.add('VIEW_ANALYTICS');
-        finalPermissions.add('VIEW_REPORTS');
-        finalPermissions.add('BRANCH_VIEW');
-        finalPermissions.add('STAFF_VIEW');
-      }
+      // Ensure all manager permissions are assigned
+      MANAGER_PERMISSIONS.forEach((p) => finalPermissions.add(p));
 
       const res = await apiService.staff.createStaff({
         name: formName.trim(),
-        phone: formPhone.trim().replace(/\D/g, ''),
+        phone: clean10Phone,
         password: formPassword.trim(),
         email: formEmail.trim() ? formEmail.trim().toLowerCase() : undefined,
         assignedBranchIds: formBranchIds,
@@ -556,7 +531,7 @@ export function StaffPage() {
       }
       setCreatedStaffCredentials({
         name: res.data.name,
-        phone: formPhone.trim().replace(/\D/g, ''),
+        phone: clean10Phone,
         password: formPassword.trim(),
         branchIds: formBranchIds,
       });
@@ -751,7 +726,7 @@ export function StaffPage() {
       errors.name = 'Staff name cannot exceed 20 characters';
     }
 
-    const cleanPhone = formPhone.trim().replace(/\D/g, '');
+    const cleanPhone = formPhone.trim().replace(/\D/g, '').slice(-10);
     if (!cleanPhone) {
       errors.phone = 'Phone number is required';
     } else if (cleanPhone.length !== 10) {
@@ -937,7 +912,7 @@ export function StaffPage() {
     try {
       const res = await apiService.staff.updateStaff(selectedStaff.id, {
         name: formName.trim(),
-        phone: formPhone.trim().replace(/\D/g, '') || undefined,
+        phone: formPhone.trim().replace(/\D/g, '').slice(-10) || undefined,
         email: formEmail.trim() || undefined,
         assignedBranchIds: formBranchIds,
         permissions: formPermissions,
@@ -1235,6 +1210,19 @@ export function StaffPage() {
               leftIcon={<Edit2 className="h-3 w-3 text-emerald-600" />}
             >
               Edit
+            </Button>
+          )}
+          {canManage && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={staff.id === user?.id}
+              onClick={() => handleInitiateDelete(staff)}
+              className="text-xs h-7 px-2.5 rounded-lg border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700 transition-all shadow-2xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              leftIcon={<Trash2 className="h-3 w-3 text-rose-500" />}
+              title={staff.id === user?.id ? 'Cannot delete your own account' : 'Delete staff account'}
+            >
+              Delete
             </Button>
           )}
           <Button
@@ -1859,6 +1847,21 @@ export function StaffPage() {
 
             {/* Quick Action Footer */}
             <ModalFooter>
+              {canManage && selectedStaff && selectedStaff.id !== user?.id && (
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  className="mr-auto text-rose-600 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 border border-rose-200 cursor-pointer"
+                  leftIcon={<Trash2 className="h-3.5 w-3.5" />}
+                  onClick={() => {
+                    setShowStaffDetailsModal(false);
+                    handleInitiateDelete(selectedStaff);
+                  }}
+                >
+                  Delete Staff
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outline"
@@ -2032,6 +2035,22 @@ export function StaffPage() {
                       >
                         Performance & Audit
                       </Button>
+                      {canManage && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={st.id === user?.id}
+                          onClick={() => {
+                            setShowCounterStaffModal(false);
+                            handleInitiateDelete(st);
+                          }}
+                          leftIcon={<Trash2 className="h-3 w-3 text-rose-500" />}
+                          className="text-xs h-7.5 px-2.5 font-medium border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                          title={st.id === user?.id ? 'Cannot delete your own account' : 'Delete staff account'}
+                        >
+                          Delete
+                        </Button>
+                      )}
 
                       {/* Active / Inactive Slide Switch */}
                       <div className="flex items-center gap-2 pl-2.5 border-l border-slate-200">

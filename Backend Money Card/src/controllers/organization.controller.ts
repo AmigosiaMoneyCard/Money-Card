@@ -152,41 +152,57 @@ export async function getBranches(req: Request, res: Response) {
               name: true,
               phone: true,
               email: true,
+              permissions: {
+                select: {
+                  permission: true,
+                },
+              },
             },
           },
         },
-        take: 1,
+        orderBy: { assignedAt: 'desc' },
       },
     },
     orderBy: { createdAt: 'asc' },
   });
 
-  const formatted = branches.map((b) => ({
-    id: b.id,
-    organizationId: b.organizationId,
-    name: b.name,
-    location: b.location,
-    status: b.status,
-    staffCount: b._count.staffAssignments,
-    inventoryCount: b._count.inventoryItems,
-    sessionCount: b._count.cardSessions,
-    manager: b.staffAssignments?.[0]?.user
-      ? {
-          id: b.staffAssignments[0].user.id,
-          name: b.staffAssignments[0].user.name,
-          phone: b.staffAssignments[0].user.phone,
-        }
-      : null,
-    credentials: b.staffAssignments?.[0]?.user
-      ? {
-          name: b.name,
-          phone: b.staffAssignments[0].user.phone || '',
-          password: '123456',
-        }
-      : undefined,
-    createdAt: b.createdAt,
-    updatedAt: b.updatedAt,
-  }));
+  const formatted = branches.map((b) => {
+    // Prioritize the user who has STAFF_MANAGE or BRANCH_MANAGE as counter manager
+    const managerAssignment =
+      b.staffAssignments?.find((sa) =>
+        sa.user.permissions?.some(
+          (p) => p.permission === PermissionCode.STAFF_MANAGE || p.permission === PermissionCode.BRANCH_MANAGE,
+        ),
+      ) || b.staffAssignments?.[0];
+    const managerUser = managerAssignment?.user || null;
+
+    return {
+      id: b.id,
+      organizationId: b.organizationId,
+      name: b.name,
+      location: b.location,
+      status: b.status,
+      staffCount: b._count.staffAssignments,
+      inventoryCount: b._count.inventoryItems,
+      sessionCount: b._count.cardSessions,
+      manager: managerUser
+        ? {
+            id: managerUser.id,
+            name: managerUser.name,
+            phone: managerUser.phone,
+          }
+        : null,
+      credentials: managerUser
+        ? {
+            name: b.name,
+            phone: managerUser.phone || '',
+            password: '123456',
+          }
+        : undefined,
+      createdAt: b.createdAt,
+      updatedAt: b.updatedAt,
+    };
+  });
 
   return sendSuccess(res, formatted);
 }
@@ -202,9 +218,10 @@ export async function createBranch(req: Request, res: Response) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'Counter name is required');
   }
 
-  const cleanPhone = phone ? phone.trim().replace(/\D/g, '') : undefined;
-  if (cleanPhone && (cleanPhone.length < 10 || cleanPhone.length > 15)) {
-    return sendError(res, 400, 'VALIDATION_ERROR', 'Phone number must be at least 10 digits');
+  const rawDigits = phone ? String(phone).trim().replace(/\D/g, '') : undefined;
+  const cleanPhone = rawDigits ? rawDigits.slice(-10) : undefined;
+  if (cleanPhone && cleanPhone.length !== 10) {
+    return sendError(res, 400, 'VALIDATION_ERROR', 'Phone number must be a valid 10-digit mobile number');
   }
 
   if (password && (password.length < 6 || password.length > 30)) {
@@ -228,8 +245,14 @@ export async function createBranch(req: Request, res: Response) {
 
   // Check if phone number is already registered by another organization
   if (cleanPhone) {
-    const existingUser = await prisma.user.findUnique({
-      where: { phone: cleanPhone },
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { phone: cleanPhone },
+          { phone: `91${cleanPhone}` },
+          { phone: `+91${cleanPhone}` },
+        ],
+      },
     });
     if (existingUser && existingUser.organizationId && existingUser.organizationId !== orgId) {
       return sendError(
@@ -257,17 +280,6 @@ export async function createBranch(req: Request, res: Response) {
         location: location?.trim(),
       },
     });
-
-    // Auto-assign existing active staff in this organization to newly created branch
-    const orgStaff = await tx.user.findMany({
-      where: { organizationId: orgId, role: Role.STAFF, status: 'ACTIVE' },
-      select: { id: true },
-    });
-    for (const staff of orgStaff) {
-      await tx.userBranch.create({
-        data: { userId: staff.id, branchId: created.id },
-      }).catch(() => {});
-    }
 
     // Provision or update counter manager account if phone is provided
     if (cleanPhone) {
@@ -402,12 +414,13 @@ export async function createBranchesBatch(req: Request, res: Response) {
       continue;
     }
 
-    const cleanPhone = item?.phone ? String(item.phone).replace(/\D/g, '') : undefined;
-    if (cleanPhone && (cleanPhone.length < 10 || cleanPhone.length > 15)) {
-      errors.push({ index: i, message: 'Phone number must be at least 10 digits' });
+    const rawDigits = item?.phone ? String(item.phone).replace(/\D/g, '') : undefined;
+    const cleanPhone = rawDigits ? rawDigits.slice(-10) : undefined;
+    if (cleanPhone && cleanPhone.length !== 10) {
+      errors.push({ index: i, message: 'Please enter a valid 10-digit mobile number' });
       continue;
     }
-    if (cleanPhone && cleanPhone.length === 10 && !/^[6-9]\d{9}$/.test(cleanPhone)) {
+    if (cleanPhone && !/^[6-9]\d{9}$/.test(cleanPhone)) {
       errors.push({ index: i, message: 'Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9' });
       continue;
     }
@@ -434,16 +447,6 @@ export async function createBranchesBatch(req: Request, res: Response) {
             location: item?.location?.trim(),
           },
         });
-
-        const orgStaff = await tx.user.findMany({
-          where: { organizationId: orgId, role: Role.STAFF, status: 'ACTIVE' },
-          select: { id: true },
-        });
-        for (const staff of orgStaff) {
-          await tx.userBranch.create({
-            data: { userId: staff.id, branchId: branch.id },
-          }).catch(() => {});
-        }
 
         if (cleanPhone) {
           let counterUser = await tx.user.findUnique({ where: { phone: cleanPhone } });
@@ -540,10 +543,15 @@ export async function getBranchById(req: Request, res: Response) {
               name: true,
               phone: true,
               email: true,
+              permissions: {
+                select: {
+                  permission: true,
+                },
+              },
             },
           },
         },
-        take: 1,
+        orderBy: { assignedAt: 'desc' },
       },
     },
   });
@@ -552,17 +560,23 @@ export async function getBranchById(req: Request, res: Response) {
     return sendError(res, 404, 'NOT_FOUND', 'Branch not found');
   }
 
-  const manager = branch.staffAssignments?.[0]?.user
-    ? {
-        id: branch.staffAssignments[0].user.id,
-        name: branch.staffAssignments[0].user.name,
-        phone: branch.staffAssignments[0].user.phone,
-      }
-    : null;
+  const managerAssignment =
+    branch.staffAssignments?.find((sa) =>
+      sa.user.permissions?.some(
+        (p) => p.permission === PermissionCode.STAFF_MANAGE || p.permission === PermissionCode.BRANCH_MANAGE,
+      ),
+    ) || branch.staffAssignments?.[0];
+  const manager = managerAssignment?.user || null;
 
   return sendSuccess(res, {
     ...branch,
-    manager,
+    manager: manager
+      ? {
+          id: manager.id,
+          name: manager.name,
+          phone: manager.phone,
+        }
+      : null,
     credentials: manager
       ? {
           name: branch.name,
@@ -588,9 +602,13 @@ export async function updateBranch(req: Request, res: Response) {
           },
         },
         include: {
-          user: true,
+          user: {
+            include: {
+              permissions: true,
+            },
+          },
         },
-        take: 1,
+        orderBy: { assignedAt: 'desc' },
       },
     },
   });
@@ -612,7 +630,8 @@ export async function updateBranch(req: Request, res: Response) {
   }
 
   // Validate Phone if provided
-  const cleanPhone = phone ? String(phone).trim().replace(/\D/g, '') : undefined;
+  const rawDigits = phone ? String(phone).trim().replace(/\D/g, '') : undefined;
+  const cleanPhone = rawDigits ? rawDigits.slice(-10) : undefined;
   if (phone !== undefined && phone !== '') {
     if (!cleanPhone || cleanPhone.length !== 10 || !/^[6-9]\d{9}$/.test(cleanPhone)) {
       return sendError(res, 400, 'VALIDATION_ERROR', 'Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9');
@@ -661,7 +680,13 @@ export async function updateBranch(req: Request, res: Response) {
       },
     });
 
-    const existingManager = branch.staffAssignments?.[0]?.user;
+    const managerAssignment =
+      branch.staffAssignments?.find((sa) =>
+        sa.user.permissions?.some(
+          (p) => p.permission === PermissionCode.STAFF_MANAGE || p.permission === PermissionCode.BRANCH_MANAGE,
+        ),
+      ) || branch.staffAssignments?.[0];
+    const existingManager = managerAssignment?.user;
     if (existingManager) {
       await tx.user.update({
         where: { id: existingManager.id },

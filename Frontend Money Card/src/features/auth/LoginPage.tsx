@@ -17,9 +17,11 @@ const PHONE_REGEX = /^[6-9]\d{9}$/;
 function validateIdentifier(value: string): string | null {
   const trimmed = value.trim();
   if (!trimmed) return 'Email or Mobile Number is required';
-  const isDigits = /^\d+$/.test(trimmed);
-  if (isDigits) {
-    if (!PHONE_REGEX.test(trimmed)) {
+  const rawDigits = trimmed.replace(/\D/g, '');
+  const cleanPhone = rawDigits.slice(-10);
+  const isPhone = !trimmed.includes('@') && (rawDigits.length >= 10 || /^\d+$/.test(trimmed) || trimmed.startsWith('+'));
+  if (isPhone) {
+    if (cleanPhone.length !== 10 || !PHONE_REGEX.test(cleanPhone)) {
       return 'Please enter a valid 10-digit mobile number';
     }
     return null;
@@ -65,9 +67,10 @@ export function LoginPage() {
       setIsSubmitting(true);
       try {
         const trimmed = identifier.trim();
-        const isDigits = /^\d+$/.test(trimmed);
-        const credentials = isDigits
-          ? { phone: trimmed, password }
+        const rawDigits = trimmed.replace(/\D/g, '');
+        const isPhone = !trimmed.includes('@') && rawDigits.length >= 10;
+        const credentials = isPhone
+          ? { phone: rawDigits.slice(-10), password }
           : { email: trimmed, password };
 
         const result = await apiService.auth.login(credentials);
