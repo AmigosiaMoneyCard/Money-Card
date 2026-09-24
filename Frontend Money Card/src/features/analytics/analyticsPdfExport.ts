@@ -141,7 +141,7 @@ export function buildOrgAnalyticsJsPdf({
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7);
     doc.setTextColor(71, 85, 105);
-    doc.text('NET MONEY COLLECTED', margin + 4, curY + 9);
+    doc.text('TOTAL SALES', margin + 4, curY + 9);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
@@ -151,7 +151,7 @@ export function buildOrgAnalyticsJsPdf({
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6);
     doc.setTextColor(100, 116, 139);
-    doc.text('Money Added - Money Refunded across all methods', margin + 4, curY + 20);
+    doc.text('Total Sales across UPI & Cash Deposits', margin + 4, curY + 20);
 
     curY += 25;
 
@@ -166,9 +166,9 @@ export function buildOrgAnalyticsJsPdf({
 
     // Row 2: Payment & Volume Flow (4 cards)
     const row2Kpis = [
-      { label: 'Online UPI Money', val: formatPdfCurrency(upiMoney), sub: `${upiCount} top-ups` },
-      { label: 'Cash Money', val: formatPdfCurrency(cashMoney), sub: `${cashCount} top-ups` },
-      { label: 'Money Added', val: formatPdfCurrency(moneyAdded), sub: 'Total card deposits' },
+      { label: 'UPI Recharge', val: formatPdfCurrency(upiMoney), sub: `${upiCount} top-ups` },
+      { label: 'Cash Recharge', val: formatPdfCurrency(cashMoney), sub: `${cashCount} top-ups` },
+      { label: 'Recharge', val: formatPdfCurrency(moneyAdded), sub: 'Total card deposits' },
       { label: 'Money Refunded', val: formatPdfCurrency(moneyRefunded), sub: 'Balance returned to customers' },
     ];
 
@@ -318,12 +318,12 @@ export function buildOrgAnalyticsJsPdf({
 
     const paymentCards = [
       {
-        label: 'Online UPI Money',
+        label: 'UPI Recharge',
         val: formatPdfCurrency(upiRecharge),
         sub: `${upiPct}% of total deposits`,
       },
       {
-        label: 'Cash Money',
+        label: 'Cash Recharge',
         val: formatPdfCurrency(cashRecharge),
         sub: `${cashPct}% of total deposits`,
       },

@@ -174,7 +174,7 @@ export function RechargesTableView({ branchId }: RechargesTableViewProps) {
                 <CreditCard className="h-6 w-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900">📱 Online UPI Money</h3>
+                <h3 className="text-lg font-bold text-slate-900">UPI Recharge</h3>
                 <p className="text-xs text-slate-500">QR Code & Banking Apps</p>
               </div>
             </div>
@@ -198,7 +198,7 @@ export function RechargesTableView({ branchId }: RechargesTableViewProps) {
                 <DollarSign className="h-6 w-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900">💵 Cash Money</h3>
+                <h3 className="text-lg font-bold text-slate-900">Cash Recharge</h3>
                 <p className="text-xs text-slate-500">Cash Register Counter</p>
               </div>
             </div>

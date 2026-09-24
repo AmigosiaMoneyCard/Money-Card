@@ -1,65 +1,90 @@
-# Implementation Plan: Remove Food & Order Metrics from Dashboards
+# Implementation Plan: Analytics Redesign - Total Sales First, Recharge Box Second, Follow-up Metric Boxes Below
 
-Remove the 'Food & Order Metrics' section containing the 4 KPI boxes (Food Sales, Items Sold, Dishes Ordered, Cancelled Orders) and 'Open Menu Analytics' button strictly from the dashboards (Super Admin, Org Admin, and Counter Dashboards), while keeping them intact within the Menu Analytics tab.
+Redesign the Analytics page across Super Admin, Org Admin, and Counter Admin dashboards so that Total Sales is positioned first as the prominently highlighted primary card, followed immediately by the merged Recharge box (with split UPI Recharge and Cash Recharge breakdowns), with Wallet Activations and the other metric boxes placed cleanly below them. Eliminate all secondary subtitles and badges across Financial Overview, Card Analytics, and Menu Analytics for pure minimalism.
 
 ## Visual Design Sketch
 
-![Clean Dashboard Overview Sketch](C:\Users\damie\.gemini\antigravity-ide\brain\9c70217b-9240-4d11-907e-eaaf4a37b746\clean_dashboard_overview_sketch_1790222958194.jpg)
+![Analytics Redesign Total Sales then Recharge](C:\Users\damie\.gemini\antigravity-ide\brain\9c70217b-9240-4d11-907e-eaaf4a37b746\total_sales_then_recharge_sketch_1790233761279.jpg)
+
+## User Review Required
+
+- Total Sales First: Prominently highlighted at the very top with emerald green subtle tint, crisp border, bold value `formatCurrency(netMoneyCollected)`, no badges ('Added - Refunded' removed), and no subtitle descriptions.
+- Merged Recharge Box Second: Brought upwards directly below Total Sales, displaying total recharge volume `formatCurrency(moneyAdded)` and two cleanly split child cards for 'UPI Recharge' and 'Cash Recharge' (with 'Instant QR & App' and 'Paper Bills' badges and descriptive text removed).
+- Follow-up Metric Boxes Below:
+  - In Org Admin & Counter Admin: 4 uniform cards in a clean grid (`Wallet Activations`, `Money Refunded`, `Cancelled Top-ups`, `Cancelled Food Orders`).
+  - In Super Admin: 5 uniform cards (`Wallet Activations`, `Cafeterias` organization card, `Money Refunded`, `Cancelled Top-ups`, `Cancelled Food Orders`).
+- Pure Minimalism: Completely removes all secondary subtitles and descriptions across Financial Overview, Card Analytics (all 5 cards), and Menu Analytics (all 4 KPI cards).
 
 ## Proposed Changes
 
 ### Frontend Web Admin Dashboard
 
-#### [MODIFY] [OrgAdminDashboard.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/dashboard/OrgAdminDashboard.tsx)
-- Serves both Org Admin Dashboard and Counter Dashboard (STAFF role).
-- Remove the 'Dedicated Food & Order Metrics Section' (lines 595-635) containing:
-  - Header: 'Food & Order Metrics' with 'Open Menu Analytics' button.
-  - 4 StatCards: Food Sales, Items Sold, Dishes Ordered, Cancelled Orders.
-- Remove unused imports `UtensilsCrossed`, `Ban`, `ChefHat`.
+#### [MODIFY] [OrgAdminAnalyticsComponents.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/analytics/OrgAdminAnalyticsComponents.tsx)
+- In `OrgAdminFinancialSection`:
+  - Calculate `walletActivations = analytics.cardsGivenOut ?? analytics.activeCardsCount ?? 0`.
+  - Top Card (FIRST): Highlighted `Total Sales` card (`bg-gradient-to-br from-emerald-50/70 via-white to-teal-50/40 border-emerald-300 ring-1 ring-emerald-500/20`), bold monetary value `formatCurrency(netMoneyCollected)`, label 'Total Sales', no badges, no subtitle.
+  - Second Section (Brought Upwards): Unified `Recharge` card:
+    - Main stat: 'Recharge' with `formatCurrency(moneyAdded)`.
+    - Inner 2-column split cards: 'UPI Recharge' with `formatCurrency(upiMoney)` and 'Cash Recharge' with `formatCurrency(cashMoney)`.
+    - Zero badges, zero subtitles.
+  - Third Section (Follow-up Metric Boxes Below):
+    - Clean grid: `grid gap-4 sm:grid-cols-2 lg:grid-cols-4` (or `lg:grid-cols-5` if `leadingCard` is present).
+    - `Wallet Activations`: `${walletActivations.toLocaleString()} Wallets`, `CreditCard` icon, no subtitle.
+    - If `leadingCard` exists (Super Admin): rendered with subtitle removed.
+    - `Money Refunded`: `formatCurrency(moneyRefunded)`, no subtitle.
+    - `Cancelled Top-ups`: `formatCurrency(cancelledTopUps)`, no subtitle.
+    - `Cancelled Food Orders`: `formatCurrency(cancelledOrdersVolume)`, no subtitle.
+- In `OrgAdminMenuAnalyticsSection`:
+  - In the 4 KPI cards (Food Sales, Items Sold, Dishes Ordered, Cancelled Orders), remove all subtitle text paragraphs (`{foodOrders} orders`, `Units sold`, `Dish varieties`) for pure minimalism.
 
-#### [MODIFY] [SuperAdminDashboard.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/dashboard/SuperAdminDashboard.tsx)
-- Serves Super Admin Dashboard.
-- Remove the 'Platform Food & Order Performance' section (lines 279-319) containing:
-  - Header: 'Platform Food & Order Performance' with 'Open Menu Analytics' button.
-  - 4 StatCards: Platform Food Sales, Total Items Sold, Dishes Ordered, Cancelled Orders.
-- Clean up unused `analytics` state and `apiService.analytics.getOverview()` call in `fetchPlatformData`.
-- Remove unused imports `UtensilsCrossed`, `ChefHat`, `Ban`.
+#### [MODIFY] [OrgAdminCardTracker.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/analytics/OrgAdminCardTracker.tsx)
+- Remove all descriptive subtitles under each of the 5 cards:
+  - Active Cards: remove 'In customer hands'.
+  - Settled Cards: remove 'Completed card sessions'.
+  - Blocked Cards: remove 'Locked due to security / loss'.
+  - Zero Balance: remove 'In use with Rs 0 balance'.
+  - Inactive Cards: remove 'Inactive cards but have balance in it'.
+
+#### [MODIFY] [SuperAdminAnalyticsView.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/analytics/SuperAdminAnalyticsView.tsx)
+- In `leadingCard` (Organization card): remove subtitle description ('Total registered client cafeterias' / cafeteria name).
+
+#### [MODIFY] [analyticsPdfExport.ts](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/analytics/analyticsPdfExport.ts)
+- Maintain PDF parity by updating 'NET MONEY COLLECTED' to 'TOTAL SALES', updating 'Online UPI Money' to 'UPI Recharge', 'Cash Money' to 'Cash Recharge', 'Money Added' to 'Recharge', and removing secondary formula subtitles.
 
 ---
 
 ## Wireframe Comparison
 
-### Cleaned Dashboard (Org Admin & Counter Dashboard)
+### Financial Overview Layout (Total Sales First, Recharge Box Second, Metrics Below)
 ```
 +--------------------------------------------------------------------------------------------------------+
-| Quick Actions: [ View Cards ]  [ Team Members ]  [ Menu Products ]  [ Analytics ]                      |
+| [HIGHLIGHTED TOTAL SALES BOX]                                                                          |
+| Rs 2,875,930                                                                                           |
 +--------------------------------------------------------------------------------------------------------+
-| Overview Filters: [ All Cafeterias v ]  [ Date Range: 2026-09-24 to 2026-09-24 ]  [ Refresh Data ]     |
+| [MERGED RECHARGE BOX]                                                                                  |
+| Recharge: Rs 4,158,620                                                                                 |
+| +---------------------------------------------------+------------------------------------------------+ |
+| | UPI Recharge: Rs 3,210,480                        | Cash Recharge: Rs 948,140                      | |
+| +---------------------------------------------------+------------------------------------------------+ |
 +--------------------------------------------------------------------------------------------------------+
-| [Purchase Sales Volume]    [Card Wallet Recharges]    [Active Cards Issued]    [Active Staff Members]  |
-| Rs 14,800.00               Rs 22,500.00               128 Cards                14 Staff                |
-+--------------------------------------------------------------------------------------------------------+
-```
-
-### Cleaned Dashboard (Super Admin Dashboard)
-```
-+--------------------------------------------------------------------------------------------------------+
-| Quick Actions: [ Add Cafeteria ]  [ Review Requests ]  [ Manage Plans ]  [ View Reports ]              |
-+--------------------------------------------------------------------------------------------------------+
-| Platform SaaS Metrics:                                                                                 |
-| [Cafeterias]               [Active Cardholders]       [Active Counters]        [Staff Members]         |
-| 3 Cafeterias               142 Cardholders            8 Counters               24 Members              |
+| [Wallet Activations]  |  [Optional Cafeterias]  |  [Money Refunded]  |  [Cancelled Top-ups] | [Cancelled Food] |
+| 14,352 Wallets        |  3 Cafeterias           |  Rs 384,760        |  Rs 126,900          | Rs 97,250        |
 +--------------------------------------------------------------------------------------------------------+
 ```
 
-### Menu Analytics Tab (Unchanged - Retains All 4 KPI Cards & Collapsible Table)
+### Card Analytics Layout (Pure Minimalist Numbers)
 ```
 +--------------------------------------------------------------------------------------------------------+
-| Tabs: [ Financial Overview ]  [ Card Analytics ]  [ Menu Analytics * ]                                 |
+| [Active Cards]    [Settled Cards]    [Blocked Cards]    [Zero Balance]    [Inactive Cards]             |
+| 2,450             1,820              14                 85                32                           |
 +--------------------------------------------------------------------------------------------------------+
-| [Food Sales]               [Items Sold]               [Dishes Ordered]         [Cancelled Orders]      |
-| Rs 14,800.00               384 Units                  18 Ordered               92 Cancels              |
-| 52 orders                  Units sold                 Dish varieties                                   |
+```
+
+### Menu Analytics Layout (Pure Minimalist Numbers)
+```
++--------------------------------------------------------------------------------------------------------+
+| [Food Sales]            [Items Sold]            [Dishes Ordered]         [Cancelled Orders]            |
+| Rs 14,800.00            384 Units               18 Ordered               92 Cancels                    |
 +--------------------------------------------------------------------------------------------------------+
 | [v] All Ordered Menu Items  [ 18 Dishes ]                                [ Search dishes... ]  [Hide]  |
 | [ 4-Column Collapsible Dish Table ]                                                                    |
@@ -71,12 +96,13 @@ Remove the 'Food & Order Metrics' section containing the 4 KPI boxes (Food Sales
 ## Verification Plan
 
 ### Automated Tests
-- Run `npm test -- --run` in `Frontend Money Card/` to ensure all 272 tests continue passing.
-- Run `npx tsc --noEmit` in `Frontend Money Card/` to verify zero TypeScript errors after removing unused variables and imports.
-- Run `npm test` in `Backend Money Card/` (100 tests passing).
-- Run `flutter test` in `Flutter Money card/` (168 tests passing).
+- Run `npm test -- --run` in `Frontend Money Card/` to verify all 272 tests continue to pass.
+- Run `npx tsc --noEmit` in `Frontend Money Card/` to verify 0 TypeScript errors.
+- Run `npm test` in `Backend Money Card/` (100 tests).
+- Run `flutter test` in `Flutter Money card/` (168 tests).
 
 ### Manual Verification
-- Log in as Super Admin: Confirm the 4 food boxes are removed from Super Admin Dashboard, and View Reports / Menu Analytics retains them.
-- Log in as Org Admin: Confirm the 4 food boxes are removed from Org Admin Dashboard, and Analytics -> Menu Analytics retains them.
-- Log in as Counter Staff: Confirm the 4 food boxes are removed from Counter Dashboard.
+- Super Admin Analytics: Verify Highlighted Total Sales is FIRST, followed by Recharge box (UPI & Cash), followed by the metric boxes (Wallet Activations, Cafeterias, Money Refunded, Cancelled Top-ups, Cancelled Food Orders) with zero subtitles and zero badges.
+- Org Admin & Counter Analytics: Verify Highlighted Total Sales is FIRST, followed by Recharge box, followed by Wallet Activations, Money Refunded, Cancelled Top-ups, and Cancelled Food Orders.
+- Card Analytics tab: Verify all 5 cards display pure labels and numbers without subtitle descriptions.
+- Menu Analytics tab: Verify the 4 KPI cards display pure labels and values without subtitle descriptions.

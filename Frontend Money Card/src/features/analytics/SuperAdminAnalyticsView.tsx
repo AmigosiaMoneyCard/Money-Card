@@ -407,9 +407,6 @@ export function SuperAdminAnalyticsView() {
                   <p className="font-mono text-2xl font-bold text-slate-900">
                     {selectedOrgId ? '1 Cafeteria' : `${activeOrgs.length} Cafeterias`}
                   </p>
-                  <p className="mt-1 text-xs text-slate-500 leading-snug">
-                    {selectedOrg ? selectedOrg.name : 'Total registered client cafeterias'}
-                  </p>
                 </div>
               </Card>
             }

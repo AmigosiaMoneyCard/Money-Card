@@ -61,104 +61,98 @@ export function OrgAdminFinancialSection({
   const moneyAdded = analytics.moneyAdded ?? (cashRecharge + upiRecharge);
   const moneyRefunded = analytics.moneyRefunded ?? totalRefund;
   const cancelledTopUps = analytics.cancelledTopUps ?? 0;
-  const cancelledTopUpsCount = analytics.cancelledTopUpsCount ?? 0;
   const cancelledOrdersVolume = analytics.cancelledOrdersVolume ?? 0;
-  const cancelledOrdersCount = analytics.cancelledOrdersCount ?? 0;
 
   const netMoneyCollected = analytics.netMoneyCollected ?? (moneyAdded - moneyRefunded);
 
   const upiMoney = analytics.upiMoney ?? upiRecharge;
-  const upiCount = analytics.upiCount ?? (analytics.upiRechargeCount ?? 0);
   const cashMoney = analytics.cashMoney ?? cashRecharge;
-  const cashCount = analytics.cashCount ?? (analytics.cashRechargeCount ?? 0);
+  const walletActivations = analytics.cardsGivenOut ?? analytics.activeCardsCount ?? 0;
 
   return (
     <div className="space-y-4">
-      {/* Financial Summaries (3 or 4 Uniform Cards) */}
-      <div className={`grid gap-4 ${leadingCard ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-3'}`}>
-        {leadingCard}
-        {/* Net Money Collected */}
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Net Money Collected
-            </span>
-            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
-              Added - Refunded
-            </span>
+      {/* 1. Highlighted Total Sales Card (Top & Prominent) */}
+      <Card
+        padding="md"
+        className="border-emerald-300 bg-gradient-to-br from-emerald-50/70 via-white to-teal-50/40 shadow-xs ring-1 ring-emerald-500/20 transition-all flex flex-col justify-between"
+      >
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold uppercase tracking-wider text-emerald-800">
+            Total Sales
+          </span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100/70 text-emerald-700">
+            <TrendingUp className="h-4 w-4" />
           </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-slate-900">
-              {formatCurrency(netMoneyCollected)}
-            </p>
-            <p className="mt-1 text-xs text-slate-500 leading-snug">
-              Total money retained across online UPI and cash deposits
-            </p>
-          </div>
-        </Card>
+        </div>
+        <div className="mt-2">
+          <p className="font-mono text-3xl sm:text-4xl font-black text-slate-900">
+            {formatCurrency(netMoneyCollected)}
+          </p>
+        </div>
+      </Card>
 
-        {/* Online UPI Money */}
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
-          <div className="flex items-center justify-between">
+      {/* 2. Merged Recharge Card (Brought Upwards) */}
+      <Card
+        padding="md"
+        className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all space-y-3"
+      >
+        <div className="flex items-center justify-between">
+          <div>
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Online UPI Money
+              Recharge
             </span>
-            <span className="rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700">
-              Instant QR & App
-            </span>
+            <p className="mt-1 font-mono text-2xl sm:text-3xl font-bold text-slate-900">
+              {formatCurrency(moneyAdded)}
+            </p>
           </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-purple-700">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+            <Wallet className="h-5 w-5" />
+          </div>
+        </div>
+
+        {/* Inner Split Cards: UPI Recharge & Cash Recharge */}
+        <div className="grid gap-3 sm:grid-cols-2 pt-1">
+          <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-3.5 flex flex-col justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              UPI Recharge
+            </span>
+            <p className="mt-1 font-mono text-xl sm:text-2xl font-bold text-purple-700">
               {formatCurrency(upiMoney)}
             </p>
-            <p className="mt-1 text-xs text-slate-500 leading-snug">
-              {upiCount} top-ups
-            </p>
           </div>
-        </Card>
 
-        {/* Cash Money */}
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
-          <div className="flex items-center justify-between">
+          <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-3.5 flex flex-col justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Cash Money
+              Cash Recharge
             </span>
-            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-              Paper Bills
-            </span>
-          </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-emerald-700">
+            <p className="mt-1 font-mono text-xl sm:text-2xl font-bold text-emerald-700">
               {formatCurrency(cashMoney)}
             </p>
-            <p className="mt-1 text-xs text-slate-500 leading-snug">
-              {cashCount} top-ups
-            </p>
           </div>
-        </Card>
-      </div>
+        </div>
+      </Card>
 
-      {/* Core Activity Flow (4 Uniform Cards) */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Money Added */}
+      {/* 3. Follow-up Metric Cards Below */}
+      <div className={`grid gap-4 sm:grid-cols-2 ${leadingCard ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
+        {/* Wallet Activations */}
         <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Money Added
+              Wallet Activations
             </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-              <Wallet className="h-4 w-4" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+              <CreditCard className="h-4 w-4" />
             </div>
           </div>
           <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-slate-900">
-              {formatCurrency(moneyAdded)}
-            </p>
-            <p className="mt-1 text-xs text-slate-500 leading-snug">
-              Total top-ups loaded onto cards
+              {walletActivations.toLocaleString()} Wallets
             </p>
           </div>
         </Card>
+
+        {/* Optional Leading Card (e.g. Cafeterias in Super Admin) */}
+        {leadingCard}
 
         {/* Money Refunded */}
         <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
@@ -173,9 +167,6 @@ export function OrgAdminFinancialSection({
           <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-rose-600">
               {formatCurrency(moneyRefunded)}
-            </p>
-            <p className="mt-1 text-xs text-slate-500 leading-snug">
-              Remaining balance given back to customers
             </p>
           </div>
         </Card>
@@ -194,9 +185,6 @@ export function OrgAdminFinancialSection({
             <p className="font-mono text-2xl font-bold text-amber-600">
               {formatCurrency(cancelledTopUps)}
             </p>
-            <p className="mt-1 text-xs text-slate-500 leading-snug">
-              {cancelledTopUpsCount} recharges reversed
-            </p>
           </div>
         </Card>
 
@@ -213,9 +201,6 @@ export function OrgAdminFinancialSection({
           <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-orange-600">
               {formatCurrency(cancelledOrdersVolume)}
-            </p>
-            <p className="mt-1 text-xs text-slate-500 leading-snug">
-              {cancelledOrdersCount} orders restored
             </p>
           </div>
         </Card>
@@ -896,7 +881,6 @@ export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSection
   const [isTableOpen, setIsTableOpen] = useState(true);
 
   const foodSales = analytics.totalPurchaseVolume ?? 0;
-  const foodOrders = analytics.foodOrdersCount ?? analytics.purchaseCount ?? 0;
   const itemsSold = analytics.productsSoldCount ?? 0;
   const dishesOrdered = analytics.dishesOrderedCount ?? (analytics.allProductDemand?.length ?? 0);
   const cancelledOrders = analytics.cancelledOrdersCount ?? 0;
@@ -937,9 +921,6 @@ export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSection
             <p className="font-mono text-2xl font-bold text-slate-900">
               {formatCurrency(foodSales)}
             </p>
-            <p className="mt-1 text-xs text-slate-500">
-              {foodOrders} orders
-            </p>
           </div>
         </Card>
 
@@ -956,9 +937,6 @@ export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSection
             <p className="font-mono text-2xl font-bold text-slate-900">
               {itemsSold} Units
             </p>
-            <p className="mt-1 text-[11px] text-slate-500">
-              Units sold
-            </p>
           </div>
         </Card>
 
@@ -974,9 +952,6 @@ export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSection
           <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-slate-900">
               {dishesOrdered} Ordered
-            </p>
-            <p className="mt-1 text-[11px] text-slate-500">
-              Dish varieties
             </p>
           </div>
         </Card>
