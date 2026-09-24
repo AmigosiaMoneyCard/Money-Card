@@ -186,7 +186,7 @@ void main() {
       // 1. Verify Authoritative Live Balance
       expect(find.text('₹530.00'), findsOneWidget);
       expect(find.text('ACTIVE'), findsOneWidget);
-      expect(find.text('Card: MC-104'), findsOneWidget);
+      expect(find.text('Wallet: MC-104'), findsOneWidget);
       expect(find.text('MC-104_1'), findsNothing);
       expect(find.textContaining('Customer: Rohan Sharma'), findsOneWidget);
 
@@ -212,8 +212,8 @@ void main() {
       expect(find.text('Wallet Recharge (Cash)'), findsOneWidget);
       expect(find.text('+₹500.00'), findsOneWidget);
 
-      await tester.scrollUntilVisible(find.text('Card Issued'), 150);
-      expect(find.text('Card Issued'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Wallet Issued'), 150);
+      expect(find.text('Wallet Issued'), findsOneWidget);
       expect(find.text('SESSION START'), findsOneWidget);
 
       // Verify Bal: and Balance after: and Paid via: are not rendered on purchase
@@ -296,7 +296,7 @@ void main() {
 
       // 1. Verify Cycle 2 Live Balance and Customer
       expect(find.text('₹150.00'), findsOneWidget);
-      expect(find.text('Card: MC-104'), findsOneWidget);
+      expect(find.text('Wallet: MC-104'), findsOneWidget);
       expect(find.text('MC-104_2'), findsNothing);
       expect(find.textContaining('Customer: Priya Patel'), findsOneWidget);
 

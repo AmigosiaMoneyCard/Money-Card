@@ -72,19 +72,19 @@ export function PermissionMatrix({
             <div className="mt-3.5 pt-3.5 border-t border-slate-200/80 grid gap-2 sm:grid-cols-2 text-xs">
               <div className="flex items-center gap-2 text-slate-700">
                 <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                <span className="font-semibold text-slate-800">Recharge Card Balances (Cash / UPI)</span>
+                <span className="font-semibold text-slate-800">Recharge Wallet Balances (Cash / UPI)</span>
               </div>
               <div className="flex items-center gap-2 text-slate-700">
                 <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                <span>Issue & Activate New Cards</span>
+                <span>Issue & Activate New Wallets</span>
               </div>
               <div className="flex items-center gap-2 text-slate-700">
                 <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                <span>Return / Settle Cards & Refunds</span>
+                <span>Return / Settle Wallets & Refunds</span>
               </div>
               <div className="flex items-center gap-2 text-slate-700">
                 <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                <span>Block / Unblock Compromised Cards</span>
+                <span>Block / Unblock Compromised Wallets</span>
               </div>
               <div className="flex items-center gap-2 text-slate-700">
                 <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />

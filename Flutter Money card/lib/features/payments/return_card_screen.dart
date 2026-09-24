@@ -45,10 +45,10 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
 
     final confirm = await AppDialog.show(
       context,
-      title: 'Confirm Card Return',
+      title: 'Confirm Wallet Return',
       message: session.balance > 0
-          ? 'Refund ₹${session.balance.toStringAsFixed(2)} to customer and settle this card session?'
-          : 'Settle this card session and return card to AVAILABLE state?',
+          ? 'Refund ₹${session.balance.toStringAsFixed(2)} to customer and settle this wallet session?'
+          : 'Settle this wallet session and return wallet to AVAILABLE state?',
       confirmLabel: 'Confirm & Settle',
       isDestructive: session.balance > 0,
     );
@@ -82,7 +82,7 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
 
     final itemsList = [
       {
-        'name': 'Card Return & Balance Refund',
+        'name': 'Wallet Return & Balance Refund',
         'quantity': 1,
         'price': result.refundedAmount,
         'total': result.refundedAmount,
@@ -101,7 +101,7 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
       previousBalance: result.refundedAmount,
       sessionId: session?.id ?? widget.sessionId,
       staffName: user?.name,
-      title: 'Card Returned Successfully',
+      title: 'Wallet Returned Successfully',
       receiptTitle: 'SETTLEMENT RECEIPT',
       paymentMethod: 'CASH REFUND',
       onDone: () {
@@ -125,7 +125,7 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
 
     if (session == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Return Card')),
+        appBar: AppBar(title: const Text('Return Wallet')),
         body: Center(
           child: Text(
             sessionState.errorMessage ?? 'Session not found.',
@@ -139,7 +139,7 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Return & Settle Card'),
+        title: const Text('Return & Settle Wallet'),
       ),
       body: SafeArea(
         child: ListView(

@@ -360,7 +360,7 @@ export function SessionsPage({ hideHeader = false }: { hideHeader?: boolean } = 
     },
     {
       key: 'physicalCardNumber',
-      header: 'Coupon ID',
+      header: 'Wallet ID',
       className: 'text-right pr-4',
       render: (item: CustomerHistoryItem) => (
         <span className="font-mono font-bold text-slate-900 text-sm">
@@ -418,7 +418,7 @@ export function SessionsPage({ hideHeader = false }: { hideHeader?: boolean } = 
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Search by customer, phone, or coupon ID..."
+              placeholder="Search by customer, phone, or wallet ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value.slice(0, 30))}
               maxLength={30}
@@ -502,7 +502,7 @@ export function SessionsPage({ hideHeader = false }: { hideHeader?: boolean } = 
         <Modal
           isOpen={showDetailModal}
           onClose={() => setShowDetailModal(false)}
-          title={`Customer Session — Card ${selectedItem.physicalCardNumber}`}
+          title={`Customer Session — Wallet ${selectedItem.physicalCardNumber}`}
           size="lg"
         >
           <div className="space-y-4">
@@ -556,13 +556,13 @@ export function SessionsPage({ hideHeader = false }: { hideHeader?: boolean } = 
             {detailTab === 'overview' && (
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-xs text-slate-500">Physical Card</p>
+                  <p className="text-xs text-slate-500">Physical Wallet</p>
                   <p className="font-mono font-bold text-slate-900">
                     {selectedItem.physicalCardNumber}
                   </p>
                 </div>
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-xs text-slate-500">Card Cycle</p>
+                  <p className="text-xs text-slate-500">Wallet Cycle</p>
                   <p className="font-mono font-bold text-slate-900">
                     #{selectedItem.cycleNumber}
                   </p>

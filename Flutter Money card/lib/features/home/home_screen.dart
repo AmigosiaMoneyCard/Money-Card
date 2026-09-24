@@ -166,7 +166,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         const Text(
-                          'SCAN QR CARD',
+                          'SCAN QR WALLET',
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -176,7 +176,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                         const SizedBox(height: 2),
                         const Text(
-                          "Scan card to start purchase or view balance",
+                          "Scan wallet to start purchase or view balance",
                           style: TextStyle(
                             fontSize: 13,
                             color: Colors.white70,

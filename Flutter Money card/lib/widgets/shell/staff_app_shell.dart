@@ -137,9 +137,9 @@ class _StaffAppShellState extends ConsumerState<StaffAppShell> with WidgetsBindi
             label: 'Home',
           ),
           const NavigationDestination(
-            icon: Icon(Icons.credit_card_outlined),
-            selectedIcon: Icon(Icons.credit_card),
-            label: 'Cards',
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            selectedIcon: Icon(Icons.account_balance_wallet),
+            label: 'Wallets',
           ),
           const NavigationDestination(
             icon: Icon(Icons.restaurant_menu_outlined),

@@ -90,14 +90,14 @@ void main() {
       await tester.pumpAndSettle();
 
       // Confirmation dialog opens
-      expect(find.text('Confirm Card Return'), findsOneWidget);
+      expect(find.text('Confirm Wallet Return'), findsOneWidget);
 
       // Confirm in dialog
       await tester.tap(find.widgetWithText(ElevatedButton, 'Confirm & Settle'));
       await tester.pumpAndSettle();
 
       // Return Success dialog renders
-      expect(find.text('Card Returned Successfully'), findsOneWidget);
+      expect(find.text('Wallet Returned Successfully'), findsOneWidget);
       expect(find.text('₹320.00'), findsWidgets);
       expect(find.text('Generate & View PDF'), findsNothing);
       expect(find.text('Download PDF'), findsNothing);

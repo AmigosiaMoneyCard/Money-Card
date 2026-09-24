@@ -251,7 +251,7 @@ export function OrgAdminCardsView() {
         <div>
           <div className="flex items-center gap-2.5">
             <CreditCard className="h-6 w-6 text-emerald-600" />
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Cards & Customer History</h1>
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Wallets & Customer History</h1>
           </div>
         </div>
 
@@ -332,15 +332,15 @@ export function OrgAdminCardsView() {
                             <Building2 className="h-4 w-4" />
                           </div>
                           <span className="font-semibold text-sm text-slate-900">
-                            Cards - {branch.name}
+                            Wallets - {branch.name}
                           </span>
                         </div>
                       </td>
 
-                      {/* 3 Action Buttons on Far Right: [ Customer History ] [ Card Analytics ] [ Card Details (N) ] */}
+                      {/* 3 Action Buttons on Far Right: [ Customer History ] [ Wallet Analytics ] [ Wallet Details (N) ] */}
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
                         <div className="inline-flex items-center gap-2">
-                          {/* 1. Customer History (to the left of Card Analytics) */}
+                          {/* 1. Customer History (to the left of Wallet Analytics) */}
                           <Button
                             variant="outline"
                             size="sm"
@@ -351,7 +351,7 @@ export function OrgAdminCardsView() {
                             Customer History
                           </Button>
 
-                          {/* 2. Card Analytics */}
+                          {/* 2. Wallet Analytics */}
                           <Button
                             variant="outline"
                             size="sm"
@@ -359,10 +359,10 @@ export function OrgAdminCardsView() {
                             className="text-xs h-8 px-3 rounded-lg border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
                             leftIcon={<BarChart2 className="h-3.5 w-3.5 text-emerald-600" />}
                           >
-                            Card Analytics
+                            Wallet Analytics
                           </Button>
 
-                          {/* 3. Card Details */}
+                          {/* 3. Wallet Details */}
                           <Button
                             variant="primary"
                             size="sm"
@@ -373,7 +373,7 @@ export function OrgAdminCardsView() {
                             className="text-xs h-8 px-3.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold cursor-pointer"
                             leftIcon={<CreditCard className="h-3.5 w-3.5" />}
                           >
-                            Card Details ({count})
+                            Wallet Details ({count})
                           </Button>
                         </div>
                       </td>
@@ -401,7 +401,7 @@ export function OrgAdminCardsView() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
                 <input
                   type="text"
-                  placeholder="Search by customer, phone, or coupon ID..."
+                  placeholder="Search by customer, phone, or wallet ID..."
                   value={historySearchQuery}
                   onChange={(e) => setHistorySearchQuery(e.target.value)}
                   className="w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:outline-none"
@@ -431,7 +431,7 @@ export function OrgAdminCardsView() {
                   <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500 sticky top-0">
                     <tr>
                       <th className="py-2.5 px-4">Customer</th>
-                      <th className="py-2.5 px-4 text-right">Coupon ID</th>
+                      <th className="py-2.5 px-4 text-right">Wallet ID</th>
                       <th className="py-2.5 px-4 text-right w-24">Action</th>
                     </tr>
                   </thead>
@@ -467,7 +467,7 @@ export function OrgAdminCardsView() {
                             </div>
                           </td>
 
-                          {/* 2. Coupon ID (near to View button) */}
+                          {/* 2. Wallet ID (near to View button) */}
                           <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 text-xs">
                             {couponId}
                           </td>
@@ -510,7 +510,7 @@ export function OrgAdminCardsView() {
         <Modal
           isOpen={!!selectedSessionForDetail}
           onClose={() => setSelectedSessionForDetail(null)}
-          title={`Session Details — Coupon ${selectedSessionForDetail.sessionCardNumber || selectedSessionForDetail.card?.physicalCardNumber || selectedSessionForDetail.card?.qrToken || ''}`}
+          title={`Session Details — Wallet ${selectedSessionForDetail.sessionCardNumber || selectedSessionForDetail.card?.physicalCardNumber || selectedSessionForDetail.card?.qrToken || ''}`}
           size="lg"
         >
           <div className="space-y-4">
@@ -596,12 +596,12 @@ export function OrgAdminCardsView() {
         </Modal>
       )}
 
-      {/* ─── MODAL 2: Card Details Modal (NO Card QR, NO '#' in Coupon ID) ─ */}
+      {/* ─── MODAL 2: Wallet Details Modal (NO Card QR, NO '#' in Wallet ID) ─ */}
       {selectedBranchForDetails && (
         <Modal
           isOpen={!!selectedBranchForDetails}
           onClose={() => setSelectedBranchForDetails(null)}
-          title={`Card Details — ${selectedBranchForDetails.name}`}
+          title={`Wallet Details — ${selectedBranchForDetails.name}`}
           size="xl"
         >
           <div className="space-y-4">
@@ -611,22 +611,22 @@ export function OrgAdminCardsView() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
                 <input
                   type="text"
-                  placeholder="Search by coupon ID or customer name..."
+                  placeholder="Search by wallet ID or customer name..."
                   value={modalSearchQuery}
                   onChange={(e) => setModalSearchQuery(e.target.value)}
                   className="w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:outline-none"
                 />
               </div>
               <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold text-xs px-2.5 py-0.5">
-                {branchCardsForDetails.length} Cards
+                {branchCardsForDetails.length} Wallets
               </Badge>
             </div>
 
             {branchCardsForDetails.length === 0 ? (
               <div className="py-8 text-center text-xs text-slate-500 border border-slate-200 rounded-xl bg-slate-50/50">
-                <p className="font-semibold text-slate-700">No cards found</p>
+                <p className="font-semibold text-slate-700">No wallets found</p>
                 <p className="text-[11px] text-slate-400 mt-0.5">
-                  {modalSearchQuery ? 'No cards match your search.' : 'No cards have been registered for this counter yet.'}
+                  {modalSearchQuery ? 'No wallets match your search.' : 'No wallets have been registered for this counter yet.'}
                 </p>
               </div>
             ) : (
@@ -634,7 +634,7 @@ export function OrgAdminCardsView() {
                 <table className="w-full text-left border-collapse text-xs">
                   <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500 sticky top-0">
                     <tr>
-                      <th className="py-2.5 px-4">Coupon ID</th>
+                      <th className="py-2.5 px-4">Wallet ID</th>
                       <th className="py-2.5 px-4">Status</th>
                       <th className="py-2.5 px-4">Live Current User</th>
                       <th className="py-2.5 px-4 text-right">Balance</th>
@@ -645,7 +645,7 @@ export function OrgAdminCardsView() {
                       const couponId = card.physicalCardNumber || card.qrToken;
                       return (
                         <tr key={card.id} className="hover:bg-slate-50/70 transition-colors">
-                          {/* 1. Coupon ID (Clean without '#') */}
+                          {/* 1. Wallet ID (Clean without '#') */}
                           <td className="py-3 px-4 font-mono font-bold text-slate-900 text-xs whitespace-nowrap">
                             {couponId}
                           </td>
@@ -724,12 +724,12 @@ export function OrgAdminCardsView() {
         </Modal>
       )}
 
-      {/* ─── MODAL 3: Card Analytics Modal (Wide size="2xl", NO Recent Activity) ─ */}
+      {/* ─── MODAL 3: Wallet Analytics Modal (Wide size="2xl", NO Recent Activity) ─ */}
       {selectedBranchForAnalytics && (
         <Modal
           isOpen={!!selectedBranchForAnalytics}
           onClose={() => setSelectedBranchForAnalytics(null)}
-          title={`Card Analytics — ${selectedBranchForAnalytics.name}`}
+          title={`Wallet Analytics — ${selectedBranchForAnalytics.name}`}
           size="2xl"
         >
           <div className="space-y-5">
@@ -778,7 +778,7 @@ export function OrgAdminCardsView() {
 
             {isLoadingCounterAnalytics ? (
               <div className="py-10">
-                <LoadingState message="Loading card analytics..." />
+                <LoadingState message="Loading wallet analytics..." />
               </div>
             ) : (
               /* 7 Simplified Metrics Grid (NO Avg. Balance) */
@@ -804,16 +804,16 @@ export function OrgAdminCardsView() {
                   <div className="space-y-4">
                     {/* Row 1: 4 Financial Metrics */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-                      {/* 1. Cards in Use */}
+                      {/* 1. Wallets in Use */}
                       <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-slate-500">Cards in Use</span>
+                          <span className="text-xs font-semibold text-slate-500">Wallets in Use</span>
                           <div className="h-7 w-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
                             <CreditCard className="h-3.5 w-3.5" />
                           </div>
                         </div>
                         <p className="mt-2 text-2xl font-bold text-slate-900">{activeCards}</p>
-                        <p className="text-[11px] text-slate-400 mt-0.5">Active cards</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Active wallets</p>
                       </div>
 
                       {/* 2. Money Added */}
@@ -849,16 +849,16 @@ export function OrgAdminCardsView() {
                           </div>
                         </div>
                         <p className="mt-2 text-2xl font-bold text-slate-900">{formatCurrency(totalBalance)}</p>
-                        <p className="text-[11px] text-slate-400 mt-0.5">Money on cards</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Money in wallets</p>
                       </div>
                     </div>
 
                     {/* Row 2: 3 Operational Metrics */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                      {/* 5. Ready Cards */}
+                      {/* 5. Ready Wallets */}
                       <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-slate-500">Ready Cards</span>
+                          <span className="text-xs font-semibold text-slate-500">Ready Wallets</span>
                           <div className="h-7 w-7 rounded-lg bg-sky-50 flex items-center justify-center text-sky-600">
                             <CheckCircle2 className="h-3.5 w-3.5" />
                           </div>
@@ -867,10 +867,10 @@ export function OrgAdminCardsView() {
                         <p className="text-[11px] text-slate-400 mt-0.5">Ready to issue</p>
                       </div>
 
-                      {/* 6. Blocked Cards */}
+                      {/* 6. Blocked Wallets */}
                       <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-slate-500">Blocked Cards</span>
+                          <span className="text-xs font-semibold text-slate-500">Blocked Wallets</span>
                           <div className="h-7 w-7 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600">
                             <ShieldAlert className="h-3.5 w-3.5" />
                           </div>

@@ -249,7 +249,7 @@ export function CounterStaffCardsView() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-4">
         <div className="flex items-center gap-2.5">
           <CreditCard className="h-6 w-6 text-emerald-600" />
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Cards & Customer History</h1>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Wallets & Customer History</h1>
           <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold text-xs px-2.5 py-0.5">
             {liveCards.length} Live Active
           </Badge>
@@ -274,7 +274,7 @@ export function CounterStaffCardsView() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           <input
             type="text"
-            placeholder="Search by card # or coupon ID..."
+            placeholder="Search by wallet ID or customer..."
             value={searchQuery}
             maxLength={40}
             onChange={(e) => handleSearchChange(e.target.value)}
@@ -314,16 +314,16 @@ export function CounterStaffCardsView() {
         </div>
       ) : isLoading ? (
         <div className="py-12 bg-white rounded-2xl border border-slate-200/80">
-          <LoadingState message="Loading live active cards..." />
+          <LoadingState message="Loading live active wallets..." />
         </div>
       ) : filteredLiveCards.length === 0 ? (
         <div className="py-12 bg-white rounded-2xl border border-slate-200/80">
           <EmptyState
-            title={searchQuery ? 'No matching live cards' : 'No Live Active Cards'}
+            title={searchQuery ? 'No matching live wallets' : 'No Live Active Wallets'}
             description={
               searchQuery
-                ? `No live active cards found matching "${searchQuery}".`
-                : 'There are currently no cards in an active customer session. Live cards will appear here as soon as they are issued to customers.'
+                ? `No live active wallets found matching "${searchQuery}".`
+                : 'There are currently no wallets in an active customer session. Live wallets will appear here as soon as they are issued to customers.'
             }
           />
           {searchQuery && (
@@ -345,7 +345,7 @@ export function CounterStaffCardsView() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  <th className="py-3 px-4">Coupon / Card ID</th>
+                  <th className="py-3 px-4">Wallet ID</th>
                   <th className="py-3 px-4">Live Balance</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
@@ -357,7 +357,7 @@ export function CounterStaffCardsView() {
 
                   return (
                     <tr key={card.id} className="hover:bg-slate-50/60 transition-colors">
-                      {/* 1. Coupon / Card ID (Clean display without Live Session badge) */}
+                      {/* 1. Wallet ID (Clean display without Live Session badge) */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-2.5">
                           <div className="h-8 w-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
@@ -378,7 +378,7 @@ export function CounterStaffCardsView() {
                         </span>
                       </td>
 
-                      {/* 3. Actions: Card Analytics | Card Details */}
+                      {/* 3. Actions: Wallet Analytics | Wallet Details */}
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
                         <div className="inline-flex items-center gap-2">
                           <Button
@@ -388,7 +388,7 @@ export function CounterStaffCardsView() {
                             className="text-xs h-8 px-3 rounded-lg border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
                             leftIcon={<BarChart2 className="h-3.5 w-3.5 text-emerald-600" />}
                           >
-                            Card Analytics
+                            Wallet Analytics
                           </Button>
 
                           <Button
@@ -398,7 +398,7 @@ export function CounterStaffCardsView() {
                             className="text-xs h-8 px-3.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold cursor-pointer shadow-2xs"
                             leftIcon={<CreditCard className="h-3.5 w-3.5" />}
                           >
-                            Card Details
+                            Wallet Details
                           </Button>
                         </div>
                       </td>
@@ -411,12 +411,12 @@ export function CounterStaffCardsView() {
         </div>
       )}
 
-      {/* ─── MODAL 1: Card Details Modal (Contains Customer, Counter & Active Since) ─ */}
+      {/* ─── MODAL 1: Wallet Details Modal (Contains Customer, Counter & Active Since) ─ */}
       {selectedCardForDetails && (
         <Modal
           isOpen={!!selectedCardForDetails}
           onClose={() => setSelectedCardForDetails(null)}
-          title={`Card Details — Coupon ${selectedCardForDetails.physicalCardNumber || selectedCardForDetails.qrToken || ''}`}
+          title={`Wallet Details — Wallet ${selectedCardForDetails.physicalCardNumber || selectedCardForDetails.qrToken || ''}`}
           size="lg"
         >
           <div className="space-y-4">
@@ -511,12 +511,12 @@ export function CounterStaffCardsView() {
         </Modal>
       )}
 
-      {/* ─── MODAL 2: Card Analytics Modal (Simplified Metrics) ─────── */}
+      {/* ─── MODAL 2: Wallet Analytics Modal (Simplified Metrics) ─────── */}
       {selectedCardForAnalytics && (
         <Modal
           isOpen={!!selectedCardForAnalytics}
           onClose={() => setSelectedCardForAnalytics(null)}
-          title={`Card Analytics — Coupon ${selectedCardForAnalytics.physicalCardNumber || selectedCardForAnalytics.qrToken || ''} (${getBranchName(selectedCardForAnalytics.activeSession?.branchId || selectedCardForAnalytics.currentBranchId)})`}
+          title={`Wallet Analytics — Wallet ${selectedCardForAnalytics.physicalCardNumber || selectedCardForAnalytics.qrToken || ''} (${getBranchName(selectedCardForAnalytics.activeSession?.branchId || selectedCardForAnalytics.currentBranchId)})`}
           size="2xl"
         >
           <div className="space-y-5">
@@ -565,7 +565,7 @@ export function CounterStaffCardsView() {
 
             {isLoadingCounterAnalytics ? (
               <div className="py-10">
-                <LoadingState message="Loading card analytics..." />
+                <LoadingState message="Loading wallet analytics..." />
               </div>
             ) : (
               (() => {
@@ -581,7 +581,7 @@ export function CounterStaffCardsView() {
                     {/* Financial Summary with Simplified Cafeteria Metrics */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
                       <div className="rounded-xl border border-slate-200 bg-white p-3.5">
-                        <span className="text-[11px] font-semibold text-slate-500 uppercase">Live Card Balance</span>
+                        <span className="text-[11px] font-semibold text-slate-500 uppercase">Live Wallet Balance</span>
                         <p className="text-lg font-bold font-mono text-emerald-600 mt-1">
                           {formatCurrency(selectedCardForAnalytics.activeSession?.balance || 0)}
                         </p>

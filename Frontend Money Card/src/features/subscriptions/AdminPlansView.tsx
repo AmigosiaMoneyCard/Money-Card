@@ -320,7 +320,7 @@ export function AdminPlansView() {
       render: (plan: Plan) => (
         <div className="text-xs text-slate-600 space-y-0.5 font-mono">
           <p>Counters: {plan.branchLimit}</p>
-          <p>Staff: {plan.staffLimit} | Cards: {plan.cardLimit}</p>
+          <p>Staff: {plan.staffLimit} | Wallets: {plan.cardLimit}</p>
         </div>
       ),
     },
@@ -650,7 +650,7 @@ export function AdminPlansView() {
               id="create-card-limit"
               type="number"
               min="0"
-              label="Max Active Cards"
+              label="Max Active Wallets"
               value={formCardLimit}
               onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') e.preventDefault(); }}
               onChange={(e) => {
@@ -755,7 +755,7 @@ export function AdminPlansView() {
               id="edit-card-limit"
               type="number"
               min="0"
-              label="Max Cards"
+              label="Max Wallets"
               value={formCardLimit}
               onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') e.preventDefault(); }}
               onChange={(e) => {

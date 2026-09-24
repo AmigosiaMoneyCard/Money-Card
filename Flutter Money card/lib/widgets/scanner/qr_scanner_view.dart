@@ -18,8 +18,8 @@ class QrScannerView extends StatefulWidget {
   const QrScannerView({
     super.key,
     required this.onQrScanned,
-    this.title = 'Scan Money Card',
-    this.prompt = 'Point your camera at the card QR code',
+    this.title = 'Scan Wallet',
+    this.prompt = 'Point your camera at the wallet QR code',
     this.debounceDuration = const Duration(milliseconds: 1500),
   });
 
@@ -161,7 +161,7 @@ class _QrScannerViewState extends State<QrScannerView>
         actions: [
           IconButton(
             icon: const Icon(Icons.keyboard_outlined),
-            tooltip: 'Enter Coupon ID Manually',
+            tooltip: 'Enter Wallet ID Manually',
             onPressed: _showManualEntryDialog,
           ),
           IconButton(
@@ -202,7 +202,7 @@ class _QrScannerViewState extends State<QrScannerView>
         if (_invalidQrMessage != null) _buildInvalidQrBanner(),
         if (_isProcessingScan)
           const AppLoadingView(
-            message: 'Resolving card...',
+            message: 'Resolving wallet...',
             isOverlay: true,
           ),
       ],
@@ -351,7 +351,7 @@ class _QrScannerViewState extends State<QrScannerView>
                             Icon(Icons.keyboard_outlined, size: 18, color: Colors.white),
                             SizedBox(width: 8),
                             Text(
-                              'Enter Coupon ID Manually',
+                              'Enter Wallet ID Manually',
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
@@ -422,7 +422,7 @@ class _QrScannerViewState extends State<QrScannerView>
             ),
             const SizedBox(height: AppSpacing.xs),
             const Text(
-              'Please allow camera permission in device settings to scan Money Card QR codes.',
+              'Please allow camera permission in device settings to scan wallet QR codes.',
               style: TextStyle(color: Colors.white70),
               textAlign: TextAlign.center,
             ),
@@ -454,7 +454,7 @@ class _QrScannerViewState extends State<QrScannerView>
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Enter Coupon ID',
+                      'Enter Wallet ID',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -465,7 +465,7 @@ class _QrScannerViewState extends State<QrScannerView>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'If the QR code cannot be scanned, manually enter the Coupon ID or Card Number:',
+                    'If the QR code cannot be scanned, manually enter the Wallet ID:',
                     style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
                   ),
                   const SizedBox(height: 14),
@@ -474,10 +474,10 @@ class _QrScannerViewState extends State<QrScannerView>
                     autofocus: true,
                     textCapitalization: TextCapitalization.characters,
                     decoration: InputDecoration(
-                      labelText: 'Coupon ID / Card Number',
-                      hintText: 'e.g. CRD-101 or Coupon ID',
+                      labelText: 'Wallet ID / Number',
+                      hintText: 'e.g. WLT-101 or Wallet ID',
                       errorText: errorText,
-                      prefixIcon: const Icon(Icons.credit_card),
+                      prefixIcon: const Icon(Icons.account_balance_wallet_outlined),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       suffixIcon: IconButton(
                         icon: const Icon(Icons.clear, size: 18),
@@ -513,7 +513,7 @@ class _QrScannerViewState extends State<QrScannerView>
                   onPressed: () {
                     final input = textController.text.trim();
                     if (input.isEmpty) {
-                      setDialogState(() => errorText = 'Please enter a coupon ID or card number');
+                      setDialogState(() => errorText = 'Please enter a wallet ID or number');
                       return;
                     }
                     Navigator.pop(ctx);

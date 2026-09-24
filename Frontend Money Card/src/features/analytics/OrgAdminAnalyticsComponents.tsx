@@ -266,12 +266,12 @@ export function OrgAdminLifecycleCards({ analytics }: KpiCardsProps) {
 
   return (
     <div className="space-y-3">
-      <h2 className="text-base font-bold text-slate-900">Card Lifecycle & Activity</h2>
+      <h2 className="text-base font-bold text-slate-900">Wallet Lifecycle & Activity</h2>
       <div className="grid gap-4 sm:grid-cols-3">
         <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Active Card Recharges
+              Active Wallet Recharges
             </span>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
               <RefreshCw className="h-4 w-4" />
@@ -286,8 +286,8 @@ export function OrgAdminLifecycleCards({ analytics }: KpiCardsProps) {
             </p>
             <p className="mt-1 text-xs text-slate-500">
               {reRechargeCount > 0
-                ? `${reRechargeCount} repeat top-up${reRechargeCount === 1 ? '' : 's'} on active cards`
-                : 'Total times active cards were recharged'}
+                ? `${reRechargeCount} repeat top-up${reRechargeCount === 1 ? '' : 's'} on active wallets`
+                : 'Total times active wallets were recharged'}
             </p>
           </div>
         </Card>
@@ -295,7 +295,7 @@ export function OrgAdminLifecycleCards({ analytics }: KpiCardsProps) {
         <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Closed Cards
+              Closed Wallets
             </span>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
               <CheckCircle2 className="h-4 w-4" />
@@ -305,17 +305,17 @@ export function OrgAdminLifecycleCards({ analytics }: KpiCardsProps) {
             <p className="font-mono text-2xl font-bold text-slate-900">
               {closedCount.toLocaleString()}{' '}
               <span className="text-xs font-normal text-slate-500">
-                {closedCount === 1 ? 'Card' : 'Cards'}
+                {closedCount === 1 ? 'Wallet' : 'Wallets'}
               </span>
             </p>
-            <p className="mt-1 text-xs text-slate-500">Completed & settled card sessions</p>
+            <p className="mt-1 text-xs text-slate-500">Completed & settled wallet sessions</p>
           </div>
         </Card>
 
         <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Active Cards (Zero Balance)
+              Active Wallets (Zero Balance)
             </span>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
               <AlertCircle className="h-4 w-4" />
@@ -325,7 +325,7 @@ export function OrgAdminLifecycleCards({ analytics }: KpiCardsProps) {
             <p className="font-mono text-2xl font-bold text-amber-700">
               {zeroBalanceCount.toLocaleString()}{' '}
               <span className="text-xs font-normal text-slate-500">
-                {zeroBalanceCount === 1 ? 'Card' : 'Cards'}
+                {zeroBalanceCount === 1 ? 'Wallet' : 'Wallets'}
               </span>
             </p>
             <p className="mt-1 text-xs text-slate-500">Currently in use with ₹0 unspent balance</p>

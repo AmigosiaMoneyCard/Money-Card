@@ -106,7 +106,7 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Card Sessions'),
+        title: const Text('Wallet Sessions'),
       ),
       body: SafeArea(
         child: Column(
@@ -415,7 +415,7 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
                       borderRadius: AppSpacing.roundedSm,
                     ),
                     child: Icon(
-                      Icons.credit_card,
+                      Icons.account_balance_wallet_outlined,
                       color: isActive ? AppColors.success : AppColors.textSecondaryLight,
                       size: 20,
                     ),
@@ -426,7 +426,7 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Card $cardIdentifier',
+                          'Wallet $cardIdentifier',
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,

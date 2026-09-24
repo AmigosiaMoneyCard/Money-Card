@@ -53,7 +53,7 @@ class _CardsScreenState extends ConsumerState<CardsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Active Cards'),
+        title: const Text('Active Wallets'),
       ),
       body: Column(
         children: [
@@ -89,7 +89,7 @@ class _CardsScreenState extends ConsumerState<CardsScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        '${cardListState.cards.length} Active Cards',
+                        '${cardListState.cards.length} Active Wallets',
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -107,7 +107,7 @@ class _CardsScreenState extends ConsumerState<CardsScreen> {
             child: TextField(
               onChanged: notifier.setSearchQuery,
               decoration: const InputDecoration(
-                hintText: 'Search active cards by card number...',
+                hintText: 'Search active wallets by wallet number...',
                 prefixIcon: Icon(Icons.search, size: 20),
                 isDense: true,
               ),
@@ -134,7 +134,7 @@ class _CardsScreenState extends ConsumerState<CardsScreen> {
     CardListNotifier notifier,
   ) {
     if (state.isLoading) {
-      return const AppLoadingView(message: 'Loading counter cards...');
+      return const AppLoadingView(message: 'Loading counter wallets...');
     }
 
     if (state.errorMessage != null) {
@@ -168,9 +168,9 @@ class _CardsScreenState extends ConsumerState<CardsScreen> {
           children: const [
             SizedBox(height: 100),
             AppEmptyState(
-              title: 'No Cards Found',
-              description: 'No cards match the selected filter.',
-              icon: Icons.credit_card_off_outlined,
+              title: 'No Wallets Found',
+              description: 'No wallets match the selected filter.',
+              icon: Icons.account_balance_wallet_outlined,
             ),
           ],
         ),
@@ -197,7 +197,7 @@ class _CardsScreenState extends ConsumerState<CardsScreen> {
                   color: AppColors.primaryLight,
                   borderRadius: AppSpacing.roundedSm,
                 ),
-                child: const Icon(Icons.credit_card, color: AppColors.primaryDark, size: 20),
+                child: const Icon(Icons.account_balance_wallet_outlined, color: AppColors.primaryDark, size: 20),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(

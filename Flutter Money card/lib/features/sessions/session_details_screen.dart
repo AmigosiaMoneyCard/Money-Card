@@ -159,7 +159,7 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Card ${session.displayCardNumber}'),
+        title: Text('Wallet ${session.displayCardNumber}'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -205,10 +205,10 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                 const Divider(height: AppSpacing.lg),
                 Row(
                   children: [
-                    const Icon(Icons.credit_card, size: 16, color: AppColors.textSecondaryLight),
+                    const Icon(Icons.account_balance_wallet_outlined, size: 16, color: AppColors.textSecondaryLight),
                     const SizedBox(width: AppSpacing.xs),
                     Text(
-                      'Card: ${session.displayCardNumber}',
+                      'Wallet: ${session.displayCardNumber}',
                       style: const TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
                     ),
 
@@ -573,7 +573,7 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                 color: Colors.blue.shade50,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(Icons.credit_card, color: Colors.blue.shade700, size: 20),
+              child: Icon(Icons.account_balance_wallet_outlined, color: Colors.blue.shade700, size: 20),
             ),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
@@ -584,7 +584,7 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
-                        'Card Issued',
+                        'Wallet Issued',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -607,7 +607,7 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Issued Card: ${session.displayCardNumber}',
+                    'Issued Wallet: ${session.displayCardNumber}',
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,

@@ -292,7 +292,7 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('Active Cards'), findsWidgets);
+      expect(find.text('Active Wallets'), findsWidgets);
       expect(find.text('MC-101'), findsOneWidget);
       expect(find.text('MC-001'), findsNothing);
     });
@@ -331,9 +331,9 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('Issue New Card'), findsOneWidget);
-      expect(find.text('Available Cards'), findsOneWidget);
-      expect(find.text('Scan Card QR'), findsOneWidget);
+      expect(find.text('Issue New Wallet'), findsOneWidget);
+      expect(find.text('Available Wallets'), findsOneWidget);
+      expect(find.text('Scan Wallet QR'), findsOneWidget);
 
       // Available cards list shows MC-001 and MC-002
       expect(find.text('MC-001'), findsOneWidget);
@@ -345,7 +345,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Confirm dialog appears
-      expect(find.text('Confirm Card Issuance'), findsOneWidget);
+      expect(find.text('Confirm Wallet Issuance'), findsOneWidget);
       expect(find.text('Main Cafeteria'), findsOneWidget);
       expect(find.text('₹0.00'), findsOneWidget);
 
@@ -402,7 +402,7 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('Card MC-001'), findsOneWidget);
+      expect(find.text('Wallet MC-001'), findsOneWidget);
       expect(find.text('AVAILABLE'), findsOneWidget);
       expect(find.text('Start Active Session'), findsOneWidget);
 
@@ -411,7 +411,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Confirm activation in dialog with required customer details
-      expect(find.text('Confirm Card Activation'), findsOneWidget);
+      expect(find.text('Confirm Wallet Activation'), findsOneWidget);
       final activateFields = find.descendant(of: find.byType(AlertDialog), matching: find.byType(TextField));
       await tester.enterText(activateFields.at(0), 'John Doe');
       await tester.enterText(activateFields.at(1), '9876543210');
@@ -457,13 +457,13 @@ void main() {
       );
 
       await tester.pumpAndSettle();
-      expect(find.text('Block Card'), findsOneWidget);
+      expect(find.text('Block Wallet'), findsOneWidget);
 
-      // Staff taps Block Card
-      await tester.tap(find.text('Block Card'));
+      // Staff taps Block Wallet
+      await tester.tap(find.text('Block Wallet'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Are you sure you want to block this card? It will be disabled for purchases.'), findsOneWidget);
+      expect(find.text('Are you sure you want to block this wallet? It will be disabled for purchases.'), findsOneWidget);
       expect(find.text('Blocked By (Default):'), findsOneWidget);
       expect(find.text('Alex Morgan (STAFF - Main Cafeteria)'), findsOneWidget);
       expect(find.text('Primary Reason:'), findsOneWidget);
@@ -475,13 +475,13 @@ void main() {
       // Card status becomes BLOCKED
       expect(find.text('BLOCKED'), findsWidgets);
       expect(detailsNotifier.state.card?.status, CardStatus.blocked);
-      expect(find.text('Unblock Card'), findsOneWidget);
+      expect(find.text('Unblock Wallet'), findsOneWidget);
 
-      // Staff taps Unblock Card
-      await tester.tap(find.text('Unblock Card'));
+      // Staff taps Unblock Wallet
+      await tester.tap(find.text('Unblock Wallet'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Unblocking this card will make it available for transactions again.'), findsOneWidget);
+      expect(find.text('Unblocking this wallet will make it available for transactions again.'), findsOneWidget);
       await tester.tap(find.widgetWithText(ElevatedButton, 'Unblock'));
       await tester.pumpAndSettle();
 

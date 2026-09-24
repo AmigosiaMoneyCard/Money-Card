@@ -79,7 +79,7 @@ class _RechargesScreenState extends ConsumerState<RechargesScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'This will void the top-up of ₹${tx.amount.toStringAsFixed(2)} for ${tx.cardNumber ?? "Card"}.',
+                'This will void the top-up of ₹${tx.amount.toStringAsFixed(2)} for ${tx.cardNumber ?? "Wallet"}.',
                 style: const TextStyle(fontSize: 14, color: AppColors.textPrimaryLight),
               ),
               const SizedBox(height: 16),
@@ -567,7 +567,7 @@ class _RechargesScreenState extends ConsumerState<RechargesScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Card: ${tx.cardNumber ?? "MC-Card"}',
+                              'Wallet: ${tx.cardNumber ?? "MC-Wallet"}',
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                             ),
                             Text(

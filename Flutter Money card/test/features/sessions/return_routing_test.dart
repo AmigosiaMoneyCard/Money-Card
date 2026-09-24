@@ -114,7 +114,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify Return Card Screen is rendered
-      expect(find.text('Return & Settle Card'), findsOneWidget);
+      expect(find.text('Return & Settle Wallet'), findsOneWidget);
     });
 
     test('Multi-Branch Staff can switch active branch seamlessly', () async {

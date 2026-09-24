@@ -948,8 +948,8 @@ export function StaffPage() {
     let amountClass = 'text-slate-900';
 
     if (act.type === 'CARD_ACTIVATION') {
-      title = 'New Card Issued';
-      badgeLabel = 'Card';
+      title = 'New Wallet Issued';
+      badgeLabel = 'Wallet';
       badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200/70';
       amountText = act.amount !== undefined && act.amount > 0 ? `+${formatCurrency(act.amount)}` : (act.cardNumber ? `#${act.cardNumber}` : 'Issued');
       amountClass = act.amount !== undefined && act.amount > 0 ? 'text-emerald-600' : 'text-slate-700';
@@ -972,7 +972,7 @@ export function StaffPage() {
       amountText = act.amount !== undefined ? formatCurrency(act.amount) : '—';
       amountClass = 'text-slate-900';
     } else if (act.type === 'CARD_SETTLEMENT') {
-      title = 'Card Closed / Returned';
+      title = 'Wallet Closed / Returned';
       badgeLabel = 'Closed';
       badgeClass = 'bg-slate-100 text-slate-600 border-slate-200';
       amountText = act.amount !== undefined && act.amount > 0 ? formatCurrency(act.amount) : 'Settled';
@@ -984,7 +984,7 @@ export function StaffPage() {
       amountText = act.amount !== undefined ? `-${formatCurrency(act.amount)}` : '—';
       amountClass = 'text-rose-600';
     } else if (act.type === 'CARD_BLOCKED') {
-      title = 'Card Blocked';
+      title = 'Wallet Blocked';
       badgeLabel = 'Blocked';
       badgeClass = 'bg-rose-50 text-rose-700 border-rose-200/70';
       amountText = 'Blocked';
@@ -2479,13 +2479,13 @@ export function StaffPage() {
             {/* Minimal 5-Metric Strip (Zero Emojis) */}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200/80">
               <div>
-                <p className="text-[11px] font-medium text-slate-500">Cards Issued</p>
+                <p className="text-[11px] font-medium text-slate-500">Wallets Issued</p>
                 <p className="text-lg font-bold font-mono text-slate-900 mt-1">
                   {auditMetrics.cardsActivatedCount}
                 </p>
               </div>
               <div>
-                <p className="text-[11px] font-medium text-slate-500">Cards Closed</p>
+                <p className="text-[11px] font-medium text-slate-500">Wallets Closed</p>
                 <p className="text-lg font-bold font-mono text-slate-900 mt-1">
                   {auditMetrics.cardsSettledCount}
                 </p>
@@ -2498,7 +2498,7 @@ export function StaffPage() {
               </div>
               <div>
                 <p className="text-[11px] font-medium text-slate-500">Orders Sold</p>
-                <p className="text-lg font-bold font-mono text-slate-900 mt-1">
+                <p className="text-lg font-bold font-mono text-indigo-600 mt-1">
                   {formatCurrency(auditMetrics.purchaseVolume)}
                 </p>
               </div>
@@ -2519,8 +2519,8 @@ export function StaffPage() {
                   className="h-8.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-none"
                 >
                   <option value="ALL">All Activities</option>
-                  <option value="CARD_ACTIVATION">New Cards Issued</option>
-                  <option value="CARD_SETTLEMENT">Cards Closed</option>
+                  <option value="CARD_ACTIVATION">New Wallets Issued</option>
+                  <option value="CARD_SETTLEMENT">Wallets Closed</option>
                   <option value="RECHARGE">Money Loaded</option>
                   <option value="PURCHASE">Orders Sold</option>
                   <option value="REFUND">Money Refunded</option>
@@ -2531,7 +2531,7 @@ export function StaffPage() {
                   </div>
                   <input
                     type="text"
-                    placeholder="Search by card or note..."
+                    placeholder="Search by wallet or note..."
                     value={auditSearch}
                     maxLength={30}
                     onChange={(e) => {

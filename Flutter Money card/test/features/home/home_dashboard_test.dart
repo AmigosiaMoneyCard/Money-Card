@@ -169,7 +169,7 @@ void main() {
       expect(find.text('View All'), findsNothing);
     });
 
-    testWidgets('HomeScreen renders SCAN QR CARD and Quick Actions', (tester) async {
+    testWidgets('HomeScreen renders SCAN QR WALLET and Quick Actions', (tester) async {
       await tester.binding.setSurfaceSize(const Size(800, 1600));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -194,7 +194,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Primary scan action
-      expect(find.text('SCAN QR CARD'), findsOneWidget);
+      expect(find.text('SCAN QR WALLET'), findsOneWidget);
 
       // Quick action cards
       expect(find.text('Recharges'), findsNothing);

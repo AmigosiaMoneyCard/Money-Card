@@ -106,10 +106,10 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
           insetPadding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
           title: Row(
             children: const [
-              Icon(Icons.credit_card, color: AppColors.primary, size: 22),
+              Icon(Icons.account_balance_wallet_outlined, color: AppColors.primary, size: 22),
               SizedBox(width: 8),
               Expanded(
-                child: Text('Confirm Card Activation', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                child: Text('Confirm Wallet Activation', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -131,7 +131,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Card Number:', style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight)),
+                          const Text('Wallet Number:', style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight)),
                           Text(
                             card.physicalCardNumber,
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
@@ -274,7 +274,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
     final branchName = currentBranch?.name ?? 'Main Branch';
     final defaultBlockerStr = '$blockerName ($blockerRole - $branchName)';
 
-    String selectedReason = 'Lost or Stolen Card';
+    String selectedReason = 'Lost or Stolen Wallet';
     final additionalReasonCtrl = TextEditingController();
 
     final confirm = await showDialog<bool>(
@@ -287,7 +287,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
             children: const [
               Icon(Icons.block, color: AppColors.error, size: 24),
               SizedBox(width: AppSpacing.xs),
-              Text('Block Card', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('Block Wallet', style: TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
           content: Column(
@@ -295,7 +295,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Are you sure you want to block this card? It will be disabled for purchases.',
+                'Are you sure you want to block this wallet? It will be disabled for purchases.',
                 style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
               ),
               const Divider(height: AppSpacing.lg),
@@ -343,7 +343,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                   border: OutlineInputBorder(),
                 ),
                 items: const [
-                  DropdownMenuItem(value: 'Lost or Stolen Card', child: Text('Lost or Stolen Card', style: TextStyle(fontSize: 13))),
+                  DropdownMenuItem(value: 'Lost or Stolen Wallet', child: Text('Lost or Stolen Wallet', style: TextStyle(fontSize: 13))),
                   DropdownMenuItem(value: 'Damaged / Hardware Failure', child: Text('Damaged / Hardware Failure', style: TextStyle(fontSize: 13))),
                   DropdownMenuItem(value: 'Suspicious Activity / Fraud', child: Text('Suspicious Activity / Fraud', style: TextStyle(fontSize: 13))),
                   DropdownMenuItem(value: 'Customer Request', child: Text('Customer Request', style: TextStyle(fontSize: 13))),
@@ -410,7 +410,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
         ref.read(availableCardsNotifierProvider.notifier).loadAvailableCards();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Card has been blocked: $combinedReason'),
+            content: Text('Wallet has been blocked: $combinedReason'),
             backgroundColor: AppColors.error,
           ),
         );
@@ -421,8 +421,8 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
   Future<void> _handleUnblockCard() async {
     final confirm = await AppDialog.show(
       context,
-      title: 'Unblock Card',
-      message: 'Unblocking this card will make it available for transactions again.',
+      title: 'Unblock Wallet',
+      message: 'Unblocking this wallet will make it available for transactions again.',
       confirmLabel: 'Unblock',
     );
 
@@ -433,7 +433,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
         ref.read(availableCardsNotifierProvider.notifier).loadAvailableCards();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Card unblocked successfully.'),
+            content: Text('Wallet unblocked successfully.'),
             backgroundColor: AppColors.success,
           ),
         );
@@ -450,16 +450,16 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
 
     if (cardState.isLoading) {
       return const Scaffold(
-        body: AppLoadingView(message: 'Loading card details...'),
+        body: AppLoadingView(message: 'Loading wallet details...'),
       );
     }
 
     if (card == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Card Details')),
+        appBar: AppBar(title: const Text('Wallet Details')),
         body: Center(
           child: Text(
-            cardState.errorMessage ?? 'Card not found.',
+            cardState.errorMessage ?? 'Wallet not found.',
             style: const TextStyle(color: AppColors.error),
           ),
         ),
@@ -472,7 +472,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Card ${card.physicalCardNumber}'),
+        title: Text('Wallet ${card.physicalCardNumber}'),
       ),
       body: ListView(
         padding: AppSpacing.paddingMd,
@@ -553,7 +553,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                             Icon(Icons.block, size: 16, color: AppColors.error),
                             SizedBox(width: 6),
                             Text(
-                              'Card is Blocked',
+                              'Wallet is Blocked',
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
@@ -664,7 +664,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
           ],
 
           // Actions Section
-          const SectionHeader(title: 'Card Actions'),
+          const SectionHeader(title: 'Wallet Actions'),
           const SizedBox(height: AppSpacing.sm),
 
           // Start Session Action (when available)
@@ -684,7 +684,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
             PermissionGuard.single(
               permission: AppPermission.recharge,
               child: AppButton(
-                label: 'Recharge Card (Cash / UPI)',
+                label: 'Recharge Wallet (Cash / UPI)',
                 icon: Icons.add_card,
                 onPressed: () => context.push(
                   '/app/recharge/${activeSession.id}?card=${card.physicalCardNumber}',
@@ -704,7 +704,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
             PermissionGuard.single(
               permission: AppPermission.cardReturn,
               child: AppOutlinedButton(
-                label: 'Return & Settle Card',
+                label: 'Return & Settle Wallet',
                 icon: Icons.assignment_return_outlined,
                 onPressed: () => context.push(
                   '/app/return/${activeSession.id}?card=${card.physicalCardNumber}',
@@ -719,7 +719,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
             PermissionGuard.single(
               permission: AppPermission.cardUnblock,
               child: AppButton(
-                label: 'Unblock Card',
+                label: 'Unblock Wallet',
                 icon: Icons.lock_open,
                 backgroundColor: AppColors.success,
                 isLoading: cardState.isSubmitting,
@@ -731,7 +731,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
             PermissionGuard.single(
               permission: AppPermission.cardBlock,
               child: AppOutlinedButton(
-                label: 'Block Card',
+                label: 'Block Wallet',
                 icon: Icons.block,
                 textColor: AppColors.error,
                 borderColor: AppColors.error,

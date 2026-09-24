@@ -450,7 +450,7 @@ function OrgAdminSubscriptionsView() {
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-slate-700">
-                        <span>Active Cards:</span>
+                        <span>Active Wallets:</span>
                         <span className="font-mono text-sm font-bold text-slate-900">
                           {cardUsage} / <span className="text-emerald-700 font-extrabold">{cardLimit}</span>
                         </span>
@@ -599,7 +599,7 @@ function OrgAdminSubscriptionsView() {
                               )}
                             </div>
                             <div className="flex items-center justify-between text-slate-700">
-                              <span>Active Cards:</span>
+                              <span>Active Wallets:</span>
                               {isCurrent ? (
                                 <span className="font-mono text-sm font-bold text-slate-900">
                                   {cardUsage} / <span className="text-emerald-700 font-extrabold">{cardLimit}</span>

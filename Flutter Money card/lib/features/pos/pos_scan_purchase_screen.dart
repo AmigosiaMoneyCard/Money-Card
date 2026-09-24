@@ -116,7 +116,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                     Icon(Icons.credit_card, color: AppColors.primary, size: 22),
                     SizedBox(width: 8),
                     Expanded(
-                      child: Text('Confirm Card Activation', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      child: Text('Confirm Wallet Activation', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -136,7 +136,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text('Card Number:', style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight)),
+                            const Text('Wallet Number:', style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight)),
                             Text(
                               result.card.displayCardNumber,
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
@@ -261,7 +261,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Card ${activeCard.displayCardNumber} activated successfully!',
+                      'Wallet ${activeCard.displayCardNumber} activated successfully!',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -352,10 +352,10 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
 
     final confirm = await AppDialog.show(
       context,
-      title: 'Confirm Card Return & Settlement',
+      title: 'Confirm Wallet Return & Settlement',
       message: session.balance > 0
-          ? 'Refund remaining balance of ₹${session.balance.toStringAsFixed(2)} to customer and settle this card session?'
-          : 'Settle this card session and return card ${card.displayCardNumber} to AVAILABLE state?',
+          ? 'Refund remaining balance of ₹${session.balance.toStringAsFixed(2)} to customer and settle this wallet session?'
+          : 'Settle this wallet session and return wallet ${card.displayCardNumber} to AVAILABLE state?',
       confirmLabel: 'Confirm & Settle',
       isDestructive: session.balance > 0,
     );
@@ -413,7 +413,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     if (_settlementResult != null && _resolvedCard != null) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Card Return & Settlement'),
+          title: const Text('Wallet Return & Settlement'),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () {
@@ -441,7 +441,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 const Text(
-                  'Card Returned Successfully',
+                  'Wallet Returned Successfully',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -450,7 +450,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  'Card: ${_resolvedCard!.displayCardNumber.toUpperCase().startsWith("MC-") ? _resolvedCard!.displayCardNumber : "MC-${_resolvedCard!.displayCardNumber}"}',
+                  'Wallet: ${_resolvedCard!.displayCardNumber.toUpperCase().startsWith("MC-") ? _resolvedCard!.displayCardNumber : "MC-${_resolvedCard!.displayCardNumber}"}',
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: AppSpacing.sm),
@@ -480,7 +480,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: const [
-                          Text('Card Status:'),
+                          Text('Wallet Status:'),
                           AppBadge(label: 'AVAILABLE', variant: AppBadgeVariant.primary),
                         ],
                       ),
@@ -497,7 +497,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 const Text(
-                  'This card has been returned to inventory and is ready for new issuance.',
+                  'This wallet has been returned to inventory and is ready for new issuance.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 13,
@@ -506,7 +506,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 AppButton(
-                  label: 'Scan Another Card',
+                  label: 'Scan Another Wallet',
                   icon: Icons.qr_code_scanner,
                   onPressed: _resetScan,
                 ),
@@ -533,7 +533,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     if (_scanErrorMessage != null) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Scan QR Card'),
+          title: const Text('Scan QR Wallet'),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () => context.pop(),
@@ -555,7 +555,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 const Text(
-                  'Card Not Registered',
+                  'Wallet Not Registered',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -564,7 +564,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 const Text(
-                  'This QR card is not registered in your counter. Try scanning a different card.',
+                  'This QR wallet is not registered in your counter. Try scanning a different wallet.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
@@ -602,7 +602,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     if (_resolvedCard != null && _resolvedCard!.status == CardStatus.blocked) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Scan QR Card'),
+          title: const Text('Scan QR Wallet'),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () => context.pop(),
@@ -633,7 +633,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
               const Text(
-                'Cannot perform operations on a blocked card. This card is blocked and cannot be used. Please contact your manager.',
+                'Cannot perform operations on a blocked wallet. This wallet is blocked and cannot be used. Please contact your manager.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppColors.error,
@@ -671,7 +671,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     if (_resolvedCard != null && (_activeSession == null || _activeSession!.status != SessionStatus.active)) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Scan QR Card'),
+          title: const Text('Scan QR Wallet'),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () => context.pop(),
@@ -702,7 +702,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
               const Text(
-                'Card has no active session.',
+                'Wallet has no active session.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
@@ -712,7 +712,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
               ),
               const SizedBox(height: 4),
               const Text(
-                'A card session must be issued before making purchases or recharging.',
+                'A wallet session must be issued before making purchases or recharging.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 13,
@@ -721,7 +721,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
               ),
               const SizedBox(height: AppSpacing.lg),
               AppButton(
-                label: 'Issue Card Session First',
+                label: 'Issue Wallet Session First',
                 icon: Icons.add_card,
                 onPressed: () {
                   context.pushReplacement(
@@ -731,7 +731,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
               ),
               const SizedBox(height: AppSpacing.sm),
               AppOutlinedButton(
-                label: 'Scan Another Card',
+                label: 'Scan Another Wallet',
                 icon: Icons.qr_code_scanner,
                 onPressed: _resetScan,
               ),
@@ -751,8 +751,8 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       body: Stack(
         children: [
           QrScannerView(
-            title: 'Scan QR Card',
-            prompt: 'Point camera at customer\'s Money Card QR code',
+            title: 'Scan QR Wallet',
+            prompt: 'Point camera at customer\'s wallet QR code',
             onQrScanned: _handleQrScanned,
           ),
           if (AppConfig.useMockApi)
@@ -830,11 +830,11 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Card: ${card.displayCardNumber}'),
+        title: Text('Wallet: ${card.displayCardNumber}'),
         actions: [
           IconButton(
             icon: const Icon(Icons.qr_code_scanner),
-            tooltip: 'Scan Another Card',
+            tooltip: 'Scan Another Wallet',
             onPressed: _resetScan,
           ),
         ],
@@ -994,16 +994,16 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
 
             // 2. Action Hub Section Header
             const SectionHeader(
-              title: 'Card Actions & Operations',
+              title: 'Wallet Actions & Operations',
             ),
             const SizedBox(height: AppSpacing.sm),
 
-            // OPTION 1: RECHARGE CARD
+            // OPTION 1: RECHARGE WALLET
             if (canRecharge) ...[
               _buildActionTile(
                 icon: Icons.account_balance_wallet_outlined,
                 iconColor: AppColors.success,
-                title: 'Recharge Card',
+                title: 'Recharge Wallet',
                 onTap: _openRecharge,
               ),
               const SizedBox(height: AppSpacing.sm),
@@ -1038,30 +1038,30 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
             ),
             const SizedBox(height: AppSpacing.sm),
 
-            // OPTION 5: CARD INFO & STATISTICS
+            // OPTION 5: WALLET INFO & STATISTICS
             _buildActionTile(
               icon: Icons.info_outline,
               iconColor: AppColors.info,
-              title: 'Card Info & Statistics',
+              title: 'Wallet Info & Statistics',
               onTap: () => _showCardSessionInfoSheet(context, _activeSession ?? session),
             ),
             const SizedBox(height: AppSpacing.sm),
 
-            // OPTION 6: SETTLE / RETURN CARD
+            // OPTION 6: SETTLE / RETURN WALLET
             if (canSettleReturn) ...[
               _buildActionTile(
                 icon: Icons.assignment_return_outlined,
                 iconColor: AppColors.warning,
-                title: 'Settle / Return Card',
+                title: 'Settle / Return Wallet',
                 isDestructive: (_activeSession ?? session).balance > 0,
                 onTap: _handleSettleReturn,
               ),
               const SizedBox(height: AppSpacing.md),
             ],
 
-            // Footer Action: Scan Another Card
+            // Footer Action: Scan Another Wallet
             AppOutlinedButton(
-              label: 'Scan Another Card',
+              label: 'Scan Another Wallet',
               icon: Icons.qr_code_scanner,
               onPressed: _resetScan,
             ),
@@ -1912,11 +1912,11 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Card Info & Statistics',
+                      'Wallet Info & Statistics',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      'Card #${session.displayCardNumber}',
+                      'Wallet #${session.displayCardNumber}',
                       style: const TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
                     ),
                   ],

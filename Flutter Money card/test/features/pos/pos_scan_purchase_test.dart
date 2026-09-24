@@ -106,7 +106,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
 
       // Initial scanner view is present
-      expect(find.text('Scan QR Card'), findsOneWidget);
+      expect(find.text('Scan QR Wallet'), findsOneWidget);
 
       // Simulate scanning QR-MOCK-001
       final scanner = tester.widget<QrScannerView>(find.byType(QrScannerView));
@@ -114,37 +114,37 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify Active Card Action Hub is opened
-      expect(find.text('Card: MC-001'), findsWidgets);
+      expect(find.text('Wallet: MC-001'), findsWidgets);
       expect(find.text('ACTIVE'), findsOneWidget);
       expect(find.textContaining('Balance: ₹750.00'), findsOneWidget);
       expect(find.text('Session Active'), findsOneWidget);
 
       // Verify all authorized action tiles are present
       expect(find.text('Add Products'), findsOneWidget);
-      expect(find.text('Recharge Card'), findsOneWidget);
+      expect(find.text('Recharge Wallet'), findsOneWidget);
       expect(find.text('Food Orders'), findsOneWidget);
       expect(find.text('Top-up History'), findsOneWidget);
-      expect(find.text('Settle / Return Card'), findsOneWidget);
+      expect(find.text('Settle / Return Wallet'), findsOneWidget);
 
-      // Test Settle / Return Card
-      await tester.tap(find.text('Settle / Return Card'));
+      // Test Settle / Return Wallet
+      await tester.tap(find.text('Settle / Return Wallet'));
       await tester.pumpAndSettle();
 
       // Confirm dialog appears with refund calculation
-      expect(find.text('Confirm Card Return & Settlement'), findsOneWidget);
+      expect(find.text('Confirm Wallet Return & Settlement'), findsOneWidget);
       expect(find.textContaining('Refund remaining balance of ₹750.00'), findsOneWidget);
 
       // Confirm settlement
       await tester.tap(find.text('Confirm & Settle'));
       await tester.pumpAndSettle();
 
-      // Action Hub transitions to Card Returned Successfully state
-      expect(find.text('Card Returned Successfully'), findsOneWidget);
+      // Action Hub transitions to Wallet Returned Successfully state
+      expect(find.text('Wallet Returned Successfully'), findsOneWidget);
       expect(find.text('Refunded Amount:'), findsOneWidget);
       expect(find.text('₹750.00'), findsOneWidget);
       expect(find.text('AVAILABLE'), findsOneWidget);
       expect(find.text('SETTLED'), findsOneWidget);
-      expect(find.text('Scan Another Card'), findsOneWidget);
+      expect(find.text('Scan Another Wallet'), findsOneWidget);
     });
 
     testWidgets('Action Hub enforces granular Staff permissions (hides unauthorized actions)', (tester) async {
@@ -179,9 +179,9 @@ void main() {
       expect(find.text('Add Products'), findsOneWidget);
 
       // Staff lacks RECHARGE, SESSION_VIEW, and REFUND permissions -> They are NOT shown
-      expect(find.text('Recharge Card'), findsNothing);
+      expect(find.text('Recharge Wallet'), findsNothing);
       expect(find.text('View Session & Transaction History'), findsNothing);
-      expect(find.text('Settle / Return Card'), findsNothing);
+      expect(find.text('Settle / Return Wallet'), findsNothing);
     });
 
     testWidgets('Scanning QR-MOCK-004 (AVAILABLE card with no session) automatically issues card and opens Action Hub', (tester) async {
@@ -210,7 +210,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       // Dialog appears asking for customer details before activation
-      expect(find.text('Confirm Card Activation'), findsOneWidget);
+      expect(find.text('Confirm Wallet Activation'), findsOneWidget);
       final fields = find.descendant(of: find.byType(AlertDialog), matching: find.byType(TextField));
       await tester.enterText(fields.at(0), 'Customer Four');
       await tester.enterText(fields.at(1), '9876543210');
@@ -250,7 +250,7 @@ void main() {
       // Verify blocked state
       expect(find.text('MC-003'), findsOneWidget);
       expect(find.text('BLOCKED'), findsOneWidget);
-      expect(find.textContaining('Cannot perform operations on a blocked card'), findsOneWidget);
+      expect(find.textContaining('Cannot perform operations on a blocked wallet'), findsOneWidget);
       expect(find.text('Scan Another'), findsOneWidget);
     });
 
@@ -280,7 +280,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
 
       // Verify auto-registered card prompts for Activation
-      expect(find.text('Confirm Card Activation'), findsOneWidget);
+      expect(find.text('Confirm Wallet Activation'), findsOneWidget);
       expect(find.text('Cancel'), findsOneWidget);
       expect(find.text('Confirm & Activate'), findsOneWidget);
 
@@ -289,7 +289,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      expect(find.text('Scan QR Card'), findsOneWidget);
+      expect(find.text('Scan QR Wallet'), findsOneWidget);
     });
 
     testWidgets('Compact Card Summary renders correctly without overflow on 320px narrow Android screen', (tester) async {
@@ -327,10 +327,10 @@ void main() {
 
       // Verify prominent action buttons are visible
       expect(find.text('Add Products'), findsOneWidget);
-      expect(find.text('Recharge Card'), findsOneWidget);
+      expect(find.text('Recharge Wallet'), findsOneWidget);
       await tester.drag(find.byType(ListView), const Offset(0, -300));
       await tester.pumpAndSettle();
-      expect(find.text('Settle / Return Card'), findsOneWidget);
+      expect(find.text('Settle / Return Wallet'), findsOneWidget);
     });
 
     testWidgets('Compact Card Summary renders correctly on 412px standard Android screen', (tester) async {
@@ -367,8 +367,8 @@ void main() {
       expect(find.text('Session Active'), findsOneWidget);
 
       expect(find.text('Add Products'), findsOneWidget);
-      expect(find.text('Recharge Card'), findsOneWidget);
-      expect(find.text('Settle / Return Card'), findsOneWidget);
+      expect(find.text('Recharge Wallet'), findsOneWidget);
+      expect(find.text('Settle / Return Wallet'), findsOneWidget);
     });
   });
 }

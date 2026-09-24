@@ -98,9 +98,9 @@ export function PortalSessionPage() {
           localStorage.removeItem('moneycard_portal_card_number');
           setSessionToken(null);
           setSessionDetail(null);
-          setError('Portal session expired or invalid. Please scan your card QR code again.');
+          setError('Portal session expired or invalid. Please scan your wallet QR code again.');
         } else {
-          if (!isSilent) setError(res.error.message || 'Failed to load card session detail');
+          if (!isSilent) setError(res.error.message || 'Failed to load wallet session detail');
         }
         return;
       }
@@ -139,13 +139,13 @@ export function PortalSessionPage() {
 
       if (!res.success) {
         if (res.error?.code === 'CARD_BLOCKED') {
-          setLookupError('This physical card has been blocked. Please visit the cafeteria desk.');
+          setLookupError('This physical wallet has been blocked. Please visit the cafeteria desk.');
         } else if (res.error?.code === 'SESSION_NOT_FOUND') {
-          setLookupError('No active session found for this card. Please request staff to issue or recharge a session.');
+          setLookupError('No active session found for this wallet. Please request staff to issue or recharge a session.');
         } else if (res.error?.code === 'CARD_NOT_FOUND') {
-          setLookupError('Card QR not recognized. Please scan a valid Money Card.');
+          setLookupError('Wallet QR not recognized. Please scan a valid Money Card wallet.');
         } else {
-          setLookupError(res.error?.message || 'The card could not be resolved.');
+          setLookupError(res.error?.message || 'The wallet could not be resolved.');
         }
         return;
       }
@@ -234,9 +234,9 @@ export function PortalSessionPage() {
               <Badge variant="outline" className="text-[10px] text-emerald-700 border-emerald-300 bg-emerald-50">
                 Customer Self-Service
               </Badge>
-              <h2 className="text-xl font-bold text-slate-900">Check Card Balance & Receipts</h2>
+              <h2 className="text-xl font-bold text-slate-900">Check Wallet Balance & Receipts</h2>
               <p className="text-xs text-slate-500 max-w-sm">
-                Scan the QR code on your physical card with your camera to view your live balance and receipts.
+                Scan the QR code on your physical wallet with your camera to view your live balance and receipts.
               </p>
             </div>
           </div>
@@ -254,7 +254,7 @@ export function PortalSessionPage() {
                 }}
                 leftIcon={<Camera className="h-4 w-4" />}
               >
-                Scan Card with Camera
+                Scan Wallet with Camera
               </Button>
             ) : (
               <div className="rounded-2xl border border-emerald-300 bg-slate-900 p-4 text-center text-white space-y-3 shadow-inner">
@@ -277,7 +277,7 @@ export function PortalSessionPage() {
                   />
                 </div>
                 <p className="text-[11px] text-slate-400">
-                  Align your physical card QR code within the frame to scan.
+                  Align your physical wallet QR code within the frame to scan.
                 </p>
               </div>
             )}
@@ -288,7 +288,7 @@ export function PortalSessionPage() {
                 <div className="flex-1">
                   <p className="font-semibold">{lookupError}</p>
                   <p className="text-[11px] text-rose-600 mt-0.5">
-                    Please make sure you are scanning an active physical Money Card.
+                    Please make sure you are scanning an active physical Money Card wallet.
                   </p>
                 </div>
               </div>
@@ -302,7 +302,7 @@ export function PortalSessionPage() {
   if (isLoading) {
     return (
       <div className="py-12">
-        <LoadingState message="Loading card session details..." />
+        <LoadingState message="Loading wallet session details..." />
       </div>
     );
   }
@@ -338,7 +338,7 @@ export function PortalSessionPage() {
               </p>
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                 <span className="font-mono text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                  Card: {sessionDetail.cardDisplayNumber}
+                  Wallet: {sessionDetail.cardDisplayNumber}
                 </span>
                 {sessionDetail.customerPhone && (
                   <span className="font-mono text-xs text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">

@@ -614,7 +614,7 @@ export function AdminPlansSubscriptionsView() {
       className: 'w-[35%]',
       render: (plan: Plan) => (
         <span className="text-xs text-slate-600 font-mono">
-          {plan.branchLimit} Branches • {plan.staffLimit} Staff • {plan.cardLimit} Cards
+          {plan.branchLimit} Branches • {plan.staffLimit} Staff • {plan.cardLimit} Wallets
         </span>
       ),
     },
@@ -1386,7 +1386,7 @@ export function AdminPlansSubscriptionsView() {
                 <div className="grid grid-cols-4 items-center px-4 py-3">
                   <div className="flex items-center gap-2 font-medium text-slate-800">
                     <CreditCard className="h-3.5 w-3.5 text-sky-600" />
-                    Active Cards
+                    Active Wallets
                   </div>
                   <div className="font-mono text-slate-500">{previewSelectedPlan?.cardLimit ?? 250}</div>
                   <div className="pr-2">

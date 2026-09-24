@@ -218,11 +218,11 @@ export function OrgAdminDashboard() {
     },
     {
       id: 'cards',
-      title: '3. Smart cards directory',
-      description: 'Cards auto-register immediately when scanned by staff.',
+      title: '3. Wallets directory',
+      description: 'Wallets auto-register immediately when scanned by staff.',
       completed: hasCards,
       path: '/cards',
-      actionLabel: 'View Cards',
+      actionLabel: 'View Wallets',
     },
     {
       id: 'products',
@@ -283,7 +283,7 @@ export function OrgAdminDashboard() {
             </div>
             <div>
               <h3 className="font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
-                View Cards
+                View Wallets
               </h3>
             </div>
           </button>
@@ -571,13 +571,13 @@ export function OrgAdminDashboard() {
                 />
 
                 <StatCard
-                  label="Card Wallet Recharges"
+                  label="Wallet Recharges"
                   value={formatCurrency(analytics?.totalRechargeVolume || 0)}
                   icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
                 />
 
                 <StatCard
-                  label={startDate || endDate ? "Cards Issued in Period" : "Active Cards Issued"}
+                  label={startDate || endDate ? "Wallets Issued in Period" : "Active Wallets Issued"}
                   value={filteredCardsIssuedCount}
                   icon={<CreditCard className="h-5 w-5 text-sky-600" />}
                 />

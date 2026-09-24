@@ -224,7 +224,7 @@ class DigitalReceiptService {
               // Metadata
               _buildMetaRow('Date:', dateStr),
               _buildMetaRow('Time:', timeStr),
-              _buildMetaRow('Card:', bill.displayCardId),
+              _buildMetaRow('Wallet:', bill.displayCardId),
               if (bill.staffName != null && bill.staffName!.isNotEmpty)
                 _buildMetaRow('Cashier:', bill.staffName!),
 

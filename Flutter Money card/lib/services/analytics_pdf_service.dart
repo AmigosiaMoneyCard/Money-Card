@@ -233,7 +233,7 @@ class AnalyticsPdfService {
                   ),
                   pw.TableRow(
                     children: [
-                      _buildCell('Money Refunded (Cards Returned)'),
+                      _buildCell('Money Refunded (Wallets Returned)'),
                       _buildCell('${analytics.refundCount} refunds', alignRight: true),
                       _buildCell('- ${currencyFmt.format(analytics.moneyRefunded)}', alignRight: true),
                     ],
