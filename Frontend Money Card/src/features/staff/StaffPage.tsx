@@ -51,6 +51,13 @@ import {
   ExternalLink,
   Share2,
   Trash2,
+  CreditCard,
+  ArrowDownLeft,
+  ArrowUpRight,
+  ShoppingBag,
+  CheckCircle2,
+  Calendar,
+  Filter,
 } from 'lucide-react';
 
 const getTodayDateStr = (): string => {
@@ -59,6 +66,40 @@ const getTodayDateStr = (): string => {
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+};
+
+const formatActivityTime = (timestamp?: string): { time: string; date: string } => {
+  if (!timestamp) return { time: '—', date: '' };
+  const d = new Date(timestamp);
+  if (isNaN(d.getTime())) return { time: '—', date: '' };
+
+  const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+
+  let date = '';
+  if (diffMins >= 0 && diffMins < 2) {
+    date = 'Just now';
+  } else if (diffMins < 60) {
+    date = `${diffMins}m ago`;
+  } else if (diffHours < 12 && d.toDateString() === now.toDateString()) {
+    date = `${diffHours}h ago`;
+  } else if (d.toDateString() === now.toDateString()) {
+    date = 'Today';
+  } else {
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (d.toDateString() === yesterday.toDateString()) {
+      date = 'Yesterday';
+    } else {
+      date = d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+    }
+  }
+
+  return { time, date };
 };
 
 export interface CounterStaffGroup {
@@ -268,6 +309,7 @@ export function StaffPage() {
   const [staffPerformanceList, setStaffPerformanceList] = useState<StaffPerformanceMetric[]>([]);
   const [auditStartDate, setAuditStartDate] = useState<string>(getTodayDateStr);
   const [auditEndDate, setAuditEndDate] = useState<string>(getTodayDateStr);
+  const [auditDatePreset, setAuditDatePreset] = useState<'today' | 'yesterday' | 'this_week' | 'this_month' | 'all_time' | 'custom'>('today');
   const [auditActivityTypeFilter, setAuditActivityTypeFilter] = useState<'ALL' | 'CARD_ACTIVATION' | 'RECHARGE' | 'PURCHASE' | 'CARD_SETTLEMENT' | 'REFUND' | 'OTHER'>('ALL');
   const [auditSearch, setAuditSearch] = useState('');
 
@@ -889,9 +931,41 @@ export function StaffPage() {
     return 'Staff';
   };
 
+  const handleDatePresetChange = (preset: 'today' | 'yesterday' | 'this_week' | 'this_month' | 'all_time' | 'custom') => {
+    setAuditDatePreset(preset);
+    const today = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const toDateStr = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    if (preset === 'today') {
+      const t = toDateStr(today);
+      setAuditStartDate(t);
+      setAuditEndDate(t);
+    } else if (preset === 'yesterday') {
+      const y = new Date(today);
+      y.setDate(y.getDate() - 1);
+      const yStr = toDateStr(y);
+      setAuditStartDate(yStr);
+      setAuditEndDate(yStr);
+    } else if (preset === 'this_week') {
+      const w = new Date(today);
+      w.setDate(w.getDate() - 6);
+      setAuditStartDate(toDateStr(w));
+      setAuditEndDate(toDateStr(today));
+    } else if (preset === 'this_month') {
+      const m = new Date(today.getFullYear(), today.getMonth(), 1);
+      setAuditStartDate(toDateStr(m));
+      setAuditEndDate(toDateStr(today));
+    } else if (preset === 'all_time') {
+      setAuditStartDate('');
+      setAuditEndDate('');
+    }
+  };
+
   const handleOpenStaffAudit = async (staff: Staff) => {
     setSelectedStaffForAudit(staff);
     const today = getTodayDateStr();
+    setAuditDatePreset('today');
     setAuditStartDate(today);
     setAuditEndDate(today);
     setAuditActivityTypeFilter('ALL');
@@ -973,44 +1047,6 @@ export function StaffPage() {
     return calculateScopedStaffMetrics(scopedAuditActivities);
   }, [targetStaffMetric, scopedAuditActivities]);
 
-  const handleExportAuditCsv = () => {
-    if (!selectedStaffForAudit) return;
-    const headers = [
-      'Timestamp',
-      'Type',
-      'Card Number',
-      'Customer Name',
-      'Customer Phone',
-      'Amount (INR)',
-      'Branch',
-      'Details/Remarks',
-    ];
-
-    const exportList = filteredAuditActivities.length > 0 ? filteredAuditActivities : scopedAuditActivities;
-    const rows = exportList.map((act) => [
-      act.timestamp ? `"${new Date(act.timestamp).toLocaleString()}"` : '"N/A"',
-      `"${act.type}"`,
-      act.cardNumber ? `="${act.cardNumber}"` : '"N/A"',
-      `"${(act.customerName || 'Walk-in Customer').replace(/"/g, '""')}"`,
-      act.customerPhone ? `="${act.customerPhone}"` : '"N/A"',
-      act.amount !== undefined ? act.amount.toFixed(2) : '0.00',
-      `"${(act.branchName || 'Main Cafeteria').replace(/"/g, '""')}"`,
-      `"${(act.description || '').replace(/"/g, '""')}"`,
-    ]);
-
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    const sanitizedStaff = selectedStaffForAudit.name.replace(/[^a-zA-Z0-9]/g, '_');
-    link.download = `StaffActivity_${sanitizedStaff}_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    notify.success(`Activity log for ${selectedStaffForAudit.name} exported as CSV.`);
-  };
 
   // ── Modal Filtered Staff & Counter Matching ────────────────
   const displayedModalStaff = useMemo(() => {
@@ -2358,7 +2394,7 @@ export function StaffPage() {
       </Modal>
 
 
-      {/* ── 5. STAFF PERFORMANCE & OPERATIONAL AUDIT MODAL ── */}
+      {/* ── 5. STAFF DAILY ACTIVITY SUMMARY MODAL ── */}
       {selectedStaffForAudit && (
         <Modal
           isOpen={true}
@@ -2369,278 +2405,304 @@ export function StaffPage() {
             const today = getTodayDateStr();
             setAuditStartDate(today);
             setAuditEndDate(today);
+            setAuditDatePreset('today');
           }}
-          title={`${formatStaffDisplayName(selectedStaffForAudit.name, selectedStaffForAudit.assignedBranchIds)} — Staff Performance & Operational Audit`}
+          title={`${formatStaffDisplayName(selectedStaffForAudit.name, selectedStaffForAudit.assignedBranchIds)} — Daily Activity Summary`}
           size="xl"
         >
-          <div className="space-y-6 text-xs">
-            {/* Staff Profile & Lifetime KPI Strip */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+          <div className="space-y-5 text-xs">
+            {/* Header & Date Preset Toolbar */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-200/80">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 font-bold text-white text-base">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 font-bold text-white text-sm shadow-xs shrink-0">
                   {formatStaffDisplayName(selectedStaffForAudit.name, selectedStaffForAudit.assignedBranchIds).charAt(0).toUpperCase()}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-900 text-sm">{formatStaffDisplayName(selectedStaffForAudit.name, selectedStaffForAudit.assignedBranchIds)}</span>
-                    <Badge variant="outline" className="text-[10px] text-slate-600 bg-white">
+                    <span className="font-bold text-slate-900 text-sm">
+                      {formatStaffDisplayName(selectedStaffForAudit.name, selectedStaffForAudit.assignedBranchIds)}
+                    </span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
                       {getStaffRoleLabel(selectedStaffForAudit)}
-                    </Badge>
+                    </span>
                   </div>
-                  <span className="text-slate-500 font-medium">
-                    {selectedStaffForAudit.email || selectedStaffForAudit.phone || 'No email provided'}
-                  </span>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {selectedStaffForAudit.phone || selectedStaffForAudit.email || 'No phone number'}
+                  </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExportAuditCsv}
-                  leftIcon={<FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />}
-                >
-                  Export Activity CSV
-                </Button>
-              </div>
-            </div>
 
-            {/* Custom Time Range Filter Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs">
-              <div className="flex flex-wrap items-center gap-3">
-                <div>
-                  <label className="mb-1 block text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-                    From Date
-                  </label>
-                  <input
-                    type="date"
-                    value={auditStartDate}
-                    onChange={(e) => setAuditStartDate(e.target.value)}
-                    className="h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-800 focus:border-emerald-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-                    To Date
-                  </label>
-                  <input
-                    type="date"
-                    value={auditEndDate}
-                    onChange={(e) => setAuditEndDate(e.target.value)}
-                    className="h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-800 focus:border-emerald-500 focus:outline-none"
-                  />
-                </div>
-
-                <div className="flex items-center gap-2 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const today = getTodayDateStr();
-                      setAuditStartDate(today);
-                      setAuditEndDate(today);
-                    }}
-                    className="h-8.5 px-3 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-xs font-semibold text-emerald-700 transition-colors cursor-pointer"
+              {/* Date Presets Dropdown & Export */}
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                <div className="relative inline-flex items-center">
+                  <Calendar className="absolute left-2.5 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                  <select
+                    value={auditDatePreset}
+                    onChange={(e) => handleDatePresetChange(e.target.value as any)}
+                    className="h-8.5 rounded-lg border border-slate-200 bg-white pl-8 pr-7 text-xs font-semibold text-slate-700 hover:border-slate-300 focus:border-slate-900 focus:outline-none cursor-pointer shadow-2xs"
                   >
-                    Reset to Today
-                  </button>
-
-                  {(auditStartDate || auditEndDate) && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAuditStartDate('');
-                        setAuditEndDate('');
-                      }}
-                      className="h-8.5 px-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-600 transition-colors cursor-pointer"
-                    >
-                      View All Time
-                    </button>
-                  )}
+                    <option value="today">Today</option>
+                    <option value="yesterday">Yesterday</option>
+                    <option value="this_week">This Week</option>
+                    <option value="this_month">This Month</option>
+                    <option value="all_time">All Time</option>
+                    <option value="custom">Custom Range...</option>
+                  </select>
                 </div>
+
+                {auditDatePreset === 'custom' && (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="date"
+                      value={auditStartDate}
+                      onChange={(e) => setAuditStartDate(e.target.value)}
+                      className="h-8.5 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-700 focus:border-slate-900 focus:outline-none shadow-2xs"
+                    />
+                    <span className="text-slate-400 text-xs font-medium">to</span>
+                    <input
+                      type="date"
+                      value={auditEndDate}
+                      onChange={(e) => setAuditEndDate(e.target.value)}
+                      className="h-8.5 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-700 focus:border-slate-900 focus:outline-none shadow-2xs"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* 5 Metric KPI Cards - Spacious & High Readability */}
-            <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-5">
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 shadow-2xs">
-                <span className="text-xs font-semibold text-slate-600 tracking-tight leading-snug">
-                  Cards Activated
-                </span>
-                <p className="font-mono text-xl font-bold text-emerald-700 mt-1.5">
-                  {auditMetrics.cardsActivatedCount} cards
+            {/* Minimal Metric Strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
+              <div>
+                <p className="text-[11px] font-medium text-slate-500">Cards Issued</p>
+                <p className="text-base font-bold font-mono text-slate-900 mt-0.5">
+                  {auditMetrics.cardsActivatedCount}
                 </p>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-                <span className="text-xs font-semibold text-slate-600 tracking-tight leading-snug">
-                  Cards Settled
-                </span>
-                <p className="font-mono text-xl font-bold text-slate-800 mt-1.5">
-                  {auditMetrics.cardsSettledCount} cards
+
+              <div>
+                <p className="text-[11px] font-medium text-slate-500">Cards Closed</p>
+                <p className="text-base font-bold font-mono text-slate-900 mt-0.5">
+                  {auditMetrics.cardsSettledCount}
                 </p>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-                <span className="text-xs font-semibold text-slate-600 tracking-tight leading-snug">
-                  Card Recharges
-                </span>
-                <p className="font-mono text-xl font-bold text-emerald-600 mt-1.5">
+
+              <div>
+                <p className="text-[11px] font-medium text-slate-500">Money Loaded</p>
+                <p className="text-base font-bold font-mono text-emerald-600 mt-0.5">
                   {formatCurrency(auditMetrics.cardRechargeVolume)}
                 </p>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-                <span className="text-xs font-semibold text-slate-600 tracking-tight leading-snug">
-                  Food Sales
-                </span>
-                <p className="font-mono text-xl font-bold text-emerald-600 mt-1.5">
+
+              <div>
+                <p className="text-[11px] font-medium text-slate-500">Orders Sold</p>
+                <p className="text-base font-bold font-mono text-slate-900 mt-0.5">
                   {formatCurrency(auditMetrics.purchaseVolume)}
                 </p>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-                <span className="text-xs font-semibold text-slate-600 tracking-tight leading-snug">
-                  Refunds Processed
-                </span>
-                <p className="font-mono text-xl font-bold text-rose-600 mt-1.5">
+
+              <div>
+                <p className="text-[11px] font-medium text-slate-500">Money Refunded</p>
+                <p className="text-base font-bold font-mono text-rose-600 mt-0.5">
                   {formatCurrency(auditMetrics.refundVolume)}
                 </p>
               </div>
             </div>
 
-            {/* Filter Tabs & Search in Modal */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-3">
-              <div className="flex flex-wrap items-center gap-1.5">
-                {[
-                  { key: 'ALL', label: 'All Activities' },
-                  { key: 'CARD_ACTIVATION', label: 'Cards Activated' },
-                  { key: 'CARD_SETTLEMENT', label: 'Cards Settled' },
-                  { key: 'RECHARGE', label: 'Card Recharges' },
-                  { key: 'PURCHASE', label: 'Food Sales' },
-                  { key: 'REFUND', label: 'Refunds Processed' },
-                ].map((tab) => (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => setAuditActivityTypeFilter(tab.key as any)}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
-                      auditActivityTypeFilter === tab.key
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
+            {/* Streamlined Filter & Search Toolbar */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pt-1">
+              <div className="flex items-center gap-2 flex-1">
+                <div className="relative inline-flex items-center">
+                  <Filter className="absolute left-2.5 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                  <select
+                    value={auditActivityTypeFilter}
+                    onChange={(e) => setAuditActivityTypeFilter(e.target.value as any)}
+                    className="h-8.5 rounded-lg border border-slate-200 bg-white pl-8 pr-7 text-xs font-medium text-slate-700 hover:border-slate-300 focus:border-slate-900 focus:outline-none cursor-pointer shadow-2xs"
                   >
-                    {tab.label}
-                  </button>
-                ))}
+                    <option value="ALL">All Activities</option>
+                    <option value="CARD_ACTIVATION">New Cards Issued</option>
+                    <option value="CARD_SETTLEMENT">Cards Closed / Returned</option>
+                    <option value="RECHARGE">Money Loaded</option>
+                    <option value="PURCHASE">Orders Sold</option>
+                    <option value="REFUND">Money Refunded</option>
+                  </select>
+                </div>
+
+                <div className="relative flex-1 max-w-xs">
+                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by card or note..."
+                    value={auditSearch}
+                    maxLength={30}
+                    onChange={(e) => {
+                      const sanitized = e.target.value.replace(/[^a-zA-Z0-9\s@._-]/g, '').slice(0, 30);
+                      setAuditSearch(sanitized);
+                    }}
+                    className="h-8.5 w-full rounded-lg border border-slate-200 bg-white pl-8 pr-7 text-xs text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:outline-none shadow-2xs"
+                  />
+                  {auditSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setAuditSearch('')}
+                      className="absolute right-2 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      aria-label="Clear activity search"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
 
-              <div className="relative">
-                <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Filter by coupon ID, customer..."
-                  value={auditSearch}
-                  maxLength={30}
-                  onChange={(e) => {
-                    const sanitized = e.target.value.replace(/[^a-zA-Z0-9\s@._-]/g, '').slice(0, 30);
-                    setAuditSearch(sanitized);
-                  }}
-                  className="h-8.5 w-64 rounded-lg border border-slate-200 bg-white pl-8.5 pr-7 text-xs text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none shadow-2xs"
-                />
-                {auditSearch && (
-                  <button
-                    type="button"
-                    onClick={() => setAuditSearch('')}
-                    className="absolute right-2 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                    aria-label="Clear activity filter"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
+              <span className="text-[11px] font-medium text-slate-400">
+                {filteredAuditActivities.length} {filteredAuditActivities.length === 1 ? 'activity' : 'activities'}
+              </span>
             </div>
 
-            {/* Operational Activity Ledger Table */}
-            <div className="max-h-[380px] overflow-y-auto overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
-              <table className="w-full min-w-[700px] text-left text-xs">
-                <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 text-[11px] font-semibold text-slate-600 backdrop-blur-xs">
-                  <tr>
-                    <th className="py-3 pl-4 pr-3 whitespace-nowrap">Date & Time</th>
-                    <th className="px-3 py-3 whitespace-nowrap">Operation</th>
-                    <th className="px-3 py-3 whitespace-nowrap">Coupon ID</th>
-                    <th className="px-4 py-3">Customer</th>
-                    <th className="py-3 pl-3 pr-4 text-right whitespace-nowrap">Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-sans text-slate-700">
-                  {filteredAuditActivities.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="py-12 text-center text-xs text-slate-500">
-                        No activity records found for this staff member matching selected criteria.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredAuditActivities.map((act: StaffActivityItem) => {
-                      let badgeClass = 'bg-slate-100 text-slate-700 border-slate-200';
+            {/* Human-Readable Chronological Activity Feed */}
+            <div className="max-h-[380px] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-2xs divide-y divide-slate-100">
+              {filteredAuditActivities.length === 0 ? (
+                <div className="py-14 text-center">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400 mb-2">
+                    <Calendar className="h-5 w-5" />
+                  </div>
+                  <p className="text-xs font-semibold text-slate-700">No activity records found</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    No operations matched the selected date range and filter criteria.
+                  </p>
+                </div>
+              ) : (
+                filteredAuditActivities.map((act: StaffActivityItem) => {
+                  const { time, date } = formatActivityTime(act.timestamp);
 
-                      if (act.type === 'CARD_ACTIVATION') {
-                        badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-200';
-                      } else if (act.type === 'RECHARGE_CASH') {
-                        badgeClass = 'bg-green-100 text-green-800 border-green-200';
-                      } else if (act.type === 'RECHARGE_UPI') {
-                        badgeClass = 'bg-sky-100 text-sky-800 border-sky-200';
-                      } else if (act.type === 'PURCHASE') {
-                        badgeClass = 'bg-indigo-100 text-indigo-800 border-indigo-200';
-                      } else if (act.type === 'CARD_SETTLEMENT') {
-                        badgeClass = 'bg-purple-100 text-purple-800 border-purple-200';
-                      } else if (act.type === 'REFUND' || act.type === 'CARD_BLOCKED') {
-                        badgeClass = 'bg-rose-100 text-rose-800 border-rose-200';
-                      }
+                  let actionTitle = 'Activity';
+                  let badgeText = 'Action';
+                  let badgeClass = 'bg-slate-100 text-slate-600 border-slate-200';
+                  let iconBgClass = 'bg-slate-100 text-slate-600';
+                  let ActionIcon = CreditCard;
+                  let amountDisplay = '—';
+                  let amountClass = 'text-slate-700';
 
-                      return (
-                        <tr key={act.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-3.5 pl-4 pr-3 whitespace-nowrap align-top">
-                            <div className="font-semibold text-slate-800 text-xs">
-                              {act.timestamp
-                                ? new Date(act.timestamp).toLocaleDateString(undefined, {
-                                    day: '2-digit',
-                                    month: 'short',
-                                    year: 'numeric',
-                                  })
-                                : 'N/A'}
-                            </div>
-                            <div className="text-[11px] font-mono text-slate-400 mt-0.5">
-                              {act.timestamp
-                                ? new Date(act.timestamp).toLocaleTimeString(undefined, {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  })
-                                : ''}
-                            </div>
-                          </td>
-                          <td className="px-3 py-3.5 align-top">
-                            <span className={`inline-flex items-center rounded-md px-2 py-1 text-[10px] font-semibold border ${badgeClass}`}>
-                              {act.type.replace(/_/g, ' ')}
+                  if (act.type === 'CARD_ACTIVATION') {
+                    actionTitle = 'New Card Issued';
+                    badgeText = 'Card Issued';
+                    badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200/70';
+                    iconBgClass = 'bg-emerald-50 text-emerald-600';
+                    ActionIcon = CreditCard;
+                    amountDisplay = act.amount && act.amount > 0 ? `+${formatCurrency(act.amount)}` : 'Active';
+                    amountClass = act.amount && act.amount > 0 ? 'text-emerald-600 font-bold' : 'text-slate-500';
+                  } else if (act.type === 'RECHARGE_CASH') {
+                    actionTitle = 'Money Loaded (Cash)';
+                    badgeText = 'Cash';
+                    badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200/70';
+                    iconBgClass = 'bg-emerald-50 text-emerald-600';
+                    ActionIcon = ArrowDownLeft;
+                    amountDisplay = act.amount ? `+${formatCurrency(act.amount)}` : '—';
+                    amountClass = 'text-emerald-600 font-bold';
+                  } else if (act.type === 'RECHARGE_UPI') {
+                    actionTitle = 'Money Loaded (UPI)';
+                    badgeText = 'UPI';
+                    badgeClass = 'bg-sky-50 text-sky-700 border-sky-200/70';
+                    iconBgClass = 'bg-sky-50 text-sky-600';
+                    ActionIcon = ArrowDownLeft;
+                    amountDisplay = act.amount ? `+${formatCurrency(act.amount)}` : '—';
+                    amountClass = 'text-sky-600 font-bold';
+                  } else if (act.type === 'PURCHASE') {
+                    actionTitle = 'Order / Meal Sold';
+                    badgeText = 'Order Sold';
+                    badgeClass = 'bg-slate-100 text-slate-700 border-slate-200/70';
+                    iconBgClass = 'bg-slate-100 text-slate-700';
+                    ActionIcon = ShoppingBag;
+                    amountDisplay = act.amount ? formatCurrency(act.amount) : '—';
+                    amountClass = 'text-slate-900 font-bold';
+                  } else if (act.type === 'CARD_SETTLEMENT') {
+                    actionTitle = 'Card Closed / Returned';
+                    badgeText = 'Card Closed';
+                    badgeClass = 'bg-slate-100 text-slate-600 border-slate-200/70';
+                    iconBgClass = 'bg-slate-100 text-slate-600';
+                    ActionIcon = CheckCircle2;
+                    amountDisplay = act.amount && act.amount > 0 ? `-${formatCurrency(act.amount)}` : 'Settled';
+                    amountClass = act.amount && act.amount > 0 ? 'text-rose-600 font-bold' : 'text-slate-500';
+                  } else if (act.type === 'REFUND') {
+                    actionTitle = 'Money Refunded';
+                    badgeText = 'Refund';
+                    badgeClass = 'bg-rose-50 text-rose-700 border-rose-200/70';
+                    iconBgClass = 'bg-rose-50 text-rose-600';
+                    ActionIcon = ArrowUpRight;
+                    amountDisplay = act.amount ? `-${formatCurrency(act.amount)}` : '—';
+                    amountClass = 'text-rose-600 font-bold';
+                  } else if (act.type === 'CARD_BLOCKED') {
+                    actionTitle = 'Card Blocked';
+                    badgeText = 'Blocked';
+                    badgeClass = 'bg-amber-50 text-amber-700 border-amber-200/70';
+                    iconBgClass = 'bg-amber-50 text-amber-600';
+                    ActionIcon = Lock;
+                    amountDisplay = 'Blocked';
+                    amountClass = 'text-amber-700';
+                  } else if (act.type === 'CARD_UNBLOCKED') {
+                    actionTitle = 'Card Unblocked';
+                    badgeText = 'Unblocked';
+                    badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200/70';
+                    iconBgClass = 'bg-emerald-50 text-emerald-600';
+                    ActionIcon = Key;
+                    amountDisplay = 'Active';
+                    amountClass = 'text-emerald-700';
+                  }
+
+                  return (
+                    <div
+                      key={act.id}
+                      className="flex items-center justify-between p-3.5 hover:bg-slate-50/70 transition-colors"
+                    >
+                      {/* Left: Time & relative timestamp */}
+                      <div className="w-24 shrink-0">
+                        <p className="text-xs font-semibold text-slate-900 font-mono leading-tight">{time}</p>
+                        <p className="text-[10px] text-slate-400 font-medium mt-0.5">{date}</p>
+                      </div>
+
+                      {/* Center: Action Icon, Plain Name, Badge, Card Ref */}
+                      <div className="flex items-center gap-3 min-w-0 flex-1 px-3">
+                        <div className={`flex h-8 w-8 items-center justify-center rounded-lg shrink-0 ${iconBgClass}`}>
+                          <ActionIcon className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-semibold text-xs text-slate-900">{actionTitle}</span>
+                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${badgeClass}`}>
+                              {badgeText}
                             </span>
-                          </td>
-                          <td className="px-3 py-3.5 font-mono font-bold text-slate-800 align-top">
-                            {act.cardNumber || '—'}
-                          </td>
-                          <td className="px-4 py-3.5 align-top">
-                            <div className="font-semibold text-slate-900 text-xs">
-                              {act.customerName || 'Walk-in Customer'}
-                            </div>
-                            {act.customerPhone ? (
-                              <div className="text-[11px] font-mono text-slate-400 mt-0.5">
-                                {act.customerPhone}
-                              </div>
+                          </div>
+                          <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                            {act.cardNumber ? (
+                              <span className="font-mono font-medium text-slate-700">Card {act.cardNumber}</span>
                             ) : null}
-                          </td>
-                          <td className="py-3.5 pl-3 pr-4 text-right font-mono font-bold text-slate-900 text-xs align-top">
-                            {act.amount !== undefined ? formatCurrency(act.amount) : '—'}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+                            {act.customerName && act.customerName.trim() && (
+                              <span> · {act.customerName.trim()}</span>
+                            )}
+                            {act.customerPhone && act.customerPhone.trim() && (
+                              <span className="text-slate-400 font-mono"> ({act.customerPhone.trim()})</span>
+                            )}
+                            {act.description && !act.cardNumber && (
+                              <span>{act.description}</span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Right: Amount */}
+                      <div className="text-right shrink-0 pl-3">
+                        <p className={`font-mono text-xs ${amountClass}`}>
+                          {amountDisplay}
+                        </p>
+                        {act.branchName && (
+                          <p className="text-[10px] text-slate-400 truncate max-w-[120px] mt-0.5">
+                            {act.branchName}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
 
             <ModalFooter>
@@ -2654,6 +2716,7 @@ export function StaffPage() {
                   const today = getTodayDateStr();
                   setAuditStartDate(today);
                   setAuditEndDate(today);
+                  setAuditDatePreset('today');
                 }}
               >
                 Close
