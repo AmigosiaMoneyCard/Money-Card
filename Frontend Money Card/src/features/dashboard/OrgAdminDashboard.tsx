@@ -38,9 +38,6 @@ import {
   CheckCircle2,
   Sparkles,
   X,
-  UtensilsCrossed,
-  Ban,
-  ChefHat,
 } from 'lucide-react';
 
 export type DatePreset = 'thisMonth' | 'today' | 'yesterday' | 'last7' | 'last30' | 'all' | 'custom';
@@ -590,48 +587,6 @@ export function OrgAdminDashboard() {
                   value={staffList.filter((s) => s.status === 'ACTIVE').length}
                   icon={<Users className="h-5 w-5 text-indigo-600" />}
                 />
-              </div>
-
-              {/* Dedicated Food & Order Metrics Section */}
-              <div className="pt-2 border-t border-slate-100">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                    Food & Order Metrics
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={() => navigate('/analytics?tab=menu')}
-                    className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 cursor-pointer"
-                  >
-                    Open Menu Analytics <ArrowRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <StatCard
-                    label="Food Sales"
-                    value={formatCurrency(analytics?.totalPurchaseVolume || 0)}
-                    icon={<UtensilsCrossed className="h-5 w-5 text-emerald-600" />}
-                  />
-
-                  <StatCard
-                    label="Items Sold"
-                    value={`${analytics?.productsSoldCount ?? 0} Units`}
-                    icon={<ShoppingBag className="h-5 w-5 text-teal-600" />}
-                  />
-
-                  <StatCard
-                    label="Dishes Ordered"
-                    value={`${analytics?.dishesOrderedCount ?? 0} Ordered`}
-                    icon={<ChefHat className="h-5 w-5 text-indigo-600" />}
-                  />
-
-                  <StatCard
-                    label="Cancelled Orders"
-                    value={`${analytics?.cancelledOrdersCount ?? 0} Cancels`}
-                    icon={<Ban className="h-5 w-5 text-rose-600" />}
-                  />
-                </div>
               </div>
             </CardContent>
           </Card>
