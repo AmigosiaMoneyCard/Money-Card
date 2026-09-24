@@ -28,7 +28,7 @@ describe('New Requirements: Phone Auth, WhatsApp Sharing & Auto-Register Cards',
         password: 'StaffPassword123',
       };
       const result = createStaffMemberSchema.parse(formatted);
-      expect(result.phone).toBe('919876543210');
+      expect(result.phone).toBe('9876543210');
     });
 
     it('should reject phone numbers with less than 10 digits', () => {

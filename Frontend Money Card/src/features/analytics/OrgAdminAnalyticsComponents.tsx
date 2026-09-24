@@ -71,10 +71,10 @@ export function OrgAdminFinancialSection({
 
   return (
     <div className="space-y-4">
-      {/* 1. Highlighted Total Sales Card (Top & Prominent) */}
+      {/* 1. Highlighted Total Sales Card (Top Main Metric, Sleek & Minimal) */}
       <Card
         padding="md"
-        className="border-emerald-300 bg-gradient-to-br from-emerald-50/70 via-white to-teal-50/40 shadow-xs ring-1 ring-emerald-500/20 transition-all flex flex-col justify-between"
+        className="border-emerald-300 bg-gradient-to-r from-emerald-50/60 via-white to-teal-50/30 shadow-xs ring-1 ring-emerald-500/20 transition-all flex flex-col justify-between py-3.5 px-5"
       >
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold uppercase tracking-wider text-emerald-800">
@@ -85,52 +85,65 @@ export function OrgAdminFinancialSection({
           </div>
         </div>
         <div className="mt-2">
-          <p className="font-mono text-3xl sm:text-4xl font-black text-slate-900">
+          <p className="font-mono text-3xl font-extrabold text-slate-900">
             {formatCurrency(netMoneyCollected)}
           </p>
         </div>
       </Card>
 
-      {/* 2. Merged Recharge Card (Brought Upwards) */}
-      <Card
-        padding="md"
-        className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all space-y-3"
-      >
-        <div className="flex items-center justify-between">
-          <div>
+      {/* 2. Recharge Triad (Small Neutral White Cards) */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        {/* Recharge */}
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
+          <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Recharge
             </span>
-            <p className="mt-1 font-mono text-2xl sm:text-3xl font-bold text-slate-900">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+              <Wallet className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <p className="font-mono text-2xl font-bold text-slate-900">
               {formatCurrency(moneyAdded)}
             </p>
           </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-            <Wallet className="h-5 w-5" />
-          </div>
-        </div>
+        </Card>
 
-        {/* Inner Split Cards: UPI Recharge & Cash Recharge */}
-        <div className="grid gap-3 sm:grid-cols-2 pt-1">
-          <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-3.5 flex flex-col justify-between">
+        {/* UPI Recharge */}
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
+          <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               UPI Recharge
             </span>
-            <p className="mt-1 font-mono text-xl sm:text-2xl font-bold text-purple-700">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-50 text-purple-700">
+              <CreditCard className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <p className="font-mono text-2xl font-bold text-purple-700">
               {formatCurrency(upiMoney)}
             </p>
           </div>
+        </Card>
 
-          <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-3.5 flex flex-col justify-between">
+        {/* Cash Recharge */}
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
+          <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Cash Recharge
             </span>
-            <p className="mt-1 font-mono text-xl sm:text-2xl font-bold text-emerald-700">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+              <DollarSign className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <p className="font-mono text-2xl font-bold text-emerald-700">
               {formatCurrency(cashMoney)}
             </p>
           </div>
-        </div>
-      </Card>
+        </Card>
+      </div>
 
       {/* 3. Follow-up Metric Cards Below */}
       <div className={`grid gap-4 sm:grid-cols-2 ${leadingCard ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
@@ -880,7 +893,6 @@ export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSection
   const [searchTerm, setSearchTerm] = useState('');
   const [isTableOpen, setIsTableOpen] = useState(true);
 
-  const foodSales = analytics.totalPurchaseVolume ?? 0;
   const itemsSold = analytics.productsSoldCount ?? 0;
   const dishesOrdered = analytics.dishesOrderedCount ?? (analytics.allProductDemand?.length ?? 0);
   const cancelledOrders = analytics.cancelledOrdersCount ?? 0;
@@ -906,24 +918,8 @@ export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSection
 
   return (
     <div className="space-y-6">
-      {/* 4 Summary KPI Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Food Sales
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-              <UtensilsCrossed className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-slate-900">
-              {formatCurrency(foodSales)}
-            </p>
-          </div>
-        </Card>
-
+      {/* 3 Summary KPI Cards */}
+      <div className="grid gap-4 sm:grid-cols-3">
         <Card padding="md" className="border-slate-200 bg-white shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
