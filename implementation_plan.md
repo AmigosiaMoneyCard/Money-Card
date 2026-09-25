@@ -1,8 +1,8 @@
-# Implementation Plan — Mobile POS Localhost Link and Staff Management Header Action
+# Implementation Plan — Remove Redundant Add Staff Button from Search Bar Row
 
-Documentation and configuration for connecting the Mobile POS APK to the local backend, and providing the "Add Staff" button on the top right side of the page header in Staff Management.
+Streamline the Staff Management UI by removing the duplicate "Add Staff" button from the search filter row, keeping the primary "Add Staff" button exclusively at the top right of the page header.
 
-![Top Right Add Staff Button in Staff Management](C:/Users/damie/.gemini/antigravity-ide/brain/999581c9-5c30-4195-933d-3667425ed95a/counter_staff_top_right_add_1790318428808.jpg)
+![Clean Search Bar Row with Refresh Only](C:/Users/damie/.gemini/antigravity-ide/brain/999581c9-5c30-4195-933d-3667425ed95a/counter_staff_clean_search_bar_1790320143558.jpg)
 
 ## Layout Wireframes
 
@@ -20,30 +20,33 @@ Documentation and configuration for connecting the Mobile POS APK to the local b
 +-----------------------------------------------------------------------------------+
 ```
 
-## Mobile POS Localhost Links
+## User Requirements and Scope
 
-The Flutter Mobile POS APK supports direct connection to the local backend server via the following endpoints:
+- The user requested: "in counter dashobrd - Staff Management - Remove add staff option HOriontal to Search bar. update plan".
+- Remove the redundant "Add Staff" button positioned next to the "Refresh" button on the search bar row.
+- Retain the primary "Add Staff" button at the top right of the page header.
 
-- Wi-Fi / Physical Device on LAN: http://192.168.105.39:3000/api/v1
-- Android Emulator: http://10.0.2.2:3000/api/v1
-- USB Cable (via adb reverse tcp:3000 tcp:3000): http://127.0.0.1:3000/api/v1
+## Proposed Changes
 
-To configure in the Mobile App:
-1. Open the Mobile POS APK login screen.
-2. Tap the Server Config / Network icon.
-3. Tap the "Wi-Fi LAN" preset chip (or enter http://192.168.105.39:3000/api/v1).
-4. Tap "Test Connection" to confirm green status, then tap "Save & Apply".
-
-## Staff Management Header Action
-
-In [StaffPage.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/staff/StaffPage.tsx):
-- The header is structured as a responsive flex row: `flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200/80 pb-4`.
-- Left side displays the page title `Staff Management` and counter context subtitle when `currentBranch` is selected.
-- Top right side displays the primary action button `Add Staff` with `UserPlus` icon whenever `canManage` is true (both Counter Admin and Org Admin).
-- Tapping `Add Staff` opens the staff creation modal with pre-selected counter assignment and M0 permissions.
+File: [StaffPage.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/staff/StaffPage.tsx)
+- In the search and filter row (lines 1292-1314), remove the conditional `Button` rendering `{isCounterView && canManage && (<Button ...>Add Staff</Button>)}`.
+- Leave only the `Refresh` button in the action cluster aligned with the search input:
+```tsx
+<div className="flex items-center gap-2">
+  <Button
+    variant="outline"
+    size="sm"
+    onClick={fetchStaffData}
+    leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
+    className="text-xs h-8 px-2.5 rounded-xl border-slate-200 text-slate-700 hover:border-emerald-500"
+  >
+    Refresh
+  </Button>
+</div>
+```
 
 ## Verification and Test Plan
 
-- Frontend Test Suite: 272 passing across 36 test files via `npm test -- --run`.
-- TypeScript Check: 0 errors via `npx tsc --noEmit`.
-- Backend Auth Test: Verified `POST http://localhost:3000/api/v1/auth/login` returns 200 with tokens and Counter 1 assignment.
+- Proactively execute Frontend test suite: `npm test -- --run` in `Frontend Money Card` (272 passing).
+- Proactively execute Frontend TypeScript check: `npx tsc --noEmit` in `Frontend Money Card` (0 errors).
+- Confirm the search bar row displays only the search input and the Refresh button.

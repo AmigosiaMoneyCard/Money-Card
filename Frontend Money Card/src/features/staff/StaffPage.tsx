@@ -1290,17 +1290,6 @@ export function StaffPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          {isCounterView && canManage && (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => handleOpenAdd()}
-              leftIcon={<UserPlus className="h-3.5 w-3.5" />}
-              className="text-xs h-8 px-3 rounded-xl shadow-2xs cursor-pointer"
-            >
-              Add Staff
-            </Button>
-          )}
           <Button
             variant="outline"
             size="sm"
