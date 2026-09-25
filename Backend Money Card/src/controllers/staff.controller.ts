@@ -54,6 +54,7 @@ export async function getStaffList(req: Request, res: Response) {
         branchId: { in: branchIds },
       },
     };
+    where.id = { not: req.user.id };
   }
 
   const { search } = req.query;

@@ -1,84 +1,59 @@
-# Implementation Plan — Restore Counter Credentials Inputs and WhatsApp Dispatch Modal
+# Implementation Plan — Isolate Counter Dashboard Staff Management
 
-Restore the Mobile Number and Login Password input fields in the Create New Counter modal and reinstate the credentials dispatch dialog (WhatsApp and copy actions) in [BranchesPage.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/branches/BranchesPage.tsx), accompanied by backend credential handling in [organization.controller.ts](file:///D:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/organization.controller.ts).
+Strictly isolate Counter Dashboard staff management from Org Admin by ensuring the Counter Manager account is excluded from the subordinate staff table, displaying the Add Staff empty state on freshly created counters.
 
-![Create Counter and Credentials Dispatch Flow](C:/Users/damie/.gemini/antigravity-ide/brain/999581c9-5c30-4195-933d-3667425ed95a/create_counter_credentials_flow_1790314482315.jpg)
+![Counter Staff Empty State View](C:/Users/damie/.gemini/antigravity-ide/brain/999581c9-5c30-4195-933d-3667425ed95a/counter_staff_empty_state_1790316872880.jpg)
 
 ## Layout Wireframes
 
 ```
-+-------------------------------------------------------------+
-|                     Create New Counter                      |
-+-------------------------------------------------------------+
-|  Counter Name                                               |
-|  +-------------------------------------------------------+  |
-|  | South Indian Express                                  |  |
-|  +-------------------------------------------------------+  |
-|                                                             |
-|  Mobile Number                                              |
-|  +-------------------------------------------------------+  |
-|  | 9876543210                                            |  |
-|  +-------------------------------------------------------+  |
-|                                                             |
-|  Login Password                                             |
-|  +-------------------------------------------------------+  |
-|  | ........                                         [Eye]|  |
-|  +-------------------------------------------------------+  |
-|                                                             |
-|                     [Cancel]  [Create Counter]              |
-+-------------------------------------------------------------+
-
-+-------------------------------------------------------------+
-|               Counter Created Successfully!                 |
-+-------------------------------------------------------------+
-|  Share the login credentials with the counter manager       |
-|                                                             |
-|  +-------------------------------------------------------+  |
-|  | Counter Name:           South Indian Express          |  |
-|  | Mobile Number:          9876543210                    |  |
-|  | Password:               ........                      |  |
-|  | Web Portal:             https://domain/login          |  |
-|  +-------------------------------------------------------+  |
-|                                                             |
-|         [Copy Credentials]      [Send via WhatsApp]         |
-|                                                             |
-|                           [Close]                           |
-+-------------------------------------------------------------+
++-----------------------------------------------------------------------------------+
+| Staff Management                                                                  |
+|                                                                                   |
+| [Search staff by name or phone...               ]      [+ Add Staff]  [Refresh]   |
+|                                                                                   |
+| +-------------------------------------------------------------------------------+ |
+| |                                                                               | |
+| |                                  [Users Icon]                                 | |
+| |                                                                               | |
+| |                            No staff members yet                               | |
+| |          Add your team members to grant POS cashier and counter access.       | |
+| |                                                                               | |
+| |                                [+ Add Staff]                                  | |
+| |                                                                               | |
+| +-------------------------------------------------------------------------------+ |
++-----------------------------------------------------------------------------------+
 ```
 
-## User Requirements and Scope
+## Root Cause and Scope Isolation
 
-- The user requested restoring the Mobile Number and Login Password input fields to the Create New Counter modal in [BranchesPage.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/branches/BranchesPage.tsx).
-- The user requested restoring the credentials dispatch modal (WhatsApp and Copy buttons) so credentials can be immediately shared upon counter creation.
-- Ensure [organization.controller.ts](file:///D:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/organization.controller.ts) receives the phone and password, provisions the counter manager user with appropriate permissions, and returns the credentials object in the response.
+- Root Cause: When a counter is provisioned with phone credentials, a user record with role STAFF is created as the Counter Manager. When the Counter Manager logs in to the Counter Dashboard and opens Staff Management, `getStaffList` queries all users with role STAFF assigned to that branch, returning the Counter Manager themselves. Consequently, the manager sees their own account (`Staff - <Counter Name>`) listed as a subordinate staff member instead of seeing an empty state with an "Add Staff" action.
+- Isolation Boundary: Changes are strictly scoped to the Counter Manager view (`isCounterView = true` in frontend and `role === Role.STAFF` in backend `getStaffList`). The Org Admin dashboard view, which manages cafeteria-wide counter groupings, remains completely unchanged and isolated.
 
 ## Proposed Changes
 
-Frontend Changes in [BranchesPage.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/branches/BranchesPage.tsx):
-- Restore state variables for `branchPhoneInput`, `branchPasswordInput`, `showCreatePassword`, `showWhatsAppModal`, `createdBranchCredentials`, and `copied`.
-- Restore validation in `handleCreateSubmit` using existing `validateMobileNumber` and `validatePassword`.
-- Reintroduce input components for Mobile Number (10 digits) and Login Password (with eye toggle) inside the Create Counter form.
-- In `handleCreateSubmit`, pass `{ name, phone, password }` to `apiService.branches.createBranch`.
-- Upon successful creation, store credentials in localStorage, populate `createdBranchCredentials`, and open `showWhatsAppModal`.
-- Reintroduce the WhatsApp credentials dispatch modal with "Copy Credentials" and "Send via WhatsApp" functionality.
-- Reintroduce necessary Lucide icons: `Check`, `Copy`, `MessageSquare`, `Eye`, `EyeOff`.
+Backend Changes in [staff.controller.ts](file:///D:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/staff.controller.ts):
+- In `getStaffList`, when the requester has role `STAFF` (Counter Manager), exclude the requesting manager's own account (`where.id = { not: req.user.id }`).
+- This ensures the Counter Manager only receives team members created under their counter, never themselves.
 
-Backend Changes in [organization.controller.ts](file:///D:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/organization.controller.ts):
-- In `createBranch`, restore phone number validation, password hashing, and provisioning of the counter manager user linked via `UserBranch` with default counter permissions.
-- Return the `credentials` object in the API response `{ id, name, location, ..., credentials: { name, phone, password } }` so the frontend credentials modal displays accurately.
-- In `createBranchesBatch` and `updateBranch`, ensure phone and password synchronization remains intact.
+Frontend Changes in [StaffPage.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/staff/StaffPage.tsx):
+- In `filteredStaff`, when `isCounterView` is active, filter out the logged-in user (`user?.id`) and any synthetic manager account matching `Staff - <Counter Name>`.
+- In the top action bar, render a prominent `Add Staff` button whenever `isCounterView && canManage` so the manager can always add staff directly.
+- In the main content area, when `isCounterView` is true and `filteredStaff.length === 0`, render the EmptyState component with title "No staff members yet", description "Add your team members to grant POS cashier and counter access to this counter", and an "Add Staff" action button.
+- Preserve Org Admin's counter-grouped table layout completely intact.
 
 ## Worktree Modifications
 
-- File 1: [BranchesPage.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/branches/BranchesPage.tsx)
-  - Restore phone and password inputs in Create Counter modal.
-  - Restore WhatsApp credentials dispatch modal and action handlers.
-- File 2: [organization.controller.ts](file:///D:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/organization.controller.ts)
-  - Restore counter manager provisioning and credentials response payload in `createBranch`.
+- File 1: [staff.controller.ts](file:///D:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/staff.controller.ts)
+  - Method: `getStaffList`
+  - Action: Exclude `req.user.id` when `req.user.role === Role.STAFF`.
+- File 2: [StaffPage.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/staff/StaffPage.tsx)
+  - Sections: `filteredStaff` computation, top action bar, and empty state conditional block for `isCounterView`.
+  - Action: Filter out counter manager from staff list, add header Add Staff button, and show empty state on empty counter staff.
 
 ## Verification and Test Plan
 
-- Proactively execute frontend tests: `npm test -- --run` in `Frontend Money Card` (272 tests).
-- Proactively execute frontend type check: `npx tsc --noEmit` in `Frontend Money Card` (0 errors).
-- Proactively execute backend tests: `npm test` in `Backend Money Card` (100 tests).
-- Proactively execute mobile tests: `flutter test` and `flutter analyze --no-pub` in `Flutter Money card` (168 tests).
+- Proactively execute Backend test suite: `npm test` in `Backend Money Card` (100 passing).
+- Proactively execute Frontend test suite: `npm test -- --run` in `Frontend Money Card` (272 passing).
+- Proactively execute Frontend TypeScript check: `npx tsc --noEmit` in `Frontend Money Card` (0 errors).
+- Proactively execute Mobile Flutter test suite: `flutter test` in `Flutter Money card` (168 passing).

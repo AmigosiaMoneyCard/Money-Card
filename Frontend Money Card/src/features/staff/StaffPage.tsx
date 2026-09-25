@@ -351,6 +351,14 @@ export function StaffPage() {
   // ── Instant Client-Side Filtered Staff ────────────────────
   const filteredStaff = useMemo(() => {
     let result = staffList;
+    if (isCounterView) {
+      result = result.filter(
+        (s) =>
+          s.id !== user?.id &&
+          !s.name.toLowerCase().startsWith('staff - ' + (currentBranch?.name?.toLowerCase() || '')) &&
+          s.name !== `Staff - ${currentBranch?.name}`,
+      );
+    }
     const activeBranchId = isCounterView
       ? currentBranch?.id
       : staffBranchFilter !== 'ALL'
@@ -375,7 +383,7 @@ export function StaffPage() {
         (s.phone && s.phone.includes(q)) ||
         (s.email && s.email.toLowerCase().includes(q)),
     );
-  }, [staffList, currentBranch, staffBranchFilter, statusFilter, searchQuery, isCounterView]);
+  }, [staffList, currentBranch, staffBranchFilter, statusFilter, searchQuery, isCounterView, user]);
 
   // ── Group Filtered Staff by Counter (Minimal & Clean) ─────
   const counterStaffGroups = useMemo<CounterStaffGroup[]>(() => {
@@ -1266,6 +1274,17 @@ export function StaffPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          {isCounterView && canManage && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => handleOpenAdd()}
+              leftIcon={<UserPlus className="h-3.5 w-3.5" />}
+              className="text-xs h-8 px-3 rounded-xl shadow-2xs cursor-pointer"
+            >
+              Add Staff
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -1285,6 +1304,48 @@ export function StaffPage() {
         </div>
       ) : error ? (
         <ErrorState title="Failed to load staff" message={error} onRetry={fetchStaffData} />
+      ) : isCounterView ? (
+        filteredStaff.length === 0 ? (
+          <EmptyState
+            icon={<Users className="h-8 w-8 text-slate-500" />}
+            title={searchQuery || statusFilter !== 'ALL' ? "No staff members found" : "No staff members yet"}
+            description={
+              searchQuery || statusFilter !== 'ALL'
+                ? 'No staff members match the selected filters. Try adjusting your search query or filters.'
+                : `No staff members added to ${currentBranch ? currentBranch.name : 'this counter'} yet.`
+            }
+            action={
+              searchQuery || statusFilter !== 'ALL' ? (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setStatusFilter('ALL');
+                  }}
+                  leftIcon={<X className="h-4 w-4" />}
+                >
+                  Clear Filters
+                </Button>
+              ) : canManage ? (
+                <Button variant="primary" onClick={() => handleOpenAdd()} leftIcon={<UserPlus className="h-4 w-4" />}>
+                  Add Staff
+                </Button>
+              ) : undefined
+            }
+          />
+        ) : (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <div className="min-w-[600px]">
+                <DataTable<Staff>
+                  data={filteredStaff}
+                  columns={counterStaffColumns}
+                  keyExtractor={(item: Staff) => item.id}
+                />
+              </div>
+            </div>
+          </div>
+        )
       ) : staffList.length === 0 ? (
         <EmptyState
           icon={<Users className="h-8 w-8 text-slate-500" />}
@@ -1325,23 +1386,11 @@ export function StaffPage() {
         />
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-          {isCounterView ? (
-            <div className="overflow-x-auto">
-              <div className="min-w-[600px]">
-                <DataTable<Staff>
-                  data={filteredStaff}
-                  columns={counterStaffColumns}
-                  keyExtractor={(item: Staff) => item.id}
-                />
-              </div>
-            </div>
-          ) : (
-            <DataTable<CounterStaffGroup>
-              data={counterStaffGroups}
-              columns={orgAdminColumns}
-              keyExtractor={(item: CounterStaffGroup) => item.id}
-            />
-          )}
+          <DataTable<CounterStaffGroup>
+            data={counterStaffGroups}
+            columns={orgAdminColumns}
+            keyExtractor={(item: CounterStaffGroup) => item.id}
+          />
         </div>
       )}
 
