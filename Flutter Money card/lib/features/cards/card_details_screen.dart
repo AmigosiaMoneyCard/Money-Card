@@ -160,12 +160,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                const Text(
-                  'Customer Details (Optional):',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
-                ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 TextField(
                   controller: nameCtrl,
                   autofocus: true,
@@ -173,7 +168,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                   scrollPadding: const EdgeInsets.only(bottom: 140),
                   decoration: const InputDecoration(
                     labelText: 'Customer Name (Optional)',
-                    hintText: 'e.g. John Doe (default: Walk-in)',
+                    hintText: 'e.g. John Doe',
                     prefixIcon: Icon(Icons.person_outline, size: 18),
                     isDense: true,
                     border: OutlineInputBorder(),
@@ -206,11 +201,6 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                     border: const OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                const Text(
-                  'Customer details are optional. Then the card becomes active.',
-                  style: TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
-                ),
               ],
             ),
           ),
@@ -241,7 +231,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
 
     if (confirm != true) return;
 
-    final customerNameVal = nameCtrl.text.trim().isNotEmpty ? nameCtrl.text.trim() : 'Walk-in Customer';
+    final customerNameVal = nameCtrl.text.trim();
     final session = await ref.read(sessionDetailsNotifierProvider.notifier).createSession(
           cardId: card.id,
           branchId: branch.id,

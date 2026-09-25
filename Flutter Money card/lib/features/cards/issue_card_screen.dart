@@ -133,12 +133,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                const Text(
-                  'Customer Details (Optional):',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
-                ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 TextField(
                   controller: nameCtrl,
                   autofocus: true,
@@ -153,7 +148,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                   },
                   decoration: InputDecoration(
                     labelText: 'Customer Name (Optional)',
-                    hintText: 'e.g. Walk-in Customer',
+                    hintText: 'e.g. John Doe',
                     errorText: nameError,
                     prefixIcon: const Icon(Icons.person_outline, size: 18),
                     isDense: true,
@@ -186,11 +181,6 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                     isDense: true,
                     border: const OutlineInputBorder(),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                const Text(
-                  'Customer details are saved to Customer History. Then the card becomes active.',
-                  style: TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
                 ),
               ],
             ),
@@ -230,7 +220,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
 
     if (confirm != true) return;
 
-    final resolvedName = nameCtrl.text.trim().isEmpty ? 'Walk-in Customer' : nameCtrl.text.trim();
+    final resolvedName = nameCtrl.text.trim();
     final resolvedPhone = phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim();
 
     final session = await ref.read(cardDetailsNotifierProvider.notifier).issueCardSession(

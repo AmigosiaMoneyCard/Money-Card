@@ -144,12 +144,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.sm),
-                      const Text(
-                        'Customer Details (Optional):',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
-                      ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       TextField(
                         controller: nameCtrl,
                         autofocus: true,
@@ -157,7 +152,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                         scrollPadding: const EdgeInsets.only(bottom: 140),
                         decoration: const InputDecoration(
                           labelText: 'Customer Name (Optional)',
-                          hintText: 'e.g. John Doe (default: Walk-in)',
+                          hintText: 'e.g. John Doe',
                           prefixIcon: Icon(Icons.person_outline, size: 18),
                           isDense: true,
                           border: OutlineInputBorder(),
@@ -185,11 +180,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                           isDense: true,
                           border: const OutlineInputBorder(),
                         ),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      const Text(
-                        'Customer details are optional. Then the card becomes active.',
-                        style: TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
                       ),
                     ],
                   ),
@@ -227,7 +217,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
           }
 
           final sessionRepo = ref.read(sessionRepositoryProvider);
-          final customerNameVal = nameCtrl.text.trim().isNotEmpty ? nameCtrl.text.trim() : 'Walk-in Customer';
+          final customerNameVal = nameCtrl.text.trim();
           final newSession = await sessionRepo.createSession(
             cardId: result.card.id,
             branchId: branch.id,
