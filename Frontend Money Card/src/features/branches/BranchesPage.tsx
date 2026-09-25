@@ -30,7 +30,6 @@ import {
   X,
   MessageSquare,
   Copy,
-  Check,
   Eye,
   EyeOff,
 } from 'lucide-react';
@@ -152,12 +151,7 @@ export function BranchesPage() {
 
   // Create modal inputs
   const [branchNameInput, setBranchNameInput] = useState('');
-  const [branchPhoneInput, setBranchPhoneInput] = useState('');
-  const [branchPasswordInput, setBranchPasswordInput] = useState('');
-  const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
-  const [phoneError, setPhoneError] = useState<string | null>(null);
-  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [modalApiError, setModalApiError] = useState<string | null>(null);
 
   // View/Edit modal inputs
@@ -173,16 +167,6 @@ export function BranchesPage() {
   const [viewEditApiError, setViewEditApiError] = useState<string | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // WhatsApp Credentials Modal state
-  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
-  const [createdBranchCredentials, setCreatedBranchCredentials] = useState<{
-    name: string;
-    phone: string;
-    password?: string;
-    branchId: string;
-  } | null>(null);
-  const [copied, setCopied] = useState(false);
 
   // Password persistence helpers — store known passwords in localStorage by branchId
   const PASS_STORAGE_KEY = 'mc_branch_passwords';
@@ -305,12 +289,7 @@ export function BranchesPage() {
   // ── Create Counter ─────────────────────────────────────────
   const handleOpenCreate = () => {
     setBranchNameInput('');
-    setBranchPhoneInput('');
-    setBranchPasswordInput('');
-    setShowCreatePassword(false);
     setNameError(null);
-    setPhoneError(null);
-    setPasswordError(null);
     setModalApiError(null);
     setShowCreateModal(true);
   };
@@ -319,27 +298,19 @@ export function BranchesPage() {
     e.preventDefault();
 
     const nameErr = validateCounterName(branchNameInput);
-    const phoneErr = validateMobileNumber(branchPhoneInput);
-    const passErr = validatePassword(branchPasswordInput, true);
-
     setNameError(nameErr);
-    setPhoneError(phoneErr);
-    setPasswordError(passErr);
 
-    if (nameErr || phoneErr || passErr) return;
+    if (nameErr) return;
 
     setModalApiError(null);
     setIsSubmitting(true);
     try {
-      const cleanPhone = branchPhoneInput.trim().replace(/\D/g, '').slice(-10);
       const result: ApiResult<Branch> = await apiService.branches.createBranch({
         name: branchNameInput.trim(),
-        phone: cleanPhone,
-        password: branchPasswordInput,
       });
 
       if (!result.success) {
-        if (result.error.code === 'PLAN_LIMIT_REACHED') {
+        if ((result.error.code as string) === 'PLAN_LIMIT_REACHED' || (result.error.code as string) === 'BRANCH_LIMIT_REACHED') {
           setModalApiError(
             result.error.message ||
               'Counter limit reached for your active plan. Please upgrade your subscription to create more counters.',
@@ -353,19 +324,6 @@ export function BranchesPage() {
       notify.success('Counter created successfully');
       setShowCreateModal(false);
       fetchBranches();
-
-      // Persist password in localStorage for this branch
-      storePassword(result.data.id, branchPasswordInput, cleanPhone);
-
-      // Open WhatsApp Dispatch Modal
-      setCreatedBranchCredentials({
-        name: result.data.name,
-        phone: result.data.credentials?.phone || cleanPhone,
-        password: result.data.credentials?.password || branchPasswordInput,
-        branchId: result.data.id,
-      });
-      setCopied(false);
-      setShowWhatsAppModal(true);
     } catch {
       setModalApiError('An unexpected error occurred. Please try again.');
     } finally {
@@ -373,36 +331,7 @@ export function BranchesPage() {
     }
   };
 
-  const handleCopyCredentials = () => {
-    if (!createdBranchCredentials) return;
-    const loginUrl = `${window.location.origin}/login`;
-    const textToCopy =
-      `Counter Name: ${createdBranchCredentials.name}\n` +
-      `Phone Number: ${createdBranchCredentials.phone}\n` +
-      `Password: ${createdBranchCredentials.password}\n` +
-      `Login URL: ${loginUrl}`;
-    navigator.clipboard.writeText(textToCopy);
-    setCopied(true);
-    notify.success('Credentials copied to clipboard');
-    setTimeout(() => setCopied(false), 2500);
-  };
 
-  const handleSendWhatsApp = () => {
-    if (!createdBranchCredentials) return;
-    const loginUrl = `${window.location.origin}/login`;
-    const message =
-      `*Welcome to Money Card Counter Portal*\n\n` +
-      `Your counter account has been created successfully:\n\n` +
-      `• *Counter Name:* ${createdBranchCredentials.name}\n` +
-      `• *Mobile Number:* ${createdBranchCredentials.phone}\n` +
-      `• *Password:* ${createdBranchCredentials.password}\n\n` +
-      `*Counter Dashboard Link:* ${loginUrl}\n\n` +
-      `_Log in using your Mobile Number and Password to access your Counter Menu, Staff, and Analytics._`;
-
-    const cleanPhone = createdBranchCredentials.phone.replace(/\D/g, '').slice(-10);
-    const waUrl = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(message)}`;
-    window.open(waUrl, '_blank', 'noopener,noreferrer');
-  };
 
   // ── Consolidated View / Edit Counter Details ──────────────
   const handleOpenViewEdit = (branch: Branch) => {
@@ -878,47 +807,6 @@ export function BranchesPage() {
             autoFocus
           />
 
-          <Input
-            id="create-branch-phone"
-            label="Mobile number"
-            type="tel"
-            maxLength={10}
-            placeholder="e.g. 9876543210 (10-digit mobile)"
-            value={branchPhoneInput}
-            onChange={(e) => {
-              const numericOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
-              setBranchPhoneInput(numericOnly);
-              if (phoneError) setPhoneError(null);
-            }}
-            error={phoneError || undefined}
-            disabled={isSubmitting}
-          />
-
-          <Input
-            id="create-branch-password"
-            label="Login Password"
-            type={showCreatePassword ? 'text' : 'password'}
-            placeholder="Minimum 6 characters"
-            value={branchPasswordInput}
-            onChange={(e) => {
-              setBranchPasswordInput(e.target.value);
-              if (passwordError) setPasswordError(null);
-            }}
-            rightElement={
-              <button
-                type="button"
-                onClick={() => setShowCreatePassword(!showCreatePassword)}
-                className="text-slate-400 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer p-1"
-                tabIndex={-1}
-                aria-label={showCreatePassword ? 'Hide password' : 'Show password'}
-              >
-                {showCreatePassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            }
-            error={passwordError || undefined}
-            disabled={isSubmitting}
-          />
-
           <ModalFooter>
             <Button variant="outline" onClick={() => setShowCreateModal(false)} disabled={isSubmitting}>
               Cancel
@@ -930,71 +818,7 @@ export function BranchesPage() {
         </form>
       </Modal>
 
-      {/* ── WhatsApp Credentials Modal ────────────────────────────── */}
-      <Modal
-        isOpen={showWhatsAppModal}
-        onClose={() => setShowWhatsAppModal(false)}
-        title="Counter Created Successfully!"
-        description="Share the login credentials with the counter manager via WhatsApp or copy directly."
-        size="md"
-      >
-        <div className="space-y-4 py-1">
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 space-y-3">
-            <div className="flex items-center gap-2 text-emerald-800 font-semibold text-sm">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white text-xs">✓</span>
-              <span>Counter Login Credentials</span>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div className="bg-white/95 p-2.5 rounded-lg border border-emerald-100 shadow-2xs">
-                <span className="text-slate-500 block text-[11px]">Counter Name</span>
-                <span className="font-semibold text-slate-800 text-sm">{createdBranchCredentials?.name}</span>
-              </div>
-              <div className="bg-white/95 p-2.5 rounded-lg border border-emerald-100 shadow-2xs">
-                <span className="text-slate-500 block text-[11px]">Mobile Number (Login ID)</span>
-                <span className="font-semibold text-slate-800 font-mono text-sm">{createdBranchCredentials?.phone}</span>
-              </div>
-              <div className="bg-white/95 p-2.5 rounded-lg border border-emerald-100 shadow-2xs">
-                <span className="text-slate-500 block text-[11px]">Password</span>
-                <span className="font-semibold text-slate-800 font-mono text-sm">{createdBranchCredentials?.password}</span>
-              </div>
-              <div className="bg-white/95 p-2.5 rounded-lg border border-emerald-100 shadow-2xs">
-                <span className="text-slate-500 block text-[11px]">Web Portal</span>
-                <span className="font-medium text-emerald-700 truncate block">{window.location.origin}/login</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2.5 sm:flex-row pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleCopyCredentials}
-              className="flex-1 justify-center gap-2 cursor-pointer"
-              leftIcon={copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
-            >
-              {copied ? 'Copied Details' : 'Copy Credentials'}
-            </Button>
-            <Button
-              type="button"
-              onClick={handleSendWhatsApp}
-              className="flex-1 justify-center gap-2 bg-[#25D366] hover:bg-[#20bd5a] text-white border-transparent cursor-pointer"
-              leftIcon={<MessageSquare className="h-4 w-4" />}
-            >
-              Send via WhatsApp
-            </Button>
-          </div>
-
-          <ModalFooter>
-            <Button
-              variant="ghost"
-              onClick={() => setShowWhatsAppModal(false)}
-            >
-              Close
-            </Button>
-          </ModalFooter>
-        </div>
-      </Modal>
 
       {/* ── Consolidated View / Edit Counter Details Modal ─────────── */}
       <Modal
