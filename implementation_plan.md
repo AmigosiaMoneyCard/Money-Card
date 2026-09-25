@@ -1,55 +1,53 @@
-# Implementation Plan — Isolate Counter Dashboard Staff Management
+# Implementation Plan — Remove Minimum Active Branch Restriction for Counter Deletion
 
-Strictly isolate Counter Dashboard staff management from Org Admin by ensuring the Counter Manager account is excluded from the subordinate staff table, displaying the Add Staff empty state on freshly created counters.
+Remove the `MIN_ACTIVE_BRANCH_REQUIRED` restriction in counter deletion and status updates, allowing users to delete or deactivate any counter without being blocked by an active branch quota check.
 
-![Counter Staff Empty State View](C:/Users/damie/.gemini/antigravity-ide/brain/999581c9-5c30-4195-933d-3667425ed95a/counter_staff_empty_state_1790316872880.jpg)
+![Delete Counter Modal](C:/Users/damie/.gemini/antigravity-ide/brain/999581c9-5c30-4195-933d-3667425ed95a/delete_counter_modal_1790317591219.jpg)
 
 ## Layout Wireframes
 
 ```
-+-----------------------------------------------------------------------------------+
-| Staff Management                                                                  |
-|                                                                                   |
-| [Search staff by name or phone...               ]      [+ Add Staff]  [Refresh]   |
-|                                                                                   |
-| +-------------------------------------------------------------------------------+ |
-| |                                                                               | |
-| |                                  [Users Icon]                                 | |
-| |                                                                               | |
-| |                            No staff members yet                               | |
-| |          Add your team members to grant POS cashier and counter access.       | |
-| |                                                                               | |
-| |                                [+ Add Staff]                                  | |
-| |                                                                               | |
-| +-------------------------------------------------------------------------------+ |
-+-----------------------------------------------------------------------------------+
++-------------------------------------------------------------+
+|                        Delete Counter                       |
++-------------------------------------------------------------+
+|  [!] Are you sure you want to delete this counter?          |
+|                                                             |
+|  This action will permanently delete the counter and unlink |
+|  its inventory and staff assignments.                       |
+|                                                             |
+|                     [Cancel]  [Delete Counter]              |
++-------------------------------------------------------------+
 ```
 
-## Root Cause and Scope Isolation
+## User Requirements and Scope
 
-- Root Cause: When a counter is provisioned with phone credentials, a user record with role STAFF is created as the Counter Manager. When the Counter Manager logs in to the Counter Dashboard and opens Staff Management, `getStaffList` queries all users with role STAFF assigned to that branch, returning the Counter Manager themselves. Consequently, the manager sees their own account (`Staff - <Counter Name>`) listed as a subordinate staff member instead of seeing an empty state with an "Add Staff" action.
-- Isolation Boundary: Changes are strictly scoped to the Counter Manager view (`isCounterView = true` in frontend and `role === Role.STAFF` in backend `getStaffList`). The Org Admin dashboard view, which manages cafeteria-wide counter groupings, remains completely unchanged and isolated.
+- The user reported being unable to delete a counter due to the error: "Cannot delete this branch. An organization must have at least one active branch."
+- The user requested removing this restriction completely: "dont need this the counter should get deelted. Udpate olan".
+- Counters should be deletable or deactivatable even if it is the only or last remaining counter in the organization.
 
 ## Proposed Changes
 
-Backend Changes in [staff.controller.ts](file:///D:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/staff.controller.ts):
-- In `getStaffList`, when the requester has role `STAFF` (Counter Manager), exclude the requesting manager's own account (`where.id = { not: req.user.id }`).
-- This ensures the Counter Manager only receives team members created under their counter, never themselves.
+Backend Changes in [organization.controller.ts](file:///D:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/organization.controller.ts):
+- In `deleteBranch` (hard delete flow): Remove the check `if (branch.status === 'ACTIVE' && remainingActiveCount === 0)` that returns `MIN_ACTIVE_BRANCH_REQUIRED`.
+- In `deleteBranch` (archive / force flow for counters with historical records): Remove the check `if (remainingActiveCount === 0 && branch.status === 'ACTIVE')` that returns `MIN_ACTIVE_BRANCH_REQUIRED`.
+- In `updateBranch`: Remove the check `if (activeBranchesCount <= 1)` that prevents toggling a counter status away from `ACTIVE`.
 
-Frontend Changes in [StaffPage.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/staff/StaffPage.tsx):
-- In `filteredStaff`, when `isCounterView` is active, filter out the logged-in user (`user?.id`) and any synthetic manager account matching `Staff - <Counter Name>`.
-- In the top action bar, render a prominent `Add Staff` button whenever `isCounterView && canManage` so the manager can always add staff directly.
-- In the main content area, when `isCounterView` is true and `filteredStaff.length === 0`, render the EmptyState component with title "No staff members yet", description "Add your team members to grant POS cashier and counter access to this counter", and an "Add Staff" action button.
-- Preserve Org Admin's counter-grouped table layout completely intact.
+Frontend Changes in [branches.ts](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/services/mock/handlers/branches.ts):
+- Remove the `activeCount <= 1` block from the mock handler to stay in parity with the backend.
+
+Test Suite Updates in [staff_integration.test.ts](file:///D:/Money%20Card%20Project/Backend%20Money%20Card/test/unit/staff_integration.test.ts):
+- Update the branch deactivation unit test to verify that the last remaining active branch can now be deactivated and deleted.
 
 ## Worktree Modifications
 
-- File 1: [staff.controller.ts](file:///D:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/staff.controller.ts)
-  - Method: `getStaffList`
-  - Action: Exclude `req.user.id` when `req.user.role === Role.STAFF`.
-- File 2: [StaffPage.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/staff/StaffPage.tsx)
-  - Sections: `filteredStaff` computation, top action bar, and empty state conditional block for `isCounterView`.
-  - Action: Filter out counter manager from staff list, add header Add Staff button, and show empty state on empty counter staff.
+- File 1: [organization.controller.ts](file:///D:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/organization.controller.ts)
+  - Method: `deleteBranch` and `updateBranch`
+  - Action: Remove `MIN_ACTIVE_BRANCH_REQUIRED` blocks.
+- File 2: [branches.ts](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/services/mock/handlers/branches.ts)
+  - Method: `updateBranch`
+  - Action: Remove mock minimum active check.
+- File 3: [staff_integration.test.ts](file:///D:/Money%20Card%20Project/Backend%20Money%20Card/test/unit/staff_integration.test.ts)
+  - Unit test update reflecting relaxed deletion rules.
 
 ## Verification and Test Plan
 

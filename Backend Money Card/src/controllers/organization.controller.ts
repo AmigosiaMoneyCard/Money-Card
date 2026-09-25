@@ -599,25 +599,6 @@ export async function updateBranch(req: Request, res: Response) {
     }
   }
 
-  // Prevent disabling all branches - at least one active branch is strictly required per organization
-  if (status && status !== 'ACTIVE' && branch.status === 'ACTIVE') {
-    const activeBranchesCount = await prisma.branch.count({
-      where: {
-        organizationId: branch.organizationId,
-        status: 'ACTIVE',
-      },
-    });
-
-    if (activeBranchesCount <= 1) {
-      return sendError(
-        res,
-        400,
-        'MIN_ACTIVE_BRANCH_REQUIRED',
-        'Cannot disable this counter. A cafeteria must have at least one active counter.',
-      );
-    }
-  }
-
   const effectivePassword = (password !== undefined && password !== '') ? String(password) : undefined;
   let passwordHash: string | undefined = undefined;
   if (effectivePassword) {
@@ -693,26 +674,10 @@ export async function deleteBranch(req: Request, res: Response) {
     return sendError(res, 404, 'NOT_FOUND', 'Branch not found');
   }
 
-  const remainingActiveCount = await prisma.branch.count({
-    where: {
-      organizationId: branch.organizationId,
-      id: { not: id },
-      status: 'ACTIVE',
-    },
-  });
-
   const hasFinancialRecords = branch._count.cardSessions > 0 || branch._count.transactions > 0;
 
   if (hasFinancialRecords) {
     if (force) {
-      if (remainingActiveCount === 0 && branch.status === 'ACTIVE') {
-        return sendError(
-          res,
-          400,
-          'MIN_ACTIVE_BRANCH_REQUIRED',
-          'Cannot deactivate this branch. An organization must have at least one active branch.',
-        );
-      }
       const updated = await prisma.branch.update({
         where: { id },
         data: { status: 'INACTIVE' },
@@ -734,15 +699,6 @@ export async function deleteBranch(req: Request, res: Response) {
         cardSessionsCount: branch._count.cardSessions,
         transactionsCount: branch._count.transactions,
       },
-    );
-  }
-
-  if (branch.status === 'ACTIVE' && remainingActiveCount === 0) {
-    return sendError(
-      res,
-      400,
-      'MIN_ACTIVE_BRANCH_REQUIRED',
-      'Cannot delete this branch. An organization must have at least one active branch.',
     );
   }
 
