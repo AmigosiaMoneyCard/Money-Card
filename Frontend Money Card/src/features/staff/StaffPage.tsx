@@ -1236,8 +1236,24 @@ export function StaffPage() {
   return (
     <div className="space-y-5 max-w-6xl mx-auto pb-10">
       {/* ─── Minimal Header ─── */}
-      <div className="border-b border-slate-200/80 pb-4">
-        <h1 className="text-xl font-bold text-slate-900 tracking-tight">Staff Management</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200/80 pb-4">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">Staff Management</h1>
+          {currentBranch && isCounterView && (
+            <p className="text-xs text-slate-500 mt-0.5">Manage team members for {currentBranch.name}</p>
+          )}
+        </div>
+        {isCounterView && canManage && (
+          <Button
+            variant="primary"
+            size="md"
+            onClick={() => handleOpenAdd()}
+            leftIcon={<UserPlus className="h-4 w-4" />}
+            className="text-xs font-semibold px-4 py-2 rounded-xl shadow-2xs cursor-pointer self-start sm:self-auto"
+          >
+            Add Staff
+          </Button>
+        )}
       </div>
 
       {/* Plan Resource Usage Indicator */}
