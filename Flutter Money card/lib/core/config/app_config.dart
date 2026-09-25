@@ -56,7 +56,7 @@ class AppConfig {
 
   static String get appName {
     if (isProduction) return 'Money Card';
-    if (isDevelopment) return 'Money Card (Dev)';
+    if (isDevelopment) return 'Money Card - Localhost';
     return 'Money Card (Staging)';
   }
 
