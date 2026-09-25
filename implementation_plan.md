@@ -1,48 +1,57 @@
-# Implementation Plan — Add Staff Button on Top Right in Counter Dashboard
+# Implementation Plan — Localhost Staff Credentials for Mobile POS APK
 
-Add an "Add Staff" button on the top right side of the page header in Staff Management for the Counter Dashboard view.
+Provision dedicated active staff credentials in the local database for testing the Flutter Mobile POS APK against the localhost backend.
 
-![Top Right Add Staff Button](C:/Users/damie/.gemini/antigravity-ide/brain/999581c9-5c30-4195-933d-3667425ed95a/counter_staff_top_right_add_1790318428808.jpg)
+![Mobile POS Localhost Login Screen](C:/Users/damie/.gemini/antigravity-ide/brain/999581c9-5c30-4195-933d-3667425ed95a/mobile_pos_localhost_login_1790319232113.jpg)
 
 ## Layout Wireframes
 
 ```
-+-----------------------------------------------------------------------------------+
-| Staff Management                                                    [+ Add Staff] |
-| Manage team members for South Indian Express                                      |
-+-----------------------------------------------------------------------------------+
-| [Search staff by name or phone...               ]                       [Refresh] |
-|                                                                                   |
-| +-------------------------------------------------------------------------------+ |
-| | Staff Name               Role         Actions                                 | |
-| | Ramesh                   Staff        [View Details]  [Edit]  [Performance]   | |
-| +-------------------------------------------------------------------------------+ |
-+-----------------------------------------------------------------------------------+
++-------------------------------------------------------+
+|                       CAFE POS                        |
+|                                                       |
+|                     Staff Login                       |
+|        Welcome back! Enter your details to continue.  |
+|                                                       |
+|  Mobile Number                                        |
+|  [ 9876543210                                       ] |
+|                                                       |
+|  Password                                             |
+|  [ **********                                     (O) ] |
+|                                                       |
+|  [                    SIGN IN                       ] |
+|                                                       |
+|          Connected to Localhost: 192.168.105.39       |
++-------------------------------------------------------+
 ```
 
 ## User Requirements and Scope
 
-- The user requested: "in counter dahobrd - in Staff Management - need a option on the right top side For add staff . udpate plan".
-- In the Counter Dashboard view (`isCounterView && canManage`), add a prominent primary action button "Add Staff" aligned to the top right of the page header next to the title.
-- Ensure the header layout is responsive on mobile viewports (`flex-col sm:flex-row sm:items-center sm:justify-between`).
+- The user requested: "make a staff cred for localhsot apk".
+- Provision an active staff account in the local PostgreSQL database with complete M0 permissions, assigned to an active counter/branch.
+- Ensure the password is properly hashed using bcrypt so authentication succeeds via `POST /api/v1/auth/login`.
+- Verify sample products and branch link exist for POS transactions.
+- Provide connection endpoints for Android emulator, USB adb reverse, and physical LAN device.
 
-## Proposed Changes
+## Provisioned Account Details
 
-Frontend Changes in [StaffPage.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/staff/StaffPage.tsx):
-- Update the minimal header container from a simple block to a responsive flex container: `flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200/80 pb-4`.
-- On the left side, render the `Staff Management` title and counter context subtitle when `isCounterView && currentBranch`.
-- On the right top side, render the primary button `Add Staff` (`variant="primary"`, `leftIcon={<UserPlus className="h-4 w-4" />}`, `onClick={() => handleOpenAdd()}`) when `isCounterView && canManage`.
-- Maintain full compatibility with Org Admin view (which manages counter groups).
+- Mobile Number: 9876543210
+- Password: password123
+- Staff Name: Counter Staff
+- Role: STAFF
+- Status: ACTIVE
+- Must Change Password: false
+- Organization: Activation Test Cafeteria
+- Counter / Branch: Counter 1 (Ground Floor Food Court)
+- Permissions: Full M0 permissions (CARD_VIEW, CARD_ISSUE, CARD_RETURN, CARD_BLOCK, CARD_UNBLOCK, SESSION_VIEW, RECHARGE, PURCHASE, REFUND, PRODUCT_VIEW, PRODUCT_MANAGE, INVENTORY_VIEW, INVENTORY_MANAGE, VIEW_ANALYTICS, VIEW_REPORTS, STAFF_VIEW, BRANCH_VIEW)
 
-## Worktree Modifications
+## Backend Connection Endpoints
 
-- File: [StaffPage.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/staff/StaffPage.tsx)
-  - Method / Section: Minimal Header JSX (around lines 1238-1242)
-  - Action: Convert header to flex layout and insert top right "Add Staff" button for Counter Dashboard.
+- Android Emulator: http://10.0.2.2:3000/api/v1
+- USB Cable (via adb reverse tcp:3000 tcp:3000): http://127.0.0.1:3000/api/v1
+- Wi-Fi / Physical Device on LAN: http://192.168.105.39:3000/api/v1
 
 ## Verification and Test Plan
 
-- Proactively execute Frontend test suite: `npm test -- --run` in `Frontend Money Card` (272 passing).
-- Proactively execute Frontend TypeScript check: `npx tsc --noEmit` in `Frontend Money Card` (0 errors).
-- Proactively execute Backend test suite: `npm test` in `Backend Money Card` (100 passing).
-- Proactively execute Mobile Flutter test suite: `flutter test` in `Flutter Money card` (168 passing).
+- Proactively tested API login via POST http://localhost:3000/api/v1/auth/login.
+- Verified response status 200 with valid JWT tokens, staff user profile, and active branch assignment.
