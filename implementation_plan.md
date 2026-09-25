@@ -1,57 +1,49 @@
-# Implementation Plan — Localhost Staff Credentials for Mobile POS APK
+# Implementation Plan — Mobile POS Localhost Link and Staff Management Header Action
 
-Provision dedicated active staff credentials in the local database for testing the Flutter Mobile POS APK against the localhost backend.
+Documentation and configuration for connecting the Mobile POS APK to the local backend, and providing the "Add Staff" button on the top right side of the page header in Staff Management.
 
-![Mobile POS Localhost Login Screen](C:/Users/damie/.gemini/antigravity-ide/brain/999581c9-5c30-4195-933d-3667425ed95a/mobile_pos_localhost_login_1790319232113.jpg)
+![Top Right Add Staff Button in Staff Management](C:/Users/damie/.gemini/antigravity-ide/brain/999581c9-5c30-4195-933d-3667425ed95a/counter_staff_top_right_add_1790318428808.jpg)
 
 ## Layout Wireframes
 
 ```
-+-------------------------------------------------------+
-|                       CAFE POS                        |
-|                                                       |
-|                     Staff Login                       |
-|        Welcome back! Enter your details to continue.  |
-|                                                       |
-|  Mobile Number                                        |
-|  [ 9876543210                                       ] |
-|                                                       |
-|  Password                                             |
-|  [ **********                                     (O) ] |
-|                                                       |
-|  [                    SIGN IN                       ] |
-|                                                       |
-|          Connected to Localhost: 192.168.105.39       |
-+-------------------------------------------------------+
++-----------------------------------------------------------------------------------+
+| Staff Management                                                    [+ Add Staff] |
+| Manage team members for Counter 1                                                 |
++-----------------------------------------------------------------------------------+
+| [Search staff by name or phone...               ]                       [Refresh] |
+|                                                                                   |
+| +-------------------------------------------------------------------------------+ |
+| | Staff Name               Role         Status       Actions                    | |
+| | Counter Staff            Staff        Active       [View Details]  [Edit]     | |
+| +-------------------------------------------------------------------------------+ |
++-----------------------------------------------------------------------------------+
 ```
 
-## User Requirements and Scope
+## Mobile POS Localhost Links
 
-- The user requested: "make a staff cred for localhsot apk".
-- Provision an active staff account in the local PostgreSQL database with complete M0 permissions, assigned to an active counter/branch.
-- Ensure the password is properly hashed using bcrypt so authentication succeeds via `POST /api/v1/auth/login`.
-- Verify sample products and branch link exist for POS transactions.
-- Provide connection endpoints for Android emulator, USB adb reverse, and physical LAN device.
+The Flutter Mobile POS APK supports direct connection to the local backend server via the following endpoints:
 
-## Provisioned Account Details
-
-- Mobile Number: 9876543210
-- Password: password123
-- Staff Name: Counter Staff
-- Role: STAFF
-- Status: ACTIVE
-- Must Change Password: false
-- Organization: Activation Test Cafeteria
-- Counter / Branch: Counter 1 (Ground Floor Food Court)
-- Permissions: Full M0 permissions (CARD_VIEW, CARD_ISSUE, CARD_RETURN, CARD_BLOCK, CARD_UNBLOCK, SESSION_VIEW, RECHARGE, PURCHASE, REFUND, PRODUCT_VIEW, PRODUCT_MANAGE, INVENTORY_VIEW, INVENTORY_MANAGE, VIEW_ANALYTICS, VIEW_REPORTS, STAFF_VIEW, BRANCH_VIEW)
-
-## Backend Connection Endpoints
-
+- Wi-Fi / Physical Device on LAN: http://192.168.105.39:3000/api/v1
 - Android Emulator: http://10.0.2.2:3000/api/v1
 - USB Cable (via adb reverse tcp:3000 tcp:3000): http://127.0.0.1:3000/api/v1
-- Wi-Fi / Physical Device on LAN: http://192.168.105.39:3000/api/v1
+
+To configure in the Mobile App:
+1. Open the Mobile POS APK login screen.
+2. Tap the Server Config / Network icon.
+3. Tap the "Wi-Fi LAN" preset chip (or enter http://192.168.105.39:3000/api/v1).
+4. Tap "Test Connection" to confirm green status, then tap "Save & Apply".
+
+## Staff Management Header Action
+
+In [StaffPage.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/staff/StaffPage.tsx):
+- The header is structured as a responsive flex row: `flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200/80 pb-4`.
+- Left side displays the page title `Staff Management` and counter context subtitle when `currentBranch` is selected.
+- Top right side displays the primary action button `Add Staff` with `UserPlus` icon whenever `canManage` is true (both Counter Admin and Org Admin).
+- Tapping `Add Staff` opens the staff creation modal with pre-selected counter assignment and M0 permissions.
 
 ## Verification and Test Plan
 
-- Proactively tested API login via POST http://localhost:3000/api/v1/auth/login.
-- Verified response status 200 with valid JWT tokens, staff user profile, and active branch assignment.
+- Frontend Test Suite: 272 passing across 36 test files via `npm test -- --run`.
+- TypeScript Check: 0 errors via `npx tsc --noEmit`.
+- Backend Auth Test: Verified `POST http://localhost:3000/api/v1/auth/login` returns 200 with tokens and Counter 1 assignment.

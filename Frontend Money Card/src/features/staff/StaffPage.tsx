@@ -1239,11 +1239,11 @@ export function StaffPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200/80 pb-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">Staff Management</h1>
-          {currentBranch && isCounterView && (
+          {currentBranch && (
             <p className="text-xs text-slate-500 mt-0.5">Manage team members for {currentBranch.name}</p>
           )}
         </div>
-        {isCounterView && canManage && (
+        {canManage && (
           <Button
             variant="primary"
             size="md"
