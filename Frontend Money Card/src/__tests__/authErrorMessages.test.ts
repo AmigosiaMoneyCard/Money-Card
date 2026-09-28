@@ -110,4 +110,51 @@ describe('Auth Error Messages: Role-Specific Non-Existent Accounts and Password 
       }
     });
   });
+
+  describe('Single Unified Login (No Portal Switcher)', () => {
+    it('should allow Super Admin to log in directly', async () => {
+      const res = await mockAuthHandlers.login({
+        email: 'amigosiamoneycard@gmail.com',
+        password: 'password',
+      });
+      expect(res.success).toBe(true);
+      if (res.success) {
+        expect(res.data.user.role).toBe('SUPER_ADMIN');
+      }
+    });
+
+    it('should allow Org Admin to log in directly', async () => {
+      const res = await mockAuthHandlers.login({
+        email: 'admin@maincafe.com',
+        password: 'password',
+      });
+      expect(res.success).toBe(true);
+      if (res.success) {
+        expect(res.data.user.role).toBe('ORG_ADMIN');
+      }
+    });
+
+    it('should allow Counter Staff / Manager to log in directly with phone', async () => {
+      const res = await mockAuthHandlers.login({
+        phone: '9876543212',
+        password: 'password',
+      });
+      expect(res.success).toBe(true);
+      if (res.success) {
+        expect(res.data.user.role).toBe('STAFF');
+      }
+    });
+
+    it('should return "Invalid credentials" on non-existent account with single login', async () => {
+      const res = await mockAuthHandlers.login({
+        email: 'unknown@example.com',
+        password: 'password',
+      });
+      expect(res.success).toBe(false);
+      if (!res.success) {
+        expect(res.error.message).toBe('Invalid credentials');
+      }
+    });
+  });
 });
+

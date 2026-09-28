@@ -42,8 +42,6 @@ export function LoginPage() {
   const [searchParams] = useSearchParams();
   const { login } = useAuth();
 
-  const initialPortal = searchParams.get('portal')?.toUpperCase() === 'COUNTER' ? 'COUNTER' : 'ORG_ADMIN';
-  const [portal, setPortal] = useState<'ORG_ADMIN' | 'COUNTER'>(initialPortal);
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -72,13 +70,13 @@ export function LoginPage() {
         const rawDigits = trimmed.replace(/\D/g, '');
         const isPhone = !trimmed.includes('@') && rawDigits.length >= 10;
         const credentials = isPhone
-          ? { phone: rawDigits.slice(-10), password, portal }
-          : { email: trimmed, password, portal };
+          ? { phone: rawDigits.slice(-10), password }
+          : { email: trimmed, password };
 
         const result = await apiService.auth.login(credentials);
 
         if (!result.success) {
-          setApiError(result.error.message || 'Credentials are wrong.');
+          setApiError(result.error.message || 'Invalid credentials');
           return;
         }
 
@@ -100,7 +98,7 @@ export function LoginPage() {
         setIsSubmitting(false);
       }
     },
-    [identifier, password, portal, login, navigate, searchParams],
+    [identifier, password, login, navigate, searchParams],
   );
 
   return (
@@ -108,47 +106,7 @@ export function LoginPage() {
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
         <div className="text-center">
           <h2 className="text-xl font-semibold text-slate-900">Welcome back</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            {portal === 'COUNTER' ? 'Sign in to Counter Dashboard' : 'Sign in to Organization Admin Dashboard'}
-          </p>
-        </div>
-
-        {/* Role / Portal Switcher Tabs */}
-        <div className="grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 border border-slate-200" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={portal === 'ORG_ADMIN'}
-            onClick={() => {
-              setPortal('ORG_ADMIN');
-              setApiError(null);
-              setIdentifierError(null);
-            }}
-            className={`py-2 px-3 text-xs sm:text-sm font-medium rounded-lg transition-all cursor-pointer ${
-              portal === 'ORG_ADMIN'
-                ? 'bg-white text-emerald-700 shadow-sm font-semibold'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
-            }`}
-          >
-            Org Admin
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={portal === 'COUNTER'}
-            onClick={() => {
-              setPortal('COUNTER');
-              setApiError(null);
-              setIdentifierError(null);
-            }}
-            className={`py-2 px-3 text-xs sm:text-sm font-medium rounded-lg transition-all cursor-pointer ${
-              portal === 'COUNTER'
-                ? 'bg-white text-emerald-700 shadow-sm font-semibold'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
-            }`}
-          >
-            Counter Dashboard
-          </button>
+          <p className="mt-1 text-sm text-slate-500">Sign in to your dashboard</p>
         </div>
 
         {/* Session expired notice */}
@@ -179,9 +137,9 @@ export function LoginPage() {
         {/* Email or Phone field */}
         <Input
           id="login-identifier"
-          label={portal === 'COUNTER' ? 'Counter Mobile Number' : 'Email or Mobile Number'}
+          label="Email or Mobile Number"
           type="text"
-          placeholder={portal === 'COUNTER' ? '10-digit counter mobile' : 'admin@example.com or 10-digit mobile'}
+          placeholder="admin@example.com or 10-digit mobile"
           autoComplete="username"
           autoFocus
           value={identifier}

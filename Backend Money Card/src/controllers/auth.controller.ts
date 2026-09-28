@@ -73,7 +73,10 @@ export async function login(req: Request, res: Response) {
     if (requestedPortal === 'ORG_ADMIN') {
       return sendError(res, 401, 'INVALID_CREDENTIALS', "Org Admin doesn't exist.");
     }
-    return sendError(res, 401, 'INVALID_CREDENTIALS', "Staff doesn't exist.");
+    if (requestedPortal === 'STAFF') {
+      return sendError(res, 401, 'INVALID_CREDENTIALS', "Staff doesn't exist.");
+    }
+    return sendError(res, 401, 'INVALID_CREDENTIALS', 'Invalid credentials');
   }
 
   // If portal was specified, verify role matches portal

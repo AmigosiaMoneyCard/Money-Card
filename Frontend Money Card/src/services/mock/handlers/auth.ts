@@ -60,7 +60,10 @@ export const mockAuthHandlers = {
       if (requestedPortal === 'ORG_ADMIN') {
         return createMockError('UNAUTHORIZED', "Org Admin doesn't exist.");
       }
-      return createMockError('UNAUTHORIZED', "Staff doesn't exist.");
+      if (requestedPortal === 'STAFF') {
+        return createMockError('UNAUTHORIZED', "Staff doesn't exist.");
+      }
+      return createMockError('UNAUTHORIZED', 'Invalid credentials');
     }
 
     if (requestedPortal === 'COUNTER' && userMatch.role !== 'STAFF') {
