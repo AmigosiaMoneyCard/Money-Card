@@ -457,6 +457,27 @@ function OrgAdminSubscriptionsView() {
                       </div>
                     </div>
 
+                    {/* Subscription Period */}
+                    <div className="space-y-2 border-b border-slate-200 pb-3 text-xs">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                        Subscription Period
+                      </span>
+                      <div className="flex items-center justify-between text-slate-700">
+                        <span>Start Date:</span>
+                        <span className="font-mono text-xs font-semibold text-slate-900">
+                          {subscription?.startDate ? formatDate(subscription.startDate) : 'Active'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-slate-700">
+                        <span>Renewal Date:</span>
+                        <span className="font-mono text-xs font-semibold text-slate-900">
+                          {subscription?.renewalDate || subscription?.endDate
+                            ? formatDate(subscription.renewalDate || subscription.endDate)
+                            : 'Ongoing'}
+                        </span>
+                      </div>
+                    </div>
+
                     {/* Entitlements */}
                     <div className="space-y-1">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">

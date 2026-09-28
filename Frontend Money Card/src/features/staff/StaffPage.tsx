@@ -49,7 +49,6 @@ import {
   Smartphone,
   Copy,
   ExternalLink,
-  Share2,
   Trash2,
 } from 'lucide-react';
 
@@ -242,6 +241,7 @@ export function StaffPage() {
   const [addTab, setAddTab] = useState<'basic' | 'branches'>('basic');
 
   const [showStaffCreatedModal, setShowStaffCreatedModal] = useState(false);
+  const [showStaffPasswordInModal, setShowStaffPasswordInModal] = useState(false);
   const [createdStaffCredentials, setCreatedStaffCredentials] = useState<{
     name: string;
     phone: string;
@@ -2388,7 +2388,10 @@ export function StaffPage() {
       {/* ── WhatsApp & Staff Credentials Popup Modal (Opens right after creating staff member) ── */}
       <Modal
         isOpen={showStaffCreatedModal}
-        onClose={() => setShowStaffCreatedModal(false)}
+        onClose={() => {
+          setShowStaffCreatedModal(false);
+          setShowStaffPasswordInModal(false);
+        }}
         title="Staff Account Created"
         size="md"
       >
@@ -2403,9 +2406,6 @@ export function StaffPage() {
             <h3 className="text-lg font-bold text-slate-900">
               {createdStaffCredentials?.name}
             </h3>
-            <p className="text-xs text-slate-600 mt-1">
-              Account activated immediately. Share these login credentials with the staff member to log in to the POS app.
-            </p>
           </div>
 
           <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3">
@@ -2422,18 +2422,20 @@ export function StaffPage() {
             </div>
             <div className="flex items-center justify-between text-xs border-t border-slate-200/80 pt-2.5">
               <span className="text-slate-500 font-medium">POS Password:</span>
-              <span className="font-mono font-bold text-emerald-700 text-sm">{createdStaffCredentials?.password}</span>
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono font-bold text-emerald-700 text-sm">
+                  {showStaffPasswordInModal ? createdStaffCredentials?.password : '••••••••'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowStaffPasswordInModal(!showStaffPasswordInModal)}
+                  className="text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
+                  aria-label={showStaffPasswordInModal ? 'Hide password' : 'Show password'}
+                >
+                  {showStaffPasswordInModal ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </button>
+              </div>
             </div>
-          </div>
-
-          <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs text-blue-800 space-y-1">
-            <p className="font-semibold flex items-center gap-1.5 text-blue-900">
-              <Share2 className="h-4 w-4 text-blue-600" />
-              Direct WhatsApp Dispatch
-            </p>
-            <p>
-              Clicking below opens WhatsApp (Desktop or Mobile) directly to this staff member's phone number with their login credentials.
-            </p>
           </div>
 
           <ModalFooter>

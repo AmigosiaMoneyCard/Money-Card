@@ -430,68 +430,13 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                   child: const Icon(Icons.check_circle, size: 54, color: AppColors.success),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                const Text(
-                  'Wallet Returned Successfully',
-                  style: TextStyle(
+                Text(
+                  '${_resolvedCard!.displayCardNumber.toUpperCase().startsWith("MC-") ? _resolvedCard!.displayCardNumber : "MC-${_resolvedCard!.displayCardNumber}"} Returned Successfully',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimaryLight,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Wallet: ${_resolvedCard!.displayCardNumber.toUpperCase().startsWith("MC-") ? _resolvedCard!.displayCardNumber : "MC-${_resolvedCard!.displayCardNumber}"}',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Container(
-                  padding: AppSpacing.paddingMd,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryLight,
-                    borderRadius: AppSpacing.roundedSm,
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Refunded Amount:'),
-                          Text(
-                            '₹${_settlementResult!.refundedAmount.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: AppColors.primaryDark,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: const [
-                          Text('Wallet Status:'),
-                          AppBadge(label: 'AVAILABLE', variant: AppBadgeVariant.primary),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: const [
-                          Text('Session Status:'),
-                          AppBadge(label: 'SETTLED', variant: AppBadgeVariant.neutral),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                const Text(
-                  'This wallet has been returned to inventory and is ready for new issuance.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondaryLight,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -813,7 +758,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     final session = _activeSession!;
     final permissions = ref.watch(permissionCheckerProvider);
 
-    final canPurchase = permissions.hasPermission(AppPermission.purchase);
     final canRecharge = permissions.hasPermission(AppPermission.recharge);
     final canSettleReturn = permissions.hasPermission(AppPermission.cardReturn) ||
         permissions.hasPermission(AppPermission.refund);
@@ -886,7 +830,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
 
             // 2. Action Hub Section Header
             const SectionHeader(
-              title: 'Wallet Actions & Operations',
+              title: 'Actions',
             ),
             const SizedBox(height: AppSpacing.sm),
 
@@ -896,23 +840,19 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                 icon: Icons.account_balance_wallet_outlined,
                 iconColor: AppColors.success,
                 title: 'Recharge',
-                subtitle: 'Recharge card balance & view top-up history',
                 onTap: () => _showRechargeHubSheet(context, _activeSession ?? session, card),
               ),
               const SizedBox(height: AppSpacing.sm),
             ],
 
             // OPTION 2: BILLING (Merged Add Products + Food Orders)
-            if (canPurchase) ...[
-              _buildActionTile(
-                icon: Icons.point_of_sale_outlined,
-                iconColor: AppColors.primary,
-                title: 'Billing',
-                subtitle: 'Add food items & view food order history',
-                onTap: () => _showBillingHubSheet(context, _activeSession ?? session, card),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-            ],
+            _buildActionTile(
+              icon: Icons.point_of_sale_outlined,
+              iconColor: AppColors.primary,
+              title: 'Billing',
+              onTap: () => _showBillingHubSheet(context, _activeSession ?? session, card),
+            ),
+            const SizedBox(height: AppSpacing.sm),
 
             // OPTION 3: RETURN & REFUND (Merged Settle / Return Wallet + Wallet Info & Statistics)
             if (canSettleReturn) ...[
@@ -920,7 +860,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                 icon: Icons.assignment_return_outlined,
                 iconColor: AppColors.warning,
                 title: 'Return & Refund',
-                subtitle: 'Refund balance, return wallet & cycle stats',
                 isDestructive: (_activeSession ?? session).balance > 0,
                 onTap: () => _showReturnRefundSheet(context, _activeSession ?? session, card),
               ),

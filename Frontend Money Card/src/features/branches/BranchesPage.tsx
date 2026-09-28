@@ -169,6 +169,7 @@ export function BranchesPage() {
     branchId: string;
   } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showModalPassword, setShowModalPassword] = useState(false);
 
   // View/Edit modal inputs
   const [editNameInput, setEditNameInput] = useState('');
@@ -936,9 +937,11 @@ export function BranchesPage() {
       {/* ── WhatsApp Credentials Modal ────────────────────────────── */}
       <Modal
         isOpen={showWhatsAppModal}
-        onClose={() => setShowWhatsAppModal(false)}
+        onClose={() => {
+          setShowWhatsAppModal(false);
+          setShowModalPassword(false);
+        }}
         title="Counter Created Successfully!"
-        description="Share the login credentials with the counter manager via WhatsApp or copy directly."
         size="md"
       >
         <div className="space-y-4 py-1">
@@ -961,7 +964,19 @@ export function BranchesPage() {
               </div>
               <div className="bg-white/95 p-2.5 rounded-lg border border-emerald-100 shadow-2xs">
                 <span className="text-slate-500 block text-[11px]">Password</span>
-                <span className="font-semibold text-slate-800 font-mono text-sm">{createdBranchCredentials?.password}</span>
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-slate-800 font-mono text-sm">
+                    {showModalPassword ? createdBranchCredentials?.password : '••••••••'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowModalPassword(!showModalPassword)}
+                    className="text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
+                    aria-label={showModalPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showModalPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
               </div>
               <div className="bg-white/95 p-2.5 rounded-lg border border-emerald-100 shadow-2xs">
                 <span className="text-slate-500 block text-[11px]">Web Portal</span>

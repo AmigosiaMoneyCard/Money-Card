@@ -126,6 +126,7 @@ export const MANAGER_PERMISSIONS: Permission[] = [
   'CARD_BLOCK',
   'CARD_UNBLOCK',
   'RECHARGE',
+  'PURCHASE',
   'SESSION_VIEW',
   'REFUND',
   'PRODUCT_VIEW',

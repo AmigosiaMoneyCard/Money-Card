@@ -565,7 +565,7 @@ export function OrgAdminDashboard() {
               {/* 4 Filtered Stat Cards inside the box */}
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <StatCard
-                  label="Purchase Sales Volume"
+                  label="Total sales"
                   value={formatCurrency(analytics?.totalPurchaseVolume || 0)}
                   icon={<ShoppingBag className="h-5 w-5 text-emerald-600" />}
                 />
@@ -577,7 +577,7 @@ export function OrgAdminDashboard() {
                 />
 
                 <StatCard
-                  label={startDate || endDate ? "Wallets Issued in Period" : "Active Wallets Issued"}
+                  label="Wallet In use"
                   value={filteredCardsIssuedCount}
                   icon={<CreditCard className="h-5 w-5 text-sky-600" />}
                 />

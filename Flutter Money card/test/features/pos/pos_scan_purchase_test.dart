@@ -140,13 +140,10 @@ void main() {
       await tester.tap(find.text('Confirm & Settle'));
       await tester.pumpAndSettle();
 
-      // Action Hub transitions to Wallet Returned Successfully state
-      expect(find.text('Wallet Returned Successfully'), findsOneWidget);
-      expect(find.text('Refunded Amount:'), findsOneWidget);
-      expect(find.text('₹750.00'), findsOneWidget);
-      expect(find.text('AVAILABLE'), findsOneWidget);
-      expect(find.text('SETTLED'), findsOneWidget);
+      // Action Hub transitions to [Wallet number] Returned Successfully state
+      expect(find.text('MC-001 Returned Successfully'), findsOneWidget);
       expect(find.text('Scan Another Wallet'), findsOneWidget);
+      expect(find.text('Back to Home'), findsOneWidget);
     });
 
     testWidgets('Action Hub enforces granular Staff permissions (hides unauthorized actions)', (tester) async {

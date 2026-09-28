@@ -785,7 +785,6 @@ export function OrgAdminCardsView() {
               (() => {
                 const branchCards = getBranchCards(selectedBranchForAnalytics.id);
                 const activeCards = branchCards.filter((c) => c.status === 'ACTIVE').length;
-                const readyCards = branchCards.filter((c) => c.status === 'AVAILABLE').length;
                 const blockedCards = branchCards.filter((c) => c.status === 'BLOCKED').length;
 
                 const totalBalance = branchCards.reduce(
@@ -853,21 +852,9 @@ export function OrgAdminCardsView() {
                       </div>
                     </div>
 
-                    {/* Row 2: 3 Operational Metrics */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                      {/* 5. Ready Wallets */}
-                      <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-slate-500">Ready Wallets</span>
-                          <div className="h-7 w-7 rounded-lg bg-sky-50 flex items-center justify-center text-sky-600">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                          </div>
-                        </div>
-                        <p className="mt-2 text-2xl font-bold text-slate-900">{readyCards}</p>
-                        <p className="text-[11px] text-slate-400 mt-0.5">Ready to issue</p>
-                      </div>
-
-                      {/* 6. Blocked Wallets */}
+                    {/* Row 2: 2 Operational Metrics */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      {/* Blocked Wallets */}
                       <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-semibold text-slate-500">Blocked Wallets</span>
@@ -879,7 +866,7 @@ export function OrgAdminCardsView() {
                         <p className="text-[11px] text-slate-400 mt-0.5">Security locked</p>
                       </div>
 
-                      {/* 7. Refunds */}
+                      {/* Refunds */}
                       <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-semibold text-slate-500">Refunds</span>

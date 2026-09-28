@@ -161,16 +161,16 @@ export function buildOrgAnalyticsJsPdf({
     const cashCount = analytics.cashCount ?? (analytics as any).cashRechargeCount ?? 0;
     const cancelledTopUps = analytics.cancelledTopUps ?? 0;
     const cancelledTopUpsCount = analytics.cancelledTopUpsCount ?? 0;
+    const walletActivations = analytics.cardsGivenOut ?? analytics.activeCardsCount ?? 0;
 
-    // Row 2: Payment & Volume Flow (4 cards)
+    // Row 2: Recharge Breakdown (3 cards)
     const row2Kpis = [
+      { label: 'Recharge', val: formatPdfCurrency(moneyAdded), sub: 'Total card deposits' },
       { label: 'UPI Recharge', val: formatPdfCurrency(upiMoney), sub: `${upiCount} top-ups` },
       { label: 'Cash Recharge', val: formatPdfCurrency(cashMoney), sub: `${cashCount} top-ups` },
-      { label: 'Recharge', val: formatPdfCurrency(moneyAdded), sub: 'Total card deposits' },
-      { label: 'Money Refunded', val: formatPdfCurrency(moneyRefunded), sub: 'Balance returned to customers' },
     ];
 
-    const cardW = (contentWidth - 9) / 4;
+    const cardW = (contentWidth - 6) / 3;
     row2Kpis.forEach((kpi, idx) => {
       const x = margin + idx * (cardW + 3);
       doc.setFillColor(248, 250, 252);
@@ -195,17 +195,18 @@ export function buildOrgAnalyticsJsPdf({
 
     curY += 22;
 
-    // Row 3: Cancellations (1 card)
+    // Row 3: Follow-up Operations (3 cards)
     const row3Kpis = [
+      { label: 'Wallet Activations', val: `${walletActivations.toLocaleString()} Wallets`, sub: 'Issued in period' },
+      { label: 'Money Refunded', val: formatPdfCurrency(moneyRefunded), sub: 'Returned to customers' },
       { label: 'Cancelled Top-ups', val: formatPdfCurrency(cancelledTopUps), sub: `${cancelledTopUpsCount} recharges reversed` },
     ];
 
-    const cardWRow3 = cardW;
     row3Kpis.forEach((kpi, idx) => {
-      const x = margin + idx * (cardWRow3 + 3);
+      const x = margin + idx * (cardW + 3);
       doc.setFillColor(248, 250, 252);
       doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(x, curY + 2, cardWRow3, 18, 2, 2, 'FD');
+      doc.roundedRect(x, curY + 2, cardW, 18, 2, 2, 'FD');
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(6.5);
