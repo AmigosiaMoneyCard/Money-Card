@@ -119,8 +119,6 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('MC-101'), findsOneWidget);
-      expect(find.text('₹200.00'), findsOneWidget);
       expect(find.text('CASH'), findsOneWidget);
       expect(find.text('UPI'), findsOneWidget);
 

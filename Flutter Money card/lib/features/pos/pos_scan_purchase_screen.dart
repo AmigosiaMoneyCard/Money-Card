@@ -828,144 +828,53 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
           padding: AppSpacing.paddingMd,
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            // 1. Authoritative Compact Card Summary Header
+            // 1. Authoritative Card Summary Header (relocated from recharge screen)
             AppCard(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 14),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              card.displayCardNumber,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5,
-                                color: AppColors.textPrimaryLight,
-                              ),
-                            ),
-                            if (session.customerName != null && session.customerName!.trim().isNotEmpty) ...[
-                              const SizedBox(height: 2),
-                              Row(
-                                children: [
-                                  const Icon(Icons.person, size: 14, color: AppColors.primary),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      session.customerName!.trim(),
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.textPrimaryLight,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ],
+                        child: Text(
+                          card.displayCardNumber,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                       const SizedBox(width: AppSpacing.xs),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (session.balance < 100) ...[
-                            const AppBadge(
-                              label: 'LOW BAL',
-                              variant: AppBadgeVariant.warning,
-                            ),
-                            const SizedBox(width: AppSpacing.xs),
-                          ],
-                          const AppBadge(
-                            label: 'ACTIVE',
-                            variant: AppBadgeVariant.success,
-                          ),
-                        ],
+                      const AppBadge(
+                        label: 'ACTIVE',
+                        variant: AppBadgeVariant.success,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  const Divider(height: 1),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(
-                        child: Text.rich(
-                          TextSpan(
-                            children: [
-                              const TextSpan(
-                                text: 'Balance: ',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.textSecondaryLight,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              TextSpan(
-                                text: '₹${session.balance.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            ],
-                          ),
+                      const Expanded(
+                        child: Text(
+                          'Current Balance',
                           overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondaryLight,
+                          ),
                         ),
                       ),
                       const SizedBox(width: AppSpacing.xs),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: AppColors.success,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Text(
-                            'Session Active',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondaryLight,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(Icons.access_time, size: 14, color: AppColors.textSecondaryLight),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          'Started: ${_formatDateTime(session.startedAt)}',
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondaryLight,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      Text(
+                        '₹${session.balance.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
                         ),
                       ),
                     ],
@@ -1849,413 +1758,45 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
 
     if (confirm != true) return;
 
-    await _handleSettleReturn();
-  }
+    setState(() {
+      _isResolving = true;
+    });
 
-  // ==========================================
-  // TOP-UP HISTORY BOTTOM SHEET & CANCEL FLOW
-  // ==========================================
+    try {
+      final sessionRepo = ref.read(sessionRepositoryProvider);
+      final result = await sessionRepo.refundSession(session.id);
 
-  void _showTopUpHistorySheet(BuildContext context, CardSession session) {
-    final allTx = session.transactions ?? [];
-    final topUps = allTx.where((t) => t.type == TransactionType.recharge).toList();
+      await _refreshSession();
+      ref.read(sessionListNotifierProvider.notifier).loadSessions();
+      ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetCtx) => Container(
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 10, bottom: 6),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
+      if (mounted) {
+        setState(() {
+          _isResolving = false;
+          _activeSession = _activeSession?.copyWith(balance: 0.0);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Refund of ₹${result.refundedAmount.toStringAsFixed(2)} processed. Wallet remains active.',
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Top-up History',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        'Card Balance: ₹${session.balance.toStringAsFixed(2)}',
-                        style: const TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(sheetCtx).pop(),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            Expanded(
-              child: topUps.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(AppSpacing.lg),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Icon(Icons.history_toggle_off, size: 48, color: AppColors.textTertiaryLight),
-                            SizedBox(height: 12),
-                            Text(
-                              'No top-ups recorded yet',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: AppSpacing.paddingMd,
-                      itemCount: topUps.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 10),
-                      itemBuilder: (ctx, idx) {
-                        final t = topUps[idx];
-                        final isCash = t.paymentMethod == PaymentMethod.cash;
-
-                        return Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: t.isCancelled ? Colors.grey.shade100 : Colors.white,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: t.isCancelled ? Colors.grey.shade300 : AppColors.borderLight,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Text(
-                                        '+₹${t.amount.toStringAsFixed(2)}',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: t.isCancelled ? Colors.grey : AppColors.success,
-                                          decoration: t.isCancelled ? TextDecoration.lineThrough : null,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: isCash ? AppColors.successLight : Colors.purple.shade50,
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          isCash ? 'Cash' : 'UPI',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                            color: isCash ? AppColors.primaryDark : Colors.purple.shade700,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  if (t.isCancelled)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.shade200,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: const Text(
-                                        'CANCELLED',
-                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black54),
-                                      ),
-                                    )
-                                  else
-                                    OutlinedButton.icon(
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: AppColors.error,
-                                        side: const BorderSide(color: AppColors.error),
-                                        visualDensity: VisualDensity.compact,
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                                      ),
-                                      icon: const Icon(Icons.cancel_outlined, size: 14),
-                                      label: const Text('Cancel Top-up', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                      onPressed: () {
-                                        Navigator.of(sheetCtx).pop();
-                                        _handleCancelRecharge(t.id, t.amount, session);
-                                      },
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Staff: ${t.staffName ?? 'Counter Staff'}',
-                                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
-                                  ),
-                                  Text(
-                                    _formatDateTime(t.createdAt),
-                                    style: const TextStyle(fontSize: 11, color: AppColors.textTertiaryLight),
-                                  ),
-                                ],
-                              ),
-                              if (t.isCancelled && t.cancellationReason != null) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Reason: ${t.cancellationReason}',
-                                  style: const TextStyle(fontSize: 11, color: Colors.black54, fontStyle: FontStyle.italic),
-                                ),
-                              ],
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ==========================================
-  // FOOD ORDERS BOTTOM SHEET & CANCEL FLOW
-  // ==========================================
-
-  void _showFoodOrdersSheet(BuildContext context, CardSession session) {
-    final allTx = session.transactions ?? [];
-    final orders = allTx.where((t) => t.type == TransactionType.purchase).toList();
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetCtx) => Container(
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 10, bottom: 6),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Food Orders',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        '${orders.length} orders recorded on this card',
-                        style: const TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
-                      ),
-                    ],
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(sheetCtx).pop(),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            Expanded(
-              child: orders.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(AppSpacing.lg),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Icon(Icons.fastfood_outlined, size: 48, color: AppColors.textTertiaryLight),
-                            SizedBox(height: 12),
-                            Text(
-                              'No food orders placed yet',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: AppSpacing.paddingMd,
-                      itemCount: orders.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 10),
-                      itemBuilder: (ctx, idx) {
-                        final t = orders[idx];
-                        final items = t.items ?? [];
-
-                        return Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: t.isCancelled ? Colors.grey.shade100 : Colors.white,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: t.isCancelled ? Colors.grey.shade300 : AppColors.borderLight,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    '-₹${t.amount.toStringAsFixed(2)}',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: t.isCancelled ? Colors.grey : AppColors.error,
-                                      decoration: t.isCancelled ? TextDecoration.lineThrough : null,
-                                    ),
-                                  ),
-                                  if (t.isCancelled)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.shade200,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: const Text(
-                                        'CANCELLED',
-                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black54),
-                                      ),
-                                    )
-                                  else
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        OutlinedButton.icon(
-                                          style: OutlinedButton.styleFrom(
-                                            foregroundColor: AppColors.primary,
-                                            side: const BorderSide(color: AppColors.primary),
-                                            visualDensity: VisualDensity.compact,
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                                          ),
-                                          icon: const Icon(Icons.edit_outlined, size: 14),
-                                          label: const Text('Edit Order', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                          onPressed: () {
-                                            Navigator.of(sheetCtx).pop();
-                                            _handleEditOrder(t, session);
-                                          },
-                                        ),
-                                        const SizedBox(width: 6),
-                                        OutlinedButton.icon(
-                                          style: OutlinedButton.styleFrom(
-                                            foregroundColor: AppColors.error,
-                                            side: const BorderSide(color: AppColors.error),
-                                            visualDensity: VisualDensity.compact,
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                                          ),
-                                          icon: const Icon(Icons.remove_shopping_cart_outlined, size: 14),
-                                          label: const Text('Cancel Order', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                          onPressed: () {
-                                            Navigator.of(sheetCtx).pop();
-                                            _handleCancelOrder(t.id, t.amount, session);
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                ],
-                              ),
-                              if (items.isNotEmpty) ...[
-                                const SizedBox(height: 6),
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surfaceVariantLight,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: items.map((item) {
-                                      return Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 2),
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Text(
-                                              '${item.quantity}x ${item.itemName ?? "Item"}',
-                                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                                            ),
-                                            if (item.totalAmount != null)
-                                              Text(
-                                                '₹${item.totalAmount!.toStringAsFixed(2)}',
-                                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                                              ),
-                                          ],
-                                        ),
-                                      );
-                                    }).toList(),
-                                  ),
-                                ),
-                              ],
-                              const SizedBox(height: 6),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Staff: ${t.staffName ?? 'Counter Staff'}',
-                                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
-                                  ),
-                                  Text(
-                                    _formatDateTime(t.createdAt),
-                                    style: const TextStyle(fontSize: 11, color: AppColors.textTertiaryLight),
-                                  ),
-                                ],
-                              ),
-                              if (t.isCancelled && t.cancellationReason != null) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Reason: ${t.cancellationReason}',
-                                  style: const TextStyle(fontSize: 11, color: Colors.black54, fontStyle: FontStyle.italic),
-                                ),
-                              ],
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isResolving = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Refund failed: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 
   // ==========================================
@@ -2589,168 +2130,4 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     }
   }
 
-  void _showCardSessionInfoSheet(BuildContext context, CardSession session) {
-    final allTx = session.transactions ?? [];
-    final recharges = allTx.where((t) => t.type == TransactionType.recharge && !t.isCancelled).toList();
-    final cancelledRecharges = allTx.where((t) => t.type == TransactionType.recharge && t.isCancelled).toList();
-    final purchases = allTx.where((t) => t.type == TransactionType.purchase && !t.isCancelled).toList();
-    final cancelledPurchases = allTx.where((t) => t.type == TransactionType.purchase && t.isCancelled).toList();
-    final returns = allTx.where((t) => t.type == TransactionType.refund).toList();
-
-    final totalRechargeVol = recharges.fold<double>(0.0, (sum, t) => sum + t.amount);
-    final totalSpent = purchases.fold<double>(0.0, (sum, t) => sum + t.amount);
-    final totalRefundVol = returns.fold<double>(0.0, (sum, t) => sum + t.amount) +
-        cancelledPurchases.fold<double>(0.0, (sum, t) => sum + t.amount);
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetCtx) => Container(
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.lg),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Wallet Info & Statistics',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      'Wallet #${session.displayCardNumber}',
-                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
-                    ),
-                  ],
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.of(sheetCtx).pop(),
-                ),
-              ],
-            ),
-            const Divider(height: AppSpacing.md),
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.successLight.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Recharges', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 4),
-                        Text('${recharges.length} times', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.success)),
-                        Text('₹${totalRechargeVol.toStringAsFixed(2)} total', style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight)),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.warningLight.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.warning.withValues(alpha: 0.2)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Refunds', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 4),
-                        Text('${returns.length + cancelledPurchases.length} times', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.warning)),
-                        Text('₹${totalRefundVol.toStringAsFixed(2)} total', style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight)),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryLight.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Food Orders', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 4),
-                        Text('${purchases.length} orders', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryDark)),
-                        Text('₹${totalSpent.toStringAsFixed(2)} spent', style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight)),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Current Balance', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 4),
-                        Text('₹${session.balance.toStringAsFixed(2)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimaryLight)),
-                        Text(session.status.value.toUpperCase(), style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight)),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.md),
-            if (session.customerName != null && session.customerName!.isNotEmpty) ...[
-              Text('Customer: ${session.customerName} (${session.customerPhone ?? "No phone"})', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 4),
-            ],
-            Text('Session Started: ${_formatDateTime(session.startedAt)}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight)),
-            if (cancelledRecharges.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text('Cancelled Recharges: ${cancelledRecharges.length}', style: const TextStyle(fontSize: 12, color: AppColors.error)),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
 }

@@ -114,20 +114,22 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify Active Card Action Hub is opened
-      expect(find.text('Wallet: MC-001'), findsWidgets);
+      expect(find.text('MC-001'), findsOneWidget);
       expect(find.text('ACTIVE'), findsOneWidget);
-      expect(find.textContaining('Balance: ₹750.00'), findsOneWidget);
-      expect(find.text('Session Active'), findsOneWidget);
+      expect(find.text('Current Balance'), findsOneWidget);
+      expect(find.text('₹750.00'), findsOneWidget);
 
-      // Verify all authorized action tiles are present
-      expect(find.text('Add Products'), findsOneWidget);
-      expect(find.text('Recharge Wallet'), findsOneWidget);
-      expect(find.text('Food Orders'), findsOneWidget);
-      expect(find.text('Top-up History'), findsOneWidget);
-      expect(find.text('Settle / Return Wallet'), findsOneWidget);
+      // Verify all 3 merged action tiles are present
+      expect(find.text('Billing'), findsOneWidget);
+      expect(find.text('Recharge'), findsOneWidget);
+      expect(find.text('Return & Refund'), findsOneWidget);
 
-      // Test Settle / Return Wallet
-      await tester.tap(find.text('Settle / Return Wallet'));
+      // Test Return & Refund
+      await tester.tap(find.text('Return & Refund'));
+      await tester.pumpAndSettle();
+
+      // Tap Return in the sheet
+      await tester.tap(find.text('Return'));
       await tester.pumpAndSettle();
 
       // Confirm dialog appears with refund calculation
@@ -175,13 +177,12 @@ void main() {
       scanner.onQrScanned('QR-MOCK-001');
       await tester.pumpAndSettle();
 
-      // Staff has PURCHASE permission -> Add Products is visible
-      expect(find.text('Add Products'), findsOneWidget);
+      // Staff has PURCHASE permission -> Billing is visible
+      expect(find.text('Billing'), findsOneWidget);
 
-      // Staff lacks RECHARGE, SESSION_VIEW, and REFUND permissions -> They are NOT shown
-      expect(find.text('Recharge Wallet'), findsNothing);
-      expect(find.text('View Session & Transaction History'), findsNothing);
-      expect(find.text('Settle / Return Wallet'), findsNothing);
+      // Staff lacks RECHARGE and REFUND permissions -> They are NOT shown
+      expect(find.text('Recharge'), findsNothing);
+      expect(find.text('Return & Refund'), findsNothing);
     });
 
     testWidgets('Scanning QR-MOCK-004 (AVAILABLE card with no session) automatically issues card and opens Action Hub', (tester) async {
@@ -220,7 +221,7 @@ void main() {
       // Verify available card was issued and is now ACTIVE in Action Hub
       expect(find.text('MC-004'), findsOneWidget);
       expect(find.text('ACTIVE'), findsOneWidget);
-      expect(find.text('Add Products'), findsOneWidget);
+      expect(find.text('Billing'), findsOneWidget);
     });
 
     testWidgets('Scanning QR-MOCK-003 (BLOCKED card) displays blocked state and prevents operations', (tester) async {
@@ -319,18 +320,16 @@ void main() {
       scanner.onQrScanned('QR-MOCK-001');
       await tester.pumpAndSettle();
 
-      // Verify Compact Summary elements
+      // Verify Card Summary elements
       expect(find.text('MC-001'), findsOneWidget);
       expect(find.text('ACTIVE'), findsOneWidget);
-      expect(find.textContaining('Balance: ₹750.00'), findsOneWidget);
-      expect(find.text('Session Active'), findsOneWidget);
+      expect(find.text('Current Balance'), findsOneWidget);
+      expect(find.text('₹750.00'), findsOneWidget);
 
       // Verify prominent action buttons are visible
-      expect(find.text('Add Products'), findsOneWidget);
-      expect(find.text('Recharge Wallet'), findsOneWidget);
-      await tester.drag(find.byType(ListView), const Offset(0, -300));
-      await tester.pumpAndSettle();
-      expect(find.text('Settle / Return Wallet'), findsOneWidget);
+      expect(find.text('Billing'), findsOneWidget);
+      expect(find.text('Recharge'), findsOneWidget);
+      expect(find.text('Return & Refund'), findsOneWidget);
     });
 
     testWidgets('Compact Card Summary renders correctly on 412px standard Android screen', (tester) async {
@@ -360,15 +359,15 @@ void main() {
       scanner.onQrScanned('QR-MOCK-001');
       await tester.pumpAndSettle();
 
-      // Verify Compact Summary elements
+      // Verify Card Summary elements
       expect(find.text('MC-001'), findsOneWidget);
       expect(find.text('ACTIVE'), findsOneWidget);
-      expect(find.textContaining('Balance: ₹750.00'), findsOneWidget);
-      expect(find.text('Session Active'), findsOneWidget);
+      expect(find.text('Current Balance'), findsOneWidget);
+      expect(find.text('₹750.00'), findsOneWidget);
 
-      expect(find.text('Add Products'), findsOneWidget);
-      expect(find.text('Recharge Wallet'), findsOneWidget);
-      expect(find.text('Settle / Return Wallet'), findsOneWidget);
+      expect(find.text('Billing'), findsOneWidget);
+      expect(find.text('Recharge'), findsOneWidget);
+      expect(find.text('Return & Refund'), findsOneWidget);
     });
   });
 }

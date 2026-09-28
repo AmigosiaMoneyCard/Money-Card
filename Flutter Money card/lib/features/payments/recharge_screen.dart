@@ -11,7 +11,6 @@ import '../../providers/recharge_provider.dart';
 import '../../providers/session_operations_provider.dart';
 import '../../providers/card_operations_provider.dart';
 import '../../providers/analytics_provider.dart';
-import '../../widgets/common/app_badge.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_card.dart';
 import '../../widgets/receipt/digital_receipt_dialog.dart';
@@ -263,54 +262,6 @@ class _RechargeScreenState extends ConsumerState<RechargeScreen> {
           child: ListView(
             padding: AppSpacing.paddingMd,
             children: [
-              // Current Session / Balance Card
-              AppCard(
-                padding: AppSpacing.paddingLg,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          widget.physicalCardNumber != null ? cleanDisplayCardNumber(widget.physicalCardNumber) : session.displayCardNumber,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const AppBadge(
-                          label: 'ACTIVE',
-                          variant: AppBadgeVariant.success,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Current Balance',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondaryLight,
-                          ),
-                        ),
-                        Text(
-                          '₹${session.balance.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-
               // Payment Method Selector
               const Text(
                 'Payment Method',

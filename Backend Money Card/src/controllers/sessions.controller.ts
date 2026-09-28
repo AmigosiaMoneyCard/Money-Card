@@ -606,6 +606,68 @@ export async function returnSession(req: Request, res: Response) {
   return sendSuccess(res, result);
 }
 
+export async function refundSessionBalance(req: Request, res: Response) {
+  const { id } = req.params;
+  const orgId = req.user?.organizationId;
+
+  const session = await prisma.cardSession.findFirst({
+    where: { id, organizationId: orgId || undefined },
+    include: { card: true, branch: true },
+  });
+
+  if (!session) {
+    return sendError(res, 404, 'NOT_FOUND', 'Session not found');
+  }
+
+  if (session.status !== SessionStatus.ACTIVE) {
+    return sendError(res, 400, 'INVALID_STATE', 'Cannot refund an inactive or settled session');
+  }
+
+  if (session.balance <= 0) {
+    return sendError(res, 400, 'NO_BALANCE', 'No remaining balance to refund');
+  }
+
+  if (req.user?.role === 'STAFF' && !req.user.assignedBranchIds.includes(session.branchId)) {
+    return sendError(res, 403, 'BRANCH_ACCESS_DENIED', 'You are not authorized to refund a session belonging to another branch');
+  }
+
+  const refundAmount = session.balance;
+
+  const result = await prisma.$transaction(async (tx) => {
+    const updatedSession = await tx.cardSession.update({
+      where: { id },
+      data: {
+        balance: 0.0,
+      },
+    });
+
+    const txRecord = await tx.transaction.create({
+      data: {
+        sessionId: session.id,
+        branchId: session.branchId,
+        staffUserId: req.user?.id,
+        type: TransactionType.REFUND_RETURN,
+        amount: refundAmount,
+        balanceBefore: refundAmount,
+        balanceAfter: 0.0,
+        paymentMethod: 'DIRECT_REFUND',
+      },
+    });
+
+    return { session: updatedSession, refundAmount, transaction: txRecord };
+  });
+
+  balanceStreamService.broadcastBalanceUpdate(session.id, {
+    balance: 0.0,
+    status: session.status,
+    type: 'REFUND',
+    amount: refundAmount,
+    sessionId: session.id,
+  });
+
+  return sendSuccess(res, result);
+}
+
 export async function cancelRecharge(req: Request, res: Response) {
   const { id } = req.params;
   const { reason } = req.body;

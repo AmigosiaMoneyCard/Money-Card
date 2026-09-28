@@ -7,6 +7,7 @@ import {
   rechargeSession,
   purchaseSession,
   returnSession,
+  refundSessionBalance,
   listRecharges,
   cancelRecharge,
   cancelOrder,
@@ -26,6 +27,7 @@ sessionsRouter.get('/:id', requirePermission(PermissionCode.SESSION_VIEW), getSe
 sessionsRouter.get('/active/by-qr/:qrToken', requirePermission(PermissionCode.SESSION_VIEW), getActiveSessionByQr);
 sessionsRouter.post('/:id/recharge', requirePermission(PermissionCode.RECHARGE), rechargeSession);
 sessionsRouter.post('/:id/purchase', requirePermission(PermissionCode.PURCHASE), purchaseSession);
+sessionsRouter.post('/:id/refund', requirePermission(PermissionCode.REFUND), refundSessionBalance);
 sessionsRouter.post('/:id/return', requirePermission(PermissionCode.CARD_RETURN), returnSession);
 
 export default sessionsRouter;

@@ -1421,6 +1421,47 @@ class MockApiInterceptor extends Interceptor {
       });
     }
 
+    // Refund Balance Only: POST /card-sessions/:id/refund
+    final refundRegex = RegExp(r'/card-sessions/([a-zA-Z0-9_-]+)/refund$');
+    final refundMatch = refundRegex.firstMatch(path);
+    if (refundMatch != null && method == 'POST') {
+      if (!_hasPermission(AppPermission.refund) && !_hasPermission(AppPermission.cardReturn)) {
+        return _reject(handler, options, 403, 'FORBIDDEN', 'Permission denied: Cannot refund card session');
+      }
+
+      final sessionId = refundMatch.group(1);
+      final session = mockSessions.firstWhere(
+        (s) => s['id'] == sessionId,
+        orElse: () => mockSessions.first,
+      );
+
+      final refundAmount = (session['balance'] as num).toDouble();
+      session['balance'] = 0.0;
+      session['updatedAt'] = DateTime.now().toIso8601String();
+
+      // Card and session remain ACTIVE
+      final tx = {
+        'id': 'tx-ref-${DateTime.now().millisecondsSinceEpoch}',
+        'sessionId': sessionId,
+        'branchId': session['branchId'] ?? 'branch-001',
+        'type': 'REFUND_RETURN',
+        'paymentMethod': 'DIRECT_REFUND',
+        'amount': refundAmount,
+        'balanceBefore': refundAmount,
+        'balanceAfter': 0.0,
+        'status': 'SUCCESS',
+        'createdAt': DateTime.now().toIso8601String(),
+      };
+      mockTransactions.insert(0, tx);
+
+      return _resolve(handler, options, {
+        'sessionId': sessionId,
+        'refundedAmount': refundAmount,
+        'balance': 0.0,
+        'sessionStatus': session['status'] ?? 'ACTIVE',
+      });
+    }
+
     // ==========================================
     // RECHARGES & TRANSACTION CANCELLATION ENDPOINTS
     // ==========================================

@@ -72,4 +72,8 @@ class SessionRepository {
   Future<SessionReturnResult> returnSession(String sessionId) async {
     return _sessionService.returnSession(sessionId);
   }
+
+  Future<SessionRefundResult> refundSession(String sessionId) async {
+    return _sessionService.refundSession(sessionId);
+  }
 }
