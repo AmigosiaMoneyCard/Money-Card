@@ -2,7 +2,7 @@
 
 > **MANDATORY PROTOCOL FOR EVERY NEW CHAT SESSION**:
 > 1. In **ANY and EVERY new chat session**, the AI agent **MUST immediately and strictly read this file (`AGENTS.md`) in its entirety FIRST** before inspecting any other file, planning, or executing any commands.
-> 2. This file is the **single permanent source of truth**. All pre-authorized permissions (auto-approved tests, auto-approved Shorebird CodePush, auto-approved local Git, and the strict guard requiring confirmation ONLY for `git push`), naming rules (zero emojis, everyday easy words), and architectural boundaries defined here are strictly binding across all sessions.
+> 2. This file is the **single permanent source of truth**. All pre-authorized permissions (auto-approved tests, auto-approved Shorebird CodePush, auto-approved local Git, and the strict guard requiring confirmation ONLY for `git push`), naming rules (zero emojis, everyday easy words), strict scope control (change ONLY what was explicitly requested — zero unrequested changes), and architectural boundaries defined here are strictly binding across all sessions.
 
 ---
 
@@ -99,6 +99,11 @@ When merging `staging` into `main` (Production), zero errors and zero URL/domain
 9. **Strict Minimalism & No Sub-Headings Policy (Zero Sub-Headings, Pure Minimalism)**:
    - **No Sub-Headings Anywhere**: Never use markdown sub-headings (`###`, `####`, etc.) in responses, messages, summaries, notes, or explanations. Keep all communication flat, direct, and free of nested heading hierarchies.
    - **Be Strictly Minimal**: Keep everything minimalized. Do not over-do things, over-engineer, or over-explain. Provide only the essential facts or changes needed, avoiding decorative sections, boilerplate fluff, and unnecessary verbosity.
+
+10. **Strict Scope Control (Change ONLY What Is Explicitly Requested — Zero Unsolicited Changes)**:
+    - If the user asks for a change, **change ONLY that specific thing**. Do NOT change, touch, refactor, redesign, or delete any other things.
+    - Strictly confine modifications to the exact element, component, file, feature, or logic directly instructed by the user.
+    - Zero collateral edits, zero unprompted cleanups, zero speculative improvements, and zero scope creep under any circumstances. If the user did not explicitly ask for a change, leave it completely untouched.
 
 ---
 
