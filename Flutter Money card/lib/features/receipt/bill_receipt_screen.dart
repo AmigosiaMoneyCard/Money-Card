@@ -90,7 +90,7 @@ class _BillReceiptScreenState extends ConsumerState<BillReceiptScreen> {
         previousBalance: matchedTx.balanceBefore ?? matchedSession.balance,
         amountDeducted: matchedTx.type == TransactionType.purchase ? matchedTx.amount : 0.0,
         remainingBalance: matchedTx.balanceAfter ?? matchedSession.balance,
-        paymentMethod: matchedTx.paymentMethod.name,
+        paymentMethod: matchedTx.paymentMethod?.value ?? 'Card Session',
       );
 
       setState(() {

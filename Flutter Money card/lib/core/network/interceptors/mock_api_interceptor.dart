@@ -939,7 +939,7 @@ class MockApiInterceptor extends Interceptor {
 
       // Verify password
       final userPassword = user['password'] as String? ?? 'password';
-      if (password != userPassword && password != 'password' && password != '123456') {
+      if (password != userPassword && password != 'password' && password != '123456' && password != 'password123') {
         return _reject(handler, options, 401, 'INVALID_CREDENTIALS', 'Credentials are wrong.');
       }
 

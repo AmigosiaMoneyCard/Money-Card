@@ -31,7 +31,7 @@ void main() {
       expect(AppConfig.isDevelopment, isTrue);
       expect(AppConfig.isProduction, isFalse);
       expect(AppConfig.isStaging, isFalse);
-      expect(AppConfig.appName, 'Money Card (Dev)');
+      expect(AppConfig.appName, 'Money Card - Localhost');
       expect(AppConfig.baseUrl, 'http://127.0.0.1:3000/api/v1');
     });
 
