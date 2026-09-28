@@ -35,18 +35,6 @@ class PosCheckoutScreen extends ConsumerStatefulWidget {
 class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
   final _searchController = TextEditingController();
 
-  final List<String> _categories = [
-    'All',
-    'Veg',
-    'Non-Veg',
-    'Vegan',
-    'Breakfast',
-    'Lunch',
-    'Dinner',
-    'Snacks',
-    'Beverages',
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -169,7 +157,7 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'Cart Total',
+                      'Bill Total',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     Text(
@@ -285,43 +273,7 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
       return;
     }
 
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        scrollable: true,
-        title: const Text('Confirm Purchase'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Items: ${cartState.totalItemCount}'),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Total Charge: ₹${cartState.totalAmount.toStringAsFixed(2)}',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            Text(
-              'Current Balance: ₹${currentBalance.toStringAsFixed(2)}',
-              style: const TextStyle(color: AppColors.textSecondaryLight, fontSize: 13),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Confirm & Deduct'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    // Execute purchase
+    // Directly execute purchase without intermediate confirm dialog
     final result = await ref
         .read(posCartNotifierProvider.notifier)
         .executePurchase(widget.sessionId);
@@ -503,32 +455,6 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
               },
             ),
           ),
-
-          // 2. Category Selector Chips
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
-            child: Row(
-              children: _categories.map((cat) {
-                final isSelected = catalogState.selectedCategory == cat;
-                return Padding(
-                  padding: const EdgeInsets.only(right: AppSpacing.xs),
-                  child: ChoiceChip(
-                    label: Text(cat),
-                    selected: isSelected,
-                    onSelected: (_) => catalogNotifier.setCategoryFilter(cat),
-                    selectedColor: AppColors.primaryLight,
-                    backgroundColor: AppColors.surfaceLight,
-                    labelStyle: TextStyle(
-                      fontSize: 12,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      color: isSelected ? AppColors.primaryDark : AppColors.textPrimaryLight,
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
           const Divider(height: 1),
 
           // Error Banner if purchase failed
@@ -627,7 +553,7 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
                         const SizedBox(width: AppSpacing.lg),
                         Expanded(
                           child: AppButton(
-                            label: 'View Cart (${cartState.totalItemCount})',
+                            label: 'Preview Order (${cartState.totalItemCount})',
                             icon: Icons.shopping_cart_checkout,
                             height: 48,
                             isLoading: cartState.isSubmitting,

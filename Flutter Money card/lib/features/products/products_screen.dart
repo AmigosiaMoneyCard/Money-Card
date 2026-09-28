@@ -62,34 +62,6 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Branch Information Card
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.sm,
-                AppSpacing.md,
-                AppSpacing.xs,
-              ),
-              child: AppCard(
-                padding: AppSpacing.paddingSm,
-                child: Row(
-                  children: [
-                    const Icon(Icons.storefront, size: 20, color: AppColors.primary),
-                    const SizedBox(width: AppSpacing.xs),
-                    Expanded(
-                      child: Text(
-                        'Cafeteria: ${currentBranch?.name ?? "Main Cafeteria"}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
             // Search Bar
             Padding(
               padding: const EdgeInsets.symmetric(

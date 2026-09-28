@@ -1,12 +1,16 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
+import '../../models/card_session.dart';
 import '../../models/receipt_bill.dart';
+import '../../models/transaction.dart';
+import '../../providers/session_operations_provider.dart';
 import '../../widgets/common/app_button.dart';
 
-class BillReceiptScreen extends StatefulWidget {
+class BillReceiptScreen extends ConsumerStatefulWidget {
   final ReceiptBill bill;
   final Directory? targetDownloadDirectory;
   final VoidCallback? onDone;
@@ -19,10 +23,98 @@ class BillReceiptScreen extends StatefulWidget {
   });
 
   @override
-  State<BillReceiptScreen> createState() => _BillReceiptScreenState();
+  ConsumerState<BillReceiptScreen> createState() => _BillReceiptScreenState();
 }
 
-class _BillReceiptScreenState extends State<BillReceiptScreen> {
+class _BillReceiptScreenState extends ConsumerState<BillReceiptScreen> {
+  late ReceiptBill _activeBill;
+  bool _isSearching = false;
+  final _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _activeBill = widget.bill;
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _searchBill(String query) {
+    final cleanQuery = query.trim().toLowerCase();
+    if (cleanQuery.isEmpty) return;
+
+    final sessions = ref.read(sessionListNotifierProvider).sessions;
+    Transaction? matchedTx;
+    CardSession? matchedSession;
+
+    for (final s in sessions) {
+      final txs = s.transactions ?? [];
+      for (final t in txs) {
+        final idMatches = t.id.toLowerCase().contains(cleanQuery) ||
+            t.displayTransactionId.toLowerCase().contains(cleanQuery);
+        final billNoMatches = 'bill-#${t.id.replaceAll('-', '').toLowerCase()}'.contains(cleanQuery) ||
+            'bill-${t.displayTransactionId.toLowerCase()}'.contains(cleanQuery);
+        if (idMatches || billNoMatches) {
+          matchedTx = t;
+          matchedSession = s;
+          break;
+        }
+      }
+      if (matchedTx != null) break;
+    }
+
+    if (matchedTx != null && matchedSession != null) {
+      final items = (matchedTx.items ?? []).map((it) => ReceiptBillItem(
+        name: it.itemName ?? 'Food Item',
+        quantity: it.quantity,
+        unitPrice: it.unitPrice ?? (it.totalAmount != null && it.quantity > 0 ? it.totalAmount! / it.quantity : 0.0),
+        subtotal: it.totalAmount ?? 0.0,
+      )).toList();
+
+      final searchedBill = ReceiptBill(
+        organizationName: widget.bill.organizationName,
+        branchName: matchedSession.branchName ?? widget.bill.branchName,
+        receiptTitle: matchedTx.type == TransactionType.recharge ? 'RECHARGE RECEIPT' : 'SALES RECEIPT',
+        transactionId: matchedTx.id,
+        timestamp: DateTime.tryParse(matchedTx.createdAt ?? '') ?? DateTime.now(),
+        cardIdentifier: matchedSession.displayCardNumber,
+        sessionId: matchedSession.id,
+        staffName: matchedTx.staffName ?? widget.bill.staffName,
+        items: items,
+        subtotal: matchedTx.amount,
+        totalAmount: matchedTx.amount,
+        previousBalance: matchedTx.balanceBefore ?? matchedSession.balance,
+        amountDeducted: matchedTx.type == TransactionType.purchase ? matchedTx.amount : 0.0,
+        remainingBalance: matchedTx.balanceAfter ?? matchedSession.balance,
+        paymentMethod: matchedTx.paymentMethod.name,
+      );
+
+      setState(() {
+        _activeBill = searchedBill;
+        _isSearching = false;
+        _searchController.clear();
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Loaded Bill: ${searchedBill.displayBillNo}'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No bill found matching "$query"'),
+          backgroundColor: AppColors.warning,
+        ),
+      );
+    }
+  }
+
   /// Action: [ Done ]
   void _handleDone() {
     if (widget.onDone != null) {
@@ -34,20 +126,49 @@ class _BillReceiptScreenState extends State<BillReceiptScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bill = widget.bill;
+    final bill = _activeBill;
     final dateStr = DateFormat('dd MMM yyyy').format(bill.timestamp);
     final timeStr = DateFormat('hh:mm a').format(bill.timestamp);
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        title: const Text('Bill', style: TextStyle(fontWeight: FontWeight.bold)),
-        centerTitle: true,
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+                cursorColor: Colors.white,
+                decoration: const InputDecoration(
+                  hintText: 'Search Bill Number (e.g. BILL-#...)',
+                  hintStyle: TextStyle(color: Colors.white70, fontSize: 14),
+                  border: InputBorder.none,
+                ),
+                onSubmitted: _searchBill,
+              )
+            : const Text('Bill', style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: !_isSearching,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: _handleDone,
         ),
+        actions: [
+          IconButton(
+            icon: Icon(_isSearching ? Icons.close : Icons.search),
+            tooltip: 'Search Bill Number',
+            onPressed: () {
+              setState(() {
+                if (_isSearching) {
+                  _isSearching = false;
+                  _searchController.clear();
+                } else {
+                  _isSearching = true;
+                }
+              });
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -113,6 +234,7 @@ class _BillReceiptScreenState extends State<BillReceiptScreen> {
                     const SizedBox(height: 10),
 
                     // Bill Metadata
+                    _buildReceiptRow('Bill Number:', bill.displayBillNo, isBold: true),
                     _buildReceiptRow('Card:', bill.displayCardId),
                     _buildReceiptRow('Date:', '$dateStr  $timeStr'),
                     if (bill.staffName != null && bill.staffName!.isNotEmpty)

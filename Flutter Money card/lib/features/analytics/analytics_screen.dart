@@ -431,9 +431,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           accentColor: Colors.deepOrange,
         ),
 
-        // 4. NET AMOUNT
+        // 4. TOTAL SALES
         _buildConsolidatedMetricBox(
-          title: 'Net Amount',
+          title: 'Total Sales',
           totalText: '₹${data.netMoneyCollected.toStringAsFixed(2)}',
           cashSubtext: 'Net Cash: ₹${data.cashInDrawer.toStringAsFixed(2)}',
           upiSubtext: 'Net UPI: ₹${data.upiMoney.toStringAsFixed(2)}',

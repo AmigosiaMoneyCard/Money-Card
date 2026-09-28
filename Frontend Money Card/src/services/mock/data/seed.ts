@@ -42,6 +42,11 @@ export const SEED_BRANCHES: Branch[] = [
     organizationId: 'org_001',
     name: 'Main Cafeteria',
     status: 'ACTIVE',
+    credentials: {
+      name: 'Main Cafeteria',
+      phone: '9876543212',
+      password: 'password',
+    },
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
   },
@@ -67,6 +72,7 @@ export const SEED_STAFF_USERS: (AuthUser & { passwordHash: string; status?: 'ACT
   {
     id: 'usr_staff_eros',
     email: 'eros@staff.com',
+    phone: '9876543212',
     name: 'Eros Counter Staff',
     role: 'STAFF',
     organizationId: 'org_001',
@@ -91,6 +97,7 @@ export const SEED_STAFF_USERS: (AuthUser & { passwordHash: string; status?: 'ACT
   {
     id: 'usr_superadmin',
     email: 'amigosiamoneycard@gmail.com',
+    phone: '9876543200',
     name: 'Platform Super Admin',
     role: 'SUPER_ADMIN',
     organizationId: null,
@@ -102,6 +109,7 @@ export const SEED_STAFF_USERS: (AuthUser & { passwordHash: string; status?: 'ACT
   {
     id: 'usr_orgadmin',
     email: 'admin@maincafe.com',
+    phone: '9876543299',
     name: 'Acme General Manager',
     role: 'ORG_ADMIN',
     organizationId: 'org_001',

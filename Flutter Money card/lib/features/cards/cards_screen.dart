@@ -49,58 +49,12 @@ class _CardsScreenState extends ConsumerState<CardsScreen> {
 
     final cardListState = ref.watch(cardListNotifierProvider);
     final notifier = ref.read(cardListNotifierProvider.notifier);
-    final currentBranch = ref.watch(currentBranchProvider);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Active Wallets'),
       ),
       body: Column(
         children: [
-          // Branch Information Card
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              AppSpacing.sm,
-              AppSpacing.md,
-              AppSpacing.xs,
-            ),
-            child: AppCard(
-              padding: AppSpacing.paddingSm,
-              child: Row(
-                children: [
-                  const Icon(Icons.storefront, size: 20, color: AppColors.primary),
-                  const SizedBox(width: AppSpacing.xs),
-                  Expanded(
-                    child: Text(
-                      'Counter: ${currentBranch?.name ?? "All Assigned Counters"}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (currentBranch != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryLight,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '${cardListState.cards.length} Active Wallets',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primaryDark,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
           // Search Header
           Padding(
             padding: const EdgeInsets.all(AppSpacing.md),

@@ -920,18 +920,28 @@ class MockApiInterceptor extends Interceptor {
       }
 
       // Check against mock users database
-      final user = (email != null ? mockUsersByEmail[email] : null) ?? {
-        'id': 'staff-custom-001',
-        'email': email ?? '$phone@mock.local',
-        'phone': phone,
-        'name': phone != null ? 'Staff ($phone)' : (email?.split('@').first.toUpperCase() ?? 'STAFF'),
-        'role': 'STAFF',
-        'organizationId': 'org-demo-001',
-        'assignedBranchIds': ['branch-001', 'branch-002'],
-        'permissions': AppPermission.values.map((p) => p.value).toList(),
-        'createdAt': DateTime.now().toIso8601String(),
-        'updatedAt': DateTime.now().toIso8601String(),
-      };
+      Map<String, dynamic>? user = email != null ? mockUsersByEmail[email] : null;
+      if (user == null && phone != null) {
+        final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
+        final last10 = cleanPhone.length >= 10 ? cleanPhone.substring(cleanPhone.length - 10) : cleanPhone;
+        for (final u in mockUsersByEmail.values) {
+          final uPhone = (u['phone'] as String?)?.replaceAll(RegExp(r'\D'), '');
+          if (uPhone != null && (uPhone == cleanPhone || uPhone.endsWith(last10))) {
+            user = u;
+            break;
+          }
+        }
+      }
+
+      if (user == null) {
+        return _reject(handler, options, 401, 'INVALID_CREDENTIALS', "Staff doesn't exist.");
+      }
+
+      // Verify password
+      final userPassword = user['password'] as String? ?? 'password';
+      if (password != userPassword && password != 'password' && password != '123456') {
+        return _reject(handler, options, 401, 'INVALID_CREDENTIALS', 'Credentials are wrong.');
+      }
 
       currentActiveUser = user;
 

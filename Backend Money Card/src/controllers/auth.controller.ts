@@ -12,10 +12,13 @@ export const loginSchema = z.object({
   email: z.string().optional(),
   phone: z.string().optional(),
   password: z.string().min(1, 'Password is required'),
+  portal: z.string().optional(),
+  role: z.string().optional(),
 });
 
 export async function login(req: Request, res: Response) {
-  let { email, phone, password } = req.body;
+  let { email, phone, password, portal, role } = req.body;
+  const requestedPortal = String(portal || role || '').toUpperCase();
 
   if (!password || (!email && !phone)) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'Email or phone number, and password are required');
@@ -64,7 +67,24 @@ export async function login(req: Request, res: Response) {
   }
 
   if (!user) {
-    return sendError(res, 401, 'INVALID_CREDENTIALS', 'Invalid credentials');
+    if (requestedPortal === 'COUNTER') {
+      return sendError(res, 401, 'INVALID_CREDENTIALS', "Counter doesn't exist.");
+    }
+    if (requestedPortal === 'ORG_ADMIN') {
+      return sendError(res, 401, 'INVALID_CREDENTIALS', "Org Admin doesn't exist.");
+    }
+    return sendError(res, 401, 'INVALID_CREDENTIALS', "Staff doesn't exist.");
+  }
+
+  // If portal was specified, verify role matches portal
+  if (requestedPortal === 'COUNTER' && user.role !== Role.STAFF) {
+    return sendError(res, 401, 'INVALID_CREDENTIALS', "Counter doesn't exist.");
+  }
+  if (requestedPortal === 'ORG_ADMIN' && user.role !== Role.ORG_ADMIN) {
+    return sendError(res, 401, 'INVALID_CREDENTIALS', "Org Admin doesn't exist.");
+  }
+  if (requestedPortal === 'STAFF' && user.role !== Role.STAFF) {
+    return sendError(res, 401, 'INVALID_CREDENTIALS', "Staff doesn't exist.");
   }
 
   if (user.status !== UserStatus.ACTIVE) {
@@ -123,7 +143,7 @@ export async function login(req: Request, res: Response) {
   }
 
   if (!isPasswordValid) {
-    return sendError(res, 401, 'INVALID_CREDENTIALS', 'Invalid credentials');
+    return sendError(res, 401, 'INVALID_CREDENTIALS', 'Credentials are wrong.');
   }
 
   const tokenPayload = {

@@ -821,13 +821,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Wallet: ${card.displayCardNumber}'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.qr_code_scanner),
-            tooltip: 'Scan Another Wallet',
-            onPressed: _resetScan,
-          ),
-        ],
       ),
       body: RefreshIndicator(
         onRefresh: _refreshSession,
@@ -988,73 +981,42 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
             ),
             const SizedBox(height: AppSpacing.sm),
 
-            // OPTION 1: RECHARGE WALLET
+            // OPTION 1: RECHARGE (Merged Recharge Wallet + Top-up History)
             if (canRecharge) ...[
               _buildActionTile(
                 icon: Icons.account_balance_wallet_outlined,
                 iconColor: AppColors.success,
-                title: 'Recharge Wallet',
-                onTap: _openRecharge,
+                title: 'Recharge',
+                subtitle: 'Recharge card balance & view top-up history',
+                onTap: () => _showRechargeHubSheet(context, _activeSession ?? session, card),
               ),
               const SizedBox(height: AppSpacing.sm),
             ],
 
-            // OPTION 2: ADD PRODUCTS
+            // OPTION 2: BILLING (Merged Add Products + Food Orders)
             if (canPurchase) ...[
               _buildActionTile(
-                icon: Icons.add_shopping_cart,
+                icon: Icons.point_of_sale_outlined,
                 iconColor: AppColors.primary,
-                title: 'Add Products',
-                onTap: _openAddProducts,
+                title: 'Billing',
+                subtitle: 'Add food items & view food order history',
+                onTap: () => _showBillingHubSheet(context, _activeSession ?? session, card),
               ),
               const SizedBox(height: AppSpacing.sm),
             ],
 
-            // OPTION 3: TOP-UP HISTORY
-            _buildActionTile(
-              icon: Icons.receipt_long_outlined,
-              iconColor: Colors.purple,
-              title: 'Top-up History',
-              onTap: () => _showTopUpHistorySheet(context, _activeSession ?? session),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-
-            // OPTION 4: FOOD ORDERS
-            _buildActionTile(
-              icon: Icons.fastfood_outlined,
-              iconColor: AppColors.primaryDark,
-              title: 'Food Orders',
-              onTap: () => _showFoodOrdersSheet(context, _activeSession ?? session),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-
-            // OPTION 5: WALLET INFO & STATISTICS
-            _buildActionTile(
-              icon: Icons.info_outline,
-              iconColor: AppColors.info,
-              title: 'Wallet Info & Statistics',
-              onTap: () => _showCardSessionInfoSheet(context, _activeSession ?? session),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-
-            // OPTION 6: SETTLE / RETURN WALLET
+            // OPTION 3: RETURN & REFUND (Merged Settle / Return Wallet + Wallet Info & Statistics)
             if (canSettleReturn) ...[
               _buildActionTile(
                 icon: Icons.assignment_return_outlined,
                 iconColor: AppColors.warning,
-                title: 'Settle / Return Wallet',
+                title: 'Return & Refund',
+                subtitle: 'Refund balance, return wallet & cycle stats',
                 isDestructive: (_activeSession ?? session).balance > 0,
-                onTap: _handleSettleReturn,
+                onTap: () => _showReturnRefundSheet(context, _activeSession ?? session, card),
               ),
               const SizedBox(height: AppSpacing.md),
             ],
-
-            // Footer Action: Scan Another Wallet
-            AppOutlinedButton(
-              label: 'Scan Another Wallet',
-              icon: Icons.qr_code_scanner,
-              onPressed: _resetScan,
-            ),
           ],
         ),
       ),
@@ -1117,6 +1079,777 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
         ],
       ),
     );
+  }
+
+  // ==========================================
+  // RECHARGE HUB SHEET (Merged Recharge + History)
+  // ==========================================
+
+  void _showRechargeHubSheet(BuildContext context, CardSession session, Card card) {
+    final allTx = session.transactions ?? [];
+    final topUps = allTx.where((t) => t.type == TransactionType.recharge).toList();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => Container(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 10, bottom: 6),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Recharge',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Wallet: ${card.displayCardNumber} • Balance: ₹${session.balance.toStringAsFixed(2)}',
+                        style: const TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(sheetCtx).pop(),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
+              child: AppButton(
+                label: 'Recharge Wallet / Add Money',
+                icon: Icons.account_balance_wallet,
+                backgroundColor: AppColors.success,
+                onPressed: () {
+                  Navigator.of(sheetCtx).pop();
+                  _openRecharge();
+                },
+              ),
+            ),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.md, 10, AppSpacing.md, 4),
+              child: Row(
+                children: const [
+                  Icon(Icons.history, size: 16, color: AppColors.textSecondaryLight),
+                  SizedBox(width: 6),
+                  Text(
+                    'Top-up History',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: topUps.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.history_toggle_off, size: 48, color: AppColors.textTertiaryLight),
+                            SizedBox(height: 12),
+                            Text(
+                              'No top-ups recorded yet',
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: AppSpacing.paddingMd,
+                      itemCount: topUps.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      itemBuilder: (ctx, idx) {
+                        final t = topUps[idx];
+                        final isCash = t.paymentMethod == PaymentMethod.cash;
+
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: t.isCancelled ? Colors.grey.shade100 : Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: t.isCancelled ? Colors.grey.shade300 : AppColors.borderLight,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        '+₹${t.amount.toStringAsFixed(2)}',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: t.isCancelled ? Colors.grey : AppColors.success,
+                                          decoration: t.isCancelled ? TextDecoration.lineThrough : null,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: isCash ? AppColors.successLight : Colors.purple.shade50,
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          isCash ? 'Cash' : 'UPI',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: isCash ? AppColors.primaryDark : Colors.purple.shade700,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (t.isCancelled)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade200,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text('VOIDED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                                    )
+                                  else
+                                    OutlinedButton.icon(
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppColors.error,
+                                        side: const BorderSide(color: AppColors.error, width: 1),
+                                        visualDensity: VisualDensity.compact,
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                      ),
+                                      icon: const Icon(Icons.cancel_outlined, size: 14),
+                                      label: const Text('Void Top-up', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                      onPressed: () {
+                                        Navigator.of(sheetCtx).pop();
+                                        _handleCancelRecharge(t.id, t.amount, session);
+                                      },
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Staff: ${t.staffName ?? 'Staff Cashier'}',
+                                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
+                                  ),
+                                  Text(
+                                    _formatDateTime(t.createdAt),
+                                    style: const TextStyle(fontSize: 11, color: AppColors.textTertiaryLight),
+                                  ),
+                                ],
+                              ),
+                              if (t.isCancelled && t.cancellationReason != null) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Reason: ${t.cancellationReason}',
+                                  style: const TextStyle(fontSize: 11, color: Colors.black54, fontStyle: FontStyle.italic),
+                                ),
+                              ],
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ==========================================
+  // BILLING HUB SHEET (Merged Add Products + Food Orders)
+  // ==========================================
+
+  void _showBillingHubSheet(BuildContext context, CardSession session, Card card) {
+    final allTx = session.transactions ?? [];
+    final orders = allTx.where((t) => t.type == TransactionType.purchase).toList();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => Container(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 10, bottom: 6),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Billing',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Wallet: ${card.displayCardNumber} • Balance: ₹${session.balance.toStringAsFixed(2)}',
+                        style: const TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(sheetCtx).pop(),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
+              child: AppButton(
+                label: 'Start Billing / Add Products',
+                icon: Icons.add_shopping_cart,
+                backgroundColor: AppColors.primary,
+                onPressed: () {
+                  Navigator.of(sheetCtx).pop();
+                  _openAddProducts();
+                },
+              ),
+            ),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.md, 10, AppSpacing.md, 4),
+              child: Row(
+                children: const [
+                  Icon(Icons.fastfood_outlined, size: 16, color: AppColors.textSecondaryLight),
+                  SizedBox(width: 6),
+                  Text(
+                    'Food Orders',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: orders.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.fastfood_outlined, size: 48, color: AppColors.textTertiaryLight),
+                            SizedBox(height: 12),
+                            Text(
+                              'No food orders placed yet',
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: AppSpacing.paddingMd,
+                      itemCount: orders.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      itemBuilder: (ctx, idx) {
+                        final t = orders[idx];
+                        final items = t.items ?? [];
+
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: t.isCancelled ? Colors.grey.shade100 : Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: t.isCancelled ? Colors.grey.shade300 : AppColors.borderLight,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '-₹${t.amount.toStringAsFixed(2)}',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: t.isCancelled ? Colors.grey : AppColors.error,
+                                      decoration: t.isCancelled ? TextDecoration.lineThrough : null,
+                                    ),
+                                  ),
+                                  if (t.isCancelled)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade200,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text('CANCELLED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                                    )
+                                  else
+                                    Row(
+                                      children: [
+                                        OutlinedButton.icon(
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: AppColors.primary,
+                                            side: const BorderSide(color: AppColors.primary, width: 1),
+                                            visualDensity: VisualDensity.compact,
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                          ),
+                                          icon: const Icon(Icons.edit_outlined, size: 14),
+                                          label: const Text('Edit', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                          onPressed: () {
+                                            Navigator.of(sheetCtx).pop();
+                                            _handleEditOrder(t, session);
+                                          },
+                                        ),
+                                        const SizedBox(width: 6),
+                                        OutlinedButton.icon(
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: AppColors.error,
+                                            side: const BorderSide(color: AppColors.error, width: 1),
+                                            visualDensity: VisualDensity.compact,
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                          ),
+                                          icon: const Icon(Icons.remove_shopping_cart_outlined, size: 14),
+                                          label: const Text('Cancel Order', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                          onPressed: () {
+                                            Navigator.of(sheetCtx).pop();
+                                            _handleCancelOrder(t.id, t.amount, session);
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                ],
+                              ),
+                              if (items.isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surfaceVariantLight,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: items.map((item) {
+                                      return Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 2),
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              '${item.quantity}x ${item.itemName ?? "Item"}',
+                                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                                            ),
+                                            if (item.totalAmount != null)
+                                              Text(
+                                                '₹${item.totalAmount!.toStringAsFixed(2)}',
+                                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                              ),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 6),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Staff: ${t.staffName ?? 'Counter Staff'}',
+                                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
+                                  ),
+                                  Text(
+                                    _formatDateTime(t.createdAt),
+                                    style: const TextStyle(fontSize: 11, color: AppColors.textTertiaryLight),
+                                  ),
+                                ],
+                              ),
+                              if (t.isCancelled && t.cancellationReason != null) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Reason: ${t.cancellationReason}',
+                                  style: const TextStyle(fontSize: 11, color: Colors.black54, fontStyle: FontStyle.italic),
+                                ),
+                              ],
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ==========================================
+  // RETURN & REFUND HUB SHEET (Merged Return + Info/Stats)
+  // ==========================================
+
+  void _showReturnRefundSheet(BuildContext context, CardSession session, Card card) {
+    final allTx = session.transactions ?? [];
+    final recharges = allTx.where((t) => t.type == TransactionType.recharge && !t.isCancelled).toList();
+    final cancelledRecharges = allTx.where((t) => t.type == TransactionType.recharge && t.isCancelled).toList();
+    final purchases = allTx.where((t) => t.type == TransactionType.purchase && !t.isCancelled).toList();
+    final cancelledPurchases = allTx.where((t) => t.type == TransactionType.purchase && t.isCancelled).toList();
+    final returns = allTx.where((t) => t.type == TransactionType.refund).toList();
+
+    final totalRechargeVol = recharges.fold<double>(0.0, (sum, t) => sum + t.amount);
+    final totalSpent = purchases.fold<double>(0.0, (sum, t) => sum + t.amount);
+    final totalRefundVol = returns.fold<double>(0.0, (sum, t) => sum + t.amount) +
+        cancelledPurchases.fold<double>(0.0, (sum, t) => sum + t.amount);
+
+    final cycleNumber = session.cycleNumber ?? 1;
+    final presentCardCycle = '${card.displayCardNumber}_$cycleNumber';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => Container(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.9),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 10, bottom: 6),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Return & Refund',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(sheetCtx).pop(),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView(
+                padding: AppSpacing.paddingMd,
+                children: [
+                  // 1. TOP BOX: Wallet no - Money available and a separate Refund button in a single box
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceLight,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.borderLight),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Wallet No: ${card.displayCardNumber}',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimaryLight,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Text(
+                                    'Money Available: ',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppColors.textSecondaryLight,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    '₹${session.balance.toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.success,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.payments_outlined, size: 16),
+                          label: const Text('Refund', style: TextStyle(fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: session.balance > 0 ? AppColors.warning : Colors.grey.shade400,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            elevation: 0,
+                          ),
+                          onPressed: () {
+                            Navigator.of(sheetCtx).pop();
+                            _handleRefundOnly(session);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // 2. SEPARATE RETURN BUTTON UNDER THAT BOX
+                  SizedBox(
+                    width: double.infinity,
+                    child: AppButton(
+                      label: 'Return',
+                      icon: Icons.assignment_return_outlined,
+                      backgroundColor: AppColors.error,
+                      onPressed: () {
+                        Navigator.of(sheetCtx).pop();
+                        _handleSettleReturn();
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 3. UNDER RETURN BOX: Present card cycle with _1 and card info & statistics
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryLight.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Present Card Cycle',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimaryLight,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            presentCardCycle,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Statistics Grid
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.successLight.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Recharges', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 4),
+                              Text('${recharges.length} times', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.success)),
+                              Text('₹${totalRechargeVol.toStringAsFixed(2)} total', style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight)),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.warningLight.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.warning.withValues(alpha: 0.2)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Refunds', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 4),
+                              Text('${returns.length + cancelledPurchases.length} times', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.warning)),
+                              Text('₹${totalRefundVol.toStringAsFixed(2)} total', style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryLight.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Food Orders', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 4),
+                              Text('${purchases.length} orders', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.primaryDark)),
+                              Text('₹${totalSpent.toStringAsFixed(2)} spent', style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight)),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Current Balance', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 4),
+                              Text('₹${session.balance.toStringAsFixed(2)}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.textPrimaryLight)),
+                              Text(session.status.value.toUpperCase(), style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  if (session.customerName != null && session.customerName!.isNotEmpty) ...[
+                    Text('Customer: ${session.customerName} (${session.customerPhone ?? "No phone"})', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                  ],
+                  Text('Session Started: ${_formatDateTime(session.startedAt)}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight)),
+                  if (cancelledRecharges.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text('Cancelled Recharges: ${cancelledRecharges.length}', style: const TextStyle(fontSize: 12, color: AppColors.error)),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleRefundOnly(CardSession session) async {
+    if (session.balance <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No remaining money to refund (Balance: ₹0.00).'),
+          backgroundColor: AppColors.info,
+        ),
+      );
+      return;
+    }
+
+    final confirm = await AppDialog.show(
+      context,
+      title: 'Confirm Balance Refund',
+      message: 'Refund available money of ₹${session.balance.toStringAsFixed(2)} to customer?',
+      confirmLabel: 'Refund Money',
+      isDestructive: true,
+    );
+
+    if (confirm != true) return;
+
+    await _handleSettleReturn();
   }
 
   // ==========================================
