@@ -11,8 +11,8 @@ async function main() {
     plan = await prisma.plan.create({
       data: {
         name: 'Enterprise Local Plan',
-        priceMonthly: 0,
-        priceYearly: 0,
+        price: 0,
+        billingInterval: 'MONTHLY',
         branchLimit: 50,
         staffLimit: 50,
         cardLimit: 5000,
