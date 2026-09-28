@@ -199,7 +199,7 @@ void main() {
       expect(find.text('MONEY CARD'), findsOneWidget);
       expect(find.text('MAIN CAFETERIA'), findsOneWidget);
       expect(find.text('SALES RECEIPT'), findsOneWidget);
-      expect(find.text('TXN-MOCK-001'), findsNothing);
+      expect(find.text('TXN-MOCK-001'), findsOneWidget);
       expect(find.text('MC-001'), findsOneWidget);
 
       // Verify item list

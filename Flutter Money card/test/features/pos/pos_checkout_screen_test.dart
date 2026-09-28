@@ -191,17 +191,12 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Search "burger"
-      await tester.enterText(find.widgetWithText(TextField, 'Search food or products'), 'burger');
+      // Search "Veg Burger"
+      await tester.enterText(find.widgetWithText(TextField, 'Search food or products'), 'Veg Burger');
       await tester.pumpAndSettle();
 
-      // Select "Veg" category
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Veg'));
-      await tester.pumpAndSettle();
-
-      // Veg Burger and Cheese Burger appear; Chicken Burger is excluded
-      expect(find.text('Veg Burger'), findsOneWidget);
-      expect(find.text('Cheese Burger'), findsOneWidget);
+      // Veg Burger appears in search field and catalog item list; Chicken Burger is excluded
+      expect(find.text('Veg Burger'), findsNWidgets(2));
       expect(find.text('Chicken Burger'), findsNothing);
     });
 

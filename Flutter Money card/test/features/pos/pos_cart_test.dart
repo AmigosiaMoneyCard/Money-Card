@@ -204,7 +204,7 @@ void main() {
       await tester.tap(find.text('Add').first);
       await tester.pumpAndSettle();
 
-      expect(find.text('View Cart (1)'), findsOneWidget);
+      expect(find.text('Preview Order (1)'), findsOneWidget);
     });
 
     testWidgets('PosCheckoutScreen renders AppUnauthorizedState when staff lacks PURCHASE permission', (tester) async {

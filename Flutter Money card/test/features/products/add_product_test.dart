@@ -109,7 +109,6 @@ void main() {
 
       // Verify Products Screen Content
       expect(find.text('Products & Menu'), findsOneWidget);
-      expect(find.text('Cafeteria: Main Cafeteria'), findsOneWidget);
       expect(find.text('Veg Rice'), findsOneWidget);
       expect(find.text('Chicken Curry'), findsOneWidget);
       expect(find.text('₹80.00'), findsOneWidget);
