@@ -63,13 +63,13 @@ class AppConfig {
   /// Staging API URL (connected to money-card-backend-staging)
   static const String stagingBaseUrl = String.fromEnvironment(
     'STAGING_BASE_URL',
-    defaultValue: 'https://money-card-backend-staging.onrender.com/api/v1',
+    defaultValue: 'https://money-card-backend-staging-681a.onrender.com/api/v1',
   );
 
   /// Production API URL (used strictly in production builds)
   static const String productionBaseUrl = String.fromEnvironment(
     'PROD_BASE_URL',
-    defaultValue: 'https://money-card-backend.onrender.com/api/v1',
+    defaultValue: 'https://money-card-backend-0nx1.onrender.com/api/v1',
   );
 
   /// Primary USB Reverse / Local Loopback endpoint
