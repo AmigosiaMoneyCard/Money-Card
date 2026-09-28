@@ -65,9 +65,11 @@ class ServerConfigStorage {
   Future<void> initialize() async {
     final savedUrl = await getServerUrl();
     if (savedUrl != null && savedUrl.isNotEmpty) {
-      // Guard: Purge staging or local/development backend contamination in production
+      // Guard: Purge staging, legacy Render prod, or local/development backend contamination in production
       if (AppConfig.isProduction &&
           (savedUrl.contains('money-card-backend-staging') ||
+           (savedUrl.contains('money-card-backend.onrender.com') &&
+            !savedUrl.contains('money-card-backend-0nx1')) ||
            savedUrl.contains('127.0.0.1') ||
            savedUrl.contains('localhost') ||
            savedUrl.contains('10.0.2.2') ||
@@ -75,11 +77,13 @@ class ServerConfigStorage {
         await resetToDefault();
         return;
       }
-      // Guard: Purge production backend contamination in staging
+      // Guard: Purge production backend or defunct legacy staging backend contamination in staging
       if (AppConfig.isStaging &&
           (savedUrl.contains('money-card-backend-0nx1') ||
            (savedUrl.contains('money-card-backend.onrender.com') &&
-            !savedUrl.contains('money-card-backend-staging')))) {
+            !savedUrl.contains('money-card-backend-staging-681a')) ||
+           (savedUrl.contains('money-card-backend-staging') &&
+            !savedUrl.contains('money-card-backend-staging-681a')))) {
         await resetToDefault();
         return;
       }

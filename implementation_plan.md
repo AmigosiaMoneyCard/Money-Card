@@ -1,124 +1,61 @@
-# Implementation Plan — Remove Cancelled Food Orders from SuperAdmin, OrgAdmin, and Counter Analytics
+# Implementation Plan - Mobile Staging Legacy Backend URL Purge and Login Restoration
 
-Remove the "Cancelled Food Orders ₹123" metric card from the Financial Overview section across SuperAdmin, OrgAdmin, and Counter Dashboard Analytics in the Web App, with corresponding parity updates in PDF export and the Mobile POS app.
+![Mobile Staff Login Staging](C:\Users\damie\.gemini\antigravity-ide\brain\999581c9-5c30-4195-933d-3667425ed95a\mobile_staff_login_staging_1790590597301.jpg)
 
----
+# Problem Analysis
+Staff members created in the staging database exist and are verified active in Supabase PostgreSQL (e.g. Damien, phone 9539518192, Counter 1). However, logging in from the mobile POS staging APK fails with a "not found" 404 error.
+Investigation confirmed that the old Render staging URL (https://money-card-backend-staging.onrender.com) was shut down and returns HTTP 404 (x-render-routing: no-server). The active live staging backend is https://money-card-backend-staging-681a.onrender.com.
+Existing installed instances of the mobile POS app have the legacy URL saved in FlutterSecureStorage (keys mc_custom_server_url_staging or mc_custom_server_url).
+Because ServerConfigStorage.initialize() previously checked savedUrl.contains('money-card-backend-staging'), it failed to identify the legacy URL as obsolete and did not purge it. As a result, requests continued hitting the dead Render service.
 
-## User Review Required
+# Technical Design and URL Routing Lifecycle
 
-> [!IMPORTANT]
-> - In the Web App (`Frontend Money Card`), `OrgAdminFinancialSection` provides the financial KPI tiles for SuperAdmin Analytics (`SuperAdminAnalyticsView.tsx`), OrgAdmin Analytics (`OrgAdminAnalyticsView.tsx`), and Counter Dashboard Analytics (`OrgAdminAnalyticsView.tsx` with `isCounterAdmin`). Removing the card here automatically eliminates it from all 3 views.
-> - The grid layout will adjust from 5 columns to 4 columns in SuperAdmin view (with Cafeterias card), and from 4 columns to 3 columns in OrgAdmin and Counter views.
-> - Mobile app (`Flutter Money card`) and PDF export (`analyticsPdfExport.ts`) will also remove the corresponding Cancelled Orders item to preserve 100% parity.
-
----
-
-## Visual Design & Wireframe
-
-### High-Fidelity UI Design Preview
-![Updated Analytics Financial Overview without Cancelled Food Orders](C:/Users/damie/.gemini/antigravity-ide/brain/999581c9-5c30-4195-933d-3667425ed95a/analytics_financial_overview_no_cancelled_orders_1790584913428.jpg)
-
-### ASCII Wireframes
-
-#### 1. OrgAdmin & Counter Dashboard Analytics (Before vs After)
-
-Before:
 ```
-+--------------------------------------------------------------------------------------------------------------------+
-|                                                    TOTAL SALES                                                     |
-|                                                   ₹4,87,350.25                                                     |
-+--------------------------------------------------------------------------------------------------------------------+
-| RECHARGE: ₹2,98,640.80           | UPI RECHARGE: ₹1,85,410.20          | CASH RECHARGE: ₹1,13,230.60               |
-+--------------------------------------------------------------------------------------------------------------------+
-| WALLET ACTIVATIONS | MONEY REFUNDED      | CANCELLED TOP-UPS   | [CANCELLED FOOD ORDERS]                            |
-| 1,452 Wallets      | ₹34,910.50          | ₹19,250.70          | ₹123.00                                            |
-+--------------------------------------------------------------------------------------------------------------------+
-```
-
-After (Clean 3-Column Balanced Grid):
-```
-+--------------------------------------------------------------------------------------------------------------------+
-|                                                    TOTAL SALES                                                     |
-|                                                   ₹4,87,350.25                                                     |
-+--------------------------------------------------------------------------------------------------------------------+
-| RECHARGE: ₹2,98,640.80           | UPI RECHARGE: ₹1,85,410.20          | CASH RECHARGE: ₹1,13,230.60               |
-+--------------------------------------------------------------------------------------------------------------------+
-| WALLET ACTIVATIONS               | MONEY REFUNDED                      | CANCELLED TOP-UPS                         |
-| 1,452 Wallets                    | ₹34,910.50                          | ₹19,250.70                                |
-+--------------------------------------------------------------------------------------------------------------------+
+[ App Launch / Main Entry Point ]
+             |
+             v
+[ ServerConfigStorage.initialize() ]
+             |
+             +---> Read savedUrl from secure storage
+             |
+             +---> Check Active Environment:
+             |      |
+             |      +--> Staging:
+             |      |     Is savedUrl pointing to defunct Render staging backend?
+             |      |     (contains 'money-card-backend-staging' and NOT 'money-card-backend-staging-681a')
+             |      |     OR contains 'money-card-backend-0nx1' (prod contamination)
+             |      |     OR contains 'money-card-backend.onrender.com' without '-staging-681a'
+             |      |     --> YES: PURGE storage, reset to AppConfig.stagingBaseUrl
+             |      |
+             |      +--> Production:
+             |            Is savedUrl pointing to defunct Render prod backend?
+             |            (contains 'money-card-backend.onrender.com' and NOT 'money-card-backend-0nx1')
+             |            OR contains staging / localhost / emulator / LAN IP
+             |            --> YES: PURGE storage, reset to AppConfig.productionBaseUrl
+             |
+             v
+[ AppConfig.baseUrl set to Live Backend ]
+(Staging: https://money-card-backend-staging-681a.onrender.com/api/v1)
+             |
+             v
+[ Staff Login Request ] --> POST /api/v1/auth/login --> HTTP 200 OK
 ```
 
-#### 2. SuperAdmin Platform Analytics (Before vs After)
+# Proposed Changes
 
-Before:
-```
-+--------------------------------------------------------------------------------------------------------------------+
-| WALLET ACTIVATIONS | CAFETERIAS        | MONEY REFUNDED    | CANCELLED TOP-UPS   | [CANCELLED FOOD ORDERS]         |
-| 1,452 Wallets      | 5 Cafeterias      | ₹34,910.50        | ₹19,250.70          | ₹123.00                         |
-+--------------------------------------------------------------------------------------------------------------------+
-```
+File: Flutter Money card/lib/core/storage/server_config_storage.dart
+- Update initialize() to guard against legacy Render URLs:
+  - In staging: purge any saved URL containing 'money-card-backend.onrender.com' or 'money-card-backend-staging' that does not contain 'money-card-backend-staging-681a'.
+  - In production: purge any saved URL containing 'money-card-backend.onrender.com' that does not contain 'money-card-backend-0nx1'.
 
-After (Clean 4-Column Balanced Grid):
-```
-+--------------------------------------------------------------------------------------------------------------------+
-| WALLET ACTIVATIONS     | CAFETERIAS             | MONEY REFUNDED         | CANCELLED TOP-UPS                       |
-| 1,452 Wallets          | 5 Cafeterias           | ₹34,910.50             | ₹19,250.70                              |
-+--------------------------------------------------------------------------------------------------------------------+
-```
+File: Flutter Money card/test/core/storage/server_config_storage_test.dart
+- Add unit test verifying that ServerConfigStorage.initialize() in staging purges legacy Render staging URL without '-681a' and resets to AppConfig.stagingBaseUrl.
+- Add unit test verifying that ServerConfigStorage.initialize() in production purges legacy Render production URL without '-0nx1' and resets to AppConfig.productionBaseUrl.
 
----
+# Verification Plan
+- Proactively run Flutter unit tests: flutter test test/core/storage/server_config_storage_test.dart
+- Proactively run Flutter analyzer: flutter analyze --no-pub
+- Verify with curl that live staging auth endpoint accepts requests and handles staff authentication
+- Commit changes to local Git and push to origin/staging
+- Proactively publish Shorebird OTA Patch #6 for staging release 1.0.3+4
 
-## Proposed Changes
-
-### Web Application (`Frontend Money Card/`)
-
-#### [OrgAdminAnalyticsComponents.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/analytics/OrgAdminAnalyticsComponents.tsx)
-- In `OrgAdminFinancialSection`:
-  - Remove `const cancelledOrdersVolume = analytics.cancelledOrdersVolume ?? 0;` (line 64).
-  - Update grid columns definition:
-    - Before: `className={`grid gap-4 sm:grid-cols-2 ${leadingCard ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}`
-    - After: `className={`grid gap-4 sm:grid-cols-2 ${leadingCard ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}`
-  - Remove the Card container for `Cancelled Food Orders` (lines 211-226).
-
-#### [analyticsPdfExport.ts](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/analytics/analyticsPdfExport.ts)
-- In executive KPI generation (lines 201-228):
-  - Remove `{ label: 'Cancelled Orders', val: formatPdfCurrency(cancelledOrdersVolume), sub: ... }` from `row3Kpis`.
-  - Format the remaining `Cancelled Top-ups` card cleanly across Row 3 to maintain PDF layout elegance and 100% parity with web.
-
----
-
-### Mobile POS Application (`Flutter Money card/`)
-
-#### [analytics_screen.dart](file:///D:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/analytics/analytics_screen.dart)
-- Under `_buildFinancialOverviewTab`:
-  - Remove Section 8 `_buildConsolidatedMetricBox(title: 'Canceled Orders', ...)` (lines 474-482).
-  - Renumber following sections to preserve clean sequential ordering and mobile-web parity.
-
----
-
-## Verification Plan
-
-### Automated Tests
-1. Proactive Web Frontend Test Suite:
-   - Run `npm test -- --run` in `Frontend Money Card/` (all 280 tests must pass).
-   - Run `npx tsc --noEmit` in `Frontend Money Card/` (0 errors).
-2. Proactive Mobile POS Test Suite:
-   - Run `flutter analyze --no-pub` in `Flutter Money card/` (0 issues).
-   - Run `flutter test test/features/analytics/analytics_test.dart`.
-3. Proactive Backend Test Suite:
-   - Run `npm test` in `Backend Money Card/` (all 100 tests must pass).
-
-### Manual Verification
-1. SuperAdmin Analytics:
-   - Navigate to `/analytics` as SuperAdmin.
-   - Verify Overview tab displays 4 balanced metric cards (Wallet Activations, Cafeterias, Money Refunded, Cancelled Top-ups). Cancelled Food Orders is absent.
-2. OrgAdmin Analytics:
-   - Navigate to `/analytics` as OrgAdmin.
-   - Verify Overview tab displays 3 balanced metric cards (Wallet Activations, Money Refunded, Cancelled Top-ups). Cancelled Food Orders is absent.
-3. Counter Dashboard Analytics:
-   - Navigate to `/dashboard` as Counter Manager / Staff.
-   - Click "Open Analytics" or visit `/analytics`.
-   - Verify Overview tab displays 3 balanced metric cards without Cancelled Food Orders.
-4. PDF Export:
-   - Click "View PDF" / "Export PDF" from Analytics.
-   - Verify exported PDF document contains only Cancelled Top-ups without Cancelled Orders.

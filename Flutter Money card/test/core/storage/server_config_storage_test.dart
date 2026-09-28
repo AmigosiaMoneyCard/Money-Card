@@ -58,5 +58,31 @@ void main() {
       await storage.resetToDefault();
       expect(AppConfig.baseUrl, 'http://127.0.0.1:3000/api/v1');
     });
+
+    test('ServerConfigStorage purges defunct legacy staging Render backend in staging', () async {
+      AppConfig.initialize(env: 'staging');
+      final storage = ServerConfigStorage();
+
+      // Simulate existing device storage pointing to defunct legacy staging backend
+      await storage.saveServerUrl('https://money-card-backend-staging.onrender.com/api/v1');
+      expect(AppConfig.baseUrl, 'https://money-card-backend-staging.onrender.com/api/v1');
+
+      // Re-initialize: should detect defunct legacy URL and restore live staging backend
+      await storage.initialize();
+      expect(AppConfig.baseUrl, 'https://money-card-backend-staging-681a.onrender.com/api/v1');
+    });
+
+    test('ServerConfigStorage purges defunct legacy production Render backend in production', () async {
+      AppConfig.initialize(env: 'production');
+      final storage = ServerConfigStorage();
+
+      // Simulate existing device storage pointing to defunct legacy production backend
+      await storage.saveServerUrl('https://money-card-backend.onrender.com/api/v1');
+      expect(AppConfig.baseUrl, 'https://money-card-backend.onrender.com/api/v1');
+
+      // Re-initialize: should detect defunct legacy URL and restore live production backend
+      await storage.initialize();
+      expect(AppConfig.baseUrl, 'https://money-card-backend-0nx1.onrender.com/api/v1');
+    });
   });
 }
