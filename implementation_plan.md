@@ -1,111 +1,124 @@
-# Implementation Plan: Mobile POS Separate Refund vs Return and Card Summary Box Relocation
+# Implementation Plan — Remove Cancelled Food Orders from SuperAdmin, OrgAdmin, and Counter Analytics
 
-![Mobile Refund & Return Hub Layout](C:\Users\damie\.gemini\antigravity-ide\brain\999581c9-5c30-4195-933d-3667425ed95a\mobile_refund_return_hub_layout_1790580423777.jpg)
+Remove the "Cancelled Food Orders ₹123" metric card from the Financial Overview section across SuperAdmin, OrgAdmin, and Counter Dashboard Analytics in the Web App, with corresponding parity updates in PDF export and the Mobile POS app.
 
-## User Requirements
-1. Separate Refund Money vs Return Card in Mobile App:
-   - In Return & Refund bottom sheet:
-     - The Refund button inside the top box must strictly refund the remaining available money to the customer (balance set to 0.0, transaction recorded) without returning or settling the card. The card and session remain ACTIVE.
-     - The separate Return button under the top box returns the card (settles the session, sets card to AVAILABLE, and refunds any leftover balance if present).
-2. Card Number, Current Balance and Active Box Relocation:
-   - Cut the Current Session / Balance Card from the Recharge screen (`recharge_screen.dart`).
-   - Paste / relocate this box onto the Scanned QR screen (`pos_scan_purchase_screen.dart`), replacing the old header box above "Wallet Actions & Operations".
+---
 
-## Visual Architecture & Wireframes
+## User Review Required
 
-### Screen 1: Scanned QR Action Hub
+> [!IMPORTANT]
+> - In the Web App (`Frontend Money Card`), `OrgAdminFinancialSection` provides the financial KPI tiles for SuperAdmin Analytics (`SuperAdminAnalyticsView.tsx`), OrgAdmin Analytics (`OrgAdminAnalyticsView.tsx`), and Counter Dashboard Analytics (`OrgAdminAnalyticsView.tsx` with `isCounterAdmin`). Removing the card here automatically eliminates it from all 3 views.
+> - The grid layout will adjust from 5 columns to 4 columns in SuperAdmin view (with Cafeterias card), and from 4 columns to 3 columns in OrgAdmin and Counter views.
+> - Mobile app (`Flutter Money card`) and PDF export (`analyticsPdfExport.ts`) will also remove the corresponding Cancelled Orders item to preserve 100% parity.
+
+---
+
+## Visual Design & Wireframe
+
+### High-Fidelity UI Design Preview
+![Updated Analytics Financial Overview without Cancelled Food Orders](C:/Users/damie/.gemini/antigravity-ide/brain/999581c9-5c30-4195-933d-3667425ed95a/analytics_financial_overview_no_cancelled_orders_1790584913428.jpg)
+
+### ASCII Wireframes
+
+#### 1. OrgAdmin & Counter Dashboard Analytics (Before vs After)
+
+Before:
 ```
-+------------------------------------------+
-| < Wallet: MC-0001                        |
-+------------------------------------------+
-| +--------------------------------------+ |
-| | MC-0001                     [ACTIVE] | |
-| |                                      | |
-| | Current Balance                      | |
-| | ₹250.00                              | |
-| +--------------------------------------+ |
-|                                          |
-| Wallet Actions & Operations              |
-|                                          |
-| +--------------------------------------+ |
-| | [Wallet Icon]  Recharge            > | |
-| +--------------------------------------+ |
-| | [POS Icon]     Billing             > | |
-| +--------------------------------------+ |
-| | [Return Icon]  Return & Refund     > | |
-| +--------------------------------------+ |
-+------------------------------------------+
++--------------------------------------------------------------------------------------------------------------------+
+|                                                    TOTAL SALES                                                     |
+|                                                   ₹4,87,350.25                                                     |
++--------------------------------------------------------------------------------------------------------------------+
+| RECHARGE: ₹2,98,640.80           | UPI RECHARGE: ₹1,85,410.20          | CASH RECHARGE: ₹1,13,230.60               |
++--------------------------------------------------------------------------------------------------------------------+
+| WALLET ACTIVATIONS | MONEY REFUNDED      | CANCELLED TOP-UPS   | [CANCELLED FOOD ORDERS]                            |
+| 1,452 Wallets      | ₹34,910.50          | ₹19,250.70          | ₹123.00                                            |
++--------------------------------------------------------------------------------------------------------------------+
 ```
 
-### Screen 2: Return & Refund Bottom Sheet
+After (Clean 3-Column Balanced Grid):
 ```
-+------------------------------------------+
-| Return & Refund                      [X] |
-+------------------------------------------+
-| +--------------------------------------+ |
-| | Wallet No: MC-0001                   | |
-| | Money Available: ₹250.00             | |
-| |                                      | |
-| | [              Refund              ] | |
-| +--------------------------------------+ |
-|                                          |
-| [              Return                ]   |
-|                                          |
-| +--------------------------------------+ |
-| | Present Card Cycle       [MC-0001_1] | |
-| +--------------------------------------+ |
-|                                          |
-| [Recharges: 3]     [Refunds: 0]          |
-| [Food Orders: 5]   [Current Balance]     |
-+------------------------------------------+
++--------------------------------------------------------------------------------------------------------------------+
+|                                                    TOTAL SALES                                                     |
+|                                                   ₹4,87,350.25                                                     |
++--------------------------------------------------------------------------------------------------------------------+
+| RECHARGE: ₹2,98,640.80           | UPI RECHARGE: ₹1,85,410.20          | CASH RECHARGE: ₹1,13,230.60               |
++--------------------------------------------------------------------------------------------------------------------+
+| WALLET ACTIVATIONS               | MONEY REFUNDED                      | CANCELLED TOP-UPS                         |
+| 1,452 Wallets                    | ₹34,910.50                          | ₹19,250.70                                |
++--------------------------------------------------------------------------------------------------------------------+
 ```
 
-### Screen 3: Recharge Screen (Cleaned Up)
+#### 2. SuperAdmin Platform Analytics (Before vs After)
+
+Before:
 ```
-+------------------------------------------+
-| < Recharge Card Session                  |
-+------------------------------------------+
-| Payment Method                           |
-| [ CASH ]   [ UPI ]                       |
-|                                          |
-| Recharge Amount (₹)                      |
-| [ 100                                  ] |
-|                                          |
-| [ +₹50 ]  [ +₹100 ]  [ +₹200 ]  [ +₹500 ]|
-|                                          |
-| [           Confirm Recharge           ] |
-+------------------------------------------+
++--------------------------------------------------------------------------------------------------------------------+
+| WALLET ACTIVATIONS | CAFETERIAS        | MONEY REFUNDED    | CANCELLED TOP-UPS   | [CANCELLED FOOD ORDERS]         |
+| 1,452 Wallets      | 5 Cafeterias      | ₹34,910.50        | ₹19,250.70          | ₹123.00                         |
++--------------------------------------------------------------------------------------------------------------------+
 ```
 
-## Technical Breakdown and Worktree Changes
+After (Clean 4-Column Balanced Grid):
+```
++--------------------------------------------------------------------------------------------------------------------+
+| WALLET ACTIVATIONS     | CAFETERIAS             | MONEY REFUNDED         | CANCELLED TOP-UPS                       |
+| 1,452 Wallets          | 5 Cafeterias           | ₹34,910.50             | ₹19,250.70                              |
++--------------------------------------------------------------------------------------------------------------------+
+```
 
-1. Backend Money Card:
-   - [sessions.controller.ts](file:///D:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/sessions.controller.ts):
-     - Add `refundSessionBalance`: checks session active, checks balance > 0, performs atomic transaction reducing balance to 0.0, creates `REFUND_RETURN` transaction record with `paymentMethod: 'DIRECT_REFUND'`, leaves session status ACTIVE and card status ACTIVE, broadcasts balance update, and returns `{ session, refundAmount }`.
-   - [sessions.routes.ts](file:///D:/Money%20Card%20Project/Backend%20Money%20Card/src/routes/sessions.routes.ts):
-     - Register `POST /:id/refund` route with `requirePermission(PermissionCode.REFUND)`.
+---
 
-2. Flutter Money card Client Services & State:
-   - [api_endpoints.dart](file:///D:/Money%20Card%20Project/Flutter%20Money%20card/lib/core/constants/api_endpoints.dart):
-     - Add `static String refundSession(String id) => '/card-sessions/$id/refund';`
-   - [session_service.dart](file:///D:/Money%20Card%20Project/Flutter%20Money%20card/lib/services/session_service.dart):
-     - Add `refundSession(String sessionId)` method calling `POST /card-sessions/:id/refund`.
-   - [session_repository.dart](file:///D:/Money%20Card%20Project/Flutter%20Money%20card/lib/repositories/session_repository.dart):
-     - Add `refundSession(String sessionId) => _sessionService.refundSession(sessionId);`
-   - [mock_api_interceptor.dart](file:///D:/Money%20Card%20Project/Flutter%20Money%20card/lib/core/network/interceptors/mock_api_interceptor.dart):
-     - Handle `POST /card-sessions/:id/refund`: deducts balance to 0.0, records REFUND transaction, keeps session and card status ACTIVE, returns 200.
+## Proposed Changes
 
-3. Flutter UI Updates:
-   - [recharge_screen.dart](file:///D:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/payments/recharge_screen.dart):
-     - Cut lines 267-312 (the card number, current balance, active badge container) from the top of the body so the screen starts cleanly with Payment Method and Amount input.
-   - [pos_scan_purchase_screen.dart](file:///D:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/pos/pos_scan_purchase_screen.dart):
-     - Replace the old compact summary card in `_buildActiveCardActionHub()` with the clean AppCard cut from `recharge_screen.dart` (showing Card display number, green ACTIVE badge, Current Balance label, and bold green balance).
-     - In `_showReturnRefundSheet()`:
-       - Update the Refund button handler `_handleRefundOnly`: calls `sessionRepo.refundSession(session.id)`.
-       - On success, updates `_activeSession` balance to 0.0 without touching session status or card status. Shows snackbar "Refund of ₹... processed. Wallet remains active."
-       - The Return button continues to trigger `_handleSettleReturn()`, which settles the session and frees the card to AVAILABLE.
+### Web Application (`Frontend Money Card/`)
 
-## Verification & Autonomous Testing
-- Proactively run `npm test` in `Backend Money Card` to ensure all 100 backend tests pass.
-- Proactively run `flutter test` in `Flutter Money card` to ensure widget and unit tests pass.
-- Proactively run `flutter analyze --no-pub` to verify zero static analysis warnings or errors.
+#### [OrgAdminAnalyticsComponents.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/analytics/OrgAdminAnalyticsComponents.tsx)
+- In `OrgAdminFinancialSection`:
+  - Remove `const cancelledOrdersVolume = analytics.cancelledOrdersVolume ?? 0;` (line 64).
+  - Update grid columns definition:
+    - Before: `className={`grid gap-4 sm:grid-cols-2 ${leadingCard ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}`
+    - After: `className={`grid gap-4 sm:grid-cols-2 ${leadingCard ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}`
+  - Remove the Card container for `Cancelled Food Orders` (lines 211-226).
+
+#### [analyticsPdfExport.ts](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/analytics/analyticsPdfExport.ts)
+- In executive KPI generation (lines 201-228):
+  - Remove `{ label: 'Cancelled Orders', val: formatPdfCurrency(cancelledOrdersVolume), sub: ... }` from `row3Kpis`.
+  - Format the remaining `Cancelled Top-ups` card cleanly across Row 3 to maintain PDF layout elegance and 100% parity with web.
+
+---
+
+### Mobile POS Application (`Flutter Money card/`)
+
+#### [analytics_screen.dart](file:///D:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/analytics/analytics_screen.dart)
+- Under `_buildFinancialOverviewTab`:
+  - Remove Section 8 `_buildConsolidatedMetricBox(title: 'Canceled Orders', ...)` (lines 474-482).
+  - Renumber following sections to preserve clean sequential ordering and mobile-web parity.
+
+---
+
+## Verification Plan
+
+### Automated Tests
+1. Proactive Web Frontend Test Suite:
+   - Run `npm test -- --run` in `Frontend Money Card/` (all 280 tests must pass).
+   - Run `npx tsc --noEmit` in `Frontend Money Card/` (0 errors).
+2. Proactive Mobile POS Test Suite:
+   - Run `flutter analyze --no-pub` in `Flutter Money card/` (0 issues).
+   - Run `flutter test test/features/analytics/analytics_test.dart`.
+3. Proactive Backend Test Suite:
+   - Run `npm test` in `Backend Money Card/` (all 100 tests must pass).
+
+### Manual Verification
+1. SuperAdmin Analytics:
+   - Navigate to `/analytics` as SuperAdmin.
+   - Verify Overview tab displays 4 balanced metric cards (Wallet Activations, Cafeterias, Money Refunded, Cancelled Top-ups). Cancelled Food Orders is absent.
+2. OrgAdmin Analytics:
+   - Navigate to `/analytics` as OrgAdmin.
+   - Verify Overview tab displays 3 balanced metric cards (Wallet Activations, Money Refunded, Cancelled Top-ups). Cancelled Food Orders is absent.
+3. Counter Dashboard Analytics:
+   - Navigate to `/dashboard` as Counter Manager / Staff.
+   - Click "Open Analytics" or visit `/analytics`.
+   - Verify Overview tab displays 3 balanced metric cards without Cancelled Food Orders.
+4. PDF Export:
+   - Click "View PDF" / "Export PDF" from Analytics.
+   - Verify exported PDF document contains only Cancelled Top-ups without Cancelled Orders.

@@ -61,7 +61,6 @@ export function OrgAdminFinancialSection({
   const moneyAdded = analytics.moneyAdded ?? (cashRecharge + upiRecharge);
   const moneyRefunded = analytics.moneyRefunded ?? totalRefund;
   const cancelledTopUps = analytics.cancelledTopUps ?? 0;
-  const cancelledOrdersVolume = analytics.cancelledOrdersVolume ?? 0;
 
   const netMoneyCollected = analytics.netMoneyCollected ?? (moneyAdded - moneyRefunded);
 
@@ -153,7 +152,7 @@ export function OrgAdminFinancialSection({
       </Card>
 
       {/* 3. Follow-up Metric Cards Below */}
-      <div className={`grid gap-4 sm:grid-cols-2 ${leadingCard ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
+      <div className={`grid gap-4 sm:grid-cols-2 ${leadingCard ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
         {/* Wallet Activations */}
         <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
@@ -204,23 +203,6 @@ export function OrgAdminFinancialSection({
           <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-amber-600">
               {formatCurrency(cancelledTopUps)}
-            </p>
-          </div>
-        </Card>
-
-        {/* Cancelled Food Orders */}
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Cancelled Food Orders
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
-              <AlertCircle className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-orange-600">
-              {formatCurrency(cancelledOrdersVolume)}
             </p>
           </div>
         </Card>

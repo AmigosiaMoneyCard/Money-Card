@@ -151,7 +151,7 @@ void main() {
 
       await tester.drag(find.byType(ListView).first, const Offset(0, -300));
       await tester.pumpAndSettle();
-      expect(find.text('NET AMOUNT'), findsOneWidget);
+      expect(find.text('TOTAL SALES'), findsOneWidget);
       expect(find.text('₹43250.00'), findsOneWidget);
 
       // Verify tapping Reset to Today

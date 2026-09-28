@@ -471,16 +471,6 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           accentColor: AppColors.warning,
         ),
 
-        // 8. CANCELED ORDERS
-        _buildConsolidatedMetricBox(
-          title: 'Canceled Orders',
-          totalText: '${data.cancelledOrdersCount} Orders',
-          cashSubtext: 'Voided: ${data.cancelledOrdersCount} orders',
-          upiSubtext: 'Refunded: ₹${data.cancelledOrdersVolume.toStringAsFixed(0)}',
-          icon: Icons.remove_shopping_cart_outlined,
-          accentColor: Colors.red.shade700,
-        ),
-
         // 9. CANCELED RECHARGES
         _buildConsolidatedMetricBox(
           title: 'Canceled Recharges',

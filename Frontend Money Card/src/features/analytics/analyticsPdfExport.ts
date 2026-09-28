@@ -161,8 +161,6 @@ export function buildOrgAnalyticsJsPdf({
     const cashCount = analytics.cashCount ?? (analytics as any).cashRechargeCount ?? 0;
     const cancelledTopUps = analytics.cancelledTopUps ?? 0;
     const cancelledTopUpsCount = analytics.cancelledTopUpsCount ?? 0;
-    const cancelledOrdersVolume = analytics.cancelledOrdersVolume ?? 0;
-    const cancelledOrdersCount = analytics.cancelledOrdersCount ?? 0;
 
     // Row 2: Payment & Volume Flow (4 cards)
     const row2Kpis = [
@@ -197,13 +195,12 @@ export function buildOrgAnalyticsJsPdf({
 
     curY += 22;
 
-    // Row 3: Cancellations (2 cards)
+    // Row 3: Cancellations (1 card)
     const row3Kpis = [
       { label: 'Cancelled Top-ups', val: formatPdfCurrency(cancelledTopUps), sub: `${cancelledTopUpsCount} recharges reversed` },
-      { label: 'Cancelled Orders', val: formatPdfCurrency(cancelledOrdersVolume), sub: `${cancelledOrdersCount} orders restored` },
     ];
 
-    const cardWRow3 = (contentWidth - 3) / 2;
+    const cardWRow3 = cardW;
     row3Kpis.forEach((kpi, idx) => {
       const x = margin + idx * (cardWRow3 + 3);
       doc.setFillColor(248, 250, 252);
