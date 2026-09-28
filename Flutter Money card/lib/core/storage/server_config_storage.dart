@@ -77,8 +77,9 @@ class ServerConfigStorage {
       }
       // Guard: Purge production backend contamination in staging
       if (AppConfig.isStaging &&
-          savedUrl.contains('money-card-backend.onrender.com') &&
-          !savedUrl.contains('money-card-backend-staging')) {
+          (savedUrl.contains('money-card-backend-0nx1') ||
+           (savedUrl.contains('money-card-backend.onrender.com') &&
+            !savedUrl.contains('money-card-backend-staging')))) {
         await resetToDefault();
         return;
       }
