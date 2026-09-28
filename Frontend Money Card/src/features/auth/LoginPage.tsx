@@ -139,7 +139,7 @@ export function LoginPage() {
           id="login-identifier"
           label="Email or Mobile Number"
           type="text"
-          placeholder="admin@example.com or 10-digit mobile"
+          placeholder="Enter your email or mobile number"
           autoComplete="username"
           autoFocus
           value={identifier}
