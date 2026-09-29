@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
+import '../../core/utils/formatters.dart';
 import '../../models/card_session.dart';
 import '../../models/transaction.dart';
 import '../../providers/auth_provider.dart';
@@ -70,92 +71,6 @@ class _RechargeScreenState extends ConsumerState<RechargeScreen> {
     if (!_formKey.currentState!.validate() || !rechargeState.canSubmit) {
       return;
     }
-
-    final newExpectedBalance = session.balance + rechargeState.amount;
-
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        scrollable: true,
-        title: const Text('Confirm Recharge'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Card: ${session.displayCardNumber}'),
-            if (session.customerName != null && session.customerName!.isNotEmpty)
-              Text('Customer: ${session.customerName}'),
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Current Balance:'),
-                Text('₹${session.balance.toStringAsFixed(2)}'),
-              ],
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Recharge Amount:'),
-                Text(
-                  '+₹${rechargeState.amount.toStringAsFixed(2)}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.success),
-                ),
-              ],
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Payment Method:'),
-                Text(
-                  rechargeState.paymentMethod == PaymentMethod.upi
-                      ? 'UPI'
-                      : 'CASH',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            if (rechargeState.paymentReference != null &&
-                rechargeState.paymentReference!.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Reference:'),
-                  Text(
-                    rechargeState.paymentReference!,
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-                  ),
-                ],
-              ),
-            ],
-            const Divider(height: AppSpacing.md),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Expected New Balance:', style: TextStyle(fontWeight: FontWeight.bold)),
-                Text(
-                  '₹${newExpectedBalance.toStringAsFixed(2)}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
-                ),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Confirm'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
 
     final branch = ref.read(currentBranchProvider);
     final result = await rechargeNotifier.executeRecharge(
@@ -225,6 +140,167 @@ class _RechargeScreenState extends ConsumerState<RechargeScreen> {
     );
   }
 
+  String _formatDateTime(String? raw) {
+    if (raw == null || raw.isEmpty) return '—';
+    final formatted = AppFormatters.formatIsoDate(raw);
+    return formatted == '-' ? '—' : formatted;
+  }
+
+  void _showTopUpHistorySheet(BuildContext context, CardSession session) {
+    final allTx = session.transactions ?? [];
+    final topUps = allTx.where((t) => t.type == TransactionType.recharge).toList();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => Container(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 10, bottom: 6),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Top-up History',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Wallet: ${session.displayCardNumber} • Balance: ₹${session.balance.toStringAsFixed(2)}',
+                        style: const TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(sheetCtx).pop(),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: topUps.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.history_toggle_off, size: 48, color: AppColors.textTertiaryLight),
+                            SizedBox(height: 12),
+                            Text(
+                              'No top-ups recorded yet',
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: AppSpacing.paddingMd,
+                      itemCount: topUps.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      itemBuilder: (ctx, idx) {
+                        final t = topUps[idx];
+                        final isCash = t.paymentMethod == PaymentMethod.cash;
+
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: t.isCancelled ? Colors.grey.shade100 : Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: t.isCancelled ? Colors.grey.shade300 : AppColors.borderLight,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '+₹${t.amount.toStringAsFixed(2)}',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: t.isCancelled ? Colors.grey : AppColors.success,
+                                      decoration: t.isCancelled ? TextDecoration.lineThrough : null,
+                                    ),
+                                  ),
+                                  if (t.isCancelled)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade200,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text('CANCELLED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(isCash ? Icons.payments_outlined : Icons.account_balance_wallet_outlined, size: 14, color: AppColors.textSecondaryLight),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        isCash ? 'CASH' : 'UPI',
+                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondaryLight),
+                                      ),
+                                      if (t.paymentReference != null && t.paymentReference!.isNotEmpty) ...[
+                                        const SizedBox(width: 6),
+                                        Text('(${t.paymentReference})', style: const TextStyle(fontSize: 11, color: AppColors.textTertiaryLight)),
+                                      ],
+                                    ],
+                                  ),
+                                  Text(
+                                    _formatDateTime(t.createdAt),
+                                    style: const TextStyle(fontSize: 11, color: AppColors.textTertiaryLight),
+                                  ),
+                                ],
+                              ),
+                              if (t.isCancelled && t.cancellationReason != null) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Reason: ${t.cancellationReason}',
+                                  style: const TextStyle(fontSize: 11, color: Colors.black54, fontStyle: FontStyle.italic),
+                                ),
+                              ],
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final sessionState = ref.watch(sessionDetailsNotifierProvider);
@@ -255,6 +331,17 @@ class _RechargeScreenState extends ConsumerState<RechargeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Recharge Card Session'),
+        actions: [
+          TextButton.icon(
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.primary,
+            ),
+            icon: const Icon(Icons.history, size: 20),
+            label: const Text('History', style: TextStyle(fontWeight: FontWeight.bold)),
+            onPressed: () => _showTopUpHistorySheet(context, session),
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: SafeArea(
         child: Form(
@@ -383,7 +470,7 @@ class _RechargeScreenState extends ConsumerState<RechargeScreen> {
 
               // Submit Button
               AppButton(
-                label: 'Confirm Recharge',
+                label: 'Recharge Wallet',
                 icon: Icons.account_balance_wallet,
                 isLoading: rechargeState.isSubmitting,
                 onPressed: rechargeState.canSubmit

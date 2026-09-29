@@ -14,6 +14,7 @@ class QrScannerView extends StatefulWidget {
   final String title;
   final String prompt;
   final Duration debounceDuration;
+  final bool isProcessing;
 
   const QrScannerView({
     super.key,
@@ -21,6 +22,7 @@ class QrScannerView extends StatefulWidget {
     this.title = 'Scan Wallet',
     this.prompt = 'Point your camera at the wallet QR code',
     this.debounceDuration = const Duration(milliseconds: 1500),
+    this.isProcessing = false,
   });
 
   @override
@@ -76,6 +78,14 @@ class _QrScannerViewState extends State<QrScannerView>
     if (!_scannerController.value.isInitialized) return;
     if (state == AppLifecycleState.resumed) {
       _checkCameraPermission();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant QrScannerView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isProcessing && !widget.isProcessing) {
+      resumeScanning();
     }
   }
 
@@ -145,6 +155,8 @@ class _QrScannerViewState extends State<QrScannerView>
     if (mounted) {
       setState(() {
         _isProcessingScan = false;
+        _lastScannedToken = null;
+        _lastScanTime = null;
         _invalidQrMessage = null;
       });
     }

@@ -279,8 +279,24 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       if (!mounted) return;
       setState(() {
         _isResolving = false;
-        _scanErrorMessage = e.toString().replaceAll('ApiException: ', '');
+        _scannedQrToken = null;
+        _scanErrorMessage = null;
       });
+      final errorMsg = e.toString().replaceAll('ApiException: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(child: Text(errorMsg)),
+            ],
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -464,76 +480,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       );
     }
 
-    // 2. Unregistered Error State
-    if (_scanErrorMessage != null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Scan QR Wallet'),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => context.pop(),
-          ),
-        ),
-        body: Center(
-          child: Padding(
-            padding: AppSpacing.paddingLg,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: const BoxDecoration(
-                    color: AppColors.errorLight,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.credit_card_off, size: 48, color: AppColors.error),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                const Text(
-                  'Wallet Not Registered',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.error,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                const Text(
-                  'This QR wallet is not registered in your counter. Try scanning a different wallet.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textSecondaryLight,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Row(
-                  children: [
-                    Expanded(
-                      child: AppOutlinedButton(
-                        label: 'Cancel',
-                        icon: Icons.close,
-                        onPressed: () => context.pop(),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: AppButton(
-                        label: 'Scan Another',
-                        icon: Icons.qr_code_scanner,
-                        onPressed: _resetScan,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    // 3. Card Resolved but BLOCKED
+    // 2. Card Resolved but BLOCKED
     if (_resolvedCard != null && _resolvedCard!.status == CardStatus.blocked) {
       return Scaffold(
         appBar: AppBar(
@@ -689,6 +636,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
             title: 'Scan QR Wallet',
             prompt: 'Point camera at customer\'s wallet QR code',
             onQrScanned: _handleQrScanned,
+            isProcessing: _isResolving,
           ),
           if (AppConfig.useMockApi)
             Positioned(
@@ -834,23 +782,23 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
             ),
             const SizedBox(height: AppSpacing.sm),
 
-            // OPTION 1: RECHARGE (Merged Recharge Wallet + Top-up History)
+            // OPTION 1: RECHARGE (Direct to RechargeScreen)
             if (canRecharge) ...[
               _buildActionTile(
                 icon: Icons.account_balance_wallet_outlined,
                 iconColor: AppColors.success,
                 title: 'Recharge',
-                onTap: () => _showRechargeHubSheet(context, _activeSession ?? session, card),
+                onTap: _openRecharge,
               ),
               const SizedBox(height: AppSpacing.sm),
             ],
 
-            // OPTION 2: BILLING (Merged Add Products + Food Orders)
+            // OPTION 2: BILLING (Direct to PosCheckoutScreen)
             _buildActionTile(
               icon: Icons.point_of_sale_outlined,
               iconColor: AppColors.primary,
               title: 'Billing',
-              onTap: () => _showBillingHubSheet(context, _activeSession ?? session, card),
+              onTap: _openAddProducts,
             ),
             const SizedBox(height: AppSpacing.sm),
 

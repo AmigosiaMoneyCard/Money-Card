@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'auth_provider.dart';
 import '../core/config/app_config.dart';
 import '../core/network/dio_client.dart';
 import '../core/storage/secure_storage_service.dart';
@@ -57,6 +58,7 @@ final Provider<DioClient> dioClientProvider = Provider<DioClient>((ref) {
     onSessionExpired: () {
       try {
         tokenStorage.clearTokens();
+        ref.read(authNotifierProvider.notifier).setSessionExpired();
       } catch (_) {}
     },
   );

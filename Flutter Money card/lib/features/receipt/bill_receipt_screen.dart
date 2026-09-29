@@ -28,8 +28,6 @@ class BillReceiptScreen extends ConsumerStatefulWidget {
 
 class _BillReceiptScreenState extends ConsumerState<BillReceiptScreen> {
   late ReceiptBill _activeBill;
-  bool _isSearching = false;
-  final _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -37,83 +35,6 @@ class _BillReceiptScreenState extends ConsumerState<BillReceiptScreen> {
     _activeBill = widget.bill;
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  void _searchBill(String query) {
-    final cleanQuery = query.trim().toLowerCase();
-    if (cleanQuery.isEmpty) return;
-
-    final sessions = ref.read(sessionListNotifierProvider).sessions;
-    Transaction? matchedTx;
-    CardSession? matchedSession;
-
-    for (final s in sessions) {
-      final txs = s.transactions ?? [];
-      for (final t in txs) {
-        final idMatches = t.id.toLowerCase().contains(cleanQuery) ||
-            t.displayTransactionId.toLowerCase().contains(cleanQuery);
-        final billNoMatches = 'bill-#${t.id.replaceAll('-', '').toLowerCase()}'.contains(cleanQuery) ||
-            'bill-${t.displayTransactionId.toLowerCase()}'.contains(cleanQuery);
-        if (idMatches || billNoMatches) {
-          matchedTx = t;
-          matchedSession = s;
-          break;
-        }
-      }
-      if (matchedTx != null) break;
-    }
-
-    if (matchedTx != null && matchedSession != null) {
-      final items = (matchedTx.items ?? []).map((it) => ReceiptBillItem(
-        name: it.itemName ?? 'Food Item',
-        quantity: it.quantity,
-        unitPrice: it.unitPrice ?? (it.totalAmount != null && it.quantity > 0 ? it.totalAmount! / it.quantity : 0.0),
-        subtotal: it.totalAmount ?? 0.0,
-      )).toList();
-
-      final searchedBill = ReceiptBill(
-        organizationName: widget.bill.organizationName,
-        branchName: matchedSession.branchName ?? widget.bill.branchName,
-        receiptTitle: matchedTx.type == TransactionType.recharge ? 'RECHARGE RECEIPT' : 'SALES RECEIPT',
-        transactionId: matchedTx.id,
-        timestamp: DateTime.tryParse(matchedTx.createdAt ?? '') ?? DateTime.now(),
-        cardIdentifier: matchedSession.displayCardNumber,
-        sessionId: matchedSession.id,
-        staffName: matchedTx.staffName ?? widget.bill.staffName,
-        items: items,
-        subtotal: matchedTx.amount,
-        totalAmount: matchedTx.amount,
-        previousBalance: matchedTx.balanceBefore ?? matchedSession.balance,
-        amountDeducted: matchedTx.type == TransactionType.purchase ? matchedTx.amount : 0.0,
-        remainingBalance: matchedTx.balanceAfter ?? matchedSession.balance,
-        paymentMethod: matchedTx.paymentMethod?.value ?? 'Card Session',
-      );
-
-      setState(() {
-        _activeBill = searchedBill;
-        _isSearching = false;
-        _searchController.clear();
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Loaded Bill: ${searchedBill.displayBillNo}'),
-          backgroundColor: AppColors.success,
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('No bill found matching "$query"'),
-          backgroundColor: AppColors.warning,
-        ),
-      );
-    }
-  }
 
   /// Action: [ Done ]
   void _handleDone() {
@@ -133,21 +54,8 @@ class _BillReceiptScreenState extends ConsumerState<BillReceiptScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        title: _isSearching
-            ? TextField(
-                controller: _searchController,
-                autofocus: true,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-                cursorColor: Colors.white,
-                decoration: const InputDecoration(
-                  hintText: 'Search Bill Number (e.g. BILL-#...)',
-                  hintStyle: TextStyle(color: Colors.white70, fontSize: 14),
-                  border: InputBorder.none,
-                ),
-                onSubmitted: _searchBill,
-              )
-            : const Text('Bill', style: TextStyle(fontWeight: FontWeight.bold)),
-        centerTitle: !_isSearching,
+        title: const Text('Bill', style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -155,19 +63,11 @@ class _BillReceiptScreenState extends ConsumerState<BillReceiptScreen> {
         ),
         actions: [
           IconButton(
-            icon: Icon(_isSearching ? Icons.close : Icons.search),
-            tooltip: 'Search Bill Number',
-            onPressed: () {
-              setState(() {
-                if (_isSearching) {
-                  _isSearching = false;
-                  _searchController.clear();
-                } else {
-                  _isSearching = true;
-                }
-              });
-            },
+            icon: const Icon(Icons.check, size: 26, color: Colors.white),
+            tooltip: 'Continue',
+            onPressed: _handleDone,
           ),
+          const SizedBox(width: 4),
         ],
       ),
       body: SafeArea(
@@ -410,16 +310,7 @@ class _BillReceiptScreenState extends ConsumerState<BillReceiptScreen> {
                 ),
               ),
 
-              const SizedBox(height: AppSpacing.lg),
-
-              // Button: [ Done ]
-              AppButton(
-                label: 'Done',
-                icon: Icons.check,
-                onPressed: _handleDone,
-              ),
-
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.sm),
             ],
           ),
         ),

@@ -249,5 +249,26 @@ void main() {
       // Full catalog restored, cart still intact
       expect(find.text('1 items selected'), findsOneWidget);
     });
+
+    testWidgets('Orders button is present in AppBar actions', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            currentUserProvider.overrideWithValue(mockUser),
+            currentBranchProvider.overrideWithValue(mockBranch),
+            sessionRepositoryProvider.overrideWithValue(sessionRepository),
+            productRepositoryProvider.overrideWithValue(productRepository),
+          ],
+          child: const MaterialApp(
+            home: PosCheckoutScreen(sessionId: 'session-001'),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Orders'), findsOneWidget);
+      expect(find.byIcon(Icons.receipt_long_outlined), findsOneWidget);
+    });
   });
 }
