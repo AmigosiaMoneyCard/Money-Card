@@ -238,7 +238,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                             ),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.black,
+                            backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             minimumSize: const Size(0, 28),

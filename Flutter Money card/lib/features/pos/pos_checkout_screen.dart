@@ -366,7 +366,7 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
     final hasPurchasePermission = ref.watch(hasPermissionProvider(AppPermission.purchase));
     if (!hasPurchasePermission) {
       return Scaffold(
-        appBar: AppBar(title: const Text('POS Menu & Purchase')),
+        appBar: AppBar(title: const Text('Billing')),
         body: const SafeArea(child: AppUnauthorizedState()),
       );
     }
@@ -404,7 +404,7 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('POS Menu & Purchase'),
+            const Text('Billing'),
             if (session != null)
               Text(
                 'Balance: ₹${session.balance.toStringAsFixed(2)}',
