@@ -196,7 +196,7 @@ export async function getBranches(req: Request, res: Response) {
         ? {
             name: b.name,
             phone: managerUser.phone || '',
-            password: '123456',
+            password: '12345678',
           }
         : undefined,
       createdAt: b.createdAt,
@@ -234,8 +234,8 @@ export async function createBranch(req: Request, res: Response) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'Phone number must be a valid 10-digit mobile number');
   }
 
-  if (password && (password.length < 6 || password.length > 30)) {
-    return sendError(res, 400, 'VALIDATION_ERROR', 'Password must be between 6 and 30 characters');
+  if (password && (password.length < 8 || password.length > 30)) {
+    return sendError(res, 400, 'VALIDATION_ERROR', 'Password must be between 8 and 30 characters');
   }
 
   // Authoritative Effective Branch Limit Check
@@ -274,7 +274,7 @@ export async function createBranch(req: Request, res: Response) {
     }
   }
 
-  const effectivePassword = password || '123456';
+  const effectivePassword = password || '12345678';
   const passwordHash = await hashPassword(effectivePassword);
 
   const result = await prisma.$transaction(async (tx) => {
@@ -435,9 +435,9 @@ export async function createBranchesBatch(req: Request, res: Response) {
       continue;
     }
 
-    const effectivePassword = item?.password || '123456';
-    if (effectivePassword.length < 6 || effectivePassword.length > 30) {
-      errors.push({ index: i, message: 'Password must be between 6 and 30 characters' });
+    const effectivePassword = item?.password || '12345678';
+    if (effectivePassword.length < 8 || effectivePassword.length > 30) {
+      errors.push({ index: i, message: 'Password must be between 8 and 30 characters' });
       continue;
     }
 
@@ -535,7 +535,7 @@ export async function getBranchById(req: Request, res: Response) {
       ? {
           name: branch.name,
           phone: manager.phone || '',
-          password: '123456',
+          password: '12345678',
         }
       : undefined,
   });
@@ -594,8 +594,8 @@ export async function updateBranch(req: Request, res: Response) {
 
   // Validate Password if provided
   if (password !== undefined && password !== '') {
-    if (typeof password !== 'string' || password.length < 6 || password.length > 30) {
-      return sendError(res, 400, 'VALIDATION_ERROR', 'Password must be between 6 and 30 characters');
+    if (typeof password !== 'string' || password.length < 8 || password.length > 30) {
+      return sendError(res, 400, 'VALIDATION_ERROR', 'Password must be between 8 and 30 characters');
     }
   }
 

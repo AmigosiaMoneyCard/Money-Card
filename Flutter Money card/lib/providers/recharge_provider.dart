@@ -26,7 +26,7 @@ class RechargeState {
   });
 
   bool get canSubmit {
-    if (amount <= 0 || isSubmitting) return false;
+    if (amount <= 0 || amount > 9999 || isSubmitting) return false;
     return true;
   }
 
@@ -68,6 +68,7 @@ class RechargeNotifier extends StateNotifier<RechargeState> {
   }
 
   void setAmount(double amount) {
+    if (amount > 9999) return;
     state = state.copyWith(amount: amount, errorMessage: null);
   }
 

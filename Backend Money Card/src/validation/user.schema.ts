@@ -16,7 +16,7 @@ export const createStaffMemberSchema = z
     name: safeDisplayName,
     phone: safePhone,
     email: safeEmail.optional(),
-    password: z.string({ required_error: 'Password is required' }).min(4, 'Password must be at least 4 characters long').max(128),
+    password: z.string({ required_error: 'Password is required' }).min(8, 'Password must be at least 8 characters long').max(128),
     assignedBranchIds: z.array(safeId).optional(),
     branchIds: z.array(safeId).optional(),
     permissions: z.array(z.string().max(50)).optional(),

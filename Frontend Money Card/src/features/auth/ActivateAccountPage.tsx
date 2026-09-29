@@ -70,7 +70,7 @@ export function ActivateAccountPage() {
   }, [token]);
 
   // Password complexity checks
-  const isPasswordValid = password.length >= 4;
+  const isPasswordValid = password.length >= 8;
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -85,7 +85,7 @@ export function ActivateAccountPage() {
         setPasswordError('Password is required');
         hasErrors = true;
       } else if (!isPasswordValid) {
-        setPasswordError('Password must be at least 4 characters');
+        setPasswordError('Password must be at least 8 characters');
         hasErrors = true;
       }
 

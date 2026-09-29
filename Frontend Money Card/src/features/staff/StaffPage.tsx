@@ -476,8 +476,8 @@ export function StaffPage() {
 
     if (!formPassword.trim()) {
       errors.password = 'Initial password is required for POS login';
-    } else if (formPassword.trim().length < 4) {
-      errors.password = 'Password must be at least 4 characters';
+    } else if (formPassword.trim().length < 8) {
+      errors.password = 'Password must be at least 8 characters';
     }
 
     const trimmedEmail = formEmail.trim().toLowerCase();

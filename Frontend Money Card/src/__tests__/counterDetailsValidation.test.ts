@@ -80,22 +80,22 @@ describe('Counter Management Strict Validation Tests', () => {
       expect(validatePassword('', true)).toBe('Password is required');
     });
 
-    it('should reject passwords shorter than 6 characters', () => {
-      expect(validatePassword('12345', false)).toBe(
-        'Password must be between 6 and 30 characters',
+    it('should reject passwords shorter than 8 characters', () => {
+      expect(validatePassword('1234567', false)).toBe(
+        'Password must be between 8 and 30 characters',
       );
       expect(validatePassword('abc', true)).toBe(
-        'Password must be between 6 and 30 characters',
+        'Password must be between 8 and 30 characters',
       );
     });
 
     it('should reject passwords longer than 30 characters', () => {
       expect(validatePassword('A'.repeat(31), false)).toBe(
-        'Password must be between 6 and 30 characters',
+        'Password must be between 8 and 30 characters',
       );
     });
 
-    it('should accept valid passwords between 6 and 30 characters', () => {
+    it('should accept valid passwords between 8 and 30 characters', () => {
       expect(validatePassword('secret123', false)).toBeNull();
       expect(validatePassword('Strong#Pass1!', true)).toBeNull();
     });

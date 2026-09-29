@@ -121,8 +121,8 @@ export const validatePassword = (password: string, isRequired = false): string |
     }
     return null;
   }
-  if (password.length < 6 || password.length > 30) {
-    return 'Password must be between 6 and 30 characters';
+  if (password.length < 8 || password.length > 30) {
+    return 'Password must be between 8 and 30 characters';
   }
   return null;
 };

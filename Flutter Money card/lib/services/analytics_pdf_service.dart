@@ -312,8 +312,8 @@ class AnalyticsPdfService {
                   ),
                   pw.TableRow(
                     children: [
-                      _buildCell('Total Items Sold'),
-                      _buildCell('${analytics.productsSoldCount} units', alignRight: true, isBold: true),
+                      _buildCell('Food Quantity'),
+                      _buildCell('${analytics.productsSoldCount} Items', alignRight: true, isBold: true),
                       _buildCell('Billed via POS', alignRight: true),
                     ],
                   ),

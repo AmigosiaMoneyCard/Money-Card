@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
@@ -60,6 +61,7 @@ class _RechargeScreenState extends ConsumerState<RechargeScreen> {
   void _addQuickAmount(double amount) {
     final current = double.tryParse(_amountController.text.trim()) ?? 0.0;
     final total = current + amount;
+    if (total > 9999) return;
     _amountController.text = total.toStringAsFixed(0);
     ref.read(rechargeNotifierProvider.notifier).setAmount(total);
   }
@@ -387,10 +389,14 @@ class _RechargeScreenState extends ConsumerState<RechargeScreen> {
               const SizedBox(height: AppSpacing.xs),
               TextFormField(
                 controller: _amountController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(4),
+                ],
                 onChanged: _onAmountChanged,
                 decoration: const InputDecoration(
-                  hintText: 'Enter amount (e.g. 200)',
+                  hintText: 'Enter amount (max ₹9,999)',
                   prefixIcon: Icon(Icons.currency_rupee, size: 20),
                   isDense: true,
                 ),
@@ -401,6 +407,9 @@ class _RechargeScreenState extends ConsumerState<RechargeScreen> {
                   final parsed = double.tryParse(val.trim());
                   if (parsed == null || parsed <= 0) {
                     return 'Amount must be greater than 0';
+                  }
+                  if (parsed > 9999) {
+                    return 'Amount cannot exceed ₹9,999 (4 digits maximum)';
                   }
                   return null;
                 },

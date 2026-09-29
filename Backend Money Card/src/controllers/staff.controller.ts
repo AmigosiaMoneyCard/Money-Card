@@ -145,8 +145,8 @@ export async function createStaffMember(req: Request, res: Response) {
   }
 
   const trimmedPassword = String(password || '').trim();
-  if (!trimmedPassword || trimmedPassword.length < 4) {
-    return sendError(res, 400, 'VALIDATION_ERROR', 'Password must be at least 4 characters long');
+  if (!trimmedPassword || trimmedPassword.length < 8) {
+    return sendError(res, 400, 'VALIDATION_ERROR', 'Password must be at least 8 characters long');
   }
 
   const existingPhoneUser = await prisma.user.findFirst({

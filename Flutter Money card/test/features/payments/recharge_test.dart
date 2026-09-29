@@ -79,6 +79,10 @@ void main() {
       expect(notifier.state.paymentReference, 'UTR-123456');
       expect(notifier.state.canSubmit, isTrue);
 
+      // Verify 4-digit limit (amount cannot exceed 9999)
+      notifier.setAmount(10000.0);
+      expect(notifier.state.amount, 150.0); // blocked, remains 150.0
+
       // Execute Recharge
       final result = await notifier.executeRecharge('sess-1');
       expect(result, isNotNull);
