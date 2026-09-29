@@ -962,13 +962,6 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
                                   ),
                                 ],
                               ),
-                              if (t.isCancelled && t.cancellationReason != null) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Reason: ${t.cancellationReason}',
-                                  style: const TextStyle(fontSize: 11, color: Colors.black54, fontStyle: FontStyle.italic),
-                                ),
-                              ],
                             ],
                           ),
                         );

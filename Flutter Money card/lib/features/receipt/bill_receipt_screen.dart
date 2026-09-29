@@ -58,10 +58,37 @@ class _BillReceiptScreenState extends ConsumerState<BillReceiptScreen> {
           onPressed: _handleDone,
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.check, size: 26, color: Colors.white),
-            tooltip: 'Continue',
-            onPressed: _handleDone,
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Center(
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(6),
+                  onTap: _handleDone,
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(6),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.3),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.check,
+                      size: 22,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
           const SizedBox(width: 4),
         ],

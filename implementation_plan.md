@@ -1,60 +1,76 @@
-# Implementation Plan - Localhost POS Mobile Connection and Staging Synchronization
+# Implementation Plan - Mobile POS Action Naming, Cancel Recharge, Bill Checkbox, and Return Statistics
 
-![Localhost POS Connection Status](C:\Users\damie\.gemini\antigravity-ide\brain\999581c9-5c30-4195-933d-3667425ed95a\localhost_pos_connection_status_1790672621568.jpg)
+![Mobile POS Billing and Refund UI](C:\Users\damie\.gemini\antigravity-ide\brain\999581c9-5c30-4195-933d-3667425ed95a\mobile_pos_billing_and_refund_parity_1790678398120.jpg)
 
 Completed Work Summary (Archived from Active Plan)
 - 8-Character Minimum Password Solely for Account Creation (Merged & Verified)
 - Mobile POS Wallet Recharge 4-Digit Limit (Rs. 9,999 cap) (Merged & Verified)
 - POS Mobile App Flow Refinements (Direct Recharge/Billing, Tick button, Auto-Logout) (Merged & Verified)
 - Retained Analytics Parity & QR Scanned Hub Cleanup (Merged & Verified)
+- Backend Cross-Origin Resource Policy Configuration (Helmet crossOriginResourcePolicy: 'cross-origin') (Merged & Verified)
+- Localhost Mobile POS Connection & Transparent Host Resolution (Merged & Verified)
 
 Active Status & Worktree Specifications
 
-1. Localhost Mobile POS App Connection & Cross-Origin Resource Policy
-- Backend Cross-Origin Resource Policy (CORP):
-  - File: Backend Money Card/src/server.ts
-  - Configured Helmet with crossOriginResourcePolicy: { policy: 'cross-origin' } so Chrome does not block Flutter Web cross-origin requests from arbitrary development ports to http://localhost:3000.
-- Environment & Base URL Resolution for Web:
-  - File: Flutter Money card/lib/core/config/app_config.dart
-  - Exposed overrideEnvironment getter and updated fallback to return 'development' when kIsWeb is true, routing localhost Chrome launches to http://127.0.0.1:3000/api/v1.
-  - File: Flutter Money card/lib/main.dart
-  - Initialized with env: 'development' when overrideEnvironment is null (running main.dart directly).
-- Local Database Seeding & Active Staff Credentials:
-  - Local database verified and seeded with active staff accounts via npx tsx prisma/seed.ts.
-  - Primary Staff Credentials for Localhost:
-    - Phone: 9876543210 (or Email: staff@localhost.com)
-    - Password: password
-    - Role: STAFF
-    - Assigned Branch: Main Cafeteria (and Executive Lounge)
-    - Status: ACTIVE
+1. Rename "Recharge Card Session" to "Recharge" across Scanned QR Flow
+- File: Flutter Money card/lib/features/payments/recharge_screen.dart
+  - Line 321: Change AppBar title from 'Recharge Card' to 'Recharge'.
+  - Line 335: Change AppBar title from 'Recharge Card Session' to 'Recharge'.
+- File: Flutter Money card/lib/features/cards/card_details_screen.dart
+  - Line 677: Update action button label from 'Recharge Wallet (Cash / UPI)' to 'Recharge'.
+- File: Flutter Money card/lib/features/pos/pos_scan_purchase_screen.dart
+  - Line 934: In _showRechargeHubSheet, update button label from 'Recharge Wallet / Add Money' to 'Recharge'.
+
+2. Restore "Cancel Recharge" Option in History Page
+- File: Flutter Money card/lib/features/payments/recharge_screen.dart
+  - In _showTopUpHistorySheet (top-up history sheet), for each non-cancelled recharge entry, add a dedicated action button labeled 'Cancel Recharge'.
+  - On tap: trigger confirmation dialog and call sessionService.cancelRecharge to void the top-up and restore card balance.
+- File: Flutter Money card/lib/features/pos/pos_scan_purchase_screen.dart
+  - Line 1045: Rename button label from 'Void Top-up' to 'Cancel Recharge'.
+- File: Flutter Money card/lib/features/sessions/session_details_screen.dart
+  - In activity timeline, display 'Cancel Recharge' button for active sessions on recharge entries that are not cancelled.
+
+3. Bill Page Header Checkbox in Emerald Green with White Tick
+- File: Flutter Money card/lib/features/receipt/bill_receipt_screen.dart
+  - In AppBar actions, style the completion action as a dedicated checkbox container:
+    - 32x32 dp square container with 6px rounded corners.
+    - Background color: AppColors.primary (Emerald green, #059669).
+    - Child icon: Icons.check in pure white (Colors.white, 22px).
+    - Preserves existing tap callback (_handleDone) and test selectors.
+
+4. Remove Cancellation Reason from Food Orders Placed Page
+- File: Flutter Money card/lib/features/pos/pos_checkout_screen.dart
+  - Lines 965-970: Remove the 'Reason: ${t.cancellationReason}' block from the 'Food Orders Placed' bottom sheet.
+- File: Flutter Money card/lib/features/pos/pos_scan_purchase_screen.dart
+  - Lines 1308-1314: Remove the 'Reason: ${t.cancellationReason}' block from the food orders listing.
+
+5. Return & Refund Sheet - Replace Duplicate "Current Balance" Box
+- File: Flutter Money card/lib/features/pos/pos_scan_purchase_screen.dart
+  - Lines 1585-1600: In _showReturnRefundSheet 2x2 statistics grid, remove the 4th box ('Current Balance') which is already shown in the top header.
+  - Replace the 4th box with 'Total Activity' displaying total completed card actions count (allTx.where((t) => !t.isCancelled).length) with 'Active Cycle' status, providing distinct and meaningful insight into the card lifecycle.
 
 UI Layout & ASCII Wireframe
 
-Mobile POS Staff Login (Localhost Web & Native):
+Bill Receipt Screen Header:
 +------------------------------------------+
-|               MONEY CARD                 |
-|               Staff Login                |
+|  [<-]                Bill           [[v]]|
 +------------------------------------------+
-| Phone Number                             |
-| [ 9876543210                        ]    |
-|                                          |
-| Password                                 |
-| [ password                         [Eye]]|
-|                                          |
-| [ Login                                ] |
-+------------------------------------------+
+  [[v]] = Emerald green square checkbox with white tick mark
 
-Verification & Automated Test Results
+Return & Refund 2x2 Statistics Grid:
++--------------------+---------------------+
+| Recharges          | Refunds             |
+| 3 times            | 0 times             |
+| Rs. 750.00 total   | Rs. 0.00 total      |
++--------------------+---------------------+
+| Food Orders        | Total Activity      |
+| 2 orders           | 5 actions           |
+| Rs. 240.00 spent   | Active Cycle        |
++--------------------+---------------------+
+(Replaced duplicate Current Balance box with Total Activity)
 
-1. Backend Automated Tests:
-- Proactively executed npm test in Backend Money Card/ (100/100 tests passed).
-
-2. Frontend Automated Tests:
-- Proactively executed npm test -- --run in Frontend Money Card/ (284/284 tests passed, 0 TypeScript errors).
-
-3. Mobile POS Automated Tests & Static Analysis:
-- Proactively executed flutter test in Flutter Money card/ (171/171 tests passed).
-- Proactively executed flutter analyze --no-pub in Flutter Money card/ (0 issues).
-
-4. Remote Synchronization:
-- Staging commit bad9518 ready for push upon user instruction.
+Verification & Automated Test Execution Plan
+1. Flutter Automated Tests: Execute flutter test to verify all screens, widget tests, and receipt interactions.
+2. Flutter Static Analysis: Execute flutter analyze --no-pub to verify 0 Dart warnings.
+3. Web App Parity Check: Verify Frontend Money Card tests (npm test -- --run) and TypeScript (npx tsc --noEmit).
+4. Backend API Parity Check: Verify Backend Money Card tests (npm test).

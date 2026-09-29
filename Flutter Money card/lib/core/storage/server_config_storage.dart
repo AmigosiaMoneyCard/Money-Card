@@ -87,6 +87,13 @@ class ServerConfigStorage {
         await resetToDefault();
         return;
       }
+      // Guard: Purge cloud staging or production backend contamination in development
+      if (AppConfig.isDevelopment &&
+          (savedUrl.contains('money-card-backend') ||
+           savedUrl.contains('onrender.com'))) {
+        await resetToDefault();
+        return;
+      }
       AppConfig.setBaseUrl(savedUrl);
     } else {
       AppConfig.setBaseUrl(

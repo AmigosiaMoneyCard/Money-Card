@@ -42,6 +42,9 @@ class CardSession {
     return 'Card';
   }
 
+  bool get isActive => status == SessionStatus.active;
+  bool get isSettled => status == SessionStatus.settled;
+
   final String id;
   final String cardId;
   final String? physicalCardNumber;

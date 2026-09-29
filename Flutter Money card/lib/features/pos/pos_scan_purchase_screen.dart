@@ -931,7 +931,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
               child: AppButton(
-                label: 'Recharge Wallet / Add Money',
+                label: 'Recharge',
                 icon: Icons.account_balance_wallet,
                 backgroundColor: AppColors.success,
                 onPressed: () {
@@ -1042,7 +1042,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
                                       ),
                                       icon: const Icon(Icons.cancel_outlined, size: 14),
-                                      label: const Text('Void Top-up', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                      label: const Text('Cancel Recharge', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                                       onPressed: () {
                                         Navigator.of(sheetCtx).pop();
                                         _handleCancelRecharge(t.id, t.amount, session);
@@ -1305,13 +1305,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                                   ),
                                 ],
                               ),
-                              if (t.isCancelled && t.cancellationReason != null) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Reason: ${t.cancellationReason}',
-                                  style: const TextStyle(fontSize: 11, color: Colors.black54, fontStyle: FontStyle.italic),
-                                ),
-                              ],
                             ],
                           ),
                         );
@@ -1593,10 +1586,10 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Current Balance', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight, fontWeight: FontWeight.w600)),
+                              const Text('Total Activity', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight, fontWeight: FontWeight.w600)),
                               const SizedBox(height: 4),
-                              Text('₹${session.balance.toStringAsFixed(2)}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.textPrimaryLight)),
-                              Text(session.status.value.toUpperCase(), style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight)),
+                              Text('${allTx.where((t) => !t.isCancelled).length} actions', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.textPrimaryLight)),
+                              const Text('Active Cycle', style: TextStyle(fontSize: 11, color: AppColors.textSecondaryLight)),
                             ],
                           ),
                         ),
@@ -1713,7 +1706,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
             children: const [
               Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 24),
               SizedBox(width: 8),
-              Text('Cancel Top-up?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              Text('Cancel Recharge?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
             ],
           ),
           content: Column(
@@ -1721,7 +1714,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'This will void the top-up and deduct ₹${amount.toStringAsFixed(2)} from the card balance.',
+                'This will cancel the recharge and deduct ₹${amount.toStringAsFixed(2)} from the card balance.',
                 style: const TextStyle(fontSize: 14, color: AppColors.textPrimaryLight),
               ),
               const SizedBox(height: 16),
@@ -1764,12 +1757,12 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Keep Top-up'),
+              child: const Text('Keep Recharge'),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Confirm Void', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text('Cancel Recharge', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
         ),

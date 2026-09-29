@@ -5,6 +5,8 @@ import '../../core/constants/app_spacing.dart';
 import '../../models/card_session.dart';
 import '../../models/transaction.dart';
 import '../../providers/session_operations_provider.dart';
+import '../../providers/api_providers.dart';
+import '../../providers/analytics_provider.dart';
 import '../../widgets/common/app_badge.dart';
 import '../../widgets/common/app_card.dart';
 import '../../widgets/common/section_header.dart';
@@ -361,7 +363,7 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
 
           // Render Transactions (Purchases, Recharges, Settlement)
           if (filteredTransactions.isNotEmpty)
-            ...filteredTransactions.map((txn) => _buildTransactionCard(txn)),
+            ...filteredTransactions.map((txn) => _buildTransactionCard(txn, session)),
 
           // Render Card Issuance Base Timeline Event
           if (showCardIssued)
@@ -398,8 +400,126 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
     );
   }
 
+  Future<void> _handleCancelRecharge(String txId, double amount, CardSession session) async {
+    final currentBal = session.balance;
+    if (currentBal < amount) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Cannot cancel top-up: Customer already spent ₹${(amount - currentBal).toStringAsFixed(2)}. Current balance is only ₹${currentBal.toStringAsFixed(2)}.',
+          ),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    String selectedReason = 'Wrong Amount Entered';
+    final customReasonCtrl = TextEditingController();
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogCtx, setModalState) => AlertDialog(
+          title: Row(
+            children: const [
+              Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 24),
+              SizedBox(width: 8),
+              Text('Cancel Recharge?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'This will void the recharge and deduct ₹${amount.toStringAsFixed(2)} from the card balance.',
+                style: const TextStyle(fontSize: 14, color: AppColors.textPrimaryLight),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Select Cancellation Reason:',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                initialValue: selectedReason,
+                items: const [
+                  DropdownMenuItem(value: 'Wrong Amount Entered', child: Text('Wrong Amount Entered')),
+                  DropdownMenuItem(value: 'Duplicate Scan', child: Text('Duplicate Scan')),
+                  DropdownMenuItem(value: 'Payment Failed', child: Text('Payment Failed')),
+                  DropdownMenuItem(value: 'Other Reason', child: Text('Other Reason')),
+                ],
+                onChanged: (val) {
+                  if (val != null) {
+                    setModalState(() => selectedReason = val);
+                  }
+                },
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+              if (selectedReason == 'Other Reason') ...[
+                const SizedBox(height: 10),
+                TextField(
+                  controller: customReasonCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'Enter specific reason...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Keep Recharge'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Cancel Recharge', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirm != true) return;
+
+    final reason = selectedReason == 'Other Reason' && customReasonCtrl.text.trim().isNotEmpty
+        ? customReasonCtrl.text.trim()
+        : selectedReason;
+
+    try {
+      final sessionService = ref.read(sessionServiceProvider);
+      await sessionService.cancelRecharge(transactionId: txId, reason: reason);
+      await ref.read(sessionDetailsNotifierProvider.notifier).loadSessionById(session.id);
+      ref.read(sessionListNotifierProvider.notifier).loadSessions();
+      ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Recharge of ₹${amount.toStringAsFixed(2)} cancelled successfully.'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to cancel recharge: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
   /// Builds a timeline card for a Purchase, Recharge, or Refund transaction.
-  Widget _buildTransactionCard(Transaction txn) {
+  Widget _buildTransactionCard(Transaction txn, CardSession session) {
     final isPurchase = txn.type == TransactionType.purchase;
     final isRecharge = txn.type == TransactionType.recharge;
 
@@ -536,15 +656,41 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
           if (!isPurchase)
             Padding(
               padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.sm),
-              child: Text(
-                isRecharge
-                    ? 'Payment: ${txn.paymentMethod == PaymentMethod.upi ? "UPI" : "Cash"}'
-                    : 'Refund via: Cash Return',
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textSecondaryLight,
-                  fontWeight: FontWeight.w500,
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    isRecharge
+                        ? 'Payment: ${txn.paymentMethod == PaymentMethod.upi ? "UPI" : "Cash"}'
+                        : 'Refund via: Cash Return',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondaryLight,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  if (isRecharge && !txn.isCancelled && session.isActive)
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.error,
+                        side: const BorderSide(color: AppColors.error, width: 1),
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                      ),
+                      icon: const Icon(Icons.cancel_outlined, size: 14),
+                      label: const Text('Cancel Recharge', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                      onPressed: () => _handleCancelRecharge(txn.id, txn.amount, session),
+                    )
+                  else if (txn.isCancelled)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text('CANCELLED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                    ),
+                ],
               ),
             ),
         ],

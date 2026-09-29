@@ -84,7 +84,7 @@ class AppConfig {
   static const String defaultEmulatorBaseUrl = 'http://10.0.2.2:3000/api/v1';
 
   /// Current active Laptop Wi-Fi LAN endpoint
-  static const String defaultLanBaseUrl = 'http://192.168.105.39:3000/api/v1';
+  static const String defaultLanBaseUrl = 'http://192.168.105.22:3000/api/v1';
 
   /// Optional host passed via --dart-define=API_HOST=192.168.x.x[:port]
   static const String _envApiHost = String.fromEnvironment('API_HOST', defaultValue: '');
@@ -112,6 +112,10 @@ class AppConfig {
       return normalizeUrl(productionBaseUrl);
     }
     if (isDevelopment) {
+      if (kIsWeb) {
+        final host = Uri.base.host.isNotEmpty ? Uri.base.host : '127.0.0.1';
+        return normalizeUrl('http://$host:3000/api/v1');
+      }
       return normalizeUrl(defaultBaseUrl);
     }
     // Default for staging: stagingBaseUrl

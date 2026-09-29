@@ -674,7 +674,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
             PermissionGuard.single(
               permission: AppPermission.recharge,
               child: AppButton(
-                label: 'Recharge Wallet (Cash / UPI)',
+                label: 'Recharge',
                 icon: Icons.add_card,
                 onPressed: () => context.push(
                   '/app/recharge/${activeSession.id}?card=${card.physicalCardNumber}',

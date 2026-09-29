@@ -80,8 +80,9 @@ class DioClient {
           return handler.next(options);
         },
         onError: (DioException err, ErrorInterceptorHandler handler) async {
-          // Only attempt mDNS dynamic discovery in development mode
-          if (AppConfig.isDevelopment &&
+          // Only attempt mDNS dynamic discovery in development mode on native platforms (not web)
+          if (!kIsWeb &&
+              AppConfig.isDevelopment &&
               (err.type == DioExceptionType.connectionError ||
                   err.type == DioExceptionType.connectionTimeout)) {
             final currentUrl = err.requestOptions.baseUrl;

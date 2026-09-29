@@ -10,6 +10,7 @@ import dns from 'node:dns';
 import { env } from './config/env.js';
 import apiRouter from './routes/index.js';
 import { notFoundHandler, globalErrorHandler } from './middlewares/error.middleware.js';
+import { startMdnsAdvertisement, stopMdnsAdvertisement } from './services/mdns.service.js';
 
 // Force IPv4 first in cloud container environments (Render/Docker)
 dns.setDefaultResultOrder('ipv4first');
@@ -35,6 +36,8 @@ app.use(
       'Idempotency-Key',
       'Cache-Control',
       'Pragma',
+      'Accept',
+      'Origin',
     ],
   }),
 );
@@ -182,13 +185,15 @@ const HOST = process.env.HOST || '0.0.0.0';
 const PORT = Number(env.PORT) || 3000;
 
 const server = app.listen(PORT, HOST, () => {
-  console.log(`🚀 Money Card Backend Server running on http://${HOST}:${PORT}`);
-  console.log(`💻 Local Loopback: http://localhost:${PORT}/api/v1`);
-  console.log(`📱 Network LAN: http://0.0.0.0:${PORT}/api/v1 (Accessible from physical Android phone on Wi-Fi)`);
-  console.log(`🏥 Healthcheck: http://localhost:${PORT}/api/v1/health`);
+  console.log(`Money Card Backend Server running on http://${HOST}:${PORT}`);
+  console.log(`Local Loopback: http://localhost:${PORT}/api/v1`);
+  console.log(`Network LAN: http://0.0.0.0:${PORT}/api/v1 (Accessible from physical Android phone on Wi-Fi)`);
+  console.log(`Healthcheck: http://localhost:${PORT}/api/v1/health`);
+  startMdnsAdvertisement(PORT);
 });
 
 const handleShutdown = async () => {
+  await stopMdnsAdvertisement().catch(() => {});
   server.close(() => {
     process.exit(0);
   });
