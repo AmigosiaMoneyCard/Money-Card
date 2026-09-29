@@ -17,7 +17,6 @@ import {
   ArrowRight,
   Download,
   Wallet,
-  ChefHat,
   ShoppingBag,
   UtensilsCrossed,
   Ban,
@@ -883,7 +882,6 @@ export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSection
   const [isTableOpen, setIsTableOpen] = useState(true);
 
   const itemsSold = analytics.productsSoldCount ?? 0;
-  const dishesOrdered = analytics.dishesOrderedCount ?? (analytics.allProductDemand?.length ?? 0);
   const cancelledOrders = analytics.cancelledOrdersCount ?? 0;
 
   const rawDemandList = useMemo(() => {
@@ -907,12 +905,12 @@ export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSection
 
   return (
     <div className="space-y-6">
-      {/* 3 Summary KPI Cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      {/* 2 Summary KPI Cards */}
+      <div className="grid gap-4 sm:grid-cols-2">
         <Card padding="md" className="border-slate-200 bg-white shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Items Sold
+              Food Quantity
             </span>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
               <ShoppingBag className="h-4 w-4" />
@@ -920,23 +918,7 @@ export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSection
           </div>
           <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-slate-900">
-              {itemsSold} Units
-            </p>
-          </div>
-        </Card>
-
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Dishes Ordered
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
-              <ChefHat className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-slate-900">
-              {dishesOrdered} Ordered
+              {itemsSold} Items
             </p>
           </div>
         </Card>
@@ -952,7 +934,7 @@ export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSection
           </div>
           <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-slate-900">
-              {cancelledOrders} Cancels
+              {cancelledOrders} Orders
             </p>
           </div>
         </Card>

@@ -267,7 +267,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Food Sales'), findsOneWidget);
-      expect(find.text('Items Sold'), findsOneWidget);
+      expect(find.text('Food Quantity'), findsOneWidget);
 
       // Tap Recharge Tab
       await tester.tap(find.text('Recharge'));

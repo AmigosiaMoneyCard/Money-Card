@@ -675,9 +675,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             const SizedBox(width: 10),
             Expanded(
               child: _buildMenuSummaryCard(
-                title: 'Items Sold',
-                value: '${data.productsSoldCount}',
-                subtitle: 'Total dishes/items',
+                title: 'Food Quantity',
+                value: '${data.productsSoldCount} Items',
+                subtitle: 'Total food items sold',
                 icon: Icons.fastfood_outlined,
                 color: AppColors.success,
               ),
@@ -685,28 +685,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           ],
         ),
         const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: _buildMenuSummaryCard(
-                title: 'Dishes Ordered',
-                value: '${demands.length} Dishes',
-                subtitle: '${data.productsSoldCount} units sold',
-                icon: Icons.restaurant_outlined,
-                color: Colors.indigo,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _buildMenuSummaryCard(
-                title: 'Cancelled Orders',
-                value: '${data.cancelledOrdersCount}',
-                subtitle: '₹${data.cancelledOrdersVolume.toStringAsFixed(2)} voided',
-                icon: Icons.remove_shopping_cart_outlined,
-                color: AppColors.error,
-              ),
-            ),
-          ],
+        _buildMenuSummaryCard(
+          title: 'Cancelled Orders',
+          value: '${data.cancelledOrdersCount} Orders',
+          subtitle: '₹${data.cancelledOrdersVolume.toStringAsFixed(2)} voided',
+          icon: Icons.remove_shopping_cart_outlined,
+          color: AppColors.error,
         ),
         const SizedBox(height: 20),
 
