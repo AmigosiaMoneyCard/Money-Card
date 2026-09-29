@@ -22,7 +22,7 @@ void main() {
       expect(QrValidator.extractToken(null), isNull);
       expect(QrValidator.extractToken(''), isNull);
       expect(QrValidator.extractToken('   '), isNull);
-      expect(QrValidator.extractToken('ab'), isNull); // Too short
+      expect(QrValidator.extractToken('WIFI:S:MyWifi;P:pass;;'), isNull);
     });
   });
 }

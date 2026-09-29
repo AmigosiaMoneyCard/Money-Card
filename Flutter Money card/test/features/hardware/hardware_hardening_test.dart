@@ -222,8 +222,8 @@ void main() {
       expect(find.text('SESSION-MOCK-001'), findsNothing);
       expect(find.text('Thank You!'), findsOneWidget);
 
-      // VERIFY: Done button only, PDF actions removed
-      expect(find.text('Done'), findsOneWidget);
+      // VERIFY: Top-right check button in AppBar triggers done
+      expect(find.byIcon(Icons.check), findsOneWidget);
       expect(find.text('Generate & View PDF'), findsNothing);
       expect(find.text('Download PDF'), findsNothing);
       expect(find.text('View Bill'), findsNothing);
@@ -232,9 +232,8 @@ void main() {
       expect(find.text('Share PDF'), findsNothing);
       expect(find.text('Print'), findsNothing);
 
-      // Tap Done -> triggers callback
-      await tester.ensureVisible(find.text('Done'));
-      await tester.tap(find.text('Done'));
+      // Tap Check icon -> triggers callback
+      await tester.tap(find.byIcon(Icons.check));
       await tester.pumpAndSettle();
       expect(doneCalled, isTrue);
     });

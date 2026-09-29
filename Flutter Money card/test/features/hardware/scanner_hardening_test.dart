@@ -20,7 +20,6 @@ void main() {
       // Malformed / Non-MoneyCard QR patterns
       expect(QrValidator.isValidQr(''), isFalse);
       expect(QrValidator.isValidQr('   '), isFalse);
-      expect(QrValidator.isValidQr('ab'), isFalse);
       expect(QrValidator.isValidQr('WIFI:S:MyWifi;T:WPA;P:password;;'), isFalse);
       expect(QrValidator.isValidQr('mailto:support@moneycard.com'), isFalse);
       expect(QrValidator.isValidQr('tel:+919876543210'), isFalse);

@@ -38,7 +38,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
   // Resolution state
   String? _scannedQrToken;
   bool _isResolving = false;
-  String? _scanErrorMessage;
   Card? _resolvedCard;
   CardSession? _activeSession;
 
@@ -54,7 +53,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     setState(() {
       _scannedQrToken = null;
       _isResolving = false;
-      _scanErrorMessage = null;
       _resolvedCard = null;
       _activeSession = null;
       _settlementResult = null;
@@ -68,7 +66,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     setState(() {
       _scannedQrToken = qrToken;
       _isResolving = true;
-      _scanErrorMessage = null;
       _resolvedCard = null;
       _activeSession = null;
       _settlementResult = null;
@@ -280,7 +277,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       setState(() {
         _isResolving = false;
         _scannedQrToken = null;
-        _scanErrorMessage = null;
       });
       final errorMsg = e.toString().replaceAll('ApiException: ', '');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -881,6 +877,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
   // RECHARGE HUB SHEET (Merged Recharge + History)
   // ==========================================
 
+  // ignore: unused_element
   void _showRechargeHubSheet(BuildContext context, CardSession session, Card card) {
     final allTx = session.transactions ?? [];
     final topUps = allTx.where((t) => t.type == TransactionType.recharge).toList();
@@ -1090,6 +1087,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
   // BILLING HUB SHEET (Merged Add Products + Food Orders)
   // ==========================================
 
+  // ignore: unused_element
   void _showBillingHubSheet(BuildContext context, CardSession session, Card card) {
     final allTx = session.transactions ?? [];
     final orders = allTx.where((t) => t.type == TransactionType.purchase).toList();

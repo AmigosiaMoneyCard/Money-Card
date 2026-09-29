@@ -1016,7 +1016,7 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
               const Text('Cancellation Reason:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
               const SizedBox(height: 6),
               DropdownButtonFormField<String>(
-                value: selectedReason,
+                initialValue: selectedReason,
                 isExpanded: true,
                 items: reasons.map((r) => DropdownMenuItem(value: r, child: Text(r, style: const TextStyle(fontSize: 13)))).toList(),
                 onChanged: (val) {

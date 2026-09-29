@@ -272,9 +272,9 @@ class _RechargeScreenState extends ConsumerState<RechargeScreen> {
                                         isCash ? 'CASH' : 'UPI',
                                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondaryLight),
                                       ),
-                                      if (t.paymentReference != null && t.paymentReference!.isNotEmpty) ...[
+                                      if (t.externalReference != null && t.externalReference!.isNotEmpty) ...[
                                         const SizedBox(width: 6),
-                                        Text('(${t.paymentReference})', style: const TextStyle(fontSize: 11, color: AppColors.textTertiaryLight)),
+                                        Text('(${t.externalReference})', style: const TextStyle(fontSize: 11, color: AppColors.textTertiaryLight)),
                                       ],
                                     ],
                                   ),

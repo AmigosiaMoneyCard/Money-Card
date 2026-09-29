@@ -133,16 +133,8 @@ void main() {
       expect(find.text('Expected New Balance:'), findsOneWidget);
       expect(find.text('₹300.00'), findsOneWidget);
 
-      // Tap Confirm Recharge button
-      await tester.tap(find.text('Confirm Recharge'));
-      await tester.pumpAndSettle();
-
-      // Confirmation dialog shows
-      expect(find.text('Confirm Recharge'), findsNWidgets(2)); // Screen title + Dialog
-      expect(find.text('+₹100.00'), findsOneWidget);
-
-      // Tap Confirm in dialog
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Confirm'));
+      // Tap Recharge Wallet button
+      await tester.tap(find.text('Recharge Wallet'));
       await tester.pumpAndSettle();
 
       // Success dialog renders
@@ -198,18 +190,10 @@ void main() {
       await tester.tap(find.text('+₹200'));
       await tester.pumpAndSettle();
 
-      // Scroll ListView down to reveal Confirm Recharge button
+      // Scroll ListView down to reveal Recharge Wallet button
       await tester.drag(find.byType(ListView), const Offset(0, -400));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Confirm Recharge'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Confirm Recharge'), findsWidgets);
-      expect(find.text('+₹200.00'), findsOneWidget);
-      expect(find.text('UPI'), findsWidgets);
-
-      // Confirm dialog
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Confirm'));
+      await tester.tap(find.text('Recharge Wallet'));
       await tester.pumpAndSettle();
 
       expect(find.text('Recharge Successful'), findsOneWidget);

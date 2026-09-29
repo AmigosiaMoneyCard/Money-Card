@@ -4,11 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
-import '../../models/card_session.dart';
 import '../../models/receipt_bill.dart';
-import '../../models/transaction.dart';
-import '../../providers/session_operations_provider.dart';
-import '../../widgets/common/app_button.dart';
 
 class BillReceiptScreen extends ConsumerStatefulWidget {
   final ReceiptBill bill;

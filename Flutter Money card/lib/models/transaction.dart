@@ -143,6 +143,8 @@ class Transaction {
     this.customerPhone,
   });
 
+  String? get paymentReference => externalReference;
+
   factory Transaction.fromJson(Map<String, dynamic> json) {
     final itemsRaw = json['items'];
     final bool isCancelled = json['isCancelled'] == true ||
