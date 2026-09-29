@@ -60,6 +60,22 @@ Proposed Changes
 - Mobile POS QR Scanned Action Hub:
   - When card QR is scanned in pos_scan_purchase_screen.dart, Recharge, Billing, and Return & Refund action tiles display only title and icon without subheadings.
 
+5. Localhost Mobile POS App Connection & Staff Credentials
+- Backend Cross-Origin Resource Policy (CORP):
+  - In Backend Money Card/src/server.ts: configured Helmet with crossOriginResourcePolicy: { policy: 'cross-origin' } so Chrome does not block Flutter Web cross-origin requests to localhost:3000.
+- Environment & Base URL Resolution for Web:
+  - In Flutter Money card/lib/core/config/app_config.dart: exposed overrideEnvironment getter; updated environment fallback to return 'development' on Web (kIsWeb) so localhost Chrome launches connect to http://127.0.0.1:3000/api/v1 instead of staging.
+  - In Flutter Money card/lib/main.dart: initialize with env: 'development' when overrideEnvironment is null.
+  - In Flutter Money card/lib/features/auth/login_screen.dart: added non-production Server indicator button allowing staff to view current endpoint and open ServerConfigDialog.
+- Local Database Seeding & Staff Credentials:
+  - Executed npx tsx prisma/seed.ts in Backend Money Card to seed active staff accounts in the local PostgreSQL database.
+  - Default Staff Credentials for Localhost:
+    - Phone: 9876543210 (or Email: staff@localhost.com)
+    - Password: password
+    - Role: STAFF
+    - Assigned Branch: Main Cafeteria (and Executive Lounge)
+    - Status: ACTIVE
+
 UI Layout & ASCII Wireframes
 
 Account Creation Password Field (Staff and Counter Creation):

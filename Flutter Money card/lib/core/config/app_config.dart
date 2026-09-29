@@ -22,6 +22,7 @@ class AppConfig {
   AppConfig._();
 
   static String? _overrideEnvironment;
+  static String? get overrideEnvironment => _overrideEnvironment;
 
   static const String appVersion = '1.0.1';
 
@@ -46,7 +47,10 @@ class AppConfig {
     if (env.isNotEmpty) {
       return env.toLowerCase();
     }
-    // 3. Fallback: default to staging
+    // 3. Fallback: on Web (localhost/Chrome) default to development, else staging
+    if (kIsWeb) {
+      return 'development';
+    }
     return 'staging';
   }
 
