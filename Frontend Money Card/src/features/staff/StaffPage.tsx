@@ -1488,14 +1488,7 @@ export function StaffPage() {
 
                     {/* Status Slide Toggle Switch inside Edit Modal */}
                     <div className="sm:col-span-2 flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50/70">
-                      <div>
-                        <div className="text-xs font-semibold text-slate-800">Account Status</div>
-                        <div className="text-[11px] text-slate-500">
-                          {selectedStaff?.status === 'ACTIVE'
-                            ? 'Account is active and permitted to use the counter terminal.'
-                            : 'Account is deactivated and cannot log in.'}
-                        </div>
-                      </div>
+                      <div className="text-xs font-semibold text-slate-800">Account Status</div>
                       <div className="flex items-center gap-2">
                         <span className={`text-xs font-semibold ${selectedStaff?.status === 'ACTIVE' ? 'text-emerald-700' : 'text-slate-500'}`}>
                           {selectedStaff?.status === 'ACTIVE' ? 'Active' : 'Inactive'}
@@ -1607,9 +1600,6 @@ export function StaffPage() {
                       <span className="font-mono text-sm font-bold text-slate-800">
                         {showCurrentPassword ? (formNewPassword.trim() || currentStaffPassword) : '••••••••'}
                       </span>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        Copying or sharing credentials will use this password.
-                      </p>
                     </div>
                     <button
                       type="button"
