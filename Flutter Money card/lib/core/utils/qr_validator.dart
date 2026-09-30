@@ -33,7 +33,13 @@ class QrValidator {
         if (uri.queryParameters.containsKey('token') && uri.queryParameters['token']!.isNotEmpty) {
           return uri.queryParameters['token']!.trim();
         }
-        final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+        if (uri.queryParameters.containsKey('qr') && uri.queryParameters['qr']!.isNotEmpty) {
+          return uri.queryParameters['qr']!.trim();
+        }
+        final segments = uri.pathSegments
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
         if (segments.isNotEmpty) {
           // If URL path contains /c/{token}
           final cIdx = segments.indexOf('c');

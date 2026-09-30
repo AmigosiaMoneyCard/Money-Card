@@ -278,7 +278,9 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
         _isResolving = false;
         _scannedQrToken = null;
       });
-      final errorMsg = e.toString().replaceAll('ApiException: ', '');
+      final errorMsg = e is ApiException
+          ? e.message
+          : e.toString().replaceAll('ApiException: ', '').replaceAll('Exception: ', '');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
