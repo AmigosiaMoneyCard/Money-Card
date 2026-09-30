@@ -1228,7 +1228,7 @@ export function StaffPage() {
             className="text-xs h-7 px-2.5 rounded-lg border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 transition-all shadow-2xs cursor-pointer"
             leftIcon={<FileSpreadsheet className="h-3 w-3 text-emerald-600" />}
           >
-            Performance & Audit
+            Summary
           </Button>
         </div>
       ),
@@ -2051,7 +2051,7 @@ export function StaffPage() {
                         leftIcon={<FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />}
                         className="text-xs h-7.5 px-2.5 font-medium border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 cursor-pointer"
                       >
-                        Performance & Audit
+                        Summary
                       </Button>
 
                       {/* Active / Inactive Slide Switch */}
