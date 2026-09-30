@@ -19,6 +19,7 @@ class ProductsScreen extends ConsumerStatefulWidget {
 }
 
 class _ProductsScreenState extends ConsumerState<ProductsScreen> {
+  static const _menuCategories = ['All', 'Veg', 'Non-Veg', 'Drinks'];
   final _searchController = TextEditingController();
 
   @override
@@ -88,35 +89,34 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
               ),
             ),
 
-            // Multi-Select Category Filters
-            if (catalogState.availableCategories.isNotEmpty)
-              Container(
-                height: 48,
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                  itemCount: catalogState.availableCategories.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.xs),
-                  itemBuilder: (context, index) {
-                    final category = catalogState.availableCategories[index];
-                    final isSelected = catalogState.selectedCategory == category;
+            // Category Filters: All, Veg, Non-Veg, Drinks
+            Container(
+              height: 48,
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                itemCount: _menuCategories.length,
+                separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.xs),
+                itemBuilder: (context, index) {
+                  final category = _menuCategories[index];
+                  final isSelected = catalogState.selectedCategory == category;
 
-                    return FilterChip(
-                      label: Text(category),
-                      selected: isSelected,
-                      onSelected: (_) => notifier.setCategoryFilter(category),
-                      backgroundColor: AppColors.surfaceLight,
-                      selectedColor: AppColors.primaryLight,
-                      labelStyle: TextStyle(
-                        fontSize: 12,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                        color: isSelected ? AppColors.primaryDark : AppColors.textPrimaryLight,
-                      ),
-                    );
-                  },
-                ),
+                  return FilterChip(
+                    label: Text(category),
+                    selected: isSelected,
+                    onSelected: (_) => notifier.setCategoryFilter(category),
+                    backgroundColor: AppColors.surfaceLight,
+                    selectedColor: AppColors.primaryLight,
+                    labelStyle: TextStyle(
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      color: isSelected ? AppColors.primaryDark : AppColors.textPrimaryLight,
+                    ),
+                  );
+                },
               ),
+            ),
 
             const Divider(height: 1),
 
@@ -400,7 +400,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                     const SizedBox(height: AppSpacing.xs),
                     Wrap(
                       spacing: 8,
-                      children: ['Veg', 'Non-Veg', 'Beverages', 'Snacks', 'Meals'].map((cat) {
+                      children: const ['Veg', 'Non-Veg', 'Drinks'].map((cat) {
                         final isSel = selectedCategory == cat;
                         return ChoiceChip(
                           label: Text(cat),
@@ -495,7 +495,17 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   void _showEditProductBottomSheet(BuildContext context, WidgetRef ref, dynamic product) {
     final nameController = TextEditingController(text: product.itemName);
     final priceController = TextEditingController(text: product.price.toStringAsFixed(2));
-    String selectedCategory = product.category.isNotEmpty ? product.category.first : 'Veg';
+    String selectedCategory = 'Veg';
+    if (product.category.isNotEmpty) {
+      final firstCat = product.category.first.toString().toLowerCase();
+      if (firstCat.contains('drink') || firstCat.contains('beverag') || firstCat.contains('juice') || firstCat.contains('coffee') || firstCat.contains('tea') || firstCat.contains('chai')) {
+        selectedCategory = 'Drinks';
+      } else if (firstCat.contains('non')) {
+        selectedCategory = 'Non-Veg';
+      } else {
+        selectedCategory = 'Veg';
+      }
+    }
     String selectedStatus = product.status.toUpperCase();
     bool isSaving = false;
 
@@ -591,7 +601,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                     const SizedBox(height: AppSpacing.xs),
                     Wrap(
                       spacing: 8,
-                      children: ['Veg', 'Non-Veg', 'Beverages', 'Snacks', 'Meals'].map((cat) {
+                      children: const ['Veg', 'Non-Veg', 'Drinks'].map((cat) {
                         final isSel = selectedCategory == cat;
                         return ChoiceChip(
                           label: Text(cat),

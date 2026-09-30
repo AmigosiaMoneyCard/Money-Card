@@ -1,63 +1,75 @@
-# Implementation Plan - Parallel Cash and UPI Metrics in Mobile Analytics
+# Implementation Plan - Restrict Menu Page Filters to Veg, Non-Veg, and Drinks
 
-![Mobile Analytics Hub](C:\Users\damie\.gemini\antigravity-ide\brain\999581c9-5c30-4195-933d-3667425ed95a\analytics_and_mobile_action_hub_1790656747216.jpg)
-![Cards Page Billing Action](C:\Users\damie\.gemini\antigravity-ide\brain\999581c9-5c30-4195-933d-3667425ed95a\cards_page_billing_rename_action_1790743908377.jpg)
+![Menu Analytics and Product Filters](C:\Users\damie\.gemini\antigravity-ide\brain\999581c9-5c30-4195-933d-3667425ed95a\menu_analytics_food_quantity_cards_1790655580696.jpg)
+![Mobile Action Hub](C:\Users\damie\.gemini\antigravity-ide\brain\999581c9-5c30-4195-933d-3667425ed95a\analytics_and_mobile_action_hub_1790656747216.jpg)
 
 Proposed Worktree Specifications
 
-1. Format Sub-Metrics Parallel to Each Other on a Single Row
-- File: Flutter Money card/lib/features/analytics/analytics_screen.dart
-  - In _buildCompactMetricCard:
-    - Replace the vertical column stacking of line1Text and line2Text with a single horizontal Row(mainAxisAlignment: MainAxisAlignment.spaceBetween).
-    - Left element: line1Text (for example: Cash: Rs. 18k or Active: 32) aligned to left.
-    - Right element: line2Text (for example: UPI: Rs. 6.8k or Settled: 16) aligned to right with TextAlign.end.
-    - Reduces card height from stacked 4-line layout to a sleek 3-line layout (Header, Total, Parallel Subtext).
-  - Helper _formatCompactSubAmount:
-    - Cleanly formats sub-amounts (without trailing .00 for whole numbers, using k/L for large sums) to ensure Cash and UPI fit comfortably side-by-side on any mobile screen width without text wrapping.
-  - Box Content Alignment:
-    1. Recharge Amount: Cash: Rs. X parallel to UPI: Rs. Y.
-    2. Refund Amount: Cash: Rs. X parallel to UPI: Rs. 0.
-    3. Canceled Recharge Amount: Cash: Rs. X parallel to UPI: Rs. 0.
-    4. Total Sales: Cash: Rs. X parallel to UPI: Rs. Y.
-    5. Wallet Activation: Active: N parallel to Settled: N.
-    6. Recharge Count: Cash: N parallel to UPI: N.
-    7. Refund Count: Cards: N parallel to Ret: Rs. X.
-    8. Canceled Recharges: Void: N parallel to Ded: Rs. X.
+1. Restrict Menu Page Filter Bar to Veg, Non-Veg, and Drinks
+- File: Flutter Money card/lib/features/products/products_screen.dart
+  - In ProductsScreen filter toolbar:
+    - Replace dynamic unconstrained categories with the strict 4-category list: ['All', 'Veg', 'Non-Veg', 'Drinks'].
+    - Removes all other categories (such as Snacks, Meals, Breakfast, etc.) from the horizontal filter bar.
+  - In _showAddProductBottomSheet:
+    - Update category ChoiceChips from ['Veg', 'Non-Veg', 'Beverages', 'Snacks', 'Meals'] to ['Veg', 'Non-Veg', 'Drinks'].
+  - In _showEditProductBottomSheet:
+    - Update category ChoiceChips from ['Veg', 'Non-Veg', 'Beverages', 'Snacks', 'Meals'] to ['Veg', 'Non-Veg', 'Drinks'].
+
+2. Multi-Category Filtering Logic in POS Catalog
+- File: Flutter Money card/lib/providers/pos_cart_provider.dart
+  - In filteredProducts getter:
+    - When selectedCategory == 'Drinks': match products categorized with 'drinks', 'beverages', 'beverage', 'juice', 'coffee', 'chai', or 'tea'.
+    - When selectedCategory == 'Veg': match products categorized with 'veg' or 'vegan' (excluding 'non').
+    - When selectedCategory == 'Non-Veg': match products categorized with 'non-veg', 'non veg', or 'nonveg'.
+    - When selectedCategory == 'All': show all catalog items.
+    - Fallback: retains direct lowercase equality for backward compatibility with existing tests.
 
 UI Layout & ASCII Wireframe
 
-Recharge Tab (Parallel Cash and UPI in Each Box):
+Menu Page (Restricted Category Filters):
 +-------------------------------------------------------+
-|  [<-]  Analytics  •  Main Cafeteria                   |
-|  [  RECHARGE  ]                 [     MENU     ]      |
+|  [<-]  Products & Menu                                |
 +-------------------------------------------------------+
-| [2026-09-30] to [2026-09-30]                          |
-| [Apply]  [Reset to Today]                 [View PDF]  |
+| [ Search products by name...                        ] |
 +-------------------------------------------------------+
-| +------------------------+ +------------------------+ |
-| | RECHARGE AMOUNT        | | REFUND AMOUNT          | |
-| | Rs. 24,800.00          | | Rs. 320.00             | |
-| | Cash: Rs.18k  UPI:Rs.6k8 | Cash: Rs.320   UPI:Rs.0 | |
-| +------------------------+ +------------------------+ |
-| +------------------------+ +------------------------+ |
-| | CANCELED RECHARGE      | | TOTAL SALES            | |
-| | Rs. 500.00             | | Rs. 43,250.00          | |
-| | Cash: Rs.500  UPI:Rs.0 | | Cash: Rs.30k  UPI:Rs.13k | |
-| +------------------------+ +------------------------+ |
-| +------------------------+ +------------------------+ |
-| | WALLET ACTIVATION      | | RECHARGE COUNT         | |
-| | 48 Cards               | | 64 Recharges           | |
-| | Active: 32  Settled: 16| | Cash: 42       UPI: 22 | |
-| +------------------------+ +------------------------+ |
-| +------------------------+ +------------------------+ |
-| | REFUND COUNT           | | CANCELED RECHARGES     | |
-| | 4 Refunds              | | 2 Recharges            | |
-| | Cards: 4      Ret:Rs.320 | Void: 2      Ded:Rs.500 | |
-| +------------------------+ +------------------------+ |
+|  (•) All    ( ) Veg    ( ) Non-Veg    ( ) Drinks      |
+|  (All other categories removed)                       |
++-------------------------------------------------------+
+|                                                       |
+| +---------------------------------------------------+ |
+| | [Food Icon]  Veg Biryani                 [ACTIVE] | |
+| |              Rs. 120.00                   [ Edit] | |
+| |              [Veg]                                | |
+| +---------------------------------------------------+ |
+| +---------------------------------------------------+ |
+| | [Food Icon]  Chicken Fried Rice          [ACTIVE] | |
+| |              Rs. 160.00                   [ Edit] | |
+| |              [Non-Veg]                            | |
+| +---------------------------------------------------+ |
+| +---------------------------------------------------+ |
+| | [Food Icon]  Fresh Lime Soda             [ACTIVE] | |
+| |              Rs. 40.00                    [ Edit] | |
+| |              [Drinks]                             | |
+| +---------------------------------------------------+ |
+|                                                       |
+|                             [ + Add Menu Item ] (FAB) |
++-------------------------------------------------------+
+
+Add / Edit Menu Item Modal:
++-------------------------------------------------------+
+|  Add Menu Item                   Counter: Cafeteria   |
+|                                                       |
+|  Item Name: [ Enter item name                       ] |
+|  Price (Rs.): [ 50.00                               ] |
+|                                                       |
+|  Category:                                            |
+|  [ Veg ]    [ Non-Veg ]    [ Drinks ]                 |
+|                                                       |
+|  [                       Save                       ] |
 +-------------------------------------------------------+
 
 Verification & Automated Test Execution Plan
-1. Flutter Unit & Widget Tests: Proactively run flutter test across analytics tests and entire mobile suite.
+1. Flutter Unit & Widget Tests: Run flutter test autonomously across product and catalog tests.
 2. Flutter Static Analysis: Run flutter analyze --no-pub to verify 0 warnings.
-3. Full Test Parity: Verify frontend (npm test -- --run) and backend (npm test).
+3. Test Parity: Verify frontend (npm test -- --run) and backend (npm test).
 4. Version Control: Autonomous local commit on branch staging with zero emojis.

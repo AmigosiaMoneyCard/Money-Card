@@ -33,6 +33,33 @@ class PosCatalogState {
     if (selectedCategory != 'All') {
       final filter = selectedCategory.toLowerCase();
       list = list.where((p) {
+        if (filter == 'drinks') {
+          return p.category.any((c) {
+            final lower = c.toLowerCase();
+            return lower == 'drinks' ||
+                lower == 'drink' ||
+                lower == 'beverages' ||
+                lower == 'beverage' ||
+                lower.contains('drink') ||
+                lower.contains('beverage') ||
+                lower.contains('juice') ||
+                lower.contains('coffee') ||
+                lower.contains('tea') ||
+                lower.contains('chai');
+          });
+        }
+        if (filter == 'non-veg' || filter == 'non veg') {
+          return p.category.any((c) {
+            final lower = c.toLowerCase();
+            return lower == 'non-veg' || lower == 'non veg' || lower == 'nonveg';
+          });
+        }
+        if (filter == 'veg') {
+          return p.category.any((c) {
+            final lower = c.toLowerCase();
+            return (lower == 'veg' || lower == 'vegan') && !lower.contains('non');
+          });
+        }
         return p.category.any((c) => c.toLowerCase() == filter);
       }).toList();
     }
