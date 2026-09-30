@@ -1126,9 +1126,6 @@ export function BranchesPage() {
                 <span className="font-mono text-sm font-bold text-slate-800">
                   {showCurrentPassword ? (editPasswordInput.trim() || currentBranchPassword) : '••••••••'}
                 </span>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Copying or sharing credentials will use this password.
-                </p>
               </div>
               <button
                 type="button"
