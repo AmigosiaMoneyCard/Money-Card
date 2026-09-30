@@ -399,199 +399,208 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
       children: [
-        // 1. RECHARGE AMOUNT
-        _buildConsolidatedMetricBox(
-          title: 'Recharge Amount',
-          totalText: '₹${data.rechargeVolume.toStringAsFixed(2)}',
-          cashSubtext: 'Cash: ₹${data.cashMoney.toStringAsFixed(2)}',
-          upiSubtext: 'UPI: ₹${data.upiMoney.toStringAsFixed(2)}',
-          icon: Icons.account_balance_wallet_outlined,
-          accentColor: AppColors.primaryDark,
+        // Row 1: Recharge Amount & Refund Amount
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _buildCompactMetricCard(
+                  title: 'Recharge Amount',
+                  totalText: '₹${data.rechargeVolume.toStringAsFixed(2)}',
+                  line1Text: 'Cash: ₹${data.cashMoney.toStringAsFixed(2)}',
+                  line2Text: 'UPI: ₹${data.upiMoney.toStringAsFixed(2)}',
+                  icon: Icons.account_balance_wallet_outlined,
+                  accentColor: AppColors.primaryDark,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildCompactMetricCard(
+                  title: 'Refund Amount',
+                  totalText: '₹${data.refundVolume.toStringAsFixed(2)}',
+                  line1Text: 'Cash: ₹${data.refundVolume.toStringAsFixed(2)}',
+                  line2Text: 'UPI: ₹0.00',
+                  icon: Icons.assignment_return_outlined,
+                  accentColor: AppColors.error,
+                ),
+              ),
+            ],
+          ),
         ),
+        const SizedBox(height: 10),
 
-        // 2. REFUND AMOUNT
-        _buildConsolidatedMetricBox(
-          title: 'Refund Amount',
-          totalText: '₹${data.refundVolume.toStringAsFixed(2)}',
-          cashSubtext: 'Cash: ₹${data.refundVolume.toStringAsFixed(2)}',
-          upiSubtext: 'UPI: ₹0.00',
-          icon: Icons.assignment_return_outlined,
-          accentColor: AppColors.error,
+        // Row 2: Canceled Recharge Amount & Total Sales
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _buildCompactMetricCard(
+                  title: 'Canceled Recharge Amount',
+                  totalText: '₹${data.cancelledTopUps.toStringAsFixed(2)}',
+                  line1Text: 'Voided: ₹${data.cancelledTopUps.toStringAsFixed(2)}',
+                  line2Text: 'UPI Voided: ₹0.00',
+                  icon: Icons.cancel_outlined,
+                  accentColor: Colors.deepOrange,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildCompactMetricCard(
+                  title: 'Total Sales',
+                  totalText: '₹${data.netMoneyCollected.toStringAsFixed(2)}',
+                  line1Text: 'Net Cash: ₹${data.cashInDrawer.toStringAsFixed(2)}',
+                  line2Text: 'Net UPI: ₹${data.upiMoney.toStringAsFixed(2)}',
+                  icon: Icons.payments_outlined,
+                  accentColor: AppColors.success,
+                ),
+              ),
+            ],
+          ),
         ),
+        const SizedBox(height: 10),
 
-        // 3. CANCELED RECHARGE AMOUNT
-        _buildConsolidatedMetricBox(
-          title: 'Canceled Recharge Amount',
-          totalText: '₹${data.cancelledTopUps.toStringAsFixed(2)}',
-          cashSubtext: 'Cash Voided: ₹${data.cancelledTopUps.toStringAsFixed(2)}',
-          upiSubtext: 'UPI Voided: ₹0.00',
-          icon: Icons.cancel_outlined,
-          accentColor: Colors.deepOrange,
+        // Row 3: Wallet Activation & Recharge Count
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _buildCompactMetricCard(
+                  title: 'Wallet Activation',
+                  totalText: '${data.cardsGivenOut} Cards',
+                  line1Text: 'Active: ${data.activeSessionsCount}',
+                  line2Text: 'Settled: ${data.settledSessionsCount}',
+                  icon: Icons.credit_card,
+                  accentColor: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildCompactMetricCard(
+                  title: 'Recharge Count',
+                  totalText: '${data.rechargeCount} Recharges',
+                  line1Text: 'Cash: ${data.cashCount} txns',
+                  line2Text: 'UPI: ${data.upiCount} txns',
+                  icon: Icons.sync,
+                  accentColor: AppColors.info,
+                ),
+              ),
+            ],
+          ),
         ),
+        const SizedBox(height: 10),
 
-        // 4. TOTAL SALES
-        _buildConsolidatedMetricBox(
-          title: 'Total Sales',
-          totalText: '₹${data.netMoneyCollected.toStringAsFixed(2)}',
-          cashSubtext: 'Net Cash: ₹${data.cashInDrawer.toStringAsFixed(2)}',
-          upiSubtext: 'Net UPI: ₹${data.upiMoney.toStringAsFixed(2)}',
-          icon: Icons.payments_outlined,
-          accentColor: AppColors.success,
+        // Row 4: Refund Count & Canceled Recharges
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _buildCompactMetricCard(
+                  title: 'Refund Count',
+                  totalText: '${data.refundCount} Refunds',
+                  line1Text: 'Processed: ${data.refundCount} cards',
+                  line2Text: 'Returned: ₹${data.refundVolume.toStringAsFixed(0)}',
+                  icon: Icons.keyboard_return,
+                  accentColor: AppColors.warning,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildCompactMetricCard(
+                  title: 'Canceled Recharges',
+                  totalText: '${data.cancelledTopUpsCount} Recharges',
+                  line1Text: 'Voided: ${data.cancelledTopUpsCount} top-ups',
+                  line2Text: 'Deducted: ₹${data.cancelledTopUps.toStringAsFixed(0)}',
+                  icon: Icons.money_off,
+                  accentColor: Colors.brown,
+                ),
+              ),
+            ],
+          ),
         ),
-
-        // 5. WALLET ACTIVATION
-        _buildConsolidatedMetricBox(
-          title: 'Wallet Activation',
-          totalText: '${data.cardsGivenOut} Cards Issued',
-          cashSubtext: 'Active: ${data.activeSessionsCount}',
-          upiSubtext: 'Settled: ${data.settledSessionsCount}',
-          icon: Icons.credit_card,
-          accentColor: AppColors.primary,
-        ),
-
-        // 6. RECHARGE COUNT
-        _buildConsolidatedMetricBox(
-          title: 'Recharge Count',
-          totalText: '${data.rechargeCount} Recharges',
-          cashSubtext: 'Cash: ${data.cashCount} txns',
-          upiSubtext: 'UPI: ${data.upiCount} txns',
-          icon: Icons.sync,
-          accentColor: AppColors.info,
-        ),
-
-        // 7. REFUND COUNT
-        _buildConsolidatedMetricBox(
-          title: 'Refund Count',
-          totalText: '${data.refundCount} Refunds',
-          cashSubtext: 'Processed: ${data.refundCount} cards',
-          upiSubtext: 'Returned: ₹${data.refundVolume.toStringAsFixed(0)}',
-          icon: Icons.keyboard_return,
-          accentColor: AppColors.warning,
-        ),
-
-        // 9. CANCELED RECHARGES
-        _buildConsolidatedMetricBox(
-          title: 'Canceled Recharges',
-          totalText: '${data.cancelledTopUpsCount} Recharges',
-          cashSubtext: 'Voided: ${data.cancelledTopUpsCount} top-ups',
-          upiSubtext: 'Deducted: ₹${data.cancelledTopUps.toStringAsFixed(0)}',
-          icon: Icons.money_off,
-          accentColor: Colors.brown,
-        ),
-
         const SizedBox(height: 16),
       ],
     );
   }
 
-  Widget _buildConsolidatedMetricBox({
+  Widget _buildCompactMetricCard({
     required String title,
     required String totalText,
-    String? cashSubtext,
-    String? upiSubtext,
-    String? extraSubtext,
+    String? line1Text,
+    String? line2Text,
     IconData? icon,
     Color accentColor = AppColors.primary,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppColors.borderLight),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
               if (icon != null) ...[
-                Icon(icon, size: 16, color: accentColor),
-                const SizedBox(width: 6),
+                Icon(icon, size: 14, color: accentColor),
+                const SizedBox(width: 5),
               ],
-              Text(
-                title.toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
-                  color: AppColors.textSecondaryLight,
+              Expanded(
+                child: Text(
+                  title.toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.3,
+                    color: AppColors.textSecondaryLight,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             totalText,
             style: TextStyle(
-              fontSize: 26,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
               color: accentColor,
             ),
+            overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 10),
-          if (cashSubtext != null || upiSubtext != null)
-            Row(
-              children: [
-                if (cashSubtext != null)
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.successLight.withValues(alpha: 0.4),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
-                      ),
-                      child: Text(
-                        cashSubtext,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primaryDark,
-                        ),
-                      ),
-                    ),
-                  ),
-                if (cashSubtext != null && upiSubtext != null)
-                  const SizedBox(width: 8),
-                if (upiSubtext != null)
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.purple.shade50,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: Colors.purple.shade200),
-                      ),
-                      child: Text(
-                        upiSubtext,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.purple.shade800,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          if (extraSubtext != null) ...[
-            if (cashSubtext != null || upiSubtext != null)
-              const SizedBox(height: 6),
-            Text(
-              extraSubtext,
-              style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
-            ),
+          if (line1Text != null || line2Text != null) ...[
+            const SizedBox(height: 6),
+            if (line1Text != null)
+              Text(
+                line1Text,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textSecondaryLight,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            if (line2Text != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                line2Text,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textSecondaryLight,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ],
         ],
       ),
@@ -658,31 +667,34 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
       children: [
         // Summary Cards
-        Row(
-          children: [
-            Expanded(
-              child: _buildMenuSummaryCard(
-                title: 'Food Sales',
-                value: '₹${data.purchaseVolume.toStringAsFixed(2)}',
-                subtitle: '${data.purchaseCount} orders placed',
-                icon: Icons.payments_outlined,
-                color: AppColors.primary,
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _buildMenuSummaryCard(
+                  title: 'Food Sales',
+                  value: '₹${data.purchaseVolume.toStringAsFixed(2)}',
+                  subtitle: '${data.purchaseCount} orders placed',
+                  icon: Icons.payments_outlined,
+                  color: AppColors.primary,
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _buildMenuSummaryCard(
-                title: 'Food Quantity',
-                value: '${data.productsSoldCount} Items',
-                subtitle: 'Total food items sold',
-                icon: Icons.fastfood_outlined,
-                color: AppColors.success,
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildMenuSummaryCard(
+                  title: 'Food Quantity',
+                  value: '${data.productsSoldCount} Items',
+                  subtitle: 'Total items sold',
+                  icon: Icons.fastfood_outlined,
+                  color: AppColors.success,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(height: 10),
         _buildMenuSummaryCard(
@@ -692,7 +704,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           icon: Icons.remove_shopping_cart_outlined,
           color: AppColors.error,
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
 
         // All Ordered Menu Items Dropdown Accordion
         Material(
@@ -811,7 +823,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
@@ -819,22 +831,27 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: 6),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textSecondaryLight,
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.3,
+                    color: AppColors.textSecondaryLight,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             value,
             style: TextStyle(
@@ -842,14 +859,17 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               fontWeight: FontWeight.bold,
               color: color,
             ),
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 2),
           Text(
             subtitle,
             style: const TextStyle(
               fontSize: 11,
-              color: AppColors.textTertiaryLight,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textSecondaryLight,
             ),
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

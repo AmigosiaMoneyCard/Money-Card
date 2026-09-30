@@ -580,7 +580,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
             PermissionGuard.single(
               permission: AppPermission.purchase,
               child: AppOutlinedButton(
-                label: 'New POS Purchase',
+                label: 'Billing',
                 icon: Icons.point_of_sale,
                 onPressed: () => context.push('/app/pos/${activeSession.id}'),
               ),
