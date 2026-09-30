@@ -18,7 +18,6 @@ import '../../widgets/common/app_dialog.dart';
 import '../../widgets/common/section_header.dart';
 import '../../widgets/guards/permission_guard.dart';
 import '../../widgets/states/app_loading_view.dart';
-import '../../core/utils/formatters.dart';
 
 class CardDetailsScreen extends ConsumerStatefulWidget {
   final String cardId;
@@ -60,11 +59,6 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
     super.dispose();
   }
 
-  String _formatDateTime(String? raw) {
-    if (raw == null || raw.isEmpty) return '—';
-    final formatted = AppFormatters.formatIsoDate(raw);
-    return formatted == '-' ? '—' : formatted;
-  }
 
   AppBadgeVariant _getCardStatusVariant(CardStatus status) {
     switch (status) {
@@ -284,57 +278,26 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Are you sure you want to block this wallet? It will be disabled for purchases.',
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-              ),
-              const Divider(height: AppSpacing.lg),
-
-              // Default Who is Blocking
               const Text(
-                'Blocked By (Default):',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
-              ),
-              const SizedBox(height: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceLight,
-                  borderRadius: AppSpacing.roundedSm,
-                  border: Border.all(color: AppColors.borderLight),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.person_pin, size: 16, color: AppColors.primary),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        defaultBlockerStr,
-                        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
+                'Are you sure you want to block this wallet? It will be disabled for purchases.',
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
               ),
               const SizedBox(height: AppSpacing.md),
-
-              // Default Reason Selector
               const Text(
-                'Primary Reason:',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
+                'Reason',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimaryLight),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               DropdownButtonFormField<String>(
                 initialValue: selectedReason,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   isDense: true,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                  border: OutlineInputBorder(),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 items: const [
                   DropdownMenuItem(value: 'Lost or Stolen Wallet', child: Text('Lost or Stolen Wallet', style: TextStyle(fontSize: 13))),
-                  DropdownMenuItem(value: 'Damaged / Hardware Failure', child: Text('Damaged / Hardware Failure', style: TextStyle(fontSize: 13))),
+                  DropdownMenuItem(value: 'Damaged / Hardware Failure', child: Text('Damaged Card', style: TextStyle(fontSize: 13))),
                   DropdownMenuItem(value: 'Suspicious Activity / Fraud', child: Text('Suspicious Activity / Fraud', style: TextStyle(fontSize: 13))),
                   DropdownMenuItem(value: 'Customer Request', child: Text('Customer Request', style: TextStyle(fontSize: 13))),
                   DropdownMenuItem(value: 'Staff Discretion', child: Text('Staff Discretion', style: TextStyle(fontSize: 13))),
@@ -348,24 +311,19 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                   }
                 },
               ),
-              const SizedBox(height: AppSpacing.md),
-
-              // Additional Reason Option
-              const Text(
-                'Additional Reason / Notes (Optional):',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
-              ),
-              const SizedBox(height: 4),
-              TextField(
-                controller: additionalReasonCtrl,
-                maxLines: 2,
-                decoration: const InputDecoration(
-                  hintText: 'Type additional notes (e.g. customer left card at Counter 3)...',
-                  hintStyle: TextStyle(fontSize: 12),
-                  isDense: true,
-                  border: OutlineInputBorder(),
+              if (selectedReason == 'Other Reason') ...[
+                const SizedBox(height: AppSpacing.sm),
+                TextField(
+                  controller: additionalReasonCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'Specify reason...',
+                    hintStyle: const TextStyle(fontSize: 12),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
           actions: [
@@ -377,9 +335,11 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.error,
                 foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Block'),
+              child: const Text('Block Wallet'),
             ),
           ],
         ),
@@ -467,22 +427,45 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
       body: ListView(
         padding: AppSpacing.paddingMd,
         children: [
-          // Card Header Summary Card
+          // Unified Minimal Wallet & Session Card
           AppCard(
-            padding: AppSpacing.paddingLg,
+            padding: AppSpacing.paddingMd,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      card.physicalCardNumber,
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.1,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          card.physicalCardNumber,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        if (isActive && activeSession != null && activeSession.cycleNumber != null) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                            ),
+                            child: Text(
+                              'Cycle ${activeSession.cycleNumber}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     AppBadge(
                       label: card.status.value,
@@ -490,89 +473,72 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                     ),
                   ],
                 ),
-                if (isActive) ...[
-                  const SizedBox(height: AppSpacing.xs),
-                  Builder(
-                    builder: (context) {
-                      final branchState = ref.watch(branchNotifierProvider);
-                      final sessionBranchName = activeSession?.branchName ?? card.currentBranchName;
-                      final matchedBranch = branchState.assignedBranches
-                          .where((b) => b.id == (activeSession?.branchId ?? card.currentBranchId))
-                          .firstOrNull;
-                      final resolvedBranchName = sessionBranchName ??
-                          matchedBranch?.name ??
-                          branchState.currentBranch?.name ??
-                          'Main Branch';
-
-                      return Row(
+                if (isActive && activeSession != null) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(
-                            Icons.storefront_outlined,
-                            size: 15,
-                            color: AppColors.textSecondaryLight,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            resolvedBranchName,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
+                          const Text(
+                            'Current Balance',
+                            style: TextStyle(
+                              fontSize: 12,
                               color: AppColors.textSecondaryLight,
                             ),
                           ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '₹${activeSession.balance.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                          ),
                         ],
-                      );
-                    },
+                      ),
+                      if (activeSession.customerName != null && activeSession.customerName!.isNotEmpty)
+                        Text(
+                          'Customer: ${activeSession.customerName}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textSecondaryLight,
+                          ),
+                        ),
+                    ],
                   ),
                 ],
                 if (isBlocked) ...[
                   const SizedBox(height: AppSpacing.sm),
                   Container(
                     width: double.infinity,
-                    padding: AppSpacing.paddingSm,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: AppColors.errorLight,
                       borderRadius: AppSpacing.roundedSm,
                       border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
-                        Row(
-                          children: const [
-                            Icon(Icons.block, size: 16, color: AppColors.error),
-                            SizedBox(width: 6),
-                            Text(
-                              'Wallet is Blocked',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.error,
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (card.blockedReason != null && card.blockedReason!.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            card.blockedReason!,
+                        const Icon(Icons.block, size: 14, color: AppColors.error),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            card.blockedReason != null && card.blockedReason!.isNotEmpty
+                                ? 'Blocked: ${card.blockedReason}'
+                                : 'Wallet is Blocked',
                             style: const TextStyle(
                               fontSize: 12,
-                              color: AppColors.textPrimaryLight,
                               fontWeight: FontWeight.w500,
+                              color: AppColors.error,
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ],
-                        if (card.blockedBy != null && card.blockedBy!.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            'Blocked by: ${card.blockedBy}',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondaryLight,
-                            ),
-                          ),
-                        ],
+                        ),
                       ],
                     ),
                   ),
@@ -580,78 +546,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.lg),
-
-          // Active Session Card (if session is active)
-          if (isActive && activeSession != null) ...[
-            const SectionHeader(title: 'Active Session'),
-            const SizedBox(height: AppSpacing.xs),
-            AppCard(
-              padding: AppSpacing.paddingLg,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Current Balance',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppColors.textSecondaryLight,
-                        ),
-                      ),
-                      const AppBadge(
-                        label: 'SESSION ACTIVE',
-                        variant: AppBadgeVariant.success,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    '₹${activeSession.balance.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  if (activeSession.customerName != null && activeSession.customerName!.isNotEmpty) ...[
-                    const SizedBox(height: AppSpacing.xs),
-                    Row(
-                      children: [
-                        const Icon(Icons.person_outline, size: 16, color: AppColors.primary),
-                        const SizedBox(width: AppSpacing.xs),
-                        Text(
-                          'Customer: ${activeSession.customerName}${activeSession.customerPhone != null && activeSession.customerPhone!.isNotEmpty ? " (${activeSession.customerPhone})" : ""}',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimaryLight,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  const Divider(height: AppSpacing.lg),
-                  Row(
-                    children: [
-                      const Icon(Icons.access_time, size: 16, color: AppColors.textSecondaryLight),
-                      const SizedBox(width: AppSpacing.xs),
-                      Text(
-                        'Started: ${_formatDateTime(activeSession.startedAt)}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondaryLight,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-          ],
+          const SizedBox(height: AppSpacing.md),
 
           // Actions Section
           const SectionHeader(title: 'Wallet Actions'),
@@ -694,7 +589,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
             PermissionGuard.single(
               permission: AppPermission.cardReturn,
               child: AppOutlinedButton(
-                label: 'Return & Settle Wallet',
+                label: 'Return & Refund',
                 icon: Icons.assignment_return_outlined,
                 onPressed: () => context.push(
                   '/app/return/${activeSession.id}?card=${card.physicalCardNumber}',
