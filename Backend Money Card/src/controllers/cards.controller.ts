@@ -793,6 +793,10 @@ export async function resolveCard(req: Request, res: Response) {
     }
   }
 
+  if (!card) {
+    return sendError(res, 404, 'CARD_NOT_FOUND', 'Card could not be found or registered');
+  }
+
   // Ensure card has physicalCardNumber and is marked ASSIGNED
   if (!card.physicalCardNumber || card.assignmentStatus === CardAssignmentStatus.UNASSIGNED) {
     const updated = await prisma.card.update({
