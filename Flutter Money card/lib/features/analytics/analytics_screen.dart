@@ -342,6 +342,21 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   }
 
 
+  static String _formatCompactSubAmount(double amount) {
+    if (amount >= 100000) {
+      final val = amount / 100000;
+      return '${val.toStringAsFixed(val.truncateToDouble() == val ? 0 : 1)}L';
+    }
+    if (amount >= 10000) {
+      final val = amount / 1000;
+      return '${val.toStringAsFixed(val.truncateToDouble() == val ? 0 : 1)}k';
+    }
+    if (amount == amount.roundToDouble()) {
+      return amount.toStringAsFixed(0);
+    }
+    return amount.toStringAsFixed(2);
+  }
+
   Widget _buildOverviewTab(
     BuildContext context,
     AnalyticsState state,
@@ -410,8 +425,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 child: _buildCompactMetricCard(
                   title: 'Recharge Amount',
                   totalText: '₹${data.rechargeVolume.toStringAsFixed(2)}',
-                  line1Text: 'Cash: ₹${data.cashMoney.toStringAsFixed(2)}',
-                  line2Text: 'UPI: ₹${data.upiMoney.toStringAsFixed(2)}',
+                  line1Text: 'Cash: ₹${_formatCompactSubAmount(data.cashMoney)}',
+                  line2Text: 'UPI: ₹${_formatCompactSubAmount(data.upiMoney)}',
                   icon: Icons.account_balance_wallet_outlined,
                   accentColor: AppColors.primaryDark,
                 ),
@@ -421,8 +436,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 child: _buildCompactMetricCard(
                   title: 'Refund Amount',
                   totalText: '₹${data.refundVolume.toStringAsFixed(2)}',
-                  line1Text: 'Cash: ₹${data.refundVolume.toStringAsFixed(2)}',
-                  line2Text: 'UPI: ₹0.00',
+                  line1Text: 'Cash: ₹${_formatCompactSubAmount(data.refundVolume)}',
+                  line2Text: 'UPI: ₹0',
                   icon: Icons.assignment_return_outlined,
                   accentColor: AppColors.error,
                 ),
@@ -441,8 +456,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 child: _buildCompactMetricCard(
                   title: 'Canceled Recharge Amount',
                   totalText: '₹${data.cancelledTopUps.toStringAsFixed(2)}',
-                  line1Text: 'Voided: ₹${data.cancelledTopUps.toStringAsFixed(2)}',
-                  line2Text: 'UPI Voided: ₹0.00',
+                  line1Text: 'Void: ₹${_formatCompactSubAmount(data.cancelledTopUps)}',
+                  line2Text: 'UPI: ₹0',
                   icon: Icons.cancel_outlined,
                   accentColor: Colors.deepOrange,
                 ),
@@ -452,8 +467,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 child: _buildCompactMetricCard(
                   title: 'Total Sales',
                   totalText: '₹${data.netMoneyCollected.toStringAsFixed(2)}',
-                  line1Text: 'Net Cash: ₹${data.cashInDrawer.toStringAsFixed(2)}',
-                  line2Text: 'Net UPI: ₹${data.upiMoney.toStringAsFixed(2)}',
+                  line1Text: 'Cash: ₹${_formatCompactSubAmount(data.cashInDrawer)}',
+                  line2Text: 'UPI: ₹${_formatCompactSubAmount(data.upiMoney)}',
                   icon: Icons.payments_outlined,
                   accentColor: AppColors.success,
                 ),
@@ -483,8 +498,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 child: _buildCompactMetricCard(
                   title: 'Recharge Count',
                   totalText: '${data.rechargeCount} Recharges',
-                  line1Text: 'Cash: ${data.cashCount} txns',
-                  line2Text: 'UPI: ${data.upiCount} txns',
+                  line1Text: 'Cash: ${data.cashCount}',
+                  line2Text: 'UPI: ${data.upiCount}',
                   icon: Icons.sync,
                   accentColor: AppColors.info,
                 ),
@@ -503,8 +518,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 child: _buildCompactMetricCard(
                   title: 'Refund Count',
                   totalText: '${data.refundCount} Refunds',
-                  line1Text: 'Processed: ${data.refundCount} cards',
-                  line2Text: 'Returned: ₹${data.refundVolume.toStringAsFixed(0)}',
+                  line1Text: 'Cards: ${data.refundCount}',
+                  line2Text: 'Ret: ₹${_formatCompactSubAmount(data.refundVolume)}',
                   icon: Icons.keyboard_return,
                   accentColor: AppColors.warning,
                 ),
@@ -514,8 +529,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 child: _buildCompactMetricCard(
                   title: 'Canceled Recharges',
                   totalText: '${data.cancelledTopUpsCount} Recharges',
-                  line1Text: 'Voided: ${data.cancelledTopUpsCount} top-ups',
-                  line2Text: 'Deducted: ₹${data.cancelledTopUps.toStringAsFixed(0)}',
+                  line1Text: 'Void: ${data.cancelledTopUpsCount}',
+                  line2Text: 'Ded: ₹${_formatCompactSubAmount(data.cancelledTopUps)}',
                   icon: Icons.money_off,
                   accentColor: Colors.brown,
                 ),
@@ -579,28 +594,38 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           ),
           if (line1Text != null || line2Text != null) ...[
             const SizedBox(height: 6),
-            if (line1Text != null)
-              Text(
-                line1Text,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textSecondaryLight,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            if (line2Text != null) ...[
-              const SizedBox(height: 2),
-              Text(
-                line2Text,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textSecondaryLight,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (line1Text != null)
+                  Expanded(
+                    child: Text(
+                      line1Text,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textSecondaryLight,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                if (line1Text != null && line2Text != null)
+                  const SizedBox(width: 4),
+                if (line2Text != null)
+                  Expanded(
+                    child: Text(
+                      line2Text,
+                      textAlign: line1Text != null ? TextAlign.end : TextAlign.start,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textSecondaryLight,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+              ],
+            ),
           ],
         ],
       ),
