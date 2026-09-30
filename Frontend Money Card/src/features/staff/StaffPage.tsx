@@ -183,6 +183,7 @@ export function StaffPage() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordChangeError, setPasswordChangeError] = useState<string | null>(null);
   const [passwordChangeSuccess, setPasswordChangeSuccess] = useState<string | null>(null);
+  const [showChangePasswordSection, setShowChangePasswordSection] = useState(false);
 
   // ── Persistent Staff Password Cache ──────────────────────────
   const STAFF_PASSWORDS_KEY = 'mc_staff_passwords';
@@ -574,6 +575,7 @@ export function StaffPage() {
     setShowConfirmPassword(false);
     setPasswordChangeError(null);
     setPasswordChangeSuccess(null);
+    setShowChangePasswordSection(false);
     setShowStaffModal(true);
   };
 
@@ -1450,14 +1452,10 @@ export function StaffPage() {
           <div className="max-h-[64vh] overflow-y-auto pr-1">
             {/* ── TAB 1: OVERVIEW (PROFILE & INTEGRATED SECURITY) ── */}
             {staffTab === 'overview' && (
-              <div className="space-y-4">
-                {/* Account Details & Edit Fields */}
-                <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
-                    Staff Profile Information
-                  </h4>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-4 py-1">
+                {/* Profile Fields: Name & Phone */}
+                <div className="space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
                     <Input
                       id="staff-edit-name"
                       label="Full Name"
@@ -1485,168 +1483,199 @@ export function StaffPage() {
                       error={formErrors.phone}
                       disabled={!canManage || isSubmitting}
                     />
+                  </div>
 
-                    {/* Status Slide Toggle Switch inside Edit Modal */}
-                    <div className="sm:col-span-2 flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50/70">
-                      <div className="text-xs font-semibold text-slate-800">Account Status</div>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs font-semibold ${selectedStaff?.status === 'ACTIVE' ? 'text-emerald-700' : 'text-slate-500'}`}>
-                          {selectedStaff?.status === 'ACTIVE' ? 'Active' : 'Inactive'}
-                        </span>
-                        <button
-                          type="button"
-                          disabled={!canManage || togglingStaffId === selectedStaff?.id}
-                          onClick={() => selectedStaff && handleToggleStaffStatus(selectedStaff)}
-                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                            selectedStaff?.status === 'ACTIVE' ? 'bg-emerald-600' : 'bg-slate-300'
+                  {/* Sleek Minimal Account Status Row */}
+                  <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                    <span className="text-xs font-medium text-slate-700">Account Access Status</span>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-semibold ${selectedStaff?.status === 'ACTIVE' ? 'text-emerald-700' : 'text-slate-500'}`}>
+                        {selectedStaff?.status === 'ACTIVE' ? 'Active' : 'Inactive'}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={!canManage || togglingStaffId === selectedStaff?.id}
+                        onClick={() => selectedStaff && handleToggleStaffStatus(selectedStaff)}
+                        className={`relative inline-flex h-5.5 w-10 items-center rounded-full transition-colors cursor-pointer ${
+                          selectedStaff?.status === 'ACTIVE' ? 'bg-emerald-600' : 'bg-slate-300'
+                        }`}
+                        aria-label="Toggle staff status"
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition shadow-xs ${
+                            selectedStaff?.status === 'ACTIVE' ? 'translate-x-5' : 'translate-x-1'
                           }`}
-                          aria-label="Toggle staff status"
-                        >
-                          <span
-                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition shadow-xs ${
-                              selectedStaff?.status === 'ACTIVE' ? 'translate-x-6' : 'translate-x-1'
-                            }`}
-                          />
-                        </button>
-                      </div>
+                        />
+                      </button>
                     </div>
                   </div>
                 </div>
 
-                {/* Unified Security & Change Password Section */}
-                <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Lock className="h-4 w-4 text-emerald-600" />
-                      <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
-                        Password & Credentials
-                      </h4>
+                {/* Subtle Divider */}
+                <div className="border-t border-slate-200/70 pt-2 space-y-3">
+                  {/* Unified Compact Credentials Card */}
+                  <div className="rounded-xl border border-slate-200/90 bg-white p-3 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
+                        <Lock className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Current Password</div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="font-mono text-sm font-bold text-slate-800 tracking-wider">
+                            {showCurrentPassword ? (formNewPassword.trim() || currentStaffPassword) : '••••••••'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                            className="text-slate-400 hover:text-emerald-700 transition-colors cursor-pointer p-0.5"
+                            title={showCurrentPassword ? 'Hide password' : 'Show password'}
+                            aria-label={showCurrentPassword ? 'Hide password' : 'Show password'}
+                          >
+                            {showCurrentPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    {formNewPassword && (
-                      <span className="text-[11px] text-amber-600 font-medium">Unsaved password changes</span>
-                    )}
-                  </div>
 
-                  {passwordChangeError && (
-                    <div className="flex items-start gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-700">
-                      <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-500" />
-                      <span>{passwordChangeError}</span>
-                    </div>
-                  )}
-
-                  {passwordChangeSuccess && (
-                    <div className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700">
-                      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
-                      <span>{passwordChangeSuccess}</span>
-                    </div>
-                  )}
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <Input
-                      id="staff-new-password"
-                      type={showNewPassword ? 'text' : 'password'}
-                      label="New Password"
-                      placeholder="Enter new password"
-                      value={formNewPassword}
-                      onChange={(e) => {
-                        setFormNewPassword(e.target.value);
-                        if (passwordChangeError) setPasswordChangeError(null);
-                      }}
-                      disabled={!canManage || isChangingPassword}
-                      autoComplete="new-password"
-                      rightElement={
-                        <button
-                          type="button"
-                          onClick={() => setShowNewPassword(!showNewPassword)}
-                          className="text-slate-400 hover:text-slate-600 focus:outline-none p-1 flex items-center justify-center cursor-pointer"
-                          tabIndex={-1}
-                        >
-                          {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      }
-                    />
-
-                    <Input
-                      id="staff-confirm-password"
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      label="Confirm New Password"
-                      placeholder="Re-enter new password"
-                      value={formConfirmPassword}
-                      onChange={(e) => {
-                        setFormConfirmPassword(e.target.value);
-                        if (passwordChangeError) setPasswordChangeError(null);
-                      }}
-                      disabled={!canManage || isChangingPassword}
-                      autoComplete="new-password"
-                      rightElement={
-                        <button
-                          type="button"
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          className="text-slate-400 hover:text-slate-600 focus:outline-none p-1 flex items-center justify-center cursor-pointer"
-                          tabIndex={-1}
-                        >
-                          {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      }
-                    />
-                  </div>
-
-                  {/* Current Password Display Card */}
-                  <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3 flex items-center justify-between">
-                    <div>
-                      <span className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider block">
-                        Current Password
-                      </span>
-                      <span className="font-mono text-sm font-bold text-slate-800">
-                        {showCurrentPassword ? (formNewPassword.trim() || currentStaffPassword) : '••••••••'}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                      className="p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-100 transition-colors cursor-pointer flex items-center gap-1 text-xs font-semibold"
-                      aria-label={showCurrentPassword ? 'Hide current password' : 'Show current password'}
-                    >
-                      {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      <span>{showCurrentPassword ? 'Hide' : 'Reveal'}</span>
-                    </button>
-                  </div>
-
-                  {/* Action & Credentials Buttons */}
-                  <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
-                    {canManage && (
-                      <Button
+                    {/* Compact Utility Actions */}
+                    <div className="flex items-center gap-2 self-end sm:self-center">
+                      <button
                         type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleChangeStaffPassword}
-                        disabled={isChangingPassword || !formNewPassword || !formConfirmPassword}
-                        isLoading={isChangingPassword}
-                        leftIcon={<Key className="h-3.5 w-3.5" />}
-                        className="text-xs h-8"
+                        onClick={handleCopyCredentialsFromEdit}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300 text-xs font-medium transition shadow-2xs cursor-pointer"
+                        title="Copy Credentials"
                       >
-                        Update Password
-                      </Button>
+                        <Copy className="h-3.5 w-3.5 text-slate-500" />
+                        <span>Copy</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSendWhatsAppFromEdit}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] text-white text-xs font-medium transition shadow-2xs cursor-pointer"
+                        title="Send via WhatsApp"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        <span>WhatsApp</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Clean Expandable Change Password Section */}
+                  <div>
+                    {!showChangePasswordSection && !formNewPassword ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowChangePasswordSection(true)}
+                        className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 cursor-pointer transition-colors p-1"
+                      >
+                        <Key className="h-3.5 w-3.5" />
+                        <span>Change Password</span>
+                      </button>
+                    ) : (
+                      <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3.5 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                            <Key className="h-3.5 w-3.5 text-emerald-600" />
+                            <span>Set New Password</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowChangePasswordSection(false);
+                              setFormNewPassword('');
+                              setFormConfirmPassword('');
+                              setPasswordChangeError(null);
+                              setPasswordChangeSuccess(null);
+                            }}
+                            className="text-[11px] text-slate-400 hover:text-slate-600 cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+
+                        {passwordChangeError && (
+                          <div className="flex items-start gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-700">
+                            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-500" />
+                            <span>{passwordChangeError}</span>
+                          </div>
+                        )}
+
+                        {passwordChangeSuccess && (
+                          <div className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700">
+                            <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                            <span>{passwordChangeSuccess}</span>
+                          </div>
+                        )}
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <Input
+                            id="staff-new-password"
+                            type={showNewPassword ? 'text' : 'password'}
+                            label="New Password"
+                            placeholder="Enter new password"
+                            value={formNewPassword}
+                            onChange={(e) => {
+                              setFormNewPassword(e.target.value);
+                              if (passwordChangeError) setPasswordChangeError(null);
+                            }}
+                            disabled={!canManage || isChangingPassword}
+                            autoComplete="new-password"
+                            rightElement={
+                              <button
+                                type="button"
+                                onClick={() => setShowNewPassword(!showNewPassword)}
+                                className="text-slate-400 hover:text-slate-600 focus:outline-none p-1 flex items-center justify-center cursor-pointer"
+                                tabIndex={-1}
+                              >
+                                {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              </button>
+                            }
+                          />
+
+                          <Input
+                            id="staff-confirm-password"
+                            type={showConfirmPassword ? 'text' : 'password'}
+                            label="Confirm New Password"
+                            placeholder="Re-enter new password"
+                            value={formConfirmPassword}
+                            onChange={(e) => {
+                              setFormConfirmPassword(e.target.value);
+                              if (passwordChangeError) setPasswordChangeError(null);
+                            }}
+                            disabled={!canManage || isChangingPassword}
+                            autoComplete="new-password"
+                            rightElement={
+                              <button
+                                type="button"
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                className="text-slate-400 hover:text-slate-600 focus:outline-none p-1 flex items-center justify-center cursor-pointer"
+                                tabIndex={-1}
+                              >
+                                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              </button>
+                            }
+                          />
+                        </div>
+
+                        {canManage && (
+                          <div className="flex justify-end pt-1">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={handleChangeStaffPassword}
+                              disabled={isChangingPassword || !formNewPassword || !formConfirmPassword}
+                              isLoading={isChangingPassword}
+                              leftIcon={<Key className="h-3.5 w-3.5" />}
+                              className="text-xs h-7.5 px-3"
+                            >
+                              Update Password Now
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     )}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleCopyCredentialsFromEdit}
-                      className="flex-1 justify-center gap-1.5 text-xs h-8 bg-white border-slate-200 hover:border-slate-300 text-slate-700 cursor-pointer"
-                      leftIcon={<Copy className="h-3.5 w-3.5 text-slate-500" />}
-                    >
-                      Copy Credentials
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={handleSendWhatsAppFromEdit}
-                      className="flex-1 justify-center gap-1.5 text-xs h-8 bg-[#25D366] hover:bg-[#20bd5a] text-white border-transparent cursor-pointer font-medium"
-                      leftIcon={<ExternalLink className="h-3.5 w-3.5" />}
-                    >
-                      Send via WhatsApp
-                    </Button>
                   </div>
                 </div>
               </div>
