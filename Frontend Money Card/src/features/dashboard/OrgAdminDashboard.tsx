@@ -26,13 +26,11 @@ import {
 } from '@/components/ui';
 import { formatCurrency, formatLocalDate, storage } from '@/utils';
 import {
-  Building2,
   Users,
   CreditCard,
   ShoppingBag,
   TrendingUp,
   RefreshCw,
-  Zap,
   ArrowRight,
   BarChart3,
   CheckCircle2,
@@ -354,38 +352,7 @@ export function OrgAdminDashboard() {
         </button>
       </div>
 
-      {/* Secondary Tools Strip */}
-      <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 mr-1">More Tools:</span>
-        {hasPermission('BRANCH_MANAGE') && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/branches')}
-            leftIcon={<Building2 className="h-3.5 w-3.5" />}
-          >
-            Cafeterias
-          </Button>
-        )}
-        {hasPermission('VIEW_ANALYTICS') && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/analytics')}
-            leftIcon={<BarChart3 className="h-3.5 w-3.5" />}
-          >
-            Analytics
-          </Button>
-        )}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => navigate('/subscriptions')}
-          leftIcon={<Zap className="h-3.5 w-3.5" />}
-        >
-          Plan Limits
-        </Button>
-      </div>
+
 
       {/* ─── Getting Started Checklist (Interactive Setup Guide) ─── */}
       {showSetupChecklist && (
