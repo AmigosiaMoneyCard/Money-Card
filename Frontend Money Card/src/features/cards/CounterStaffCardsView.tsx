@@ -278,27 +278,22 @@ export function CounterStaffCardsView() {
             value={searchQuery}
             maxLength={40}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className={`w-full rounded-xl border bg-white pl-9 pr-16 py-2 text-xs text-slate-900 placeholder-slate-400 transition-colors focus:outline-none ${
+            className={`w-full rounded-xl border bg-white pl-9 pr-8 py-2 text-xs text-slate-900 placeholder-slate-400 transition-colors focus:outline-none ${
               searchError
                 ? 'border-rose-400 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
                 : 'border-slate-200 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20'
             }`}
           />
-          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={handleClearSearch}
-                className="text-slate-400 hover:text-slate-600 p-0.5 transition-colors cursor-pointer"
-                title="Clear search"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-            <span className="text-[10px] font-mono text-slate-400 border-l border-slate-200 pl-1.5">
-              {searchQuery.length}/40
-            </span>
-          </div>
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 transition-colors cursor-pointer"
+              title="Clear search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
         {searchError && (
           <p className="text-[11px] text-rose-500 font-medium pl-1 flex items-center gap-1">
