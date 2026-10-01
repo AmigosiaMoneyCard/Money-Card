@@ -231,7 +231,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                           scale: 0.8,
                           child: Switch.adaptive(
                             value: isActive,
-                            activeColor: AppColors.primary,
+                            activeTrackColor: AppColors.primary,
                             onChanged: (newValue) async {
                               final newStatus = newValue ? 'ACTIVE' : 'INACTIVE';
                               try {
