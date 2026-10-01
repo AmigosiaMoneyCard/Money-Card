@@ -276,14 +276,26 @@ export function RechargesTableView({ branchId }: RechargesTableViewProps) {
                 <input
                   type="date"
                   value={customStartDate}
-                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCustomStartDate(val);
+                    if (customEndDate && val > customEndDate) {
+                      setCustomEndDate(val);
+                    }
+                  }}
                   className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
                 <span className="text-slate-400">to</span>
                 <input
                   type="date"
                   value={customEndDate}
-                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCustomEndDate(val);
+                    if (customStartDate && val < customStartDate) {
+                      setCustomStartDate(val);
+                    }
+                  }}
                   className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>

@@ -273,13 +273,19 @@ export function SuperAdminAnalyticsView() {
             />
           </div>
 
-          {/* Custom Date Pickers — strictly custom range only */}
+          {/* Custom Date Pickers — strictly custom range only (Auto-applied) */}
           <div className="flex flex-wrap items-center gap-1.5 bg-slate-50 p-1 rounded-lg border border-slate-200">
             <input
               id="superadmin-analytics-start-date"
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setStartDate(val);
+                if (endDate && val > endDate) {
+                  setEndDate(val);
+                }
+              }}
               className="h-8 px-2 text-xs bg-white border border-slate-200 rounded text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium"
               aria-label="Start date"
             />
@@ -288,18 +294,16 @@ export function SuperAdminAnalyticsView() {
               id="superadmin-analytics-end-date"
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setEndDate(val);
+                if (startDate && val < startDate) {
+                  setStartDate(val);
+                }
+              }}
               className="h-8 px-2 text-xs bg-white border border-slate-200 rounded text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium"
               aria-label="End date"
             />
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => fetchPlatformData(false)}
-              className="h-8 px-2.5 text-xs font-semibold"
-            >
-              Apply
-            </Button>
             <Button
               variant="outline"
               size="sm"

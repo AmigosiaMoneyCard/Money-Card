@@ -113,12 +113,33 @@ export function OrgAdminCardsView() {
     fetchCounterAnalytics(branch.id, appliedStartDate, appliedEndDate);
   }, [fetchCounterAnalytics, appliedStartDate, appliedEndDate]);
 
-  const handleApplyCustomDates = useCallback(() => {
-    if (!selectedBranchForAnalytics) return;
-    setAppliedStartDate(customStartDate);
-    setAppliedEndDate(customEndDate);
-    fetchCounterAnalytics(selectedBranchForAnalytics.id, customStartDate, customEndDate);
-  }, [selectedBranchForAnalytics, customStartDate, customEndDate, fetchCounterAnalytics]);
+  const handleStartDateChange = useCallback((newStart: string) => {
+    setCustomStartDate(newStart);
+    setAppliedStartDate(newStart);
+    let effectiveEnd = customEndDate;
+    if (customEndDate && newStart > customEndDate) {
+      effectiveEnd = newStart;
+      setCustomEndDate(newStart);
+      setAppliedEndDate(newStart);
+    }
+    if (selectedBranchForAnalytics) {
+      fetchCounterAnalytics(selectedBranchForAnalytics.id, newStart, effectiveEnd);
+    }
+  }, [selectedBranchForAnalytics, customEndDate, fetchCounterAnalytics]);
+
+  const handleEndDateChange = useCallback((newEnd: string) => {
+    setCustomEndDate(newEnd);
+    setAppliedEndDate(newEnd);
+    let effectiveStart = customStartDate;
+    if (customStartDate && newEnd < customStartDate) {
+      effectiveStart = newEnd;
+      setCustomStartDate(newEnd);
+      setAppliedStartDate(newEnd);
+    }
+    if (selectedBranchForAnalytics) {
+      fetchCounterAnalytics(selectedBranchForAnalytics.id, effectiveStart, newEnd);
+    }
+  }, [selectedBranchForAnalytics, customStartDate, fetchCounterAnalytics]);
 
   const handleResetToToday = useCallback(() => {
     const today = formatLocalDate(new Date());
@@ -782,7 +803,7 @@ export function OrgAdminCardsView() {
                   <input
                     type="date"
                     value={customStartDate}
-                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    onChange={(e) => handleStartDateChange(e.target.value)}
                     className="text-xs font-medium text-slate-800 border-none outline-none bg-transparent cursor-pointer"
                   />
                 </div>
@@ -792,20 +813,12 @@ export function OrgAdminCardsView() {
                   <input
                     type="date"
                     value={customEndDate}
-                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    onChange={(e) => handleEndDateChange(e.target.value)}
                     className="text-xs font-medium text-slate-800 border-none outline-none bg-transparent cursor-pointer"
                   />
                 </div>
               </div>
 
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleApplyCustomDates}
-                className="text-xs h-7 px-3 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold cursor-pointer rounded-lg"
-              >
-                Apply
-              </Button>
               <Button
                 variant="outline"
                 size="sm"

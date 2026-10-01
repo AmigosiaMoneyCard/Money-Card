@@ -320,6 +320,36 @@ export function useOrgAdminAnalytics() {
     }
   };
 
+  const handleStartDateChange = (newStart: string) => {
+    setStartDate(newStart);
+    let effectiveEnd = endDate;
+    if (endDate && newStart > endDate) {
+      effectiveEnd = newStart;
+      setEndDate(newStart);
+    }
+    setDatePreset('custom');
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('preset', 'custom');
+    newParams.set('startDate', newStart);
+    if (effectiveEnd) newParams.set('endDate', effectiveEnd);
+    setSearchParams(newParams);
+  };
+
+  const handleEndDateChange = (newEnd: string) => {
+    setEndDate(newEnd);
+    let effectiveStart = startDate;
+    if (startDate && newEnd < startDate) {
+      effectiveStart = newEnd;
+      setStartDate(newEnd);
+    }
+    setDatePreset('custom');
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('preset', 'custom');
+    if (effectiveStart) newParams.set('startDate', effectiveStart);
+    newParams.set('endDate', newEnd);
+    setSearchParams(newParams);
+  };
+
   const handleCustomDateApply = (start: string, end: string) => {
     setStartDate(start);
     setEndDate(end);
@@ -635,6 +665,8 @@ export function useOrgAdminAnalytics() {
     fetchAnalytics,
     handleBranchChange,
     handlePresetChange,
+    handleStartDateChange,
+    handleEndDateChange,
     handleCustomDateApply,
     handleToggleSection,
     handleSetAllSections,

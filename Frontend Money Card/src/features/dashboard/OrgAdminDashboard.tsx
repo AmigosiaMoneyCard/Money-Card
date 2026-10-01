@@ -487,7 +487,13 @@ export function OrgAdminDashboard() {
                         id="dashboard-start-date"
                         type="date"
                         value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setStartDate(val);
+                          if (endDate && val > endDate) {
+                            setEndDate(val);
+                          }
+                        }}
                         className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-800 focus:border-emerald-500 focus:bg-white focus:outline-none"
                       />
                       <span className="text-xs text-slate-400">to</span>
@@ -495,7 +501,13 @@ export function OrgAdminDashboard() {
                         id="dashboard-end-date"
                         type="date"
                         value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEndDate(val);
+                          if (startDate && val < startDate) {
+                            setStartDate(val);
+                          }
+                        }}
                         className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-800 focus:border-emerald-500 focus:bg-white focus:outline-none"
                       />
                       <Button

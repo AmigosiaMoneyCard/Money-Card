@@ -45,11 +45,10 @@ export function OrgAdminAnalyticsView() {
     setPdfPreviewUrl,
     startDate,
     endDate,
-    setStartDate,
-    setEndDate,
     fetchAnalytics,
     handlePresetChange,
-    handleCustomDateApply,
+    handleStartDateChange,
+    handleEndDateChange,
     handleViewPdf,
     handleDownloadFinancialPdf,
     handleDownloadCardAnalyticsPdf,
@@ -98,14 +97,14 @@ export function OrgAdminAnalyticsView() {
 
           {/* Minimal Segmented Toolbar */}
           <div className="flex flex-wrap items-center bg-white p-1 rounded-xl border border-slate-200/90 shadow-2xs gap-1.5">
-            {/* Date Range Inputs with Calendar Icon */}
+            {/* Date Range Inputs with Calendar Icon (Auto-applied) */}
             <div className="flex items-center gap-1 pl-1.5 pr-1">
               <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
               <input
                 id="org-analytics-start-date"
                 type="date"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={(e) => handleStartDateChange(e.target.value)}
                 className="h-7 px-1.5 text-xs bg-slate-50 hover:bg-slate-100/80 border border-slate-200/80 rounded-md text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium transition-colors"
                 aria-label="Start date"
               />
@@ -114,21 +113,11 @@ export function OrgAdminAnalyticsView() {
                 id="org-analytics-end-date"
                 type="date"
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+                onChange={(e) => handleEndDateChange(e.target.value)}
                 className="h-7 px-1.5 text-xs bg-slate-50 hover:bg-slate-100/80 border border-slate-200/80 rounded-md text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium transition-colors"
                 aria-label="End date"
               />
             </div>
-
-            {/* Apply Action */}
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => handleCustomDateApply(startDate, endDate)}
-              className="h-7 px-2.5 text-xs font-semibold rounded-md"
-            >
-              Apply
-            </Button>
 
             {/* Today Preset */}
             <button

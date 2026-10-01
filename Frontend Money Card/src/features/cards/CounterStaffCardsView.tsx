@@ -192,15 +192,39 @@ export function CounterStaffCardsView() {
     }
   }, [fetchCounterAnalytics, appliedStartDate, appliedEndDate, branches]);
 
-  const handleApplyCustomDates = useCallback(() => {
-    if (!selectedCardForAnalytics) return;
-    const branchId = selectedCardForAnalytics.activeSession?.branchId || selectedCardForAnalytics.currentBranchId || branches[0]?.id;
-    if (branchId) {
-      setAppliedStartDate(customStartDate);
-      setAppliedEndDate(customEndDate);
-      fetchCounterAnalytics(branchId, customStartDate, customEndDate);
+  const handleStartDateChange = useCallback((newStart: string) => {
+    setCustomStartDate(newStart);
+    setAppliedStartDate(newStart);
+    let effectiveEnd = customEndDate;
+    if (customEndDate && newStart > customEndDate) {
+      effectiveEnd = newStart;
+      setCustomEndDate(newStart);
+      setAppliedEndDate(newStart);
     }
-  }, [selectedCardForAnalytics, customStartDate, customEndDate, fetchCounterAnalytics, branches]);
+    if (selectedCardForAnalytics) {
+      const branchId = selectedCardForAnalytics.activeSession?.branchId || selectedCardForAnalytics.currentBranchId || branches[0]?.id;
+      if (branchId) {
+        fetchCounterAnalytics(branchId, newStart, effectiveEnd);
+      }
+    }
+  }, [selectedCardForAnalytics, customEndDate, branches, fetchCounterAnalytics]);
+
+  const handleEndDateChange = useCallback((newEnd: string) => {
+    setCustomEndDate(newEnd);
+    setAppliedEndDate(newEnd);
+    let effectiveStart = customStartDate;
+    if (customStartDate && newEnd < customStartDate) {
+      effectiveStart = newEnd;
+      setCustomStartDate(newEnd);
+      setAppliedStartDate(newEnd);
+    }
+    if (selectedCardForAnalytics) {
+      const branchId = selectedCardForAnalytics.activeSession?.branchId || selectedCardForAnalytics.currentBranchId || branches[0]?.id;
+      if (branchId) {
+        fetchCounterAnalytics(branchId, effectiveStart, newEnd);
+      }
+    }
+  }, [selectedCardForAnalytics, customStartDate, branches, fetchCounterAnalytics]);
 
   const handleResetToToday = useCallback(() => {
     const today = formatLocalDate(new Date());
@@ -552,7 +576,7 @@ export function CounterStaffCardsView() {
                   <input
                     type="date"
                     value={customStartDate}
-                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    onChange={(e) => handleStartDateChange(e.target.value)}
                     className="text-xs font-medium text-slate-800 border-none outline-none bg-transparent cursor-pointer"
                   />
                 </div>
@@ -562,20 +586,12 @@ export function CounterStaffCardsView() {
                   <input
                     type="date"
                     value={customEndDate}
-                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    onChange={(e) => handleEndDateChange(e.target.value)}
                     className="text-xs font-medium text-slate-800 border-none outline-none bg-transparent cursor-pointer"
                   />
                 </div>
               </div>
 
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleApplyCustomDates}
-                className="text-xs h-7 px-3 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold cursor-pointer rounded-lg"
-              >
-                Apply
-              </Button>
               <Button
                 variant="outline"
                 size="sm"
