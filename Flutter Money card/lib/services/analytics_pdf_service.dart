@@ -226,14 +226,14 @@ class AnalyticsPdfService {
                   ),
                   pw.TableRow(
                     children: [
-                      _buildCell('Money Added (Top-ups)'),
+                      _buildCell('Recharges (Top-ups)'),
                       _buildCell('${analytics.rechargeCount} top-ups', alignRight: true),
                       _buildCell(currencyFmt.format(analytics.moneyAdded), alignRight: true, isBold: true),
                     ],
                   ),
                   pw.TableRow(
                     children: [
-                      _buildCell('Money Refunded (Wallets Returned)'),
+                      _buildCell('Refunds (Wallets Returned)'),
                       _buildCell('${analytics.refundCount} refunds', alignRight: true),
                       _buildCell('- ${currencyFmt.format(analytics.moneyRefunded)}', alignRight: true),
                     ],

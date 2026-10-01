@@ -101,7 +101,7 @@ export function OrgAdminFinancialSection({
           <div className="p-4 sm:p-5 flex flex-col justify-between">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Recharge
+                Recharges
               </span>
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
                 <Wallet className="h-4 w-4" />
@@ -176,7 +176,7 @@ export function OrgAdminFinancialSection({
         <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Money Refunded
+              Refunds
             </span>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
               <ArrowUpDown className="h-4 w-4" />

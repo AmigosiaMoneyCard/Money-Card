@@ -244,25 +244,25 @@ export function SuperAdminDashboard() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               label="Cafeterias"
-              value={`${activeOrgsCount} Cafeterias`}
+              value={activeOrgsCount}
               icon={<Building2 className="h-5 w-5 text-emerald-600" />}
             />
 
             <StatCard
               label="Active Cardholders"
-              value={`${activeCardholdersCount} Cardholders`}
+              value={activeCardholdersCount}
               icon={<Users className="h-5 w-5 text-teal-600" />}
             />
 
             <StatCard
               label="Active Counters"
-              value={`${activeCountersCount} Counters`}
+              value={activeCountersCount}
               icon={<Store className="h-5 w-5 text-sky-600" />}
             />
 
             <StatCard
               label="Staff Members"
-              value={`${activeStaffCount} Members`}
+              value={activeStaffCount}
               icon={<UserCheck className="h-5 w-5 text-amber-600" />}
             />
           </div>

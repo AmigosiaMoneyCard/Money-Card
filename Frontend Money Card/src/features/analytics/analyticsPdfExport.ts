@@ -165,7 +165,7 @@ export function buildOrgAnalyticsJsPdf({
 
     // Row 2: Recharge Breakdown (3 cards)
     const row2Kpis = [
-      { label: 'Recharge', val: formatPdfCurrency(moneyAdded), sub: 'Total card deposits' },
+      { label: 'Recharges', val: formatPdfCurrency(moneyAdded), sub: 'Total card deposits' },
       { label: 'UPI Recharge', val: formatPdfCurrency(upiMoney), sub: `${upiCount} top-ups` },
       { label: 'Cash Recharge', val: formatPdfCurrency(cashMoney), sub: `${cashCount} top-ups` },
     ];
@@ -198,7 +198,7 @@ export function buildOrgAnalyticsJsPdf({
     // Row 3: Follow-up Operations (3 cards)
     const row3Kpis = [
       { label: 'Wallet Activations', val: `${walletActivations.toLocaleString()} Wallets`, sub: 'Issued in period' },
-      { label: 'Money Refunded', val: formatPdfCurrency(moneyRefunded), sub: 'Returned to customers' },
+      { label: 'Refunds', val: formatPdfCurrency(moneyRefunded), sub: 'Returned to customers' },
       { label: 'Cancelled Top-ups', val: formatPdfCurrency(cancelledTopUps), sub: `${cancelledTopUpsCount} recharges reversed` },
     ];
 
@@ -303,7 +303,7 @@ export function buildOrgAnalyticsJsPdf({
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(15, 23, 42);
-    doc.text(`${sectionCounter}. Payment & Refund Breakdown`, margin, curY);
+    doc.text(`${sectionCounter}. Payment & Refunds Breakdown`, margin, curY);
     sectionCounter++;
 
     const cashRecharge = analytics.cashRechargeVolume ?? analytics.cashMoney ?? 0;
@@ -326,7 +326,7 @@ export function buildOrgAnalyticsJsPdf({
         sub: `${cashPct}% of total deposits`,
       },
       {
-        label: 'Money Refunded',
+        label: 'Refunds',
         val: formatPdfCurrency(totalRefund),
         sub: 'Total returned to customers',
       },
