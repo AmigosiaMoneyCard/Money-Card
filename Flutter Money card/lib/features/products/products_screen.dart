@@ -543,7 +543,6 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
         selectedCategory = 'Veg';
       }
     }
-    String selectedStatus = product.status.toUpperCase();
     bool isSaving = false;
 
     showModalBottomSheet(
@@ -580,36 +579,13 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Edit Menu Item',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimaryLight,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: selectedStatus == 'ACTIVE' ? AppColors.successLight : AppColors.surfaceLight,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: selectedStatus == 'ACTIVE' ? AppColors.success.withValues(alpha: 0.3) : AppColors.borderLight,
-                            ),
-                          ),
-                          child: Text(
-                            selectedStatus,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: selectedStatus == 'ACTIVE' ? AppColors.primaryDark : AppColors.textSecondaryLight,
-                            ),
-                          ),
-                        ),
-                      ],
+                    const Text(
+                      'Edit Menu Item',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimaryLight,
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.md),
                     TextField(
@@ -652,37 +628,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                         );
                       }).toList(),
                     ),
-                    const SizedBox(height: AppSpacing.md),
-                    const Text(
-                      'Availability Status',
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Row(
-                      children: [
-                        ChoiceChip(
-                          label: const Text('ACTIVE (Available)'),
-                          selected: selectedStatus == 'ACTIVE',
-                          onSelected: (_) => setModalState(() => selectedStatus = 'ACTIVE'),
-                          selectedColor: AppColors.successLight,
-                          labelStyle: TextStyle(
-                            fontWeight: selectedStatus == 'ACTIVE' ? FontWeight.bold : FontWeight.normal,
-                            color: selectedStatus == 'ACTIVE' ? AppColors.primaryDark : AppColors.textPrimaryLight,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        ChoiceChip(
-                          label: const Text('INACTIVE (Hidden)'),
-                          selected: selectedStatus == 'INACTIVE',
-                          onSelected: (_) => setModalState(() => selectedStatus = 'INACTIVE'),
-                          selectedColor: AppColors.surfaceLight,
-                          labelStyle: TextStyle(
-                            fontWeight: selectedStatus == 'INACTIVE' ? FontWeight.bold : FontWeight.normal,
-                            color: selectedStatus == 'INACTIVE' ? AppColors.textPrimaryLight : AppColors.textSecondaryLight,
-                          ),
-                        ),
-                      ],
-                    ),
+
                     const SizedBox(height: AppSpacing.lg),
                     SizedBox(
                       width: double.infinity,
@@ -718,7 +664,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                                         itemName: name,
                                         category: [selectedCategory],
                                         price: price,
-                                        status: selectedStatus,
+                                        status: product.status,
                                       );
                                   if (context.mounted) {
                                     Navigator.pop(ctx);
