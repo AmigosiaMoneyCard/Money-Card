@@ -74,8 +74,8 @@ export const safeGmail = safeEmail.refine(
 export const safePhone = z
   .string({ required_error: 'Phone number is required' })
   .trim()
-  .transform((val) => val.replace(/\D/g, ''))
-  .refine((val) => val.length >= 10 && val.length <= 15, {
+  .transform((val) => val.replace(/\D/g, '').slice(-10))
+  .refine((val) => val.length === 10, {
     message: 'Please provide a valid 10-digit phone number',
   });
 

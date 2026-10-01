@@ -82,25 +82,27 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('MC-101'), findsOneWidget);
-      expect(find.text('₹320.00'), findsNWidgets(2)); // Remaining Balance & Refund
+      expect(find.text('₹320.00'), findsOneWidget); // Remaining Balance
       expect(find.text('ACTIVE'), findsOneWidget);
+      expect(find.text('Refund'), findsOneWidget);
+      expect(find.text('Return'), findsOneWidget);
 
-      // Tap Confirm Return button
-      await tester.tap(find.text('Confirm Return & Settle (₹320.00)'));
+      // Tap Return button
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Return'));
       await tester.pumpAndSettle();
 
       // Confirmation dialog opens
-      expect(find.text('Confirm Card Return'), findsOneWidget);
+      expect(find.text('Confirm Wallet Return'), findsOneWidget);
 
       // Confirm in dialog
       await tester.tap(find.widgetWithText(ElevatedButton, 'Confirm & Settle'));
       await tester.pumpAndSettle();
 
       // Return Success dialog renders
-      expect(find.text('Card Returned Successfully'), findsOneWidget);
+      expect(find.text('Wallet Returned Successfully'), findsOneWidget);
       expect(find.text('₹320.00'), findsWidgets);
-      expect(find.text('Generate & View PDF'), findsOneWidget);
-      expect(find.text('Download PDF'), findsOneWidget);
+      expect(find.text('Generate & View PDF'), findsNothing);
+      expect(find.text('Download PDF'), findsNothing);
       expect(find.text('Share PDF'), findsNothing);
       expect(find.text('Done'), findsOneWidget);
     });

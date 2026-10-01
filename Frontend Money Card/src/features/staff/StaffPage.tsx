@@ -26,8 +26,7 @@ import {
 import { DataTable } from '@/components/tables';
 import { notify, formatCurrency } from '@/utils';
 import { filterStaffActivities, calculateScopedStaffMetrics } from '@/features/analytics/staffActivityFilter';
-import { PermissionMatrix } from './PermissionMatrix';
-import { MANAGER_PERMISSIONS, STAFF_PERMISSIONS } from './constants';
+import { MANAGER_PERMISSIONS } from './constants';
 import { UnauthorizedPage } from '@/features/auth';
 import {
   Users,
@@ -36,7 +35,6 @@ import {
   Search,
   Edit2,
   Building2,
-  ShieldCheck,
   RefreshCw,
   AlertCircle,
   Eye, EyeOff,
@@ -51,9 +49,6 @@ import {
   Smartphone,
   Copy,
   ExternalLink,
-  Share2,
-  Phone,
-  CheckCircle2,
   Trash2,
 } from 'lucide-react';
 
@@ -78,7 +73,7 @@ export function StaffPage() {
 
   const isCounterView = user?.role === 'STAFF';
   const canView = hasPermission('STAFF_VIEW');
-  const canManage = hasPermission('STAFF_MANAGE');
+  const canManage = hasPermission('STAFF_MANAGE') || isCounterView;
 
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -103,7 +98,7 @@ export function StaffPage() {
   // ── Unified Staff Details/Edit Modal State ─────────────────
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [showStaffDetailsModal, setShowStaffDetailsModal] = useState(false);
-  const [staffTab, setStaffTab] = useState<'overview' | 'permissions' | 'branches'>('overview');
+  const [staffTab, setStaffTab] = useState<'overview' | 'branches'>('overview');
 
   // ── Counter Staff Grouping State ───────────────────────────
   const [selectedCounterGroup, setSelectedCounterGroup] = useState<CounterStaffGroup | null>(null);
@@ -131,6 +126,7 @@ export function StaffPage() {
     setStaffList((prev) =>
       prev.map((s) => (s.id === staff.id ? { ...s, status: newStatus } : s)),
     );
+    setSelectedStaff((prev) => (prev && prev.id === staff.id ? { ...prev, status: newStatus } : prev));
     if (selectedCounterGroup) {
       setSelectedCounterGroup((prev) =>
         prev
@@ -148,6 +144,7 @@ export function StaffPage() {
         setStaffList((prev) =>
           prev.map((s) => (s.id === staff.id ? { ...s, status: staff.status } : s)),
         );
+        setSelectedStaff((prev) => (prev && prev.id === staff.id ? { ...prev, status: staff.status } : prev));
         if (selectedCounterGroup) {
           setSelectedCounterGroup((prev) =>
             prev
@@ -169,6 +166,7 @@ export function StaffPage() {
       setStaffList((prev) =>
         prev.map((s) => (s.id === staff.id ? { ...s, status: staff.status } : s)),
       );
+      setSelectedStaff((prev) => (prev && prev.id === staff.id ? { ...prev, status: staff.status } : prev));
       notify.error('An unexpected error occurred while updating status.');
     } finally {
       setTogglingStaffId(null);
@@ -185,6 +183,54 @@ export function StaffPage() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordChangeError, setPasswordChangeError] = useState<string | null>(null);
   const [passwordChangeSuccess, setPasswordChangeSuccess] = useState<string | null>(null);
+  const [showChangePasswordSection, setShowChangePasswordSection] = useState(false);
+
+  // ── Persistent Staff Password Cache ──────────────────────────
+  const STAFF_PASSWORDS_KEY = 'mc_staff_passwords';
+  const BRANCH_PASSWORDS_KEY = 'mc_branch_passwords';
+
+  const getStoredStaffPassword = (staffId?: string, branchIds?: string[], phone?: string): string | null => {
+    try {
+      const staffMap = JSON.parse(localStorage.getItem(STAFF_PASSWORDS_KEY) || '{}');
+      const branchMap = JSON.parse(localStorage.getItem(BRANCH_PASSWORDS_KEY) || '{}');
+      const cleanPhone = phone ? phone.replace(/\D/g, '').slice(-10) : '';
+
+      if (staffId && staffMap[staffId]) return staffMap[staffId];
+      if (cleanPhone && staffMap[cleanPhone]) return staffMap[cleanPhone];
+      if (cleanPhone && branchMap[cleanPhone]) return branchMap[cleanPhone];
+      if (branchIds && branchIds.length > 0) {
+        for (const bid of branchIds) {
+          if (branchMap[bid]) return branchMap[bid];
+          if (staffMap[bid]) return staffMap[bid];
+        }
+      }
+    } catch {}
+    return null;
+  };
+
+  const storeStaffPassword = (staffId: string, pass: string, phone?: string, branchIds?: string[]): void => {
+    try {
+      if (!pass) return;
+      const staffMap = JSON.parse(localStorage.getItem(STAFF_PASSWORDS_KEY) || '{}');
+      const branchMap = JSON.parse(localStorage.getItem(BRANCH_PASSWORDS_KEY) || '{}');
+      const cleanPhone = phone ? phone.replace(/\D/g, '').slice(-10) : '';
+
+      if (staffId) staffMap[staffId] = pass;
+      if (cleanPhone) {
+        staffMap[cleanPhone] = pass;
+        branchMap[cleanPhone] = pass;
+      }
+      if (branchIds && branchIds.length > 0) {
+        for (const bid of branchIds) {
+          branchMap[bid] = pass;
+          staffMap[bid] = pass;
+        }
+      }
+      localStorage.setItem(STAFF_PASSWORDS_KEY, JSON.stringify(staffMap));
+      localStorage.setItem(BRANCH_PASSWORDS_KEY, JSON.stringify(branchMap));
+    } catch {}
+  };
+
 
   // ── Delete Staff Confirmation State ─────────────────────────
   const [showDeleteStaffConfirmModal, setShowDeleteStaffConfirmModal] = useState(false);
@@ -193,9 +239,10 @@ export function StaffPage() {
 
   // ── Add Staff Modal State & Multi-step Tabs ─────────────────
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addTab, setAddTab] = useState<'basic' | 'branches' | 'permissions'>('basic');
+  const [addTab, setAddTab] = useState<'basic' | 'branches'>('basic');
 
   const [showStaffCreatedModal, setShowStaffCreatedModal] = useState(false);
+  const [showStaffPasswordInModal, setShowStaffPasswordInModal] = useState(false);
   const [createdStaffCredentials, setCreatedStaffCredentials] = useState<{
     name: string;
     phone: string;
@@ -216,13 +263,13 @@ export function StaffPage() {
   const [showAddPassword, setShowAddPassword] = useState(false);
   const [formBranchIds, setFormBranchIds] = useState<string[]>([]);
   const [formPermissions, setFormPermissions] = useState<Permission[]>([]);
-  const [showAdvancedPerms, setShowAdvancedPerms] = useState(false);
 
   // ── Staff Performance & Operational Audit State ───────────
   const [selectedStaffForAudit, setSelectedStaffForAudit] = useState<Staff | null>(null);
   const [staffPerformanceList, setStaffPerformanceList] = useState<StaffPerformanceMetric[]>([]);
   const [auditStartDate, setAuditStartDate] = useState<string>(getTodayDateStr);
   const [auditEndDate, setAuditEndDate] = useState<string>(getTodayDateStr);
+  const [auditDatePreset, setAuditDatePreset] = useState<'TODAY' | 'YESTERDAY' | 'THIS_WEEK' | 'THIS_MONTH' | 'ALL_TIME'>('TODAY');
   const [auditActivityTypeFilter, setAuditActivityTypeFilter] = useState<'ALL' | 'CARD_ACTIVATION' | 'RECHARGE' | 'PURCHASE' | 'CARD_SETTLEMENT' | 'REFUND' | 'OTHER'>('ALL');
   const [auditSearch, setAuditSearch] = useState('');
 
@@ -305,6 +352,14 @@ export function StaffPage() {
   // ── Instant Client-Side Filtered Staff ────────────────────
   const filteredStaff = useMemo(() => {
     let result = staffList;
+    if (isCounterView) {
+      result = result.filter(
+        (s) =>
+          s.id !== user?.id &&
+          !s.name.toLowerCase().startsWith('staff - ' + (currentBranch?.name?.toLowerCase() || '')) &&
+          s.name !== `Staff - ${currentBranch?.name}`,
+      );
+    }
     const activeBranchId = isCounterView
       ? currentBranch?.id
       : staffBranchFilter !== 'ALL'
@@ -329,7 +384,7 @@ export function StaffPage() {
         (s.phone && s.phone.includes(q)) ||
         (s.email && s.email.toLowerCase().includes(q)),
     );
-  }, [staffList, currentBranch, staffBranchFilter, statusFilter, searchQuery, isCounterView]);
+  }, [staffList, currentBranch, staffBranchFilter, statusFilter, searchQuery, isCounterView, user]);
 
   // ── Group Filtered Staff by Counter (Minimal & Clean) ─────
   const counterStaffGroups = useMemo<CounterStaffGroup[]>(() => {
@@ -395,7 +450,7 @@ export function StaffPage() {
       ? scopedBranches.map((b) => b.id)
       : branches.map((b) => b.id);
     setFormBranchIds(defaultBranchIds);
-    setFormPermissions([...STAFF_PERMISSIONS]);
+    setFormPermissions([...MANAGER_PERMISSIONS]);
     setFormErrors({});
     setModalApiError(null);
     setAddTab('basic');
@@ -413,17 +468,17 @@ export function StaffPage() {
       errors.name = 'Staff name must be at most 50 characters';
     }
 
-    const cleanPhone = formPhone.trim().replace(/\D/g, '');
+    const cleanPhone = formPhone.trim().replace(/\D/g, '').slice(-10);
     if (!cleanPhone) {
       errors.phone = 'Phone number is required';
-    } else if (cleanPhone.length < 10 || cleanPhone.length > 15) {
+    } else if (cleanPhone.length !== 10) {
       errors.phone = 'Please provide a valid 10-digit phone number';
     }
 
     if (!formPassword.trim()) {
       errors.password = 'Initial password is required for POS login';
-    } else if (formPassword.trim().length < 4) {
-      errors.password = 'Password must be at least 4 characters';
+    } else if (formPassword.trim().length < 8) {
+      errors.password = 'Password must be at least 8 characters';
     }
 
     const trimmedEmail = formEmail.trim().toLowerCase();
@@ -450,39 +505,14 @@ export function StaffPage() {
     setIsSubmitting(true);
 
     try {
+      const clean10Phone = formPhone.trim().replace(/\D/g, '').slice(-10);
       const finalPermissions = new Set(formPermissions);
-      if (finalPermissions.has('CARD_BLOCK') || finalPermissions.has('CARD_UNBLOCK')) {
-        finalPermissions.add('CARD_BLOCK');
-        finalPermissions.add('CARD_UNBLOCK');
-      }
-      if (finalPermissions.has('PRODUCT_VIEW')) {
-        finalPermissions.add('PRODUCT_VIEW');
-      }
-      if (finalPermissions.has('PRODUCT_MANAGE')) {
-        finalPermissions.add('PRODUCT_MANAGE');
-        finalPermissions.add('PRODUCT_VIEW');
-      }
-      if (finalPermissions.has('BRANCH_VIEW') || finalPermissions.has('STAFF_VIEW')) {
-        finalPermissions.add('BRANCH_VIEW');
-        finalPermissions.add('STAFF_VIEW');
-      }
-      if (
-        finalPermissions.has('BRANCH_MANAGE') ||
-        finalPermissions.has('STAFF_MANAGE') ||
-        finalPermissions.has('VIEW_ANALYTICS') ||
-        finalPermissions.has('VIEW_REPORTS')
-      ) {
-        finalPermissions.add('BRANCH_MANAGE');
-        finalPermissions.add('STAFF_MANAGE');
-        finalPermissions.add('VIEW_ANALYTICS');
-        finalPermissions.add('VIEW_REPORTS');
-        finalPermissions.add('BRANCH_VIEW');
-        finalPermissions.add('STAFF_VIEW');
-      }
+      // Ensure all manager permissions are assigned
+      MANAGER_PERMISSIONS.forEach((p) => finalPermissions.add(p));
 
       const res = await apiService.staff.createStaff({
         name: formName.trim(),
-        phone: formPhone.trim().replace(/\D/g, ''),
+        phone: clean10Phone,
         password: formPassword.trim(),
         email: formEmail.trim() ? formEmail.trim().toLowerCase() : undefined,
         assignedBranchIds: formBranchIds,
@@ -502,9 +532,12 @@ export function StaffPage() {
       }
 
       notify.success(`Staff member ${res.data.name} created and activated!`);
+      if (res.data?.id && formPassword.trim()) {
+        storeStaffPassword(res.data.id, formPassword.trim());
+      }
       setCreatedStaffCredentials({
         name: res.data.name,
-        phone: formPhone.trim().replace(/\D/g, ''),
+        phone: clean10Phone,
         password: formPassword.trim(),
         branchIds: formBranchIds,
       });
@@ -521,7 +554,7 @@ export function StaffPage() {
   // ── Open Unified Staff Details/Edit Modal ─────────────────
   const handleOpenStaffModal = (
     staff: Staff,
-    initialTab: 'overview' | 'permissions' | 'branches' = 'overview',
+    initialTab: 'overview' | 'branches' = 'overview',
   ) => {
     setSelectedStaff(staff);
     setFormName(formatStaffDisplayName(staff.name, staff.assignedBranchIds));
@@ -532,7 +565,8 @@ export function StaffPage() {
     setStaffTab(initialTab);
     setFormErrors({});
     setModalApiError(null);
-    const initialPassword = staff.credentials?.password || '123456';
+    const savedPassword = getStoredStaffPassword(staff.id, staff.assignedBranchIds, staff.phone);
+    const initialPassword = savedPassword || staff.credentials?.password || '123456';
     setCurrentStaffPassword(initialPassword);
     setShowCurrentPassword(false);
     setFormNewPassword('');
@@ -541,6 +575,7 @@ export function StaffPage() {
     setShowConfirmPassword(false);
     setPasswordChangeError(null);
     setPasswordChangeSuccess(null);
+    setShowChangePasswordSection(false);
     setShowStaffModal(true);
   };
 
@@ -583,6 +618,7 @@ export function StaffPage() {
         `Staff password changed successfully for ${selectedStaff.name}. All active mobile app and web sessions have been invalidated.`,
       );
       if (formNewPassword.trim()) {
+        storeStaffPassword(selectedStaff.id, formNewPassword.trim(), selectedStaff.phone, selectedStaff.assignedBranchIds);
         setCurrentStaffPassword(formNewPassword.trim());
       }
       setFormNewPassword('');
@@ -597,7 +633,11 @@ export function StaffPage() {
   // ── Share & Copy Staff Credentials from Edit Modal ────────
   const handleCopyCredentialsFromEdit = () => {
     if (!selectedStaff) return;
-    const pwdText = formNewPassword.trim() || currentStaffPassword || '123456';
+    const pwdText =
+      formNewPassword.trim() ||
+      currentStaffPassword ||
+      getStoredStaffPassword(selectedStaff.id, formBranchIds, selectedStaff.phone) ||
+      '123456';
     const cleanPhone = (formPhone || selectedStaff.phone || '').replace(/\D/g, '').slice(-10);
     const assignedBranchesText =
       branches
@@ -626,7 +666,11 @@ export function StaffPage() {
       return;
     }
 
-    const pwdText = formNewPassword.trim() || currentStaffPassword || '123456';
+    const pwdText =
+      formNewPassword.trim() ||
+      currentStaffPassword ||
+      getStoredStaffPassword(selectedStaff.id, formBranchIds, selectedStaff.phone) ||
+      '123456';
     const assignedBranchesText =
       branches
         .filter((b) => formBranchIds.includes(b.id))
@@ -635,14 +679,14 @@ export function StaffPage() {
     const loginUrl = `${window.location.origin}/login`;
 
     const message =
-      `🍽️ *Money Card Staff Credentials*\n\n` +
+      `*Money Card Staff Credentials*\n\n` +
       `Hello ${formName.trim() || selectedStaff.name},\n\n` +
       `Here are your updated staff login credentials:\n\n` +
-      `• *Counter:* ${assignedBranchesText}\n` +
-      `• *Mobile Number:* ${cleanPhone}\n` +
-      `• *Password:* ${pwdText}\n\n` +
-      `🌐 *POS Login Link:* ${loginUrl}\n\n` +
-      `_Log in using your Mobile Number and Password to access your counter POS._`;
+      `*Counter:* ${assignedBranchesText}\n` +
+      `*Mobile Number:* ${cleanPhone}\n` +
+      `*Password:* ${pwdText}\n\n` +
+      `*POS Login Link:* ${loginUrl}\n\n` +
+      `Log in using your Mobile Number and Password to access your counter POS.`;
 
     const waUrl = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(message)}`;
     window.open(waUrl, '_blank', 'noopener,noreferrer');
@@ -689,7 +733,7 @@ export function StaffPage() {
       errors.name = 'Staff name cannot exceed 20 characters';
     }
 
-    const cleanPhone = formPhone.trim().replace(/\D/g, '');
+    const cleanPhone = formPhone.trim().replace(/\D/g, '').slice(-10);
     if (!cleanPhone) {
       errors.phone = 'Phone number is required';
     } else if (cleanPhone.length !== 10) {
@@ -735,6 +779,8 @@ export function StaffPage() {
         if (!pwdRes.success) {
           setPasswordChangeError(pwdRes.error?.message || 'Profile saved, but failed to update password');
         } else {
+          storeStaffPassword(selectedStaff.id, formNewPassword.trim(), cleanPhone || selectedStaff.phone, selectedStaff.assignedBranchIds);
+          setCurrentStaffPassword(formNewPassword.trim());
           setPasswordChangeSuccess('Password updated successfully.');
         }
       }
@@ -757,65 +803,6 @@ export function StaffPage() {
     }
   };
 
-  //  Save Staff Permissions
-  const handleSavePermissions = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!selectedStaff) return;
-
-    setFormErrors({});
-    setModalApiError(null);
-    setIsSubmitting(true);
-
-    try {
-      const permissionsToSave = new Set(formPermissions);
-      if (permissionsToSave.has('CARD_BLOCK') || permissionsToSave.has('CARD_UNBLOCK')) {
-        permissionsToSave.add('CARD_BLOCK');
-        permissionsToSave.add('CARD_UNBLOCK');
-      }
-      if (permissionsToSave.has('PRODUCT_VIEW')) {
-        permissionsToSave.add('PRODUCT_VIEW');
-      }
-      if (permissionsToSave.has('PRODUCT_MANAGE')) {
-        permissionsToSave.add('PRODUCT_MANAGE');
-        permissionsToSave.add('PRODUCT_VIEW');
-      }
-      if (permissionsToSave.has('BRANCH_VIEW') || permissionsToSave.has('STAFF_VIEW')) {
-        permissionsToSave.add('BRANCH_VIEW');
-        permissionsToSave.add('STAFF_VIEW');
-      }
-      if (
-        permissionsToSave.has('BRANCH_MANAGE') ||
-        permissionsToSave.has('STAFF_MANAGE') ||
-        permissionsToSave.has('VIEW_ANALYTICS') ||
-        permissionsToSave.has('VIEW_REPORTS')
-      ) {
-        permissionsToSave.add('BRANCH_MANAGE');
-        permissionsToSave.add('STAFF_MANAGE');
-        permissionsToSave.add('VIEW_ANALYTICS');
-        permissionsToSave.add('VIEW_REPORTS');
-        permissionsToSave.add('BRANCH_VIEW');
-        permissionsToSave.add('STAFF_VIEW');
-      }
-
-      const res = await apiService.staff.updateStaffPermissions(
-        selectedStaff.id,
-        Array.from(permissionsToSave),
-      );
-
-      if (!res.success) {
-        setModalApiError(res.error.message || 'Failed to update permissions');
-        return;
-      }
-
-      notify.success('Permissions updated successfully.');
-      setSelectedStaff((prev) => (prev ? { ...prev, permissions: Array.from(permissionsToSave) } : null));
-      fetchStaffData();
-    } catch {
-      setModalApiError('An unexpected error occurred. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   //  Save Staff Branch Assignments
   const handleSaveBranches = async (e?: React.FormEvent) => {
@@ -873,7 +860,7 @@ export function StaffPage() {
     try {
       const res = await apiService.staff.updateStaff(selectedStaff.id, {
         name: formName.trim(),
-        phone: formPhone.trim().replace(/\D/g, '') || undefined,
+        phone: formPhone.trim().replace(/\D/g, '').slice(-10) || undefined,
         email: formEmail.trim() || undefined,
         assignedBranchIds: formBranchIds,
         permissions: formPermissions,
@@ -895,20 +882,15 @@ export function StaffPage() {
   };
 
   // ── Staff Performance & Operational Audit Helpers ────────
-  const formatStaffDisplayName = (name?: string, assignedBranchIds?: string[], fallbackCounterName?: string): string => {
+  const formatStaffDisplayName = (name?: string, _assignedBranchIds?: string[], _fallbackCounterName?: string): string => {
     if (!name) return '';
-    if (/counter manager$/i.test(name.trim())) {
-      if (fallbackCounterName) {
-        return `Staff - ${fallbackCounterName}`;
-      }
-      if (assignedBranchIds && assignedBranchIds.length > 0) {
-        const branch = branches.find((b) => assignedBranchIds.includes(b.id));
-        if (branch) return `Staff - ${branch.name}`;
-      }
-      const cleaned = name.replace(/\s*counter\s*manager$/i, '').trim();
-      return `Staff - ${cleaned}`;
-    }
-    return name;
+    let cleaned = name.trim();
+    cleaned = cleaned.replace(/^(counter\s*)+manager\s*[-:]?\s*/i, '');
+    cleaned = cleaned.replace(/^counter\s*counter\s*manager\s*[-:]?\s*/i, '');
+    cleaned = cleaned.replace(/^counter\s*manager\s*[-:]?\s*/i, '');
+    cleaned = cleaned.trim();
+    if (!cleaned) return name.trim();
+    return cleaned;
   };
 
   const getStaffRoleLabel = (staff: Staff): string => {
@@ -923,19 +905,118 @@ export function StaffPage() {
     const today = getTodayDateStr();
     setAuditStartDate(today);
     setAuditEndDate(today);
+    setAuditDatePreset('TODAY');
     setAuditActivityTypeFilter('ALL');
     setAuditSearch('');
 
-    if (staffPerformanceList.length === 0) {
+    try {
+      const res = await apiService.analytics.getOverview();
+      if (res.success && res.data.staffPerformance) {
+        setStaffPerformanceList(res.data.staffPerformance);
+      }
+    } catch {
+      // Ignored
+    }
+  };
+
+  const handleDatePresetChange = (preset: 'TODAY' | 'YESTERDAY' | 'THIS_WEEK' | 'THIS_MONTH' | 'ALL_TIME') => {
+    setAuditDatePreset(preset);
+    const now = new Date();
+    if (preset === 'TODAY') {
+      const today = getTodayDateStr();
+      setAuditStartDate(today);
+      setAuditEndDate(today);
+    } else if (preset === 'YESTERDAY') {
+      const y = new Date();
+      y.setDate(y.getDate() - 1);
+      const yStr = `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, '0')}-${String(y.getDate()).padStart(2, '0')}`;
+      setAuditStartDate(yStr);
+      setAuditEndDate(yStr);
+    } else if (preset === 'THIS_WEEK') {
+      const d = new Date();
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      const monday = new Date(d.setDate(diff));
+      const mStr = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+      setAuditStartDate(mStr);
+      setAuditEndDate(getTodayDateStr());
+    } else if (preset === 'THIS_MONTH') {
+      const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      setAuditStartDate(firstDay);
+      setAuditEndDate(getTodayDateStr());
+    } else if (preset === 'ALL_TIME') {
+      setAuditStartDate('');
+      setAuditEndDate('');
+    }
+  };
+
+  const getActivityDetails = (act: StaffActivityItem) => {
+    let title = 'Activity';
+    let badgeLabel = 'Activity';
+    let badgeClass = 'bg-slate-100 text-slate-700 border-slate-200';
+    let amountText = act.amount !== undefined ? formatCurrency(act.amount) : '—';
+    let amountClass = 'text-slate-900';
+
+    if (act.type === 'CARD_ACTIVATION') {
+      title = 'Wallet issued';
+      badgeLabel = 'Issued';
+      badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200/70';
+      amountText = act.amount !== undefined && act.amount > 0 ? `+${formatCurrency(act.amount)}` : (act.cardNumber ? `#${act.cardNumber}` : 'Issued');
+      amountClass = act.amount !== undefined && act.amount > 0 ? 'text-emerald-600' : 'text-slate-700';
+    } else if (act.type === 'RECHARGE_CASH') {
+      title = 'Recharge (Cash)';
+      badgeLabel = 'Cash';
+      badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200/70';
+      amountText = act.amount !== undefined ? `+${formatCurrency(act.amount)}` : '—';
+      amountClass = 'text-emerald-600';
+    } else if (act.type === 'RECHARGE_UPI') {
+      title = 'Recharge (UPI)';
+      badgeLabel = 'UPI';
+      badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200/70';
+      amountText = act.amount !== undefined ? `+${formatCurrency(act.amount)}` : '—';
+      amountClass = 'text-emerald-600';
+    } else if (act.type === 'PURCHASE') {
+      title = 'Order / Meal Sold';
+      badgeLabel = 'Order';
+      badgeClass = 'bg-slate-100 text-slate-700 border-slate-200';
+      amountText = act.amount !== undefined ? formatCurrency(act.amount) : '—';
+      amountClass = 'text-slate-900';
+    } else if (act.type === 'CARD_SETTLEMENT') {
+      title = 'Wallet closed';
+      badgeLabel = 'Closed';
+      badgeClass = 'bg-slate-100 text-slate-600 border-slate-200';
+      const cardIdDisplay = act.cardNumber ? (act.cardNumber.startsWith('#') ? act.cardNumber : `#${act.cardNumber}`) : (act.customerName || 'Closed');
+      amountText = cardIdDisplay;
+      amountClass = 'text-slate-700 font-semibold';
+    } else if (act.type === 'REFUND') {
+      title = 'Refund';
+      badgeLabel = 'Refund';
+      badgeClass = 'bg-rose-50 text-rose-700 border-rose-200/70';
+      amountText = act.amount !== undefined ? `-${formatCurrency(act.amount)}` : '—';
+      amountClass = 'text-rose-600';
+    } else if (act.type === 'CARD_BLOCKED') {
+      title = 'Wallet Blocked';
+      badgeLabel = 'Blocked';
+      badgeClass = 'bg-rose-50 text-rose-700 border-rose-200/70';
+      amountText = 'Blocked';
+      amountClass = 'text-rose-600';
+    }
+
+    let timeStr = '—';
+    if (act.timestamp) {
       try {
-        const res = await apiService.analytics.getOverview();
-        if (res.success && res.data.staffPerformance) {
-          setStaffPerformanceList(res.data.staffPerformance);
-        }
+        const d = new Date(act.timestamp);
+        timeStr = d.toLocaleTimeString(undefined, {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        });
       } catch {
-        // Ignored
+        timeStr = '—';
       }
     }
+
+    return { title, badgeLabel, badgeClass, amountText, amountClass, timeStr };
   };
 
   const targetStaffMetric = useMemo(() => {
@@ -1004,45 +1085,6 @@ export function StaffPage() {
     return calculateScopedStaffMetrics(scopedAuditActivities);
   }, [targetStaffMetric, scopedAuditActivities]);
 
-  const handleExportAuditCsv = () => {
-    if (!selectedStaffForAudit) return;
-    const headers = [
-      'Timestamp',
-      'Type',
-      'Card Number',
-      'Customer Name',
-      'Customer Phone',
-      'Amount (INR)',
-      'Branch',
-      'Details/Remarks',
-    ];
-
-    const exportList = filteredAuditActivities.length > 0 ? filteredAuditActivities : scopedAuditActivities;
-    const rows = exportList.map((act) => [
-      act.timestamp ? `"${new Date(act.timestamp).toLocaleString()}"` : '"N/A"',
-      `"${act.type}"`,
-      act.cardNumber ? `="${act.cardNumber}"` : '"N/A"',
-      `"${(act.customerName || 'Walk-in Customer').replace(/"/g, '""')}"`,
-      act.customerPhone ? `="${act.customerPhone}"` : '"N/A"',
-      act.amount !== undefined ? act.amount.toFixed(2) : '0.00',
-      `"${(act.branchName || 'Main Cafeteria').replace(/"/g, '""')}"`,
-      `"${(act.description || '').replace(/"/g, '""')}"`,
-    ]);
-
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    const sanitizedStaff = selectedStaffForAudit.name.replace(/[^a-zA-Z0-9]/g, '_');
-    link.download = `StaffActivity_${sanitizedStaff}_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    notify.success(`Activity log for ${selectedStaffForAudit.name} exported as CSV.`);
-  };
-
   // ── Modal Filtered Staff & Counter Matching ────────────────
   const displayedModalStaff = useMemo(() => {
     if (!selectedCounterGroup) return [];
@@ -1065,8 +1107,8 @@ export function StaffPage() {
     );
   }, [counterStaffGroups, selectedCounterGroup, modalCounterSearch]);
 
-  // ── Table Columns (Counter-First & Minimal 3 Columns) ─────────
-  const columns = [
+  // ── Table Columns for ORG_ADMIN (Counter-Grouped View) ─────────
+  const orgAdminColumns = [
     {
       key: 'counterName',
       header: 'Counter Name',
@@ -1120,22 +1162,97 @@ export function StaffPage() {
     },
   ];
 
+  // ── Table Columns for Counter Staff (Table View: Staff Name, Role, Actions) ─────────
+  const counterStaffColumns = [
+    {
+      key: 'name',
+      header: 'Staff Name',
+      className: 'min-w-[180px]',
+      render: (staff: Staff) => (
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <User className="h-4 w-4" />
+          </div>
+          <span className="font-semibold text-slate-900 text-sm">
+            {formatStaffDisplayName(staff.name, staff.assignedBranchIds)}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'role',
+      header: 'Role',
+      className: 'w-32',
+      render: (staff: Staff) => (
+        <Badge
+          variant="outline"
+          className={
+            getStaffRoleLabel(staff) === 'Manager'
+              ? 'border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold text-xs'
+              : 'border-slate-200 bg-slate-50 text-slate-700 text-xs'
+          }
+        >
+          {getStaffRoleLabel(staff)}
+        </Badge>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      className: 'text-right min-w-[280px]',
+      render: (staff: Staff) => (
+        <div className="flex items-center justify-end gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleOpenStaffDetails(staff)}
+            className="text-xs h-7 px-2.5 rounded-lg border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 transition-all shadow-2xs cursor-pointer"
+            leftIcon={<Eye className="h-3 w-3 text-emerald-600" />}
+          >
+            View Details
+          </Button>
+          {canManage && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleOpenStaffModal(staff, 'overview')}
+              className="text-xs h-7 px-2.5 rounded-lg border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 transition-all shadow-2xs cursor-pointer"
+              leftIcon={<Edit2 className="h-3 w-3 text-emerald-600" />}
+            >
+              Edit
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleOpenStaffAudit(staff)}
+            className="text-xs h-7 px-2.5 rounded-lg border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 transition-all shadow-2xs cursor-pointer"
+            leftIcon={<FileSpreadsheet className="h-3 w-3 text-emerald-600" />}
+          >
+            Summary
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-5 max-w-6xl mx-auto pb-10">
       {/* ─── Minimal Header ─── */}
-      <div className="flex flex-col gap-3 border-b border-slate-200/80 pb-4">
-        <div className="flex items-center gap-2.5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200/80 pb-4">
+        <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">Staff Management</h1>
-          {isCounterView && (
-            <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold px-2.5 py-0.5 text-xs">
-              Counter Scope
-            </Badge>
-          )}
         </div>
-        {isCounterView && (
-          <p className="text-xs text-slate-500">
-            Showing staff at your counter only. New staff are automatically assigned to your counter.
-          </p>
+        {canManage && (
+          <Button
+            variant="primary"
+            size="md"
+            onClick={() => handleOpenAdd()}
+            leftIcon={<UserPlus className="h-4 w-4" />}
+            className="text-xs font-semibold px-4 py-2 rounded-xl shadow-2xs cursor-pointer self-start sm:self-auto"
+          >
+            Add Staff
+          </Button>
         )}
       </div>
 
@@ -1154,7 +1271,7 @@ export function StaffPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           <input
             type="text"
-            placeholder="Search counters or staff by name, phone..."
+            placeholder={isCounterView ? "Search staff by name or phone..." : "Search counters or staff by name, phone..."}
             value={searchQuery}
             maxLength={30}
             onChange={(e) => setSearchQuery(e.target.value.slice(0, 30))}
@@ -1192,6 +1309,48 @@ export function StaffPage() {
         </div>
       ) : error ? (
         <ErrorState title="Failed to load staff" message={error} onRetry={fetchStaffData} />
+      ) : isCounterView ? (
+        filteredStaff.length === 0 ? (
+          <EmptyState
+            icon={<Users className="h-8 w-8 text-slate-500" />}
+            title={searchQuery || statusFilter !== 'ALL' ? "No staff members found" : "No staff members yet"}
+            description={
+              searchQuery || statusFilter !== 'ALL'
+                ? 'No staff members match the selected filters. Try adjusting your search query or filters.'
+                : `No staff members added to ${currentBranch ? currentBranch.name : 'this counter'} yet.`
+            }
+            action={
+              searchQuery || statusFilter !== 'ALL' ? (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setStatusFilter('ALL');
+                  }}
+                  leftIcon={<X className="h-4 w-4" />}
+                >
+                  Clear Filters
+                </Button>
+              ) : canManage ? (
+                <Button variant="primary" onClick={() => handleOpenAdd()} leftIcon={<UserPlus className="h-4 w-4" />}>
+                  Add Staff
+                </Button>
+              ) : undefined
+            }
+          />
+        ) : (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <div className="min-w-[600px]">
+                <DataTable<Staff>
+                  data={filteredStaff}
+                  columns={counterStaffColumns}
+                  keyExtractor={(item: Staff) => item.id}
+                />
+              </div>
+            </div>
+          </div>
+        )
       ) : staffList.length === 0 ? (
         <EmptyState
           icon={<Users className="h-8 w-8 text-slate-500" />}
@@ -1234,7 +1393,7 @@ export function StaffPage() {
         <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
           <DataTable<CounterStaffGroup>
             data={counterStaffGroups}
-            columns={columns}
+            columns={orgAdminColumns}
             keyExtractor={(item: CounterStaffGroup) => item.id}
           />
         </div>
@@ -1272,51 +1431,29 @@ export function StaffPage() {
 
             <button
               type="button"
-              onClick={() => setStaffTab('permissions')}
+              onClick={() => setStaffTab('branches')}
               className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
-                staffTab === 'permissions'
+                staffTab === 'branches'
                   ? 'border-emerald-600 text-emerald-700 font-semibold'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
-              <ShieldCheck className="h-4 w-4" />
-              <span>Permissions</span>
+              <Building2 className="h-4 w-4" />
+              <span>Counters</span>
               <Badge variant="outline" className="text-[10px] ml-1">
-                {formPermissions.length} / 20
+                {formBranchIds.length}
               </Badge>
             </button>
-
-            {!isCounterView && (
-              <button
-                type="button"
-                onClick={() => setStaffTab('branches')}
-                className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
-                  staffTab === 'branches'
-                    ? 'border-emerald-600 text-emerald-700 font-semibold'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <Building2 className="h-4 w-4" />
-                <span>Counters</span>
-                <Badge variant="outline" className="text-[10px] ml-1">
-                  {formBranchIds.length}
-                </Badge>
-              </button>
-            )}
           </div>
 
           {/* Tab Content Panes */}
           <div className="max-h-[64vh] overflow-y-auto pr-1">
             {/* ── TAB 1: OVERVIEW (PROFILE & INTEGRATED SECURITY) ── */}
             {staffTab === 'overview' && (
-              <div className="space-y-4">
-                {/* Account Details & Edit Fields */}
-                <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
-                    Staff Profile Information
-                  </h4>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-4 py-1">
+                {/* Profile Fields: Name & Phone */}
+                <div className="space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
                     <Input
                       id="staff-edit-name"
                       label="Full Name"
@@ -1345,163 +1482,205 @@ export function StaffPage() {
                       disabled={!canManage || isSubmitting}
                     />
                   </div>
-                </div>
 
-                {/* Unified Security & Change Password Section */}
-                <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
-                  <div className="flex items-center justify-between">
+                  {/* Sleek Minimal Account Status Row */}
+                  <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                    <span className="text-xs font-medium text-slate-700">Account Access Status</span>
                     <div className="flex items-center gap-2">
-                      <Lock className="h-4 w-4 text-emerald-600" />
-                      <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
-                        Password & Credentials
-                      </h4>
-                    </div>
-                    {formNewPassword && (
-                      <span className="text-[11px] text-amber-600 font-medium">Unsaved password changes</span>
-                    )}
-                  </div>
-
-                  {passwordChangeError && (
-                    <div className="flex items-start gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-700">
-                      <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-500" />
-                      <span>{passwordChangeError}</span>
-                    </div>
-                  )}
-
-                  {passwordChangeSuccess && (
-                    <div className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700">
-                      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
-                      <span>{passwordChangeSuccess}</span>
-                    </div>
-                  )}
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <Input
-                      id="staff-new-password"
-                      type={showNewPassword ? 'text' : 'password'}
-                      label="New Password"
-                      placeholder="Enter new password"
-                      value={formNewPassword}
-                      onChange={(e) => {
-                        setFormNewPassword(e.target.value);
-                        if (passwordChangeError) setPasswordChangeError(null);
-                      }}
-                      disabled={!canManage || isChangingPassword}
-                      autoComplete="new-password"
-                      rightElement={
-                        <button
-                          type="button"
-                          onClick={() => setShowNewPassword(!showNewPassword)}
-                          className="text-slate-400 hover:text-slate-600 focus:outline-none p-1 flex items-center justify-center cursor-pointer"
-                          tabIndex={-1}
-                        >
-                          {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      }
-                    />
-
-                    <Input
-                      id="staff-confirm-password"
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      label="Confirm New Password"
-                      placeholder="Re-enter new password"
-                      value={formConfirmPassword}
-                      onChange={(e) => {
-                        setFormConfirmPassword(e.target.value);
-                        if (passwordChangeError) setPasswordChangeError(null);
-                      }}
-                      disabled={!canManage || isChangingPassword}
-                      autoComplete="new-password"
-                      rightElement={
-                        <button
-                          type="button"
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          className="text-slate-400 hover:text-slate-600 focus:outline-none p-1 flex items-center justify-center cursor-pointer"
-                          tabIndex={-1}
-                        >
-                          {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      }
-                    />
-                  </div>
-
-                  {/* Current Password Display Card */}
-                  <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3 flex items-center justify-between">
-                    <div>
-                      <span className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider block">
-                        Current Password
+                      <span className={`text-xs font-semibold ${selectedStaff?.status === 'ACTIVE' ? 'text-emerald-700' : 'text-slate-500'}`}>
+                        {selectedStaff?.status === 'ACTIVE' ? 'Active' : 'Inactive'}
                       </span>
-                      <span className="font-mono text-sm font-bold text-slate-800">
-                        {showCurrentPassword ? (formNewPassword.trim() || currentStaffPassword) : '••••••••'}
-                      </span>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        Copying or sharing credentials will use this password.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                      className="p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-100 transition-colors cursor-pointer flex items-center gap-1 text-xs font-semibold"
-                      aria-label={showCurrentPassword ? 'Hide current password' : 'Show current password'}
-                    >
-                      {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      <span>{showCurrentPassword ? 'Hide' : 'Reveal'}</span>
-                    </button>
-                  </div>
-
-                  {/* Action & Credentials Buttons */}
-                  <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
-                    {canManage && (
-                      <Button
+                      <button
                         type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleChangeStaffPassword}
-                        disabled={isChangingPassword || !formNewPassword || !formConfirmPassword}
-                        isLoading={isChangingPassword}
-                        leftIcon={<Key className="h-3.5 w-3.5" />}
-                        className="text-xs h-8"
+                        disabled={!canManage || togglingStaffId === selectedStaff?.id}
+                        onClick={() => selectedStaff && handleToggleStaffStatus(selectedStaff)}
+                        className={`relative inline-flex h-5.5 w-10 items-center rounded-full transition-colors cursor-pointer ${
+                          selectedStaff?.status === 'ACTIVE' ? 'bg-emerald-600' : 'bg-slate-300'
+                        }`}
+                        aria-label="Toggle staff status"
                       >
-                        Update Password
-                      </Button>
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition shadow-xs ${
+                            selectedStaff?.status === 'ACTIVE' ? 'translate-x-5' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Subtle Divider */}
+                <div className="border-t border-slate-200/70 pt-2 space-y-3">
+                  {/* Unified Compact Credentials Card */}
+                  <div className="rounded-xl border border-slate-200/90 bg-white p-3 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
+                        <Lock className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Current Password</div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="font-mono text-sm font-bold text-slate-800 tracking-wider">
+                            {showCurrentPassword ? (formNewPassword.trim() || currentStaffPassword) : '••••••••'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                            className="text-slate-400 hover:text-emerald-700 transition-colors cursor-pointer p-0.5"
+                            title={showCurrentPassword ? 'Hide password' : 'Show password'}
+                            aria-label={showCurrentPassword ? 'Hide password' : 'Show password'}
+                          >
+                            {showCurrentPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Compact Utility Actions */}
+                    <div className="flex items-center gap-2 self-end sm:self-center">
+                      <button
+                        type="button"
+                        onClick={handleCopyCredentialsFromEdit}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300 text-xs font-medium transition shadow-2xs cursor-pointer"
+                        title="Copy Credentials"
+                      >
+                        <Copy className="h-3.5 w-3.5 text-slate-500" />
+                        <span>Copy</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSendWhatsAppFromEdit}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#25D366] hover:bg-[#20bd5a] text-white text-xs font-medium transition shadow-2xs cursor-pointer"
+                        title="Send via WhatsApp"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        <span>WhatsApp</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Clean Expandable Change Password Section */}
+                  <div>
+                    {!showChangePasswordSection && !formNewPassword ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowChangePasswordSection(true)}
+                        className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 cursor-pointer transition-colors p-1"
+                      >
+                        <Key className="h-3.5 w-3.5" />
+                        <span>Change Password</span>
+                      </button>
+                    ) : (
+                      <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3.5 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                            <Key className="h-3.5 w-3.5 text-emerald-600" />
+                            <span>Set New Password</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowChangePasswordSection(false);
+                              setFormNewPassword('');
+                              setFormConfirmPassword('');
+                              setPasswordChangeError(null);
+                              setPasswordChangeSuccess(null);
+                            }}
+                            className="text-[11px] text-slate-400 hover:text-slate-600 cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+
+                        {passwordChangeError && (
+                          <div className="flex items-start gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-700">
+                            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-500" />
+                            <span>{passwordChangeError}</span>
+                          </div>
+                        )}
+
+                        {passwordChangeSuccess && (
+                          <div className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700">
+                            <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                            <span>{passwordChangeSuccess}</span>
+                          </div>
+                        )}
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <Input
+                            id="staff-new-password"
+                            type={showNewPassword ? 'text' : 'password'}
+                            label="New Password"
+                            placeholder="Enter new password"
+                            value={formNewPassword}
+                            onChange={(e) => {
+                              setFormNewPassword(e.target.value);
+                              if (passwordChangeError) setPasswordChangeError(null);
+                            }}
+                            disabled={!canManage || isChangingPassword}
+                            autoComplete="new-password"
+                            rightElement={
+                              <button
+                                type="button"
+                                onClick={() => setShowNewPassword(!showNewPassword)}
+                                className="text-slate-400 hover:text-slate-600 focus:outline-none p-1 flex items-center justify-center cursor-pointer"
+                                tabIndex={-1}
+                              >
+                                {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              </button>
+                            }
+                          />
+
+                          <Input
+                            id="staff-confirm-password"
+                            type={showConfirmPassword ? 'text' : 'password'}
+                            label="Confirm New Password"
+                            placeholder="Re-enter new password"
+                            value={formConfirmPassword}
+                            onChange={(e) => {
+                              setFormConfirmPassword(e.target.value);
+                              if (passwordChangeError) setPasswordChangeError(null);
+                            }}
+                            disabled={!canManage || isChangingPassword}
+                            autoComplete="new-password"
+                            rightElement={
+                              <button
+                                type="button"
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                className="text-slate-400 hover:text-slate-600 focus:outline-none p-1 flex items-center justify-center cursor-pointer"
+                                tabIndex={-1}
+                              >
+                                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              </button>
+                            }
+                          />
+                        </div>
+
+                        {canManage && (
+                          <div className="flex justify-end pt-1">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={handleChangeStaffPassword}
+                              disabled={isChangingPassword || !formNewPassword || !formConfirmPassword}
+                              isLoading={isChangingPassword}
+                              leftIcon={<Key className="h-3.5 w-3.5" />}
+                              className="text-xs h-7.5 px-3"
+                            >
+                              Update Password Now
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     )}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleCopyCredentialsFromEdit}
-                      className="flex-1 justify-center gap-1.5 text-xs h-8 bg-white border-slate-200 hover:border-slate-300 text-slate-700 cursor-pointer"
-                      leftIcon={<Copy className="h-3.5 w-3.5 text-slate-500" />}
-                    >
-                      Copy Credentials
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={handleSendWhatsAppFromEdit}
-                      className="flex-1 justify-center gap-1.5 text-xs h-8 bg-[#25D366] hover:bg-[#20bd5a] text-white border-transparent cursor-pointer font-medium"
-                      leftIcon={<ExternalLink className="h-3.5 w-3.5" />}
-                    >
-                      Send via WhatsApp
-                    </Button>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* ── TAB 2: PERMISSIONS ── */}
-            {staffTab === 'permissions' && (
-              <div className="space-y-4">
-                <PermissionMatrix
-                  selectedPermissions={formPermissions}
-                  onChange={(perms) => setFormPermissions(perms)}
-                  readOnly={!canManage}
-                />
-              </div>
-            )}
-
-            {/* ── TAB 3: COUNTERS ── */}
-            {!isCounterView && staffTab === 'branches' && (
+            {/* ── TAB 2: COUNTERS ── */}
+            {staffTab === 'branches' && (
               <div className="space-y-4">
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
@@ -1556,37 +1735,38 @@ export function StaffPage() {
             )}
           </div>
 
-          <ModalFooter>
-            {canManage && staffTab === 'overview' && selectedStaff && (
-              <Button
-                type="button"
-                variant="danger"
-                size="sm"
-                className="mr-auto text-rose-600 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 border border-rose-200 cursor-pointer"
-                leftIcon={<Trash2 className="h-3.5 w-3.5" />}
-                onClick={() => handleInitiateDelete(selectedStaff)}
-              >
-                Delete
+          <ModalFooter className="w-full flex items-center justify-between">
+            <div>
+              {canManage && selectedStaff && (
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  disabled={selectedStaff.id === user?.id || isSubmitting}
+                  title={selectedStaff.id === user?.id ? 'Cannot delete your own account' : 'Delete staff member'}
+                  className="text-rose-600 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 border border-rose-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  leftIcon={<Trash2 className="h-3.5 w-3.5" />}
+                  onClick={() => handleInitiateDelete(selectedStaff)}
+                >
+                  Delete Staff
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setShowStaffModal(false)} disabled={isSubmitting}>
+                Close
               </Button>
-            )}
-            <Button variant="outline" onClick={() => setShowStaffModal(false)} disabled={isSubmitting}>
-              Close
-            </Button>
-            {canManage && staffTab === 'overview' && (
-              <Button type="button" variant="primary" onClick={handleSaveProfile} isLoading={isSubmitting} disabled={isSubmitting}>
-                Save Staff Information
-              </Button>
-            )}
-            {canManage && staffTab === 'permissions' && (
-              <Button type="button" variant="primary" onClick={handleSavePermissions} isLoading={isSubmitting} disabled={isSubmitting} leftIcon={<ShieldCheck className="h-4 w-4" />}>
-                Save Permissions
-              </Button>
-            )}
-            {canManage && !isCounterView && staffTab === 'branches' && (
-              <Button type="button" variant="primary" onClick={handleSaveBranches} isLoading={isSubmitting} disabled={isSubmitting} leftIcon={<Building2 className="h-4 w-4" />}>
-                Save Branches
-              </Button>
-            )}
+              {canManage && staffTab === 'overview' && (
+                <Button type="button" variant="primary" onClick={handleSaveProfile} isLoading={isSubmitting} disabled={isSubmitting}>
+                  Save Staff Information
+                </Button>
+              )}
+              {canManage && staffTab === 'branches' && (
+                <Button type="button" variant="primary" onClick={handleSaveBranches} isLoading={isSubmitting} disabled={isSubmitting} leftIcon={<Building2 className="h-4 w-4" />}>
+                  Save Branches
+                </Button>
+              )}
+            </div>
           </ModalFooter>
         </form>
       </Modal>
@@ -1698,27 +1878,20 @@ export function StaffPage() {
 
             {/* Quick Action Footer */}
             <ModalFooter>
-              {selectedCounterGroup && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setShowStaffDetailsModal(false);
-                    setShowCounterStaffModal(true);
-                  }}
-                  leftIcon={<ArrowLeft className="h-3.5 w-3.5" />}
-                  className="mr-auto text-xs font-medium border-slate-300 text-slate-700 hover:bg-slate-100"
-                >
-                  Back
-                </Button>
-              )}
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => setShowStaffDetailsModal(false)}
+                onClick={() => {
+                  setShowStaffDetailsModal(false);
+                  if (selectedCounterGroup) {
+                    setShowCounterStaffModal(true);
+                  }
+                }}
+                leftIcon={<ArrowLeft className="h-3.5 w-3.5" />}
+                className="text-xs font-medium border-slate-300 text-slate-700 hover:bg-slate-100"
               >
-                Close
+                Back
               </Button>
             </ModalFooter>
           </div>
@@ -1823,20 +1996,21 @@ export function StaffPage() {
                     className="flex flex-col md:flex-row md:items-center justify-between p-3.5 sm:p-4 rounded-xl border border-slate-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/20 transition-all gap-3.5"
                   >
                     <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                      <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-sm sm:text-base font-bold text-white shadow-2xs">
-                        {formatStaffDisplayName(st.name, st.assignedBranchIds, selectedCounterGroup?.counterName).charAt(0).toUpperCase()}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-slate-900 text-sm sm:text-base">{formatStaffDisplayName(st.name, st.assignedBranchIds, selectedCounterGroup?.counterName)}</span>
-                        </div>
-                        <div className="flex items-center gap-2.5 text-xs text-slate-500 mt-0.5 flex-wrap">
-                          <span className="font-medium text-slate-600">
-                            {selectedCounterGroup ? `Staff - ${selectedCounterGroup.counterName}` : getStaffRoleLabel(st)}
-                          </span>
-                          {st.phone && <span className="font-mono text-slate-500">• {st.phone}</span>}
-                        </div>
-                      </div>
+                       <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-sm sm:text-base font-bold text-white shadow-2xs">
+                         {formatStaffDisplayName(st.name, st.assignedBranchIds, selectedCounterGroup?.counterName).charAt(0).toUpperCase()}
+                       </div>
+                       <div className="min-w-0 flex-1">
+                         <div className="flex items-center gap-2 flex-wrap">
+                           <span className="font-bold text-slate-900 text-sm sm:text-base">{formatStaffDisplayName(st.name, st.assignedBranchIds)}</span>
+                         </div>
+                         <div className="flex items-center gap-2.5 text-xs text-slate-500 mt-0.5 flex-wrap">
+                           <span className="font-medium text-slate-600">
+                             {selectedCounterGroup ? getStaffRoleLabel(st) : getStaffRoleLabel(st)}
+                           </span>
+                           {st.phone && <span className="font-mono text-slate-500">• {st.phone}</span>}
+                         </div>
+                       </div>
+
                     </div>
 
                     <div className="flex items-center gap-2 self-end md:self-center shrink-0 flex-wrap sm:flex-nowrap">
@@ -1875,7 +2049,7 @@ export function StaffPage() {
                         leftIcon={<FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />}
                         className="text-xs h-7.5 px-2.5 font-medium border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 cursor-pointer"
                       >
-                        Performance & Audit
+                        Summary
                       </Button>
 
                       {/* Active / Inactive Slide Switch */}
@@ -1961,84 +2135,65 @@ export function StaffPage() {
             </div>
           )}
 
-          {/* 3-Step Guided Wizard Stepper */}
-          <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/80 px-4 py-3 rounded-xl mb-4">
-            <button
-              type="button"
-              onClick={() => setAddTab('basic')}
-              className="flex items-center gap-2.5 text-left cursor-pointer focus:outline-none"
-            >
-              <div
-                className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all ${
-                  addTab === 'basic'
-                    ? 'bg-emerald-600 text-white ring-4 ring-emerald-100'
-                    : 'bg-emerald-100 text-emerald-800'
-                }`}
+          {/* Stepper for Org Admin (2 steps), or Counter Banner for Counter Admin */}
+          {!isCounterView ? (
+            <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/80 px-4 py-3 rounded-xl mb-4">
+              <button
+                type="button"
+                onClick={() => setAddTab('basic')}
+                className="flex items-center gap-2.5 text-left cursor-pointer focus:outline-none"
               >
-                1
-              </div>
-              <div>
-                <p className={`text-xs font-bold ${addTab === 'basic' ? 'text-emerald-700' : 'text-slate-700'}`}>
-                  1. Account Details
-                </p>
-                <p className="text-[10px] text-slate-400">Name & Phone</p>
-              </div>
-            </button>
+                <div
+                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all ${
+                    addTab === 'basic'
+                      ? 'bg-emerald-600 text-white ring-4 ring-emerald-100'
+                      : 'bg-emerald-100 text-emerald-800'
+                  }`}
+                >
+                  1
+                </div>
+                <div>
+                  <p className={`text-xs font-bold ${addTab === 'basic' ? 'text-emerald-700' : 'text-slate-700'}`}>
+                    1. Account Details
+                  </p>
+                  <p className="text-[10px] text-slate-400">Name & Phone</p>
+                </div>
+              </button>
 
-            <div className="h-0.5 w-8 bg-slate-200 hidden sm:block" />
+              <div className="h-0.5 w-12 bg-slate-200 hidden sm:block" />
 
-            <button
-              type="button"
-              onClick={() => {
-                if (validateBasicInfo()) setAddTab('branches');
-              }}
-              className="flex items-center gap-2.5 text-left cursor-pointer focus:outline-none"
-            >
-              <div
-                className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all ${
-                  addTab === 'branches'
-                    ? 'bg-emerald-600 text-white ring-4 ring-emerald-100'
-                    : addTab === 'permissions'
-                    ? 'bg-emerald-100 text-emerald-800'
-                    : 'bg-slate-200 text-slate-600'
-                }`}
+              <button
+                type="button"
+                onClick={() => {
+                  if (validateBasicInfo()) setAddTab('branches');
+                }}
+                className="flex items-center gap-2.5 text-left cursor-pointer focus:outline-none"
               >
-                2
-              </div>
-              <div>
-                <p className={`text-xs font-bold ${addTab === 'branches' ? 'text-emerald-700' : 'text-slate-700'}`}>
-                  2. Role & Counter
-                </p>
-                <p className="text-[10px] text-slate-400">Counter & preset</p>
-              </div>
-            </button>
-
-            <div className="h-0.5 w-8 bg-slate-200 hidden sm:block" />
-
-            <button
-              type="button"
-              onClick={() => {
-                if (validateBasicInfo()) setAddTab('permissions');
-              }}
-              className="flex items-center gap-2.5 text-left cursor-pointer focus:outline-none"
-            >
-              <div
-                className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all ${
-                  addTab === 'permissions'
-                    ? 'bg-emerald-600 text-white ring-4 ring-emerald-100'
-                    : 'bg-slate-200 text-slate-600'
-                }`}
-              >
-                3
-              </div>
-              <div>
-                <p className={`text-xs font-bold ${addTab === 'permissions' ? 'text-emerald-700' : 'text-slate-700'}`}>
-                  3. Review & Create
-                </p>
-                <p className="text-[10px] text-slate-400">Summary & activate</p>
-              </div>
-            </button>
-          </div>
+                <div
+                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all ${
+                    addTab === 'branches'
+                      ? 'bg-emerald-600 text-white ring-4 ring-emerald-100'
+                      : 'bg-slate-200 text-slate-600'
+                  }`}
+                >
+                  2
+                </div>
+                <div>
+                  <p className={`text-xs font-bold ${addTab === 'branches' ? 'text-emerald-700' : 'text-slate-700'}`}>
+                    2. Assign Counters
+                  </p>
+                  <p className="text-[10px] text-slate-400">Counter Terminal</p>
+                </div>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-emerald-50/70 border border-emerald-200/80 text-xs text-emerald-900 mb-4">
+              <Building2 className="h-4 w-4 text-emerald-600 shrink-0" />
+              <span>
+                Adding staff member for counter: <strong>{scopedBranches[0]?.name || 'Current Counter'}</strong>
+              </span>
+            </div>
+          )}
 
           {/* Form Step Panes (Preserves entered state across tabs) */}
           <div className="max-h-[64vh] overflow-y-auto pr-1">
@@ -2186,175 +2341,6 @@ export function StaffPage() {
                     );
                   })}
                 </div>
-
-                {/* Role Selection inside Step 2 */}
-                <div className="pt-4 border-t border-slate-200">
-                  <div className="mb-3">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                      Choose Role
-                    </h4>
-                  </div>
-
-                  {/* 2 Large Role Preset Cards: Manager & Staff */}
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {/* Manager Card */}
-                    <button
-                      type="button"
-                      onClick={() => setFormPermissions([...MANAGER_PERMISSIONS])}
-                      className={`flex flex-col justify-between p-4 rounded-xl border text-left transition-all cursor-pointer select-none ${
-                        formPermissions.includes('RECHARGE')
-                          ? 'border-emerald-500 bg-emerald-50/80 ring-1 ring-emerald-500'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
-                      }`}
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <h5 className="font-bold text-sm text-slate-900">Manager</h5>
-                          {formPermissions.includes('RECHARGE') && (
-                            <Check className="h-4 w-4 text-emerald-600" />
-                          )}
-                        </div>
-                        <div className="space-y-1.5 text-xs text-slate-700 mt-2">
-                          <div className="flex items-center gap-1.5">
-                            <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                            <span>Recharge & Issue Cards</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                            <span>Settle Cards & Refunds</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                            <span>Manage Products & Menu</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                            <span>Analytics & Reports</span>
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-
-                    {/* Staff Card */}
-                    <button
-                      type="button"
-                      onClick={() => setFormPermissions([...STAFF_PERMISSIONS])}
-                      className={`flex flex-col justify-between p-4 rounded-xl border text-left transition-all cursor-pointer select-none ${
-                        !formPermissions.includes('RECHARGE')
-                          ? 'border-emerald-500 bg-emerald-50/80 ring-1 ring-emerald-500'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
-                      }`}
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <h5 className="font-bold text-sm text-slate-900">Staff</h5>
-                          {!formPermissions.includes('RECHARGE') && (
-                            <Check className="h-4 w-4 text-emerald-600" />
-                          )}
-                        </div>
-                        <div className="space-y-1.5 text-xs text-slate-700 mt-2">
-                          <div className="flex items-center gap-1.5">
-                            <Check className="h-3.5 w-3.5 text-sky-600 shrink-0" />
-                            <span>Deduct Card Amount (POS)</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Check className="h-3.5 w-3.5 text-sky-600 shrink-0" />
-                            <span>Create & Edit Menu Products</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Check className="h-3.5 w-3.5 text-sky-600 shrink-0" />
-                            <span>Add Food Products to Cart</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Check className="h-3.5 w-3.5 text-sky-600 shrink-0" />
-                            <span>Scan & View Card Balance</span>
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-                  </div>
-
-                  {/* Collapsible Advanced Permissions Toggle */}
-                  <div className="pt-3 border-t border-slate-200 mt-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowAdvancedPerms(!showAdvancedPerms)}
-                      className="flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-slate-800 transition-colors cursor-pointer"
-                    >
-                      <span>{showAdvancedPerms ? '▼ Hide individual permissions' : '▶ Customize individual permissions (optional)'}</span>
-                      <Badge variant="outline" className="text-[10px]">
-                        {formPermissions.length} selected
-                      </Badge>
-                    </button>
-
-                    {showAdvancedPerms && (
-                      <div className="mt-3 pt-3 border-t border-slate-200">
-                        <PermissionMatrix
-                          selectedPermissions={formPermissions}
-                          onChange={setFormPermissions}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ── STEP 3: REVIEW & CREATE ── */}
-            {addTab === 'permissions' && (
-              <div className="space-y-4">
-                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-4">
-                  <div className="flex items-center gap-3 border-b border-slate-200 pb-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 font-bold">
-                      <User className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900 text-base">{formName || 'Staff Member'}</h4>
-                      <p className="text-xs text-slate-500 font-mono flex items-center gap-1">
-                        <Phone className="h-3 w-3" />
-                        {formPhone || 'No phone entered'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    <div className="p-3 rounded-lg border border-slate-200 bg-white">
-                      <span className="text-slate-500 font-medium block mb-1">Assigned Counter(s)</span>
-                      <p className="font-semibold text-slate-900 flex items-center gap-1.5">
-                        <Building2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                        {formBranchIds.length === 0
-                          ? 'No counters selected'
-                          : branches
-                              .filter((b) => formBranchIds.includes(b.id))
-                              .map((b) => b.name)
-                              .join(', ')}
-                      </p>
-                    </div>
-
-                    <div className="p-3 rounded-lg border border-slate-200 bg-white">
-                      <span className="text-slate-500 font-medium block mb-1">Assigned Role Preset</span>
-                      <p className="font-semibold text-emerald-700">
-                        {formPermissions.length === 8 && formPermissions.includes('PURCHASE') && !formPermissions.includes('PRODUCT_MANAGE')
-                          ? 'Cashier / POS (8 permissions)'
-                          : formPermissions.length === 16
-                          ? 'Supervisor (16 permissions)'
-                          : formPermissions.length === 20
-                          ? 'Manager / Admin (All 20 permissions)'
-                          : `Custom Role (${formPermissions.length} permissions)`}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-3.5 text-xs text-emerald-900 flex items-start gap-2.5">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="font-semibold">Ready for immediate mobile activation</p>
-                      <p className="text-emerald-700 mt-0.5">
-                        The staff account will be activated immediately upon creation. The staff member can sign into the mobile POS app using phone number <strong>{formPhone}</strong> and their password.
-                      </p>
-                    </div>
-                  </div>
-                </div>
               </div>
             )}
           </div>
@@ -2364,7 +2350,19 @@ export function StaffPage() {
               Cancel
             </Button>
 
-            {addTab === 'basic' && (
+            {addTab === 'basic' && isCounterView && (
+              <Button
+                type="button"
+                variant="primary"
+                onClick={() => handleAddSubmit()}
+                isLoading={isSubmitting}
+                disabled={isSubmitting}
+              >
+                Create Staff Account
+              </Button>
+            )}
+
+            {addTab === 'basic' && !isCounterView && (
               <Button
                 type="button"
                 variant="primary"
@@ -2373,11 +2371,11 @@ export function StaffPage() {
                 }}
                 rightIcon={<ArrowRight className="h-4 w-4" />}
               >
-                Next: Role & Counter
+                Next: Assign Counters
               </Button>
             )}
 
-            {addTab === 'branches' && (
+            {addTab === 'branches' && !isCounterView && (
               <div className="flex gap-2">
                 <Button
                   type="button"
@@ -2386,27 +2384,6 @@ export function StaffPage() {
                   leftIcon={<ArrowLeft className="h-4 w-4" />}
                 >
                   Back: Account Details
-                </Button>
-                <Button
-                  type="button"
-                  variant="primary"
-                  onClick={() => setAddTab('permissions')}
-                  rightIcon={<ArrowRight className="h-4 w-4" />}
-                >
-                  Next: Review & Create
-                </Button>
-              </div>
-            )}
-
-            {addTab === 'permissions' && (
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setAddTab('branches')}
-                  leftIcon={<ArrowLeft className="h-4 w-4" />}
-                >
-                  Back: Role & Counter
                 </Button>
                 <Button
                   type="button"
@@ -2428,7 +2405,10 @@ export function StaffPage() {
       {/* ── WhatsApp & Staff Credentials Popup Modal (Opens right after creating staff member) ── */}
       <Modal
         isOpen={showStaffCreatedModal}
-        onClose={() => setShowStaffCreatedModal(false)}
+        onClose={() => {
+          setShowStaffCreatedModal(false);
+          setShowStaffPasswordInModal(false);
+        }}
         title="Staff Account Created"
         size="md"
       >
@@ -2443,9 +2423,6 @@ export function StaffPage() {
             <h3 className="text-lg font-bold text-slate-900">
               {createdStaffCredentials?.name}
             </h3>
-            <p className="text-xs text-slate-600 mt-1">
-              Account activated immediately. Share these login credentials with the staff member to log in to the POS app.
-            </p>
           </div>
 
           <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3">
@@ -2462,18 +2439,20 @@ export function StaffPage() {
             </div>
             <div className="flex items-center justify-between text-xs border-t border-slate-200/80 pt-2.5">
               <span className="text-slate-500 font-medium">POS Password:</span>
-              <span className="font-mono font-bold text-emerald-700 text-sm">{createdStaffCredentials?.password}</span>
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono font-bold text-emerald-700 text-sm">
+                  {showStaffPasswordInModal ? createdStaffCredentials?.password : '••••••••'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowStaffPasswordInModal(!showStaffPasswordInModal)}
+                  className="text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
+                  aria-label={showStaffPasswordInModal ? 'Hide password' : 'Show password'}
+                >
+                  {showStaffPasswordInModal ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </button>
+              </div>
             </div>
-          </div>
-
-          <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs text-blue-800 space-y-1">
-            <p className="font-semibold flex items-center gap-1.5 text-blue-900">
-              <Share2 className="h-4 w-4 text-blue-600" />
-              Direct WhatsApp Dispatch
-            </p>
-            <p>
-              Clicking below opens WhatsApp (Desktop or Mobile) directly to this staff member's phone number with their login credentials.
-            </p>
           </div>
 
           <ModalFooter>
@@ -2520,7 +2499,7 @@ export function StaffPage() {
       </Modal>
 
 
-      {/* ── 5. STAFF PERFORMANCE & OPERATIONAL AUDIT MODAL ── */}
+      {/* ── 5. DAILY ACTIVITY SUMMARY MODAL ── */}
       {selectedStaffForAudit && (
         <Modal
           isOpen={true}
@@ -2531,278 +2510,158 @@ export function StaffPage() {
             const today = getTodayDateStr();
             setAuditStartDate(today);
             setAuditEndDate(today);
+            setAuditDatePreset('TODAY');
           }}
-          title={`${formatStaffDisplayName(selectedStaffForAudit.name, selectedStaffForAudit.assignedBranchIds)} — Staff Performance & Operational Audit`}
+          title={`${formatStaffDisplayName(selectedStaffForAudit.name, selectedStaffForAudit.assignedBranchIds)} — Daily Activity Summary`}
           size="xl"
         >
-          <div className="space-y-6 text-xs">
-            {/* Staff Profile & Lifetime KPI Strip */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+          <div className="space-y-5 text-xs">
+            {/* Staff Profile & Date Selector Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-100">
+              {/* Staff Info (No Phone Number) */}
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 font-bold text-white text-base">
+                <div className="w-10 h-10 rounded-full bg-slate-900 text-white font-bold flex items-center justify-center text-sm shadow-xs">
                   {formatStaffDisplayName(selectedStaffForAudit.name, selectedStaffForAudit.assignedBranchIds).charAt(0).toUpperCase()}
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-900 text-sm">{formatStaffDisplayName(selectedStaffForAudit.name, selectedStaffForAudit.assignedBranchIds)}</span>
-                    <Badge variant="outline" className="text-[10px] text-slate-600 bg-white">
-                      {getStaffRoleLabel(selectedStaffForAudit)}
-                    </Badge>
-                  </div>
-                  <span className="text-slate-500 font-medium">
-                    {selectedStaffForAudit.email || selectedStaffForAudit.phone || 'No email provided'}
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-900 text-sm">
+                    {formatStaffDisplayName(selectedStaffForAudit.name, selectedStaffForAudit.assignedBranchIds)}
+                  </span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                    {getStaffRoleLabel(selectedStaffForAudit)}
                   </span>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExportAuditCsv}
-                  leftIcon={<FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />}
+
+              {/* Date Dropdown (No Export CSV) */}
+              <div className="relative inline-flex items-center">
+                <select
+                  value={auditDatePreset}
+                  onChange={(e) => handleDatePresetChange(e.target.value as any)}
+                  className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-none cursor-pointer"
                 >
-                  Export Activity CSV
-                </Button>
+                  <option value="TODAY">Today</option>
+                  <option value="YESTERDAY">Yesterday</option>
+                  <option value="THIS_WEEK">This Week</option>
+                  <option value="THIS_MONTH">This Month</option>
+                  <option value="ALL_TIME">All Time</option>
+                </select>
               </div>
             </div>
 
-            {/* Custom Time Range Filter Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs">
-              <div className="flex flex-wrap items-center gap-3">
-                <div>
-                  <label className="mb-1 block text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-                    From Date
-                  </label>
-                  <input
-                    type="date"
-                    value={auditStartDate}
-                    onChange={(e) => setAuditStartDate(e.target.value)}
-                    className="h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-800 focus:border-emerald-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-                    To Date
-                  </label>
-                  <input
-                    type="date"
-                    value={auditEndDate}
-                    onChange={(e) => setAuditEndDate(e.target.value)}
-                    className="h-8.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-800 focus:border-emerald-500 focus:outline-none"
-                  />
-                </div>
-
-                <div className="flex items-center gap-2 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const today = getTodayDateStr();
-                      setAuditStartDate(today);
-                      setAuditEndDate(today);
-                    }}
-                    className="h-8.5 px-3 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-xs font-semibold text-emerald-700 transition-colors cursor-pointer"
-                  >
-                    Reset to Today
-                  </button>
-
-                  {(auditStartDate || auditEndDate) && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAuditStartDate('');
-                        setAuditEndDate('');
-                      }}
-                      className="h-8.5 px-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-600 transition-colors cursor-pointer"
-                    >
-                      View All Time
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* 5 Metric KPI Cards - Spacious & High Readability */}
-            <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-5">
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 shadow-2xs">
-                <span className="text-xs font-semibold text-slate-600 tracking-tight leading-snug">
-                  Cards Activated
-                </span>
-                <p className="font-mono text-xl font-bold text-emerald-700 mt-1.5">
-                  {auditMetrics.cardsActivatedCount} cards
+            {/* Minimal 5-Metric Strip (Zero Emojis) */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200/80">
+              <div>
+                <p className="text-[11px] font-medium text-slate-500">Wallets Issued</p>
+                <p className="text-lg font-bold font-mono text-slate-900 mt-1">
+                  {auditMetrics.cardsActivatedCount}
                 </p>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-                <span className="text-xs font-semibold text-slate-600 tracking-tight leading-snug">
-                  Cards Settled
-                </span>
-                <p className="font-mono text-xl font-bold text-slate-800 mt-1.5">
-                  {auditMetrics.cardsSettledCount} cards
+              <div>
+                <p className="text-[11px] font-medium text-slate-500">Wallets Closed</p>
+                <p className="text-lg font-bold font-mono text-slate-900 mt-1">
+                  {auditMetrics.cardsSettledCount}
                 </p>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-                <span className="text-xs font-semibold text-slate-600 tracking-tight leading-snug">
-                  Card Recharges
-                </span>
-                <p className="font-mono text-xl font-bold text-emerald-600 mt-1.5">
+              <div>
+                <p className="text-[11px] font-medium text-slate-500">Recharges</p>
+                <p className="text-lg font-bold font-mono text-emerald-600 mt-1">
                   {formatCurrency(auditMetrics.cardRechargeVolume)}
                 </p>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-                <span className="text-xs font-semibold text-slate-600 tracking-tight leading-snug">
-                  Food Sales
-                </span>
-                <p className="font-mono text-xl font-bold text-emerald-600 mt-1.5">
+              <div>
+                <p className="text-[11px] font-medium text-slate-500">Food Sales</p>
+                <p className="text-lg font-bold font-mono text-indigo-600 mt-1">
                   {formatCurrency(auditMetrics.purchaseVolume)}
                 </p>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-                <span className="text-xs font-semibold text-slate-600 tracking-tight leading-snug">
-                  Refunds Processed
-                </span>
-                <p className="font-mono text-xl font-bold text-rose-600 mt-1.5">
+              <div>
+                <p className="text-[11px] font-medium text-slate-500">Refunds</p>
+                <p className="text-lg font-bold font-mono text-rose-600 mt-1">
                   {formatCurrency(auditMetrics.refundVolume)}
                 </p>
               </div>
             </div>
 
-            {/* Filter Tabs & Search in Modal */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-3">
-              <div className="flex flex-wrap items-center gap-1.5">
-                {[
-                  { key: 'ALL', label: 'All Activities' },
-                  { key: 'CARD_ACTIVATION', label: 'Cards Activated' },
-                  { key: 'CARD_SETTLEMENT', label: 'Cards Settled' },
-                  { key: 'RECHARGE', label: 'Card Recharges' },
-                  { key: 'PURCHASE', label: 'Food Sales' },
-                  { key: 'REFUND', label: 'Refunds Processed' },
-                ].map((tab) => (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => setAuditActivityTypeFilter(tab.key as any)}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
-                      auditActivityTypeFilter === tab.key
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+            {/* Streamlined Toolbar */}
+            <div className="flex items-center justify-between gap-3 pt-1">
+              <div className="flex items-center gap-2 flex-1">
+                <select
+                  value={auditActivityTypeFilter}
+                  onChange={(e) => setAuditActivityTypeFilter(e.target.value as any)}
+                  className="h-8.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-none"
+                >
+                  <option value="ALL">All Activities</option>
+                  <option value="CARD_ACTIVATION">Wallet issued</option>
+                  <option value="CARD_SETTLEMENT">Wallet closed</option>
+                  <option value="RECHARGE">Recharges</option>
+                  <option value="PURCHASE">Food Sales</option>
+                  <option value="REFUND">Refunds</option>
+                </select>
+                <div className="relative flex-1 max-w-xs">
+                  <div className="absolute left-2.5 top-2.5 text-slate-400">
+                    <Search className="w-3.5 h-3.5" />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search by wallet or note..."
+                    value={auditSearch}
+                    maxLength={30}
+                    onChange={(e) => {
+                      const sanitized = e.target.value.replace(/[^a-zA-Z0-9\s@._-]/g, '').slice(0, 30);
+                      setAuditSearch(sanitized);
+                    }}
+                    className="h-8.5 w-full rounded-lg border border-slate-200 bg-white pl-8 pr-7 text-xs text-slate-900 placeholder:text-slate-400 shadow-2xs focus:outline-none focus:border-slate-400"
+                  />
+                  {auditSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setAuditSearch('')}
+                      className="absolute right-2 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      aria-label="Clear activity filter"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
-
-              <div className="relative">
-                <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Filter by coupon ID, customer..."
-                  value={auditSearch}
-                  maxLength={30}
-                  onChange={(e) => {
-                    const sanitized = e.target.value.replace(/[^a-zA-Z0-9\s@._-]/g, '').slice(0, 30);
-                    setAuditSearch(sanitized);
-                  }}
-                  className="h-8.5 w-64 rounded-lg border border-slate-200 bg-white pl-8.5 pr-7 text-xs text-slate-900 placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none shadow-2xs"
-                />
-                {auditSearch && (
-                  <button
-                    type="button"
-                    onClick={() => setAuditSearch('')}
-                    className="absolute right-2 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                    aria-label="Clear activity filter"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
+              <span className="text-[11px] font-medium text-slate-400">
+                {filteredAuditActivities.length} {filteredAuditActivities.length === 1 ? 'activity' : 'activities'}
+              </span>
             </div>
 
-            {/* Operational Activity Ledger Table */}
-            <div className="max-h-[380px] overflow-y-auto overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
-              <table className="w-full min-w-[700px] text-left text-xs">
-                <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50/95 text-[11px] font-semibold text-slate-600 backdrop-blur-xs">
-                  <tr>
-                    <th className="py-3 pl-4 pr-3 whitespace-nowrap">Date & Time</th>
-                    <th className="px-3 py-3 whitespace-nowrap">Operation</th>
-                    <th className="px-3 py-3 whitespace-nowrap">Coupon ID</th>
-                    <th className="px-4 py-3">Customer</th>
-                    <th className="py-3 pl-3 pr-4 text-right whitespace-nowrap">Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-sans text-slate-700">
-                  {filteredAuditActivities.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="py-12 text-center text-xs text-slate-500">
-                        No activity records found for this staff member matching selected criteria.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredAuditActivities.map((act: StaffActivityItem) => {
-                      let badgeClass = 'bg-slate-100 text-slate-700 border-slate-200';
-
-                      if (act.type === 'CARD_ACTIVATION') {
-                        badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-200';
-                      } else if (act.type === 'RECHARGE_CASH') {
-                        badgeClass = 'bg-green-100 text-green-800 border-green-200';
-                      } else if (act.type === 'RECHARGE_UPI') {
-                        badgeClass = 'bg-sky-100 text-sky-800 border-sky-200';
-                      } else if (act.type === 'PURCHASE') {
-                        badgeClass = 'bg-indigo-100 text-indigo-800 border-indigo-200';
-                      } else if (act.type === 'CARD_SETTLEMENT') {
-                        badgeClass = 'bg-purple-100 text-purple-800 border-purple-200';
-                      } else if (act.type === 'REFUND' || act.type === 'CARD_BLOCKED') {
-                        badgeClass = 'bg-rose-100 text-rose-800 border-rose-200';
-                      }
-
-                      return (
-                        <tr key={act.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-3.5 pl-4 pr-3 whitespace-nowrap align-top">
-                            <div className="font-semibold text-slate-800 text-xs">
-                              {act.timestamp
-                                ? new Date(act.timestamp).toLocaleDateString(undefined, {
-                                    day: '2-digit',
-                                    month: 'short',
-                                    year: 'numeric',
-                                  })
-                                : 'N/A'}
-                            </div>
-                            <div className="text-[11px] font-mono text-slate-400 mt-0.5">
-                              {act.timestamp
-                                ? new Date(act.timestamp).toLocaleTimeString(undefined, {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  })
-                                : ''}
-                            </div>
-                          </td>
-                          <td className="px-3 py-3.5 align-top">
-                            <span className={`inline-flex items-center rounded-md px-2 py-1 text-[10px] font-semibold border ${badgeClass}`}>
-                              {act.type.replace(/_/g, ' ')}
-                            </span>
-                          </td>
-                          <td className="px-3 py-3.5 font-mono font-bold text-slate-800 align-top">
-                            {act.cardNumber || '—'}
-                          </td>
-                          <td className="px-4 py-3.5 align-top">
-                            <div className="font-semibold text-slate-900 text-xs">
-                              {act.customerName || 'Walk-in Customer'}
-                            </div>
-                            {act.customerPhone ? (
-                              <div className="text-[11px] font-mono text-slate-400 mt-0.5">
-                                {act.customerPhone}
-                              </div>
-                            ) : null}
-                          </td>
-                          <td className="py-3.5 pl-3 pr-4 text-right font-mono font-bold text-slate-900 text-xs align-top">
-                            {act.amount !== undefined ? formatCurrency(act.amount) : '—'}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+            {/* Chronological Feed */}
+            <div className="max-h-[380px] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-2xs divide-y divide-slate-100">
+              {filteredAuditActivities.length === 0 ? (
+                <div className="py-12 text-center text-xs text-slate-500">
+                  No activity records found matching selected criteria.
+                </div>
+              ) : (
+                filteredAuditActivities.map((act) => {
+                  const details = getActivityDetails(act);
+                  return (
+                    <div
+                      key={act.id}
+                      className="flex items-center justify-between p-3.5 hover:bg-slate-50/70 transition-colors"
+                    >
+                      <div className="w-24 shrink-0 font-mono text-xs font-semibold text-slate-700">
+                        {details.timeStr}
+                      </div>
+                      <div className="flex items-center gap-2.5 flex-1 min-w-0 px-2">
+                        <span className="font-semibold text-xs text-slate-900 truncate">
+                          {details.title}
+                        </span>
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${details.badgeClass}`}>
+                          {details.badgeLabel}
+                        </span>
+                      </div>
+                      <div className={`text-right shrink-0 font-mono text-xs font-bold ${details.amountClass}`}>
+                        {details.amountText}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
 
             <ModalFooter>
@@ -2816,6 +2675,7 @@ export function StaffPage() {
                   const today = getTodayDateStr();
                   setAuditStartDate(today);
                   setAuditEndDate(today);
+                  setAuditDatePreset('TODAY');
                 }}
               >
                 Close

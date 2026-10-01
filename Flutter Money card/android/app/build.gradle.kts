@@ -29,6 +29,11 @@ android {
     flavorDimensions += "environment"
 
     productFlavors {
+        create("development") {
+            dimension = "environment"
+            applicationIdSuffix = ".localhost"
+            resValue("string", "app_name", "Money Card - Localhost")
+        }
         create("staging") {
             dimension = "environment"
             applicationIdSuffix = ".staging"

@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/utils/formatters.dart';
 import '../../models/transaction.dart';
+import '../../providers/analytics_provider.dart';
 import '../../providers/branch_provider.dart';
 import '../../providers/recharges_provider.dart';
 import '../../widgets/states/app_loading_view.dart';
@@ -59,6 +60,16 @@ class _RechargesScreenState extends ConsumerState<RechargesScreen> {
   }
 
   Future<void> _showCancelDialog(Transaction tx) async {
+    if (!tx.canCancel) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot cancel top-up: Customer balance is insufficient or session is closed.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
     String selectedReason = 'Wrong Amount Entered';
     final customReasonCtrl = TextEditingController();
 
@@ -78,7 +89,7 @@ class _RechargesScreenState extends ConsumerState<RechargesScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'This will void the top-up of ₹${tx.amount.toStringAsFixed(2)} for ${tx.cardNumber ?? "Card"}.',
+                'This will void the top-up of ₹${tx.amount.toStringAsFixed(2)} for ${tx.cardNumber ?? "Wallet"}.',
                 style: const TextStyle(fontSize: 14, color: AppColors.textPrimaryLight),
               ),
               const SizedBox(height: 16),
@@ -91,7 +102,6 @@ class _RechargesScreenState extends ConsumerState<RechargesScreen> {
                 initialValue: selectedReason,
                 items: const [
                   DropdownMenuItem(value: 'Wrong Amount Entered', child: Text('Wrong Amount Entered')),
-                  DropdownMenuItem(value: 'Customer Changed Mind', child: Text('Customer Changed Mind')),
                   DropdownMenuItem(value: 'Duplicate Scan', child: Text('Duplicate Scan')),
                   DropdownMenuItem(value: 'Payment Failed', child: Text('Payment Failed')),
                   DropdownMenuItem(value: 'Other Reason', child: Text('Other Reason')),
@@ -146,6 +156,7 @@ class _RechargesScreenState extends ConsumerState<RechargesScreen> {
 
     if (!mounted) return;
     if (success) {
+      ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Top-up of ₹${tx.amount.toStringAsFixed(2)} cancelled successfully.'),
@@ -217,7 +228,7 @@ class _RechargesScreenState extends ConsumerState<RechargesScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text(
-                              '📱 Online UPI',
+                              'Online UPI',
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
@@ -277,7 +288,7 @@ class _RechargesScreenState extends ConsumerState<RechargesScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text(
-                              '💵 Cash Money',
+                              'Cash Money',
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
@@ -525,7 +536,7 @@ class _RechargesScreenState extends ConsumerState<RechargesScreen> {
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
-                                    isCash ? '💵 Cash' : '📱 UPI',
+                                    isCash ? 'Cash' : 'UPI',
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
@@ -547,6 +558,18 @@ class _RechargesScreenState extends ConsumerState<RechargesScreen> {
                                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black54),
                                 ),
                               )
+                            else if (!tx.canCancel)
+                              OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.textTertiaryLight,
+                                  side: BorderSide(color: Colors.grey.shade300),
+                                  visualDensity: VisualDensity.compact,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                ),
+                                icon: const Icon(Icons.cancel_outlined, size: 14, color: AppColors.textTertiaryLight),
+                                label: const Text('Cancel', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                onPressed: null,
+                              )
                             else
                               OutlinedButton.icon(
                                 style: OutlinedButton.styleFrom(
@@ -566,7 +589,7 @@ class _RechargesScreenState extends ConsumerState<RechargesScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Card: ${tx.cardNumber ?? "MC-Card"}',
+                              'Wallet: ${tx.cardNumber ?? "MC-Wallet"}',
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                             ),
                             Text(

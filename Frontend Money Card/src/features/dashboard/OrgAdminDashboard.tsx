@@ -24,27 +24,27 @@ import {
   LoadingState,
   ErrorState,
 } from '@/components/ui';
-import { formatCurrency, storage } from '@/utils';
+import { formatCurrency, formatLocalDate, storage } from '@/utils';
 import {
-  Building2,
   Users,
   CreditCard,
   ShoppingBag,
   TrendingUp,
   RefreshCw,
-  Zap,
   ArrowRight,
   BarChart3,
   CheckCircle2,
   Sparkles,
   X,
+  ShieldAlert,
+  DollarSign,
 } from 'lucide-react';
 
 export type DatePreset = 'thisMonth' | 'today' | 'yesterday' | 'last7' | 'last30' | 'all' | 'custom';
 
 export function getPresetDates(preset: DatePreset): { startDate: string; endDate: string } {
   const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
+  const todayStr = formatLocalDate(now);
 
   if (preset === 'today') {
     return { startDate: todayStr, endDate: todayStr };
@@ -52,22 +52,22 @@ export function getPresetDates(preset: DatePreset): { startDate: string; endDate
   if (preset === 'yesterday') {
     const yest = new Date(now);
     yest.setDate(yest.getDate() - 1);
-    const yestStr = yest.toISOString().split('T')[0];
+    const yestStr = formatLocalDate(yest);
     return { startDate: yestStr, endDate: yestStr };
   }
   if (preset === 'last7') {
     const start = new Date(now);
     start.setDate(start.getDate() - 7);
-    return { startDate: start.toISOString().split('T')[0], endDate: todayStr };
+    return { startDate: formatLocalDate(start), endDate: todayStr };
   }
   if (preset === 'last30') {
     const start = new Date(now);
     start.setDate(start.getDate() - 30);
-    return { startDate: start.toISOString().split('T')[0], endDate: todayStr };
+    return { startDate: formatLocalDate(start), endDate: todayStr };
   }
   if (preset === 'thisMonth') {
     const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { startDate: start.toISOString().split('T')[0], endDate: todayStr };
+    return { startDate: formatLocalDate(start), endDate: todayStr };
   }
 
   return { startDate: '', endDate: '' };
@@ -181,17 +181,22 @@ export function OrgAdminDashboard() {
 
 
 
-  // Filter Cards by Date Range
-  const filteredCardsIssuedCount = useMemo(() => {
-    if (!startDate && !endDate) return cardsList.length;
-    const start = startDate ? new Date(startDate).getTime() : 0;
-    const end = endDate ? new Date(endDate + 'T23:59:59.999Z').getTime() : Infinity;
 
-    return cardsList.filter((c) => {
-      const cardDate = new Date(c.createdAt || (c as any).issuedAt || 0).getTime();
-      return cardDate >= start && cardDate <= end;
-    }).length;
-  }, [cardsList, startDate, endDate]);
+
+  // Active wallets count
+  const activeWalletsCount = useMemo(() => {
+    return cardsList.filter((c) => c.status === 'ACTIVE').length;
+  }, [cardsList]);
+
+  // Blocked wallets count (Security locked)
+  const blockedWalletsCount = useMemo(() => {
+    return cardsList.filter((c) => c.status === 'BLOCKED').length;
+  }, [cardsList]);
+
+  // Remaining balance across active wallets
+  const remainingWalletsBalance = useMemo(() => {
+    return cardsList.reduce((acc, c) => acc + (c.activeSession?.balance || 0), 0);
+  }, [cardsList]);
 
   // Getting Started Checklist Calculations
   const hasBranches = branches.length > 0 || !!currentBranch;
@@ -218,11 +223,11 @@ export function OrgAdminDashboard() {
     },
     {
       id: 'cards',
-      title: '3. Smart cards directory',
-      description: 'Cards auto-register immediately when scanned by staff.',
+      title: '3. Wallets directory',
+      description: 'Wallets auto-register immediately when scanned by staff.',
       completed: hasCards,
       path: '/cards',
-      actionLabel: 'View Cards',
+      actionLabel: 'View Wallets',
     },
     {
       id: 'products',
@@ -283,7 +288,7 @@ export function OrgAdminDashboard() {
             </div>
             <div>
               <h3 className="font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
-                View Cards
+                View Wallets
               </h3>
             </div>
           </button>
@@ -354,38 +359,7 @@ export function OrgAdminDashboard() {
         </button>
       </div>
 
-      {/* Secondary Tools Strip */}
-      <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 mr-1">More Tools:</span>
-        {hasPermission('BRANCH_MANAGE') && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/branches')}
-            leftIcon={<Building2 className="h-3.5 w-3.5" />}
-          >
-            Cafeterias
-          </Button>
-        )}
-        {hasPermission('VIEW_ANALYTICS') && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/analytics')}
-            leftIcon={<BarChart3 className="h-3.5 w-3.5" />}
-          >
-            Analytics
-          </Button>
-        )}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => navigate('/subscriptions')}
-          leftIcon={<Zap className="h-3.5 w-3.5" />}
-        >
-          Plan Limits
-        </Button>
-      </div>
+
 
       {/* ─── Getting Started Checklist (Interactive Setup Guide) ─── */}
       {showSetupChecklist && (
@@ -520,7 +494,13 @@ export function OrgAdminDashboard() {
                         id="dashboard-start-date"
                         type="date"
                         value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setStartDate(val);
+                          if (endDate && val > endDate) {
+                            setEndDate(val);
+                          }
+                        }}
                         className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-800 focus:border-emerald-500 focus:bg-white focus:outline-none"
                       />
                       <span className="text-xs text-slate-400">to</span>
@@ -528,7 +508,13 @@ export function OrgAdminDashboard() {
                         id="dashboard-end-date"
                         type="date"
                         value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEndDate(val);
+                          if (startDate && val < startDate) {
+                            setStartDate(val);
+                          }
+                        }}
                         className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-800 focus:border-emerald-500 focus:bg-white focus:outline-none"
                       />
                       <Button
@@ -562,30 +548,57 @@ export function OrgAdminDashboard() {
                 </div>
               </div>
 
-              {/* 4 Filtered Stat Cards inside the box */}
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {/* Filtered Stat Cards inside the box (6 Operational Stat Cards matching Wallet Analytics) */}
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <StatCard
-                  label="Purchase Sales Volume"
-                  value={formatCurrency(analytics?.totalPurchaseVolume || 0)}
+                  label="Total sales"
+                  value={formatCurrency(analytics?.totalPurchaseVolume ?? analytics?.salesVolume ?? 0)}
+                  description={`${analytics?.foodOrdersCount || analytics?.purchaseCount || 0} orders`}
                   icon={<ShoppingBag className="h-5 w-5 text-emerald-600" />}
                 />
 
                 <StatCard
-                  label="Card Wallet Recharges"
-                  value={formatCurrency(analytics?.totalRechargeVolume || 0)}
+                  label="Wallet Recharges"
+                  value={formatCurrency(analytics?.totalRechargeVolume ?? analytics?.moneyAdded ?? analytics?.rechargeVolume ?? 0)}
+                  description={`${analytics?.rechargeCount || 0} recharges`}
                   icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
                 />
 
                 <StatCard
-                  label={startDate || endDate ? "Cards Issued in Period" : "Active Cards Issued"}
-                  value={filteredCardsIssuedCount}
+                  label="Wallet In use"
+                  value={activeWalletsCount}
+                  description="Active wallets"
                   icon={<CreditCard className="h-5 w-5 text-sky-600" />}
                 />
 
+                {isCounterAdmin ? (
+                  <StatCard
+                    label="Remaining Balance"
+                    value={formatCurrency(remainingWalletsBalance)}
+                    description="Money in wallets"
+                    icon={<DollarSign className="h-5 w-5 text-amber-600" />}
+                  />
+                ) : (
+                  <StatCard
+                    label="Active Staff Members"
+                    value={staffList.filter((s) => s.status === 'ACTIVE').length}
+                    description="Assigned staff"
+                    icon={<Users className="h-5 w-5 text-indigo-600" />}
+                  />
+                )}
+
                 <StatCard
-                  label="Active Staff Members"
-                  value={staffList.filter((s) => s.status === 'ACTIVE').length}
-                  icon={<Users className="h-5 w-5 text-indigo-600" />}
+                  label="Blocked Wallets"
+                  value={blockedWalletsCount}
+                  description="Security locked"
+                  icon={<ShieldAlert className="h-5 w-5 text-rose-600" />}
+                />
+
+                <StatCard
+                  label="Refunds"
+                  value={formatCurrency(analytics?.totalRefundVolume ?? analytics?.moneyRefunded ?? analytics?.refundVolume ?? 0)}
+                  description={`${analytics?.refundCount ?? 0} refunds`}
+                  icon={<RefreshCw className="h-5 w-5 text-slate-600" />}
                 />
               </div>
             </CardContent>

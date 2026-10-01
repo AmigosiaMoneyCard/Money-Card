@@ -141,7 +141,7 @@ export function buildOrgAnalyticsJsPdf({
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7);
     doc.setTextColor(71, 85, 105);
-    doc.text('NET MONEY COLLECTED', margin + 4, curY + 9);
+    doc.text('TOTAL SALES', margin + 4, curY + 9);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
@@ -151,7 +151,7 @@ export function buildOrgAnalyticsJsPdf({
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6);
     doc.setTextColor(100, 116, 139);
-    doc.text('Money Added - Money Refunded across all methods', margin + 4, curY + 20);
+    doc.text('Total Sales across UPI & Cash Deposits', margin + 4, curY + 20);
 
     curY += 25;
 
@@ -161,18 +161,16 @@ export function buildOrgAnalyticsJsPdf({
     const cashCount = analytics.cashCount ?? (analytics as any).cashRechargeCount ?? 0;
     const cancelledTopUps = analytics.cancelledTopUps ?? 0;
     const cancelledTopUpsCount = analytics.cancelledTopUpsCount ?? 0;
-    const cancelledOrdersVolume = analytics.cancelledOrdersVolume ?? 0;
-    const cancelledOrdersCount = analytics.cancelledOrdersCount ?? 0;
+    const walletActivations = analytics.cardsGivenOut ?? analytics.activeCardsCount ?? 0;
 
-    // Row 2: Payment & Volume Flow (4 cards)
+    // Row 2: Recharge Breakdown (3 cards)
     const row2Kpis = [
-      { label: 'Online UPI Money', val: formatPdfCurrency(upiMoney), sub: `${upiCount} top-ups` },
-      { label: 'Cash Money', val: formatPdfCurrency(cashMoney), sub: `${cashCount} top-ups` },
-      { label: 'Money Added', val: formatPdfCurrency(moneyAdded), sub: 'Total card deposits' },
-      { label: 'Money Refunded', val: formatPdfCurrency(moneyRefunded), sub: 'Balance returned to customers' },
+      { label: 'Recharges', val: formatPdfCurrency(moneyAdded), sub: 'Total card deposits' },
+      { label: 'UPI Recharge', val: formatPdfCurrency(upiMoney), sub: `${upiCount} top-ups` },
+      { label: 'Cash Recharge', val: formatPdfCurrency(cashMoney), sub: `${cashCount} top-ups` },
     ];
 
-    const cardW = (contentWidth - 9) / 4;
+    const cardW = (contentWidth - 6) / 3;
     row2Kpis.forEach((kpi, idx) => {
       const x = margin + idx * (cardW + 3);
       doc.setFillColor(248, 250, 252);
@@ -197,18 +195,18 @@ export function buildOrgAnalyticsJsPdf({
 
     curY += 22;
 
-    // Row 3: Cancellations (2 cards)
+    // Row 3: Follow-up Operations (3 cards)
     const row3Kpis = [
+      { label: 'Wallet Activations', val: `${walletActivations.toLocaleString()} Wallets`, sub: 'Issued in period' },
+      { label: 'Refunds', val: formatPdfCurrency(moneyRefunded), sub: 'Returned to customers' },
       { label: 'Cancelled Top-ups', val: formatPdfCurrency(cancelledTopUps), sub: `${cancelledTopUpsCount} recharges reversed` },
-      { label: 'Cancelled Orders', val: formatPdfCurrency(cancelledOrdersVolume), sub: `${cancelledOrdersCount} orders restored` },
     ];
 
-    const cardWRow3 = (contentWidth - 3) / 2;
     row3Kpis.forEach((kpi, idx) => {
-      const x = margin + idx * (cardWRow3 + 3);
+      const x = margin + idx * (cardW + 3);
       doc.setFillColor(248, 250, 252);
       doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(x, curY + 2, cardWRow3, 18, 2, 2, 'FD');
+      doc.roundedRect(x, curY + 2, cardW, 18, 2, 2, 'FD');
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(6.5);
@@ -238,35 +236,35 @@ export function buildOrgAnalyticsJsPdf({
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(15, 23, 42);
-    doc.text(`${sectionCounter}. Card Analytics`, margin, curY);
+    doc.text(`${sectionCounter}. Wallet Analytics`, margin, curY);
     sectionCounter++;
 
     const fleet = analytics.cardFleetAnalytics;
     const lifecycleKpis = [
       {
-        label: 'Active Cards',
-        val: `${fleet?.totalCardsInCirculation ?? analytics.activeSessionsCount ?? 0} Cards`,
+        label: 'Active Wallets',
+        val: `${fleet?.totalCardsInCirculation ?? analytics.activeSessionsCount ?? 0} Wallets`,
         sub: 'In customer hands',
       },
       {
-        label: 'Settled Cards',
-        val: `${analytics.closedCardsCount ?? 0} Cards`,
-        sub: 'Completed card sessions',
+        label: 'Settled Wallets',
+        val: `${analytics.closedCardsCount ?? 0} Wallets`,
+        sub: 'Completed wallet sessions',
       },
       {
-        label: 'Blocked Cards',
-        val: `${fleet?.blockedCardsCount ?? 0} Cards`,
+        label: 'Blocked Wallets',
+        val: `${fleet?.blockedCardsCount ?? 0} Wallets`,
         sub: 'Locked due to security / loss',
       },
       {
         label: 'Zero Balance',
-        val: `${analytics.zeroBalanceActiveCardsCount ?? 0} Cards`,
+        val: `${analytics.zeroBalanceActiveCardsCount ?? 0} Wallets`,
         sub: 'In use with Rs. 0 balance',
       },
       {
-        label: 'Inactive Cards',
-        val: `${fleet?.dormantCardsCount ?? 0} Cards`,
-        sub: 'Inactive cards but have balance in it',
+        label: 'Inactive Wallets',
+        val: `${fleet?.dormantCardsCount ?? 0} Wallets`,
+        sub: 'Inactive wallets with unspent balance',
       },
     ];
 
@@ -305,7 +303,7 @@ export function buildOrgAnalyticsJsPdf({
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(15, 23, 42);
-    doc.text(`${sectionCounter}. Payment & Refund Breakdown`, margin, curY);
+    doc.text(`${sectionCounter}. Payment & Refunds Breakdown`, margin, curY);
     sectionCounter++;
 
     const cashRecharge = analytics.cashRechargeVolume ?? analytics.cashMoney ?? 0;
@@ -318,17 +316,17 @@ export function buildOrgAnalyticsJsPdf({
 
     const paymentCards = [
       {
-        label: 'Online UPI Money',
+        label: 'UPI Recharge',
         val: formatPdfCurrency(upiRecharge),
         sub: `${upiPct}% of total deposits`,
       },
       {
-        label: 'Cash Money',
+        label: 'Cash Recharge',
         val: formatPdfCurrency(cashRecharge),
         sub: `${cashPct}% of total deposits`,
       },
       {
-        label: 'Money Refunded',
+        label: 'Refunds',
         val: formatPdfCurrency(totalRefund),
         sub: 'Total returned to customers',
       },
@@ -424,7 +422,7 @@ export function buildOrgAnalyticsJsPdf({
     doc.text('Counter Name', margin + 2, tableY + 5);
     doc.text('Txns', margin + 44, tableY + 5, { align: 'right' });
     doc.text('Purchases', margin + 66, tableY + 5, { align: 'right' });
-    doc.text('Card Rchg', margin + 88, tableY + 5, { align: 'right' });
+    doc.text('Cash Rchg', margin + 88, tableY + 5, { align: 'right' });
     doc.text('UPI Rchg', margin + 110, tableY + 5, { align: 'right' });
     doc.text('Total Rchg', margin + 132, tableY + 5, { align: 'right' });
     doc.text('Revenue', margin + 154, tableY + 5, { align: 'right' });
@@ -445,7 +443,7 @@ export function buildOrgAnalyticsJsPdf({
         doc.text('Counter Name (Cont.)', margin + 2, curY + 5);
         doc.text('Txns', margin + 44, curY + 5, { align: 'right' });
         doc.text('Purchases', margin + 66, curY + 5, { align: 'right' });
-        doc.text('Card Rchg', margin + 88, curY + 5, { align: 'right' });
+        doc.text('Cash Rchg', margin + 88, curY + 5, { align: 'right' });
         doc.text('UPI Rchg', margin + 110, curY + 5, { align: 'right' });
         doc.text('Total Rchg', margin + 132, curY + 5, { align: 'right' });
         doc.text('Revenue', margin + 154, curY + 5, { align: 'right' });
@@ -703,8 +701,8 @@ export function buildOrgAnalyticsJsPdf({
     // 4 Staff Summary KPI Cards
     const staffKpis = [
       { label: 'Active Staff', val: `${activeStaffCount}` },
-      { label: 'Cards Activated', val: `${totalActivated}` },
-      { label: 'Cards Settled', val: `${totalSettled}` },
+      { label: 'Wallets Activated', val: `${totalActivated}` },
+      { label: 'Wallets Settled', val: `${totalSettled}` },
       { label: 'Staff Volume Handled', val: formatPdfCurrency(totalVolume) },
     ];
 
@@ -739,7 +737,7 @@ export function buildOrgAnalyticsJsPdf({
     doc.text('Staff Member', margin + 2, staffTableY + 5);
     doc.text('Activated', margin + 58, staffTableY + 5, { align: 'right' });
     doc.text('Settled', margin + 78, staffTableY + 5, { align: 'right' });
-    doc.text('Card Recharge', margin + 104, staffTableY + 5, { align: 'right' });
+    doc.text('Wallet Recharge', margin + 104, staffTableY + 5, { align: 'right' });
     doc.text('POS Sales', margin + 130, staffTableY + 5, { align: 'right' });
     doc.text('Refunds', margin + 156, staffTableY + 5, { align: 'right' });
     doc.text('Txns', margin + 180, staffTableY + 5, { align: 'right' });
@@ -765,7 +763,7 @@ export function buildOrgAnalyticsJsPdf({
           doc.text('Staff Member (Cont.)', margin + 2, curY + 5);
           doc.text('Activated', margin + 58, curY + 5, { align: 'right' });
           doc.text('Settled', margin + 78, curY + 5, { align: 'right' });
-          doc.text('Card Recharge', margin + 104, curY + 5, { align: 'right' });
+          doc.text('Wallet Recharge', margin + 104, curY + 5, { align: 'right' });
           doc.text('POS Sales', margin + 130, curY + 5, { align: 'right' });
           doc.text('Refunds', margin + 156, curY + 5, { align: 'right' });
           doc.text('Txns', margin + 180, curY + 5, { align: 'right' });
@@ -1099,8 +1097,8 @@ function drawPlatformPdfPage1(
 
     const finStreams = [
       { name: 'POS Product Sales & Purchases', amount: formatPdfCurrency(params.totalPurchaseVolume), status: 'Settled' },
-      { name: 'Card Wallet Recharges (Cash & UPI)', amount: formatPdfCurrency(params.totalRechargeVolume), status: 'Deposited' },
-      { name: 'Card Returns & Refund Volume', amount: formatPdfCurrency(params.totalRefundVolume), status: 'Processed' },
+      { name: 'Wallet Recharges (Cash & UPI)', amount: formatPdfCurrency(params.totalRechargeVolume), status: 'Deposited' },
+      { name: 'Wallet Returns & Refund Volume', amount: formatPdfCurrency(params.totalRefundVolume), status: 'Processed' },
       { name: 'Platform Subscription Invoicing', amount: formatPdfCurrency(params.totalGatewayRevenue), status: 'Collected' },
     ];
 

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_card_staff/core/config/app_config.dart';
 import 'package:money_card_staff/core/network/mdns_discovery_service.dart';
@@ -33,9 +34,19 @@ void main() {
 
     test('Health check succeeds against active backend health endpoint', () async {
       final service = MdnsDiscoveryService.instance;
-      // Test against the local backend running on 3000
-      final isHealthy = await service.verifyHealth('http://127.0.0.1:3000/api/v1');
-      expect(isHealthy, isTrue);
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      server.listen((HttpRequest request) {
+        request.response
+          ..statusCode = HttpStatus.ok
+          ..write('{"status":"ok"}')
+          ..close();
+      });
+      try {
+        final isHealthy = await service.verifyHealth('http://${server.address.host}:${server.port}/api/v1');
+        expect(isHealthy, isTrue);
+      } finally {
+        await server.close(force: true);
+      }
     });
 
     test('Health check fails gracefully on unreachable host without crashing', () async {

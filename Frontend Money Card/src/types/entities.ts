@@ -35,6 +35,8 @@ export interface OrganizationOverview extends Organization {
     staffLimit: number;
     cardCount: number;
     cardLimit: number;
+    activeCardCount?: number;
+    activeSessionCount?: number;
   };
 }
 

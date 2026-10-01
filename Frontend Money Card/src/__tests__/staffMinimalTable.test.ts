@@ -169,8 +169,8 @@ describe('Staff Management Minimal Table & Counter-First Layout Tests', () => {
     expect(strong.matches).toBe(true);
   });
 
-  it('should verify that Performance & Audit is the designated primary audit action', () => {
-    const staffActionName = 'Performance & Audit';
-    expect(staffActionName).toBe('Performance & Audit');
+  it('should verify that Summary is the designated primary audit action', () => {
+    const staffActionName = 'Summary';
+    expect(staffActionName).toBe('Summary');
   });
 });

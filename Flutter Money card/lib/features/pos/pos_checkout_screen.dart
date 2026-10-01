@@ -5,9 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
+import '../../core/errors/api_exception.dart';
+import '../../core/utils/formatters.dart';
 import '../../models/branch.dart';
 import '../../models/card_session.dart';
+import '../../models/product.dart';
 import '../../models/receipt_bill.dart';
+import '../../models/transaction.dart';
+import '../../providers/analytics_provider.dart';
+import '../../providers/api_providers.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/branch_provider.dart';
 import '../../providers/pos_cart_provider.dart';
@@ -34,18 +40,6 @@ class PosCheckoutScreen extends ConsumerStatefulWidget {
 
 class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
   final _searchController = TextEditingController();
-
-  final List<String> _categories = [
-    'All',
-    'Veg',
-    'Non-Veg',
-    'Vegan',
-    'Breakfast',
-    'Lunch',
-    'Dinner',
-    'Snacks',
-    'Beverages',
-  ];
 
   @override
   void initState() {
@@ -169,7 +163,7 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'Cart Total',
+                      'Bill Total',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     Text(
@@ -285,43 +279,7 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
       return;
     }
 
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        scrollable: true,
-        title: const Text('Confirm Purchase'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Items: ${cartState.totalItemCount}'),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Total Charge: ₹${cartState.totalAmount.toStringAsFixed(2)}',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            Text(
-              'Current Balance: ₹${currentBalance.toStringAsFixed(2)}',
-              style: const TextStyle(color: AppColors.textSecondaryLight, fontSize: 13),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Confirm & Deduct'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    // Execute purchase
+    // Directly execute purchase without intermediate confirm dialog
     final result = await ref
         .read(posCartNotifierProvider.notifier)
         .executePurchase(widget.sessionId);
@@ -408,7 +366,7 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
     final hasPurchasePermission = ref.watch(hasPermissionProvider(AppPermission.purchase));
     if (!hasPurchasePermission) {
       return Scaffold(
-        appBar: AppBar(title: const Text('POS Menu & Purchase')),
+        appBar: AppBar(title: const Text('Billing')),
         body: const SafeArea(child: AppUnauthorizedState()),
       );
     }
@@ -446,7 +404,7 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('POS Menu & Purchase'),
+            const Text('Billing'),
             if (session != null)
               Text(
                 'Balance: ₹${session.balance.toStringAsFixed(2)}',
@@ -454,6 +412,21 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
               ),
           ],
         ),
+        actions: [
+          TextButton.icon(
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.primary,
+            ),
+            icon: const Icon(Icons.receipt_long_outlined, size: 20),
+            label: const Text('Orders', style: TextStyle(fontWeight: FontWeight.bold)),
+            onPressed: () {
+              if (session != null) {
+                _showOrdersBottomSheet(context, session);
+              }
+            },
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: Column(
         children: [
@@ -501,32 +474,6 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
                 catalogNotifier.setSearchQuery(val);
                 setState(() {});
               },
-            ),
-          ),
-
-          // 2. Category Selector Chips
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
-            child: Row(
-              children: _categories.map((cat) {
-                final isSelected = catalogState.selectedCategory == cat;
-                return Padding(
-                  padding: const EdgeInsets.only(right: AppSpacing.xs),
-                  child: ChoiceChip(
-                    label: Text(cat),
-                    selected: isSelected,
-                    onSelected: (_) => catalogNotifier.setCategoryFilter(cat),
-                    selectedColor: AppColors.primaryLight,
-                    backgroundColor: AppColors.surfaceLight,
-                    labelStyle: TextStyle(
-                      fontSize: 12,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      color: isSelected ? AppColors.primaryDark : AppColors.textPrimaryLight,
-                    ),
-                  ),
-                );
-              }).toList(),
             ),
           ),
           const Divider(height: 1),
@@ -627,7 +574,7 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
                         const SizedBox(width: AppSpacing.lg),
                         Expanded(
                           child: AppButton(
-                            label: 'View Cart (${cartState.totalItemCount})',
+                            label: 'Preview Order (${cartState.totalItemCount})',
                             icon: Icons.shopping_cart_checkout,
                             height: 48,
                             isLoading: cartState.isSubmitting,
@@ -673,16 +620,11 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
 
     return RefreshIndicator(
       onRefresh: () => ref.read(posCatalogNotifierProvider.notifier).loadCatalog(),
-      child: GridView.builder(
+      child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: AppSpacing.paddingMd,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: AppSpacing.sm,
-          mainAxisSpacing: AppSpacing.sm,
-          childAspectRatio: 0.78,
-        ),
         itemCount: catalogState.filteredProducts.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
           final product = catalogState.filteredProducts[index];
           final cartItem = cartState.items[product.id];
@@ -691,60 +633,64 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
           final isNonVeg = product.category.any((c) => c.toLowerCase() == 'non-veg');
 
           return AppCard(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Top Row: Veg/Non-veg icon container & stock badge
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: isVeg
-                            ? AppColors.successLight
-                            : (isNonVeg ? AppColors.errorLight : AppColors.primaryLight),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        isVeg
-                            ? Icons.eco
-                            : (isNonVeg ? Icons.kebab_dining : Icons.fastfood_outlined),
-                        color: isVeg
-                            ? AppColors.success
-                            : (isNonVeg ? AppColors.error : AppColors.primary),
-                        size: 20,
-                      ),
-                    ),
-                    if (product.category.isNotEmpty)
-                      AppBadge(
-                        label: product.category.first,
-                        variant: isVeg
-                            ? AppBadgeVariant.success
-                            : (isNonVeg ? AppBadgeVariant.error : AppBadgeVariant.neutral),
-                      ),
-                  ],
+                // Veg/Non-veg icon container
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: isVeg
+                        ? AppColors.successLight
+                        : (isNonVeg ? AppColors.errorLight : AppColors.primaryLight),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    isVeg
+                        ? Icons.eco
+                        : (isNonVeg ? Icons.kebab_dining : Icons.fastfood_outlined),
+                    color: isVeg
+                        ? AppColors.success
+                        : (isNonVeg ? AppColors.error : AppColors.primary),
+                    size: 24,
+                  ),
                 ),
-                const SizedBox(height: AppSpacing.xs),
+                const SizedBox(width: 12),
 
-                // Product Name
+                // Middle: Product Name, Category tag, and Price
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        product.itemName,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimaryLight,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              product.itemName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimaryLight,
+                              ),
+                            ),
+                          ),
+                          if (product.category.isNotEmpty) ...[
+                            const SizedBox(width: 6),
+                            AppBadge(
+                              label: product.category.first,
+                              variant: isVeg
+                                  ? AppBadgeVariant.success
+                                  : (isNonVeg ? AppBadgeVariant.error : AppBadgeVariant.neutral),
+                            ),
+                          ],
+                        ],
                       ),
-                      const Spacer(),
+                      const SizedBox(height: 4),
                       Text(
                         '₹${product.price.toStringAsFixed(2)}',
                         style: const TextStyle(
@@ -756,12 +702,11 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: AppSpacing.xs),
+                const SizedBox(width: 12),
 
-                // Bottom Action: Add or Stepper
+                // Right: Add Button or Stepper
                 if (quantityInCart == 0)
                   SizedBox(
-                    width: double.infinity,
                     height: 36,
                     child: ElevatedButton.icon(
                       icon: const Icon(Icons.add, size: 16),
@@ -770,7 +715,7 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        padding: EdgeInsets.zero,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
                         elevation: 0,
                       ),
                       onPressed: () => cartNotifier.addToCart(product),
@@ -784,34 +729,33 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         InkWell(
                           onTap: () => cartNotifier.decreaseQuantity(product.id),
                           borderRadius: BorderRadius.circular(8),
                           child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                             child: Icon(Icons.remove, size: 18, color: AppColors.primaryDark),
                           ),
                         ),
-                        Text(
-                          '$quantityInCart',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryDark,
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Text(
+                            '$quantityInCart',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primaryDark,
+                            ),
                           ),
                         ),
                         InkWell(
                           onTap: () => cartNotifier.increaseQuantity(product.id),
                           borderRadius: BorderRadius.circular(8),
                           child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            child: Icon(
-                              Icons.add,
-                              size: 18,
-                              color: AppColors.primaryDark,
-                            ),
+                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            child: Icon(Icons.add, size: 18, color: AppColors.primaryDark),
                           ),
                         ),
                       ],
@@ -823,5 +767,421 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
         },
       ),
     );
+  }
+
+  void _showOrdersBottomSheet(BuildContext context, CardSession session) {
+    final allTx = session.transactions ?? [];
+    final orders = allTx.where((t) => t.type == TransactionType.purchase).toList();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => Container(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 10, bottom: 6),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Food Orders Placed',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Wallet: ${session.displayCardNumber} • Balance: ₹${session.balance.toStringAsFixed(2)}',
+                        style: const TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(sheetCtx).pop(),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: orders.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppSpacing.lg),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.fastfood_outlined, size: 48, color: AppColors.textTertiaryLight),
+                            SizedBox(height: 12),
+                            Text(
+                              'No food orders placed yet',
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: AppSpacing.paddingMd,
+                      itemCount: orders.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      itemBuilder: (ctx, idx) {
+                        final t = orders[idx];
+                        final items = t.items ?? [];
+
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: t.isCancelled ? Colors.grey.shade100 : Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: t.isCancelled ? Colors.grey.shade300 : AppColors.borderLight,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '-₹${t.amount.toStringAsFixed(2)}',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: t.isCancelled ? Colors.grey : AppColors.error,
+                                      decoration: t.isCancelled ? TextDecoration.lineThrough : null,
+                                    ),
+                                  ),
+                                  if (t.isCancelled)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade200,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text('CANCELLED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                                    )
+                                  else
+                                    Row(
+                                      children: [
+                                        OutlinedButton.icon(
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: AppColors.primary,
+                                            side: const BorderSide(color: AppColors.primary, width: 1),
+                                            visualDensity: VisualDensity.compact,
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                          ),
+                                          icon: const Icon(Icons.edit_outlined, size: 14),
+                                          label: const Text('Edit', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                          onPressed: () {
+                                            Navigator.of(sheetCtx).pop();
+                                            _handleEditOrder(t, session);
+                                          },
+                                        ),
+                                        const SizedBox(width: 6),
+                                        OutlinedButton.icon(
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: AppColors.error,
+                                            side: const BorderSide(color: AppColors.error, width: 1),
+                                            visualDensity: VisualDensity.compact,
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                          ),
+                                          icon: const Icon(Icons.remove_shopping_cart_outlined, size: 14),
+                                          label: const Text('Cancel Order', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                          onPressed: () {
+                                            Navigator.of(sheetCtx).pop();
+                                            _handleCancelOrder(t.id, t.amount, session);
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                ],
+                              ),
+                              if (items.isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surfaceVariantLight,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: AppColors.borderLight),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: items.map((item) {
+                                      return Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 2),
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              '${item.quantity}x ${item.itemName ?? "Item"}',
+                                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                                            ),
+                                            if (item.totalAmount != null)
+                                              Text(
+                                                '₹${item.totalAmount!.toStringAsFixed(2)}',
+                                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                              ),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 6),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Staff: ${t.staffName ?? 'Counter Staff'}',
+                                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
+                                  ),
+                                  Text(
+                                    _formatDateTime(t.createdAt),
+                                    style: const TextStyle(fontSize: 11, color: AppColors.textTertiaryLight),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleCancelOrder(String txId, double amount, CardSession session) async {
+    final reasons = [
+      'Customer requested cancellation',
+      'Incorrect items added',
+      'Food not available',
+      'Duplicate order placed',
+      'Order changed before preparation',
+      'Other Reason',
+    ];
+    String selectedReason = reasons.first;
+    final customReasonCtrl = TextEditingController();
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => AlertDialog(
+          title: Row(
+            children: const [
+              Icon(Icons.remove_shopping_cart_outlined, color: AppColors.error, size: 24),
+              SizedBox(width: 8),
+              Text('Cancel Food Order', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Are you sure you want to cancel this order? ₹${amount.toStringAsFixed(2)} will be refunded to wallet ${session.displayCardNumber}.',
+                style: const TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 12),
+              const Text('Cancellation Reason:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              const SizedBox(height: 6),
+              DropdownButtonFormField<String>(
+                initialValue: selectedReason,
+                isExpanded: true,
+                items: reasons.map((r) => DropdownMenuItem(value: r, child: Text(r, style: const TextStyle(fontSize: 13)))).toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setModalState(() => selectedReason = val);
+                  }
+                },
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+              if (selectedReason == 'Other Reason') ...[
+                const SizedBox(height: 10),
+                TextField(
+                  controller: customReasonCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'Enter specific reason...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Keep Order'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Refund & Cancel', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirm != true) return;
+
+    final reason = selectedReason == 'Other Reason' && customReasonCtrl.text.trim().isNotEmpty
+        ? customReasonCtrl.text.trim()
+        : selectedReason;
+
+    try {
+      final sessionService = ref.read(sessionServiceProvider);
+      await sessionService.cancelOrder(transactionId: txId, reason: reason);
+      await ref.read(sessionDetailsNotifierProvider.notifier).loadSessionById(session.id);
+      ref.read(sessionListNotifierProvider.notifier).loadSessions();
+      ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Order cancelled and ₹${amount.toStringAsFixed(2)} refunded to card.'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e is ApiException ? e.message : e.toString();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Order cancellation failed: $msg'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleEditOrder(Transaction orderTx, CardSession session) async {
+    final items = orderTx.items ?? [];
+    final itemsSummary = items.isNotEmpty
+        ? items.map((i) => '${i.quantity}x ${i.itemName ?? "Item"}').join(', ')
+        : 'Order #${orderTx.displayTransactionId}';
+
+    final confirmAction = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: const [
+            Icon(Icons.edit_note_outlined, color: AppColors.primary, size: 24),
+            SizedBox(width: 8),
+            Text('Edit Food Order?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Order: $itemsSummary',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Amount to refund: ₹${orderTx.amount.toStringAsFixed(2)}',
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.primaryDark),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Keep Order'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Proceed to Edit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmAction != true) return;
+
+    try {
+      final sessionService = ref.read(sessionServiceProvider);
+      await sessionService.cancelOrder(
+        transactionId: orderTx.id,
+        reason: 'Staff edited and revised order',
+      );
+      await ref.read(sessionDetailsNotifierProvider.notifier).loadSessionById(session.id);
+      ref.read(sessionListNotifierProvider.notifier).loadSessions();
+      ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
+
+      // Pre-fill the cart with items from this order
+      final catalogProducts = ref.read(posCatalogNotifierProvider).products;
+
+      ref.read(posCartNotifierProvider.notifier).clearCart();
+      for (final it in items) {
+        final matchingProduct = catalogProducts
+            .where((p) => p.id == it.productId || p.itemName.toLowerCase() == (it.itemName ?? '').toLowerCase())
+            .firstOrNull;
+        final product = matchingProduct ??
+            Product(
+              id: it.productId,
+              branchId: session.branchId,
+              itemName: it.itemName ?? 'Food Item',
+              price: it.unitPrice ?? (it.totalAmount != null && it.quantity > 0 ? it.totalAmount! / it.quantity : 0.0),
+              category: const ['General'],
+              status: 'ACTIVE',
+            );
+        for (int q = 0; q < it.quantity; q++) {
+          ref.read(posCartNotifierProvider.notifier).addToCart(product);
+        }
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Order cancelled & ₹${orderTx.amount.toStringAsFixed(2)} refunded. Modifying cart...'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e is ApiException ? e.message : e.toString();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to edit order: $msg'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  String _formatDateTime(String? raw) {
+    if (raw == null || raw.isEmpty) return '—';
+    final formatted = AppFormatters.formatIsoDate(raw);
+    return formatted == '-' ? '—' : formatted;
   }
 }

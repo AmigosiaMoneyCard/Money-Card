@@ -96,6 +96,7 @@ void main() {
       expect(find.text('Password'), findsOneWidget);
       expect(find.text('Login'), findsOneWidget);
       expect(find.byType(TextFormField), findsNWidgets(2));
+      expect(find.textContaining('Server:'), findsNothing);
     });
 
     testWidgets('shows validation errors when fields are empty or phone is invalid', (tester) async {

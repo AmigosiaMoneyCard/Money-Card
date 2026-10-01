@@ -5,7 +5,6 @@ import { notify, formatCurrency } from '@/utils';
 import type { Branch, ProductWithInventory } from '@/types';
 import {
   Search,
-  Plus,
   Edit2,
   Trash2,
   Check,
@@ -17,7 +16,6 @@ interface CounterViewEditMenuModalProps {
   onClose: () => void;
   branch: Branch | null;
   onChanged: () => void;
-  onOpenAddModal?: () => void;
 }
 
 interface EditingItemState {
@@ -39,7 +37,6 @@ export function CounterViewEditMenuModal({
   onClose,
   branch,
   onChanged,
-  onOpenAddModal,
 }: CounterViewEditMenuModalProps) {
   const [products, setProducts] = useState<ProductWithInventory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -218,20 +215,6 @@ export function CounterViewEditMenuModal({
             )}
           </div>
 
-          {onOpenAddModal && (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => {
-                onClose();
-                onOpenAddModal();
-              }}
-              className="shrink-0 text-xs h-8 px-3"
-              leftIcon={<Plus className="h-3.5 w-3.5" />}
-            >
-              Add Menu
-            </Button>
-          )}
         </div>
 
         {/* Menu Items Content */}

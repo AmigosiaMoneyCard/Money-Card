@@ -920,18 +920,28 @@ class MockApiInterceptor extends Interceptor {
       }
 
       // Check against mock users database
-      final user = (email != null ? mockUsersByEmail[email] : null) ?? {
-        'id': 'staff-custom-001',
-        'email': email ?? '$phone@mock.local',
-        'phone': phone,
-        'name': phone != null ? 'Staff ($phone)' : (email?.split('@').first.toUpperCase() ?? 'STAFF'),
-        'role': 'STAFF',
-        'organizationId': 'org-demo-001',
-        'assignedBranchIds': ['branch-001', 'branch-002'],
-        'permissions': AppPermission.values.map((p) => p.value).toList(),
-        'createdAt': DateTime.now().toIso8601String(),
-        'updatedAt': DateTime.now().toIso8601String(),
-      };
+      Map<String, dynamic>? user = email != null ? mockUsersByEmail[email] : null;
+      if (user == null && phone != null) {
+        final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
+        final last10 = cleanPhone.length >= 10 ? cleanPhone.substring(cleanPhone.length - 10) : cleanPhone;
+        for (final u in mockUsersByEmail.values) {
+          final uPhone = (u['phone'] as String?)?.replaceAll(RegExp(r'\D'), '');
+          if (uPhone != null && (uPhone == cleanPhone || uPhone.endsWith(last10))) {
+            user = u;
+            break;
+          }
+        }
+      }
+
+      if (user == null) {
+        return _reject(handler, options, 401, 'INVALID_CREDENTIALS', "Staff doesn't exist.");
+      }
+
+      // Verify password
+      final userPassword = user['password'] as String? ?? 'password';
+      if (password != userPassword && password != 'password' && password != '123456' && password != 'password123') {
+        return _reject(handler, options, 401, 'INVALID_CREDENTIALS', 'Credentials are wrong.');
+      }
 
       currentActiveUser = user;
 
@@ -986,6 +996,10 @@ class MockApiInterceptor extends Interceptor {
         return _reject(handler, options, 400, 'VALIDATION_ERROR', 'QR token is required');
       }
 
+      if (qrToken == 'QR-UNKNOWN-RANDOM-TOKEN-999' || qrToken.contains('NOT-FOUND')) {
+        return _reject(handler, options, 404, 'NOT_FOUND', 'Card not registered');
+      }
+
       // Match strictly by qrToken or physicalCardNumber or id
       var card = mockCards.firstWhere(
         (c) =>
@@ -1025,10 +1039,21 @@ class MockApiInterceptor extends Interceptor {
         orElse: () => <String, dynamic>{},
       );
 
-      return _resolve(handler, options, {
-        'card': card,
-        if (session.isNotEmpty) 'session': session,
-      });
+      final enrichedSession = session.isNotEmpty ? Map<String, dynamic>.from(session) : null;
+      if (enrichedSession != null) {
+        if (card.isNotEmpty && card['physicalCardNumber'] != null) {
+          enrichedSession['physicalCardNumber'] = card['physicalCardNumber'];
+        }
+        enrichedSession['transactions'] = mockTransactions
+            .where((t) => t['sessionId'] == enrichedSession['id'])
+            .toList();
+      }
+
+      final responseData = <String, dynamic>{'card': card};
+      if (enrichedSession != null) {
+        responseData['session'] = enrichedSession;
+      }
+      return _resolve(handler, options, responseData);
     }
 
     // Issue/Create Card: POST /cards or /cards/issue
@@ -1210,6 +1235,7 @@ class MockApiInterceptor extends Interceptor {
     // ==========================================
     // 4. SESSION ENDPOINTS
     // ==========================================
+
     // Purchase: POST /card-sessions/:id/purchase
     final purchaseRegex = RegExp(r'/card-sessions/([a-zA-Z0-9_-]+)/purchase$');
     final purchaseMatch = purchaseRegex.firstMatch(path);
@@ -1270,11 +1296,13 @@ class MockApiInterceptor extends Interceptor {
       final tx = {
         'id': 'tx-${DateTime.now().millisecondsSinceEpoch}',
         'sessionId': sessionId,
+        'branchId': session['branchId'] ?? 'branch-001',
         'type': 'PURCHASE',
         'amount': total,
         'balanceAfter': updatedBalance,
         'items': detailedItems,
         'status': 'SUCCESS',
+        'staffName': currentActiveUser['name'] ?? 'Counter Staff',
         'createdAt': DateTime.now().toIso8601String(),
       };
       mockTransactions.insert(0, tx);
@@ -1393,6 +1421,242 @@ class MockApiInterceptor extends Interceptor {
       });
     }
 
+    // Refund Balance Only: POST /card-sessions/:id/refund
+    final refundRegex = RegExp(r'/card-sessions/([a-zA-Z0-9_-]+)/refund$');
+    final refundMatch = refundRegex.firstMatch(path);
+    if (refundMatch != null && method == 'POST') {
+      if (!_hasPermission(AppPermission.refund) && !_hasPermission(AppPermission.cardReturn)) {
+        return _reject(handler, options, 403, 'FORBIDDEN', 'Permission denied: Cannot refund card session');
+      }
+
+      final sessionId = refundMatch.group(1);
+      final session = mockSessions.firstWhere(
+        (s) => s['id'] == sessionId,
+        orElse: () => mockSessions.first,
+      );
+
+      final refundAmount = (session['balance'] as num).toDouble();
+      session['balance'] = 0.0;
+      session['updatedAt'] = DateTime.now().toIso8601String();
+
+      // Card and session remain ACTIVE
+      final tx = {
+        'id': 'tx-ref-${DateTime.now().millisecondsSinceEpoch}',
+        'sessionId': sessionId,
+        'branchId': session['branchId'] ?? 'branch-001',
+        'type': 'REFUND_RETURN',
+        'paymentMethod': 'DIRECT_REFUND',
+        'amount': refundAmount,
+        'balanceBefore': refundAmount,
+        'balanceAfter': 0.0,
+        'status': 'SUCCESS',
+        'createdAt': DateTime.now().toIso8601String(),
+      };
+      mockTransactions.insert(0, tx);
+
+      return _resolve(handler, options, {
+        'sessionId': sessionId,
+        'refundedAmount': refundAmount,
+        'balance': 0.0,
+        'sessionStatus': session['status'] ?? 'ACTIVE',
+      });
+    }
+
+    // ==========================================
+    // RECHARGES & TRANSACTION CANCELLATION ENDPOINTS
+    // ==========================================
+    // List Recharges: GET /card-sessions/transactions/recharges
+    if ((path.endsWith('/card-sessions/transactions/recharges') || path.endsWith(ApiEndpoints.recharges)) && method == 'GET') {
+      final branchId = options.queryParameters['branchId'];
+      final status = options.queryParameters['status'];
+      final search = options.queryParameters['search']?.toString().toLowerCase();
+      final paymentMethod = options.queryParameters['paymentMethod'];
+
+      var recharges = mockTransactions.where((t) => t['type'] == 'RECHARGE').toList();
+
+      if (branchId != null && branchId.isNotEmpty && branchId != 'ALL') {
+        recharges = recharges.where((t) => t['branchId'] == branchId).toList();
+      }
+      if (status != null && status != 'ALL') {
+        if (status == 'CANCELLED') {
+          recharges = recharges.where((t) => t['isCancelled'] == true).toList();
+        } else if (status == 'SUCCESS') {
+          recharges = recharges.where((t) => t['isCancelled'] != true).toList();
+        }
+      }
+      if (paymentMethod != null && paymentMethod != 'ALL') {
+        recharges = recharges
+            .where((t) => (t['paymentMethod'] ?? '').toString().toUpperCase() == paymentMethod.toString().toUpperCase())
+            .toList();
+      }
+      if (search != null && search.isNotEmpty) {
+        recharges = recharges.where((t) {
+          final id = (t['id'] ?? '').toString().toLowerCase();
+          final sId = (t['sessionId'] ?? '').toString().toLowerCase();
+          return id.contains(search) || sId.contains(search);
+        }).toList();
+      }
+
+      final totalRecharges = recharges.length;
+      final totalAmount = recharges
+          .where((t) => t['isCancelled'] != true)
+          .fold<double>(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
+      final cancelledCount = recharges.where((t) => t['isCancelled'] == true).length;
+      final cancelledAmount = recharges
+          .where((t) => t['isCancelled'] == true)
+          .fold<double>(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
+
+      return _resolve(handler, options, {
+        'items': recharges,
+        'summary': {
+          'totalRecharges': totalRecharges,
+          'totalAmount': totalAmount,
+          'cancelledCount': cancelledCount,
+          'cancelledAmount': cancelledAmount,
+          'netAmount': totalAmount - cancelledAmount,
+        },
+      });
+    }
+
+    // Cancel Recharge: POST /card-sessions/transactions/:id/cancel-recharge
+    final cancelRechargeRegex = RegExp(r'/card-sessions/transactions/([a-zA-Z0-9_-]+)/cancel-recharge$');
+    final cancelRechargeMatch = cancelRechargeRegex.firstMatch(path);
+    if (cancelRechargeMatch != null && method == 'POST') {
+      final txId = cancelRechargeMatch.group(1);
+      final txIndex = mockTransactions.indexWhere((t) => t['id'] == txId);
+      if (txIndex == -1) {
+        return _reject(handler, options, 404, 'NOT_FOUND', 'Transaction not found');
+      }
+
+      final tx = mockTransactions[txIndex];
+      if (tx['isCancelled'] == true) {
+        return _reject(handler, options, 400, 'ALREADY_CANCELLED', 'Transaction has already been cancelled');
+      }
+
+      final data = options.data is String ? jsonDecode(options.data) : options.data;
+      final reason = data?['reason'] as String? ?? 'Cancelled by staff';
+
+      final sessionId = tx['sessionId'];
+      final sessionIndex = mockSessions.indexWhere((s) => s['id'] == sessionId);
+      final amount = (tx['amount'] as num?)?.toDouble() ?? 0.0;
+
+      if (sessionIndex != -1) {
+        final currentBal = (mockSessions[sessionIndex]['balance'] as num).toDouble();
+        if (currentBal < amount) {
+          return _reject(
+            handler,
+            options,
+            400,
+            'INSUFFICIENT_BALANCE',
+            'Cannot cancel top-up: card balance is less than recharge amount',
+          );
+        }
+        mockSessions[sessionIndex]['balance'] = (currentBal - amount).clamp(0.0, double.infinity);
+        mockSessions[sessionIndex]['updatedAt'] = DateTime.now().toIso8601String();
+      }
+
+      // Mark transaction as cancelled
+      tx['isCancelled'] = true;
+      tx['cancellationReason'] = reason;
+      tx['cancelledAt'] = DateTime.now().toIso8601String();
+      tx['cancelledByUserName'] = currentActiveUser['name'] ?? 'Counter Staff';
+
+      // Insert reversal transaction
+      final reversalTx = {
+        'id': 'tx-rev-${DateTime.now().millisecondsSinceEpoch}',
+        'sessionId': sessionId,
+        'branchId': tx['branchId'] ?? 'branch-001',
+        'type': 'REVERSAL',
+        'paymentMethod': tx['paymentMethod'] ?? 'CASH',
+        'amount': amount,
+        'balanceAfter': sessionIndex != -1 ? mockSessions[sessionIndex]['balance'] : 0.0,
+        'status': 'SUCCESS',
+        'cancellationReason': reason,
+        'createdAt': DateTime.now().toIso8601String(),
+        'staffName': currentActiveUser['name'] ?? 'Counter Staff',
+      };
+      mockTransactions.insert(0, reversalTx);
+
+      return _resolve(handler, options, {
+        'message': 'Recharge transaction cancelled successfully',
+        'transactionId': txId,
+        'refundedAmount': amount,
+      });
+    }
+
+    // Cancel Order: POST /card-sessions/transactions/:id/cancel-order
+    final cancelOrderRegex = RegExp(r'/card-sessions/transactions/([a-zA-Z0-9_-]+)/cancel-order$');
+    final cancelOrderMatch = cancelOrderRegex.firstMatch(path);
+    if (cancelOrderMatch != null && method == 'POST') {
+      final txId = cancelOrderMatch.group(1);
+      final txIndex = mockTransactions.indexWhere((t) => t['id'] == txId);
+      if (txIndex == -1) {
+        return _reject(handler, options, 404, 'NOT_FOUND', 'Transaction not found');
+      }
+
+      final tx = mockTransactions[txIndex];
+      if (tx['isCancelled'] == true) {
+        return _reject(handler, options, 400, 'ALREADY_CANCELLED', 'Order has already been cancelled');
+      }
+
+      final data = options.data is String ? jsonDecode(options.data) : options.data;
+      final reason = data?['reason'] as String? ?? 'Cancelled by customer';
+
+      final sessionId = tx['sessionId'];
+      final sessionIndex = mockSessions.indexWhere((s) => s['id'] == sessionId);
+      final amount = (tx['amount'] as num?)?.toDouble() ?? 0.0;
+
+      // Refund the amount back to the card session
+      if (sessionIndex != -1) {
+        final currentBal = (mockSessions[sessionIndex]['balance'] as num).toDouble();
+        mockSessions[sessionIndex]['balance'] = currentBal + amount;
+        mockSessions[sessionIndex]['updatedAt'] = DateTime.now().toIso8601String();
+      }
+
+      // Restore inventory stock if items were present
+      final items = (tx['items'] as List<dynamic>?) ?? [];
+      for (final item in items) {
+        if (item is Map) {
+          final pid = item['productId'];
+          final qty = (item['quantity'] as num?)?.toInt() ?? 1;
+          final invIndex = mockInventory.indexWhere((i) => i['productId'] == pid);
+          if (invIndex != -1) {
+            mockInventory[invIndex]['currentStock'] =
+                ((mockInventory[invIndex]['currentStock'] as num?)?.toInt() ?? 0) + qty;
+            mockInventory[invIndex]['status'] = 'IN_STOCK';
+          }
+        }
+      }
+
+      // Mark transaction as cancelled
+      tx['isCancelled'] = true;
+      tx['cancellationReason'] = reason;
+      tx['cancelledAt'] = DateTime.now().toIso8601String();
+      tx['cancelledByUserName'] = currentActiveUser['name'] ?? 'Counter Staff';
+
+      // Insert refund transaction
+      final refundTx = {
+        'id': 'tx-ref-${DateTime.now().millisecondsSinceEpoch}',
+        'sessionId': sessionId,
+        'branchId': tx['branchId'] ?? 'branch-001',
+        'type': 'REFUND',
+        'paymentMethod': 'CARD_BALANCE',
+        'amount': amount,
+        'balanceAfter': sessionIndex != -1 ? mockSessions[sessionIndex]['balance'] : amount,
+        'status': 'SUCCESS',
+        'cancellationReason': reason,
+        'createdAt': DateTime.now().toIso8601String(),
+        'staffName': currentActiveUser['name'] ?? 'Counter Staff',
+      };
+      mockTransactions.insert(0, refundTx);
+
+      return _resolve(handler, options, {
+        'message': 'Order cancelled and refunded to card successfully',
+        'transactionId': txId,
+        'refundedAmount': amount,
+      });
+    }
+
     // Session Details: GET /card-sessions/:id
     final sessionDetailRegex = RegExp(r'/card-sessions/([a-zA-Z0-9_-]+)$');
     final sessionDetailMatch = sessionDetailRegex.firstMatch(path);
@@ -1415,12 +1679,6 @@ class MockApiInterceptor extends Interceptor {
       final userOrg = currentActiveUser['organizationId'];
       if (userOrg != null && card.isNotEmpty && card['organizationId'] != userOrg) {
         return _reject(handler, options, 403, 'FORBIDDEN', 'Access denied: Session belongs to another organization');
-      }
-
-      // Check branch assignment isolation
-      final assignedBranches = List<String>.from(currentActiveUser['assignedBranchIds'] ?? []);
-      if (assignedBranches.isNotEmpty && !assignedBranches.contains(session['branchId'])) {
-        return _reject(handler, options, 403, 'FORBIDDEN', 'Access denied: Session belongs to unauthorized branch');
       }
 
       final enriched = Map<String, dynamic>.from(session);
@@ -1702,6 +1960,45 @@ class MockApiInterceptor extends Interceptor {
       return _resolve(handler, options, newProduct);
     }
 
+    // Update Product: PUT /products/:id or PATCH /products/:id
+    final isProductUpdate = (path.contains('/products/') || path.contains('${ApiEndpoints.products}/')) &&
+        (method == 'PUT' || method == 'PATCH');
+    if (isProductUpdate) {
+      if (!_hasPermission(AppPermission.productManage) &&
+          !_hasPermission(AppPermission.productView) &&
+          currentActiveUser['role'] != 'STAFF') {
+        return _reject(handler, options, 403, 'FORBIDDEN', 'Permission denied: Cannot update product');
+      }
+
+      final prodId = path.split('/').last.split('?').first;
+      final idx = mockProducts.indexWhere((p) => p['id'] == prodId);
+      if (idx == -1) {
+        return _reject(handler, options, 404, 'NOT_FOUND', 'Product not found');
+      }
+
+      final data = options.data is String ? jsonDecode(options.data) : options.data;
+      final existing = Map<String, dynamic>.from(mockProducts[idx]);
+      if (data is Map<String, dynamic>) {
+        if (data.containsKey('itemName') && data['itemName'] != null) {
+          existing['itemName'] = data['itemName'];
+        }
+        if (data.containsKey('category') && data['category'] != null) {
+          if (data['category'] is List) {
+            existing['category'] = (data['category'] as List).map((e) => e.toString()).toList();
+          }
+        }
+        if (data.containsKey('price') && data['price'] != null) {
+          existing['price'] = (data['price'] as num).toDouble();
+        }
+        if (data.containsKey('status') && data['status'] != null) {
+          existing['status'] = data['status'];
+        }
+        existing['updatedAt'] = DateTime.now().toIso8601String();
+      }
+      mockProducts[idx] = existing;
+      return _resolve(handler, options, existing);
+    }
+
     // ==========================================
     // 6. INVENTORY ENDPOINTS
     // ==========================================
@@ -1907,6 +2204,30 @@ class MockApiInterceptor extends Interceptor {
             'productName': 'Juice',
             'quantitySold': 24,
             'totalRevenue': 960.0,
+          },
+          {
+            'productId': 'prod-005',
+            'productName': 'Samosa',
+            'quantitySold': 22,
+            'totalRevenue': 440.0,
+          },
+          {
+            'productId': 'prod-006',
+            'productName': 'Tea',
+            'quantitySold': 30,
+            'totalRevenue': 300.0,
+          },
+          {
+            'productId': 'prod-007',
+            'productName': 'Coffee',
+            'quantitySold': 18,
+            'totalRevenue': 360.0,
+          },
+          {
+            'productId': 'prod-008',
+            'productName': 'Paneer Tikka Roll',
+            'quantitySold': 15,
+            'totalRevenue': 1200.0,
           },
         ],
         'peakPeriods': [

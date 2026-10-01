@@ -243,6 +243,10 @@ export const mockAnalyticsHandlers = {
           upiRechargeVolume: Number(bUpiRechargeVol.toFixed(2)),
           refundCount: bRefundCount,
           refundVolume: Number(bRefundVol.toFixed(2)),
+          salesVolume: Number(bPurchaseVol.toFixed(2)),
+          salesCount: bPurchaseCount,
+          moneyAdded: Number((bCardRechargeVol + bUpiRechargeVol).toFixed(2)),
+          moneyRefunded: Number(bRefundVol.toFixed(2)),
           totalRevenue: Number(bPurchaseVol.toFixed(2)),
           sessionCount: bSessions.length,
           activeSessionsCount: activeSess,
@@ -311,7 +315,7 @@ export const mockAnalyticsHandlers = {
           title: 'Card Activated & Issued',
           description: `Issued new card session for ${sess.customerName || 'Customer'} (Card: ${cardNum})`,
           cardNumber: cardNum,
-          customerName: sess.customerName || 'Walk-in Customer',
+          customerName: sess.customerName || '',
           customerPhone: sess.customerPhone || '—',
           branchId: sess.branchId,
           branchName: mockStore.branches.find((b) => b.id === sess.branchId)?.name || 'Main Cafeteria',
@@ -371,6 +375,11 @@ export const mockAnalyticsHandlers = {
         const pMethod = String((tx as any).paymentMethod || '').toUpperCase();
         const txType = tx.type;
         const branchName = mockStore.branches.find((b) => b.id === tx.branchId)?.name || 'Main Cafeteria';
+        const sess = mockStore.sessions.find((s) => s.id === tx.sessionId);
+        const card = sess ? mockStore.cards.find((c) => c.id === sess.cardId) : undefined;
+        const cardNum = card?.physicalCardNumber || sess?.sessionCardNumber || (tx as any).cardNumber || 'MC-Card';
+        const custName = sess?.customerName || (tx as any).customerName || '';
+        const custPhone = sess?.customerPhone || (tx as any).customerPhone || '—';
 
         if (txType === 'PURCHASE') {
           purchaseCount++;
@@ -385,6 +394,9 @@ export const mockAnalyticsHandlers = {
             branchName,
             timestamp: tx.createdAt,
             paymentMethod: 'CARD_BALANCE',
+            cardNumber: cardNum,
+            customerName: custName,
+            customerPhone: custPhone,
           });
         } else if (txType === 'RECHARGE_CASH' || (txType === 'RECHARGE' && (pMethod === 'CASH' || pMethod === 'CARD' || !pMethod))) {
           cardRechargeCount++;
@@ -399,6 +411,9 @@ export const mockAnalyticsHandlers = {
             branchName,
             timestamp: tx.createdAt,
             paymentMethod: 'CASH',
+            cardNumber: cardNum,
+            customerName: custName,
+            customerPhone: custPhone,
           });
         } else if (txType === 'RECHARGE_UPI' || (txType === 'RECHARGE' && pMethod === 'UPI')) {
           upiRechargeCount++;
@@ -413,6 +428,9 @@ export const mockAnalyticsHandlers = {
             branchName,
             timestamp: tx.createdAt,
             paymentMethod: 'UPI',
+            cardNumber: cardNum,
+            customerName: custName,
+            customerPhone: custPhone,
           });
         } else if (txType === 'REFUND') {
           refundCount++;
@@ -426,6 +444,9 @@ export const mockAnalyticsHandlers = {
             branchId: tx.branchId,
             branchName,
             timestamp: tx.createdAt,
+            cardNumber: cardNum,
+            customerName: custName,
+            customerPhone: custPhone,
           });
         }
       });
@@ -601,12 +622,24 @@ export const mockAnalyticsHandlers = {
     return createMockSuccess({
       totalTransactions: filteredTransactions.length,
       totalRechargeVolume: Number(totalRechargeVolume.toFixed(2)),
+      rechargeVolume: Number(totalRechargeVolume.toFixed(2)),
+      moneyAdded: Number(totalRechargeVolume.toFixed(2)),
       cashRechargeVolume: Number(cashRechargeVolume.toFixed(2)),
       cashRechargeCount,
       upiRechargeVolume: Number(upiRechargeVolume.toFixed(2)),
       upiRechargeCount,
+      rechargeCount: (cashRechargeCount + upiRechargeCount),
       totalPurchaseVolume: Number(totalPurchaseVolume.toFixed(2)),
+      salesVolume: Number(totalPurchaseVolume.toFixed(2)),
+      purchaseVolume: Number(totalPurchaseVolume.toFixed(2)),
+      salesCount: totalPurchaseCount,
+      purchaseCount: totalPurchaseCount,
       totalRefundVolume: Number(totalRefundVolume.toFixed(2)),
+      refundVolume: Number(totalRefundVolume.toFixed(2)),
+      moneyRefunded: Number(totalRefundVolume.toFixed(2)),
+      refundCount: totalRefundCount,
+      netMoneyCollected: Number((totalRechargeVolume - totalRefundVolume).toFixed(2)),
+      blockedCardsCount,
       activeSessionsCount,
       activeCardsCount,
       lowStockItemsCount,
@@ -619,6 +652,17 @@ export const mockAnalyticsHandlers = {
       activeStaffCount,
       totalStaffCount: orgStaffList.length,
       cardFleetAnalytics,
+      foodOrdersCount: totalPurchaseCount,
+      productsSoldCount: Math.round(totalPurchaseCount * 2.2),
+      dishesOrderedCount: 18,
+      cancelledOrdersCount: 2,
+      cancelledOrdersVolume: 180,
+      allProductDemand: [
+        { productId: 'prod_1', productName: 'Chicken Biryani', unitPrice: 280, quantitySold: 45, totalRevenue: 12600, orderCount: 38 },
+        { productId: 'prod_2', productName: 'Masala Dosa', unitPrice: 120, quantitySold: 34, totalRevenue: 4080, orderCount: 30 },
+        { productId: 'prod_3', productName: 'Paneer Makhani', unitPrice: 240, quantitySold: 28, totalRevenue: 6720, orderCount: 24 },
+        { productId: 'prod_4', productName: 'Cold Coffee', unitPrice: 80, quantitySold: 22, totalRevenue: 1760, orderCount: 19 },
+      ],
     });
   },
 

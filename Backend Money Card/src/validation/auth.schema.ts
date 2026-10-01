@@ -6,6 +6,8 @@ export const loginSchema = z
     email: safeEmail.optional(),
     phone: safePhone.optional(),
     password: loginPasswordSchema,
+    portal: z.string().optional(),
+    role: z.string().optional(),
   })
   .strict()
   .refine((data) => data.email !== undefined || data.phone !== undefined, {

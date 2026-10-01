@@ -49,87 +49,22 @@ class _CardsScreenState extends ConsumerState<CardsScreen> {
 
     final cardListState = ref.watch(cardListNotifierProvider);
     final notifier = ref.read(cardListNotifierProvider.notifier);
-    final currentBranch = ref.watch(currentBranchProvider);
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Counter Cards'),
+        title: const Text('Active Wallets'),
       ),
       body: Column(
         children: [
-          // Branch Information Card
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              AppSpacing.sm,
-              AppSpacing.md,
-              AppSpacing.xs,
-            ),
-            child: AppCard(
-              padding: AppSpacing.paddingSm,
-              child: Row(
-                children: [
-                  const Icon(Icons.storefront, size: 20, color: AppColors.primary),
-                  const SizedBox(width: AppSpacing.xs),
-                  Expanded(
-                    child: Text(
-                      'Counter: ${currentBranch?.name ?? "All Assigned Counters"}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (currentBranch != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryLight,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '${cardListState.cards.length} Cards',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primaryDark,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-          // Search & Filter Header
+          // Search Header
           Padding(
             padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              children: [
-                // Search Input
-                TextField(
-                  onChanged: notifier.setSearchQuery,
-                  decoration: const InputDecoration(
-                    hintText: 'Search by card number...',
-                    prefixIcon: Icon(Icons.search, size: 20),
-                    isDense: true,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-
-                // Status Filter Chips
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _buildFilterChip('ALL', 'All', cardListState.selectedStatusFilter, notifier),
-                      _buildFilterChip('AVAILABLE', 'Available', cardListState.selectedStatusFilter, notifier),
-                      _buildFilterChip('ACTIVE', 'Active', cardListState.selectedStatusFilter, notifier),
-                      _buildFilterChip('BLOCKED', 'Blocked', cardListState.selectedStatusFilter, notifier),
-                    ],
-                  ),
-                ),
-              ],
+            child: TextField(
+              onChanged: notifier.setSearchQuery,
+              decoration: const InputDecoration(
+                hintText: 'Search active wallets by wallet number...',
+                prefixIcon: Icon(Icons.search, size: 20),
+                isDense: true,
+              ),
             ),
           ),
           const Divider(height: 1),
@@ -146,24 +81,6 @@ class _CardsScreenState extends ConsumerState<CardsScreen> {
     );
   }
 
-  Widget _buildFilterChip(
-    String value,
-    String label,
-    String current,
-    CardListNotifier notifier,
-  ) {
-    final isSelected = current == value;
-    return Padding(
-      padding: const EdgeInsets.only(right: AppSpacing.xs),
-      child: FilterChip(
-        label: Text(label),
-        selected: isSelected,
-        onSelected: (_) => notifier.setStatusFilter(value),
-        selectedColor: AppColors.primaryLight,
-        checkmarkColor: AppColors.primary,
-      ),
-    );
-  }
 
   Widget _buildListContent(
     BuildContext context,
@@ -171,7 +88,7 @@ class _CardsScreenState extends ConsumerState<CardsScreen> {
     CardListNotifier notifier,
   ) {
     if (state.isLoading) {
-      return const AppLoadingView(message: 'Loading counter cards...');
+      return const AppLoadingView(message: 'Loading counter wallets...');
     }
 
     if (state.errorMessage != null) {
@@ -205,9 +122,9 @@ class _CardsScreenState extends ConsumerState<CardsScreen> {
           children: const [
             SizedBox(height: 100),
             AppEmptyState(
-              title: 'No Cards Found',
-              description: 'No cards match the selected filter.',
-              icon: Icons.credit_card_off_outlined,
+              title: 'No Wallets Found',
+              description: 'No wallets match the selected filter.',
+              icon: Icons.account_balance_wallet_outlined,
             ),
           ],
         ),
@@ -234,7 +151,7 @@ class _CardsScreenState extends ConsumerState<CardsScreen> {
                   color: AppColors.primaryLight,
                   borderRadius: AppSpacing.roundedSm,
                 ),
-                child: const Icon(Icons.credit_card, color: AppColors.primaryDark, size: 20),
+                child: const Icon(Icons.account_balance_wallet_outlined, color: AppColors.primaryDark, size: 20),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(

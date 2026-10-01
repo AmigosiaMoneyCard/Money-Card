@@ -15,6 +15,7 @@ class AuthService {
   }) async {
     final payload = <String, dynamic>{
       'password': password,
+      'portal': 'STAFF',
     };
     if (phone != null && phone.isNotEmpty) {
       payload['phone'] = phone;

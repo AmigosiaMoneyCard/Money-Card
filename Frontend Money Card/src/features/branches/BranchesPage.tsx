@@ -121,8 +121,8 @@ export const validatePassword = (password: string, isRequired = false): string |
     }
     return null;
   }
-  if (password.length < 6 || password.length > 30) {
-    return 'Password must be between 6 and 30 characters';
+  if (password.length < 8 || password.length > 30) {
+    return 'Password must be between 8 and 30 characters';
   }
   return null;
 };
@@ -160,6 +160,17 @@ export function BranchesPage() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [modalApiError, setModalApiError] = useState<string | null>(null);
 
+  // WhatsApp Credentials Modal state
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+  const [createdBranchCredentials, setCreatedBranchCredentials] = useState<{
+    name: string;
+    phone: string;
+    password: string;
+    branchId: string;
+  } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [showModalPassword, setShowModalPassword] = useState(false);
+
   // View/Edit modal inputs
   const [editNameInput, setEditNameInput] = useState('');
   const [editPhoneInput, setEditPhoneInput] = useState('');
@@ -174,16 +185,6 @@ export function BranchesPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // WhatsApp Credentials Modal state
-  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
-  const [createdBranchCredentials, setCreatedBranchCredentials] = useState<{
-    name: string;
-    phone: string;
-    password?: string;
-    branchId: string;
-  } | null>(null);
-  const [copied, setCopied] = useState(false);
-
   // Password persistence helpers — store known passwords in localStorage by branchId
   const PASS_STORAGE_KEY = 'mc_branch_passwords';
 
@@ -195,11 +196,26 @@ export function BranchesPage() {
     }
   };
 
-  const storePassword = (branchId: string, password: string) => {
+  const storePassword = (branchId: string, password: string, phone?: string, managerId?: string) => {
     try {
+      if (!password) return;
       const stored = getStoredPasswords();
-      stored[branchId] = password;
+      if (branchId) stored[branchId] = password;
+      if (phone) {
+        const clean = phone.replace(/\D/g, '').slice(-10);
+        if (clean) stored[clean] = password;
+      }
       localStorage.setItem(PASS_STORAGE_KEY, JSON.stringify(stored));
+
+      // Also mirror to mc_staff_passwords for counter dashboard parity
+      const staffMap = JSON.parse(localStorage.getItem('mc_staff_passwords') || '{}');
+      if (managerId) staffMap[managerId] = password;
+      if (phone) {
+        const clean = phone.replace(/\D/g, '').slice(-10);
+        if (clean) staffMap[clean] = password;
+      }
+      if (branchId) staffMap[branchId] = password;
+      localStorage.setItem('mc_staff_passwords', JSON.stringify(staffMap));
     } catch {
       // ignore storage errors
     }
@@ -304,19 +320,20 @@ export function BranchesPage() {
     e.preventDefault();
 
     const nameErr = validateCounterName(branchNameInput);
-    const phoneErr = validateMobileNumber(branchPhoneInput);
-    const passErr = validatePassword(branchPasswordInput, true);
-
     setNameError(nameErr);
-    setPhoneError(phoneErr);
-    setPasswordError(passErr);
 
-    if (nameErr || phoneErr || passErr) return;
+    const phoneErr = validateMobileNumber(branchPhoneInput);
+    setPhoneError(phoneErr);
+
+    const passwordErr = validatePassword(branchPasswordInput);
+    setPasswordError(passwordErr);
+
+    if (nameErr || phoneErr || passwordErr) return;
 
     setModalApiError(null);
     setIsSubmitting(true);
     try {
-      const cleanPhone = branchPhoneInput.trim().replace(/\D/g, '').slice(-10);
+      const cleanPhone = branchPhoneInput.replace(/\D/g, '').slice(-10);
       const result: ApiResult<Branch> = await apiService.branches.createBranch({
         name: branchNameInput.trim(),
         phone: cleanPhone,
@@ -324,7 +341,7 @@ export function BranchesPage() {
       });
 
       if (!result.success) {
-        if (result.error.code === 'PLAN_LIMIT_REACHED') {
+        if ((result.error.code as string) === 'PLAN_LIMIT_REACHED' || (result.error.code as string) === 'BRANCH_LIMIT_REACHED') {
           setModalApiError(
             result.error.message ||
               'Counter limit reached for your active plan. Please upgrade your subscription to create more counters.',
@@ -340,7 +357,7 @@ export function BranchesPage() {
       fetchBranches();
 
       // Persist password in localStorage for this branch
-      storePassword(result.data.id, branchPasswordInput);
+      storePassword(result.data.id, branchPasswordInput, cleanPhone);
 
       // Open WhatsApp Dispatch Modal
       setCreatedBranchCredentials({
@@ -389,13 +406,28 @@ export function BranchesPage() {
     window.open(waUrl, '_blank', 'noopener,noreferrer');
   };
 
+
+
   // ── Consolidated View / Edit Counter Details ──────────────
   const handleOpenViewEdit = (branch: Branch) => {
     setSelectedBranch(branch);
     setEditNameInput(branch.name);
     const initialPhone = (branch.manager?.phone || branch.credentials?.phone || '').replace(/\D/g, '').slice(-10);
     setEditPhoneInput(initialPhone);
-    const storedPassword = getStoredPasswords()[branch.id] || branch.credentials?.password || '';
+    const branchPasswords = getStoredPasswords();
+    let staffPasswords: Record<string, string> = {};
+    try {
+      staffPasswords = JSON.parse(localStorage.getItem('mc_staff_passwords') || '{}');
+    } catch {}
+
+    const storedPassword =
+      branchPasswords[branch.id] ||
+      (initialPhone && branchPasswords[initialPhone]) ||
+      (branch.manager?.id && staffPasswords[branch.manager.id]) ||
+      (initialPhone && staffPasswords[initialPhone]) ||
+      staffPasswords[branch.id] ||
+      branch.credentials?.password ||
+      '';
     setCurrentBranchPassword(storedPassword);
     setShowCurrentPassword(false);
     setEditPasswordInput('');
@@ -445,8 +477,9 @@ export function BranchesPage() {
       }
 
       if (editPasswordInput.trim()) {
-        setCurrentBranchPassword(editPasswordInput.trim());
-        storePassword(selectedBranch.id, editPasswordInput.trim());
+        const pass = editPasswordInput.trim();
+        setCurrentBranchPassword(pass);
+        storePassword(selectedBranch.id, pass, editPhoneInput, selectedBranch.manager?.id);
       }
       notify.success('Counter details updated successfully');
       setShowViewEditModal(false);
@@ -463,7 +496,7 @@ export function BranchesPage() {
     if (!selectedBranch) return;
     const cleanPhone = editPhoneInput.replace(/\D/g, '').slice(-10);
     const loginUrl = `${window.location.origin}/login`;
-    const passwordText = editPasswordInput.trim() || currentBranchPassword || '123456';
+    const passwordText = editPasswordInput.trim() || currentBranchPassword || '12345678';
     const textToCopy =
       `Counter Name: ${editNameInput.trim() || selectedBranch.name}\n` +
       `Mobile Number: ${cleanPhone || 'Not set'}\n` +
@@ -482,7 +515,7 @@ export function BranchesPage() {
     }
 
     const loginUrl = `${window.location.origin}/login`;
-    const passwordText = editPasswordInput.trim() || currentBranchPassword || '123456';
+    const passwordText = editPasswordInput.trim() || currentBranchPassword || '12345678';
     const message =
       `*Money Card Counter Credentials*\n\n` +
       `Here are your counter login details:\n\n` +
@@ -869,7 +902,7 @@ export function BranchesPage() {
             id="create-branch-password"
             label="Login Password"
             type={showCreatePassword ? 'text' : 'password'}
-            placeholder="Minimum 6 characters"
+            placeholder="Minimum 8 characters (default: 12345678)"
             value={branchPasswordInput}
             onChange={(e) => {
               setBranchPasswordInput(e.target.value);
@@ -904,15 +937,19 @@ export function BranchesPage() {
       {/* ── WhatsApp Credentials Modal ────────────────────────────── */}
       <Modal
         isOpen={showWhatsAppModal}
-        onClose={() => setShowWhatsAppModal(false)}
+        onClose={() => {
+          setShowWhatsAppModal(false);
+          setShowModalPassword(false);
+        }}
         title="Counter Created Successfully!"
-        description="Share the login credentials with the counter manager via WhatsApp or copy directly."
         size="md"
       >
         <div className="space-y-4 py-1">
           <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 space-y-3">
             <div className="flex items-center gap-2 text-emerald-800 font-semibold text-sm">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white text-xs">✓</span>
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white">
+                <Check className="h-3.5 w-3.5" />
+              </span>
               <span>Counter Login Credentials</span>
             </div>
 
@@ -927,7 +964,19 @@ export function BranchesPage() {
               </div>
               <div className="bg-white/95 p-2.5 rounded-lg border border-emerald-100 shadow-2xs">
                 <span className="text-slate-500 block text-[11px]">Password</span>
-                <span className="font-semibold text-slate-800 font-mono text-sm">{createdBranchCredentials?.password}</span>
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-slate-800 font-mono text-sm">
+                    {showModalPassword ? createdBranchCredentials?.password : '••••••••'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowModalPassword(!showModalPassword)}
+                    className="text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
+                    aria-label={showModalPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showModalPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
               </div>
               <div className="bg-white/95 p-2.5 rounded-lg border border-emerald-100 shadow-2xs">
                 <span className="text-slate-500 block text-[11px]">Web Portal</span>
@@ -966,6 +1015,8 @@ export function BranchesPage() {
           </ModalFooter>
         </div>
       </Modal>
+
+
 
       {/* ── Consolidated View / Edit Counter Details Modal ─────────── */}
       <Modal
@@ -1043,7 +1094,7 @@ export function BranchesPage() {
               <Input
                 id="edit-branch-password"
                 type={showEditPassword ? 'text' : 'password'}
-                placeholder="Enter new password (min 6 chars)"
+                placeholder="Enter new password (min 8 chars)"
                 maxLength={30}
                 value={editPasswordInput}
                 onChange={(e) => {
@@ -1075,9 +1126,6 @@ export function BranchesPage() {
                 <span className="font-mono text-sm font-bold text-slate-800">
                   {showCurrentPassword ? (editPasswordInput.trim() || currentBranchPassword) : '••••••••'}
                 </span>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Copying or sharing credentials will use this password.
-                </p>
               </div>
               <button
                 type="button"

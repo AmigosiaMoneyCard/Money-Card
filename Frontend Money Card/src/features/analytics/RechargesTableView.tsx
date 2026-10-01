@@ -174,7 +174,7 @@ export function RechargesTableView({ branchId }: RechargesTableViewProps) {
                 <CreditCard className="h-6 w-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900">📱 Online UPI Money</h3>
+                <h3 className="text-lg font-bold text-slate-900">UPI Recharge</h3>
                 <p className="text-xs text-slate-500">QR Code & Banking Apps</p>
               </div>
             </div>
@@ -198,7 +198,7 @@ export function RechargesTableView({ branchId }: RechargesTableViewProps) {
                 <DollarSign className="h-6 w-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900">💵 Cash Money</h3>
+                <h3 className="text-lg font-bold text-slate-900">Cash Recharge</h3>
                 <p className="text-xs text-slate-500">Cash Register Counter</p>
               </div>
             </div>
@@ -224,7 +224,7 @@ export function RechargesTableView({ branchId }: RechargesTableViewProps) {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search Card ID, Customer Name, Mobile..."
+                placeholder="Search Wallet ID, Customer Name, Mobile..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -276,14 +276,26 @@ export function RechargesTableView({ branchId }: RechargesTableViewProps) {
                 <input
                   type="date"
                   value={customStartDate}
-                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCustomStartDate(val);
+                    if (customEndDate && val > customEndDate) {
+                      setCustomEndDate(val);
+                    }
+                  }}
                   className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
                 <span className="text-slate-400">to</span>
                 <input
                   type="date"
                   value={customEndDate}
-                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCustomEndDate(val);
+                    if (customStartDate && val < customStartDate) {
+                      setCustomStartDate(val);
+                    }
+                  }}
                   className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
@@ -375,7 +387,7 @@ export function RechargesTableView({ branchId }: RechargesTableViewProps) {
             <thead className="border-b border-slate-100 bg-slate-50/75 text-xs font-semibold uppercase tracking-wider text-slate-500">
               <tr>
                 <th className="px-6 py-3.5">Date & Time</th>
-                <th className="px-6 py-3.5">Card / Customer</th>
+                <th className="px-6 py-3.5">Wallet / Customer</th>
                 <th className="px-6 py-3.5">Amount & Mode</th>
                 <th className="px-6 py-3.5">Staff Member</th>
                 <th className="px-6 py-3.5">Status</th>
@@ -537,7 +549,7 @@ export function RechargesTableView({ branchId }: RechargesTableViewProps) {
                 <span className="font-mono font-semibold">{cancellingTx.id}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Card:</span>
+                <span className="text-slate-500">Wallet:</span>
                 <span className="font-semibold">{cancellingTx.cardNumber || cancellingTx.sessionId}</span>
               </div>
               <div className="flex justify-between">

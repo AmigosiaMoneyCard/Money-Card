@@ -161,6 +161,32 @@ Provides cross-organization financial auditing, POS metrics, and peak traffic di
 
 ---
 
+### Module 5: Mobile POS & Scanned Card Hub (Flutter POS Native App)
+Provides rapid cashier operations and unified smart card transaction lifecycle management.
+
+#### Key Features & Business Logic:
+1. **Single-Scan Card Identification & Action Hub**:
+   - Tapping an RFID or scanning a QR instantly resolves the card session.
+   - **Option 1**: **Recharge Card** (top-up balance via cash or UPI).
+   - **Option 2**: **Add Products** (menu catalog in clear row-wise layout).
+2. **Instant Order Cancellation with Auto-Refund**:
+   - Cashiers can cancel recent food orders with one click.
+   - The billed amount is immediately credited back to the customer's card balance, and inventory stock quantities are automatically restored.
+3. **Recharge Cancellation (Void Top-Up)**:
+   - Wrongly entered recharge amounts can be voided from the Top-up History sheet with an audit reason, safely deducting the amount from the card balance.
+4. **Role-Based Navigation & Visibility**:
+   - Home screen streamlined to show only the **Recharges** quick action card.
+   - Analytics tab and detailed statistics visible exclusively to Manager-role staff.
+
+#### മലയാളം വിശദീകരണം (Malayalam Explanation):
+> **മൊബൈൽ പിഒഎസ് & കാർഡ് ഓപ്പറേഷൻസ് ഡെമോ:**
+> 1. *"മൊബൈൽ ആപ്പിൽ കാർഡ് സ്കാൻ ചെയ്യുമ്പോൾ തന്നെ പ്രധാനമായും 2 ഓപ്ഷനുകൾ കാണാം: ഒന്നാമതായി **Recharge Card**, രണ്ടാമതായി **Add Products** (ഭക്ഷണ സാധനങ്ങൾ ഓർഡർ ചെയ്യാൻ)."*
+> 2. *"ഭക്ഷണം ഓർഡർ ചെയ്യുമ്പോൾ കാറ്റലോഗ് എളുപ്പത്തിൽ തെരഞ്ഞെടുക്കാൻ റോ-വൈസ് (Row-wise) ലിസ്റ്റായി ക്രമീകരിച്ചിരിക്കുന്നു."*
+> 3. *"തെറ്റായി നൽകിയ ഫുഡ് ഓർഡർ ക്യാൻസൽ ചെയ്താൽ ആ തുക തത്സമയം ഉപഭോക്താവിന്റെ കാർഡിലേക്ക് റീഫണ്ട് ആവുകയും സ്റ്റോക്ക് തിരിച്ചെത്തുകയും ചെയ്യും."*
+> 4. *"റീചാർജ് ചെയ്തതിൽ തെറ്റു സംഭവിച്ചാൽ ടോപ്പ്-അപ്പ് ഹിസ്റ്ററിയിൽ നിന്ന് അത് വോയ്ഡ് (Void) ചെയ്യാനും സൗകര്യമുണ്ട്."*
+
+---
+
 ## 3. Step-by-Step Malayalam Demo Presentation Script (ഡെമോ പ്രസന്റേഷൻ സ്ക്രിപ്റ്റ്)
 
 Follow this chronological flow when presenting to clients, management, or evaluators:

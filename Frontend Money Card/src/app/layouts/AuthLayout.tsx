@@ -14,7 +14,6 @@ export function AuthLayout() {
             MC
           </div>
           <h1 className="text-2xl font-bold text-slate-900">Money Card</h1>
-          <p className="text-sm text-slate-500">Reusable QR card payment platform</p>
         </div>
         <Outlet />
       </div>

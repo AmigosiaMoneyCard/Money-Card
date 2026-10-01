@@ -15,7 +15,7 @@ void main() {
       expect(AppConfig.isProduction, isTrue);
       expect(AppConfig.isStaging, isFalse);
       expect(AppConfig.appName, 'Money Card');
-      expect(AppConfig.baseUrl, 'https://money-card-backend.onrender.com/api/v1');
+      expect(AppConfig.baseUrl, 'https://money-card-backend-0nx1.onrender.com/api/v1');
     });
 
     test('initialize with staging sets staging URLs and flags', () {
@@ -23,7 +23,7 @@ void main() {
       expect(AppConfig.isStaging, isTrue);
       expect(AppConfig.isProduction, isFalse);
       expect(AppConfig.appName, 'Money Card (Staging)');
-      expect(AppConfig.baseUrl, 'https://money-card-backend-staging.onrender.com/api/v1');
+      expect(AppConfig.baseUrl, 'https://money-card-backend-staging-681a.onrender.com/api/v1');
     });
 
     test('initialize with development sets localhost URLs and flags', () {
@@ -31,7 +31,7 @@ void main() {
       expect(AppConfig.isDevelopment, isTrue);
       expect(AppConfig.isProduction, isFalse);
       expect(AppConfig.isStaging, isFalse);
-      expect(AppConfig.appName, 'Money Card (Dev)');
+      expect(AppConfig.appName, 'Money Card - Localhost');
       expect(AppConfig.baseUrl, 'http://127.0.0.1:3000/api/v1');
     });
 
@@ -40,12 +40,12 @@ void main() {
       final storage = ServerConfigStorage();
 
       // Simulate a contaminated storage pointing to staging backend
-      await storage.saveServerUrl('https://money-card-backend-staging.onrender.com/api/v1');
-      expect(AppConfig.baseUrl, 'https://money-card-backend-staging.onrender.com/api/v1');
+      await storage.saveServerUrl('https://money-card-backend-staging-681a.onrender.com/api/v1');
+      expect(AppConfig.baseUrl, 'https://money-card-backend-staging-681a.onrender.com/api/v1');
 
       // Re-initialize: should purge the staging backend contaminated URL in production
       await storage.initialize();
-      expect(AppConfig.baseUrl, 'https://money-card-backend.onrender.com/api/v1');
+      expect(AppConfig.baseUrl, 'https://money-card-backend-0nx1.onrender.com/api/v1');
     });
 
     test('ServerConfigStorage resetToDefault in development restores localhost base URL', () async {
@@ -57,6 +57,32 @@ void main() {
 
       await storage.resetToDefault();
       expect(AppConfig.baseUrl, 'http://127.0.0.1:3000/api/v1');
+    });
+
+    test('ServerConfigStorage purges defunct legacy staging Render backend in staging', () async {
+      AppConfig.initialize(env: 'staging');
+      final storage = ServerConfigStorage();
+
+      // Simulate existing device storage pointing to defunct legacy staging backend
+      await storage.saveServerUrl('https://money-card-backend-staging.onrender.com/api/v1');
+      expect(AppConfig.baseUrl, 'https://money-card-backend-staging.onrender.com/api/v1');
+
+      // Re-initialize: should detect defunct legacy URL and restore live staging backend
+      await storage.initialize();
+      expect(AppConfig.baseUrl, 'https://money-card-backend-staging-681a.onrender.com/api/v1');
+    });
+
+    test('ServerConfigStorage purges defunct legacy production Render backend in production', () async {
+      AppConfig.initialize(env: 'production');
+      final storage = ServerConfigStorage();
+
+      // Simulate existing device storage pointing to defunct legacy production backend
+      await storage.saveServerUrl('https://money-card-backend.onrender.com/api/v1');
+      expect(AppConfig.baseUrl, 'https://money-card-backend.onrender.com/api/v1');
+
+      // Re-initialize: should detect defunct legacy URL and restore live production backend
+      await storage.initialize();
+      expect(AppConfig.baseUrl, 'https://money-card-backend-0nx1.onrender.com/api/v1');
     });
   });
 }

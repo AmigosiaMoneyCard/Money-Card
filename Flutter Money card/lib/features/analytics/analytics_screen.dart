@@ -8,9 +8,6 @@ import '../../models/branch.dart';
 import '../../providers/analytics_provider.dart';
 import '../../providers/branch_provider.dart';
 import '../../widgets/analytics/analytics_pdf_preview_dialog.dart';
-import '../../widgets/common/app_badge.dart';
-import '../../widgets/common/app_card.dart';
-import '../../widgets/common/section_header.dart';
 import '../../widgets/guards/permission_guard.dart';
 import '../../widgets/states/app_empty_state.dart';
 import '../../widgets/states/app_loading_view.dart';
@@ -71,7 +68,6 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     final notifier = ref.read(analyticsNotifierProvider.notifier);
     final branchState = ref.watch(branchNotifierProvider);
     final currentBranch = branchState.currentBranch;
-    final assignedBranches = branchState.assignedBranches;
 
     return PermissionGuard.single(
       permission: AppPermission.viewAnalytics,
@@ -100,14 +96,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     ],
                   ),
                 ),
-                if (assignedBranches.length > 1 && currentBranch != null)
-                  _buildBranchSwitcher(context, ref, currentBranch, assignedBranches),
               ],
             ),
             bottom: const TabBar(
               tabs: [
-                Tab(icon: Icon(Icons.account_balance, size: 18), text: 'Financial Overview'),
-                Tab(icon: Icon(Icons.credit_card, size: 18), text: 'Card Analytics'),
+                Tab(icon: Icon(Icons.receipt_long_outlined, size: 18), text: 'Recharge'),
+                Tab(icon: Icon(Icons.restaurant_menu_outlined, size: 18), text: 'Menu'),
               ],
               labelColor: AppColors.primary,
               unselectedLabelColor: AppColors.textSecondaryLight,
@@ -119,7 +113,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           ),
           body: Column(
             children: [
-              // Filter Toolbar: Custom Date Range & View PDF Action
+              // Filter Toolbar: Custom Date Range & Actions
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.md,
@@ -182,10 +176,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                             ),
                           ),
                         ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 6),
-                          child: Text('to', style: TextStyle(fontSize: 11, color: AppColors.textSecondaryLight)),
-                        ),
+                        const SizedBox(width: AppSpacing.sm),
                         Expanded(
                           child: GestureDetector(
                             onTap: () async {
@@ -324,9 +315,23 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
               // Main Tab Content
               Expanded(
-                child: RefreshIndicator(
-                  onRefresh: notifier.loadAnalytics,
-                  child: _buildBody(context, analyticsState, notifier),
+                child: TabBarView(
+                  children: [
+                    // Tab 1: Consolidated Single-Box Metrics Overview
+                    RefreshIndicator(
+                      onRefresh: () async {
+                        await notifier.loadAnalytics();
+                      },
+                      child: _buildOverviewTab(context, analyticsState, notifier),
+                    ),
+                    // Tab 2: Menu Analytics & Demand
+                    RefreshIndicator(
+                      onRefresh: () async {
+                        await notifier.loadAnalytics();
+                      },
+                      child: _buildMenuAnalyticsTab(context, analyticsState, notifier),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -336,70 +341,23 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
-  Widget _buildBranchSwitcher(
-    BuildContext context,
-    WidgetRef ref,
-    Branch currentBranch,
-    List<Branch> assignedBranches,
-  ) {
-    return PopupMenuButton<Branch>(
-      initialValue: currentBranch,
-      onSelected: (branch) {
-        ref.read(branchNotifierProvider.notifier).selectBranch(branch);
-      },
-      itemBuilder: (context) {
-        return assignedBranches.map((branch) {
-          final isSelected = branch.id == currentBranch.id;
-          return PopupMenuItem<Branch>(
-            value: branch,
-            child: Row(
-              children: [
-                Icon(
-                  Icons.storefront,
-                  size: 18,
-                  color: isSelected ? AppColors.primary : AppColors.textSecondaryLight,
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Text(
-                  branch.name,
-                  style: TextStyle(
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    color: isSelected ? AppColors.primaryDark : AppColors.textPrimaryLight,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList();
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: AppColors.primaryLight,
-          borderRadius: AppSpacing.roundedSm,
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.swap_horiz, size: 16, color: AppColors.primaryDark),
-            const SizedBox(width: 4),
-            const Text(
-              'Switch Counter',
-              style: TextStyle(
-                color: AppColors.primaryDark,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const Icon(Icons.arrow_drop_down, size: 16, color: AppColors.primaryDark),
-          ],
-        ),
-      ),
-    );
+
+  static String _formatCompactSubAmount(double amount) {
+    if (amount >= 100000) {
+      final val = amount / 100000;
+      return '${val.toStringAsFixed(val.truncateToDouble() == val ? 0 : 1)}L';
+    }
+    if (amount >= 10000) {
+      final val = amount / 1000;
+      return '${val.toStringAsFixed(val.truncateToDouble() == val ? 0 : 1)}k';
+    }
+    if (amount == amount.roundToDouble()) {
+      return amount.toStringAsFixed(0);
+    }
+    return amount.toStringAsFixed(2);
   }
 
-  Widget _buildBody(
+  Widget _buildOverviewTab(
     BuildContext context,
     AnalyticsState state,
     AnalyticsNotifier notifier,
@@ -454,353 +412,489 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       );
     }
 
-    return TabBarView(
-      children: [
-        _buildFinancialOverview(context, data),
-        _buildCardAnalytics(context, data),
-      ],
-    );
-  }
-
-  // ─── Tab 1: Financial Overview (Easy Words Layout) ───
-  Widget _buildFinancialOverview(BuildContext context, BranchPerformanceMetric data) {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
       children: [
-        // 1. Primary Highlight Card: Net Money Collected
-        AppCard(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        // Row 1: Recharge Amount & Refund Amount
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Net Money Collected',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textSecondaryLight,
-                    ),
-                  ),
-                  AppBadge(
-                    label: data.status,
-                    variant: data.status == 'ACTIVE'
-                        ? AppBadgeVariant.success
-                        : AppBadgeVariant.neutral,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '₹${data.netMoneyCollected.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  fontSize: 34,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primaryDark,
+              Expanded(
+                child: _buildCompactMetricCard(
+                  title: 'Recharge Amount',
+                  totalText: '₹${data.rechargeVolume.toStringAsFixed(2)}',
+                  line1Text: 'Cash: ₹${_formatCompactSubAmount(data.cashMoney)}',
+                  line2Text: 'UPI: ₹${_formatCompactSubAmount(data.upiMoney)}',
+                  icon: Icons.account_balance_wallet_outlined,
+                  accentColor: AppColors.primaryDark,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                'Money Added (₹${data.moneyAdded.toStringAsFixed(0)}) minus Money Refunded (₹${data.moneyRefunded.toStringAsFixed(0)})',
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildCompactMetricCard(
+                  title: 'Refund Amount',
+                  totalText: '₹${data.refundVolume.toStringAsFixed(2)}',
+                  line1Text: 'Cash: ₹${_formatCompactSubAmount(data.refundVolume)}',
+                  line2Text: 'UPI: ₹0',
+                  icon: Icons.assignment_return_outlined,
+                  accentColor: AppColors.error,
+                ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
 
-        // 2. Online UPI vs Cash Money Side-by-Side Comparison
-        Row(
-          children: [
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5F3FF),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFDDD6FE)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Online UPI Money',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF6D28D9)),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '₹${data.upiMoney.toStringAsFixed(2)}',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF4C1D95)),
-                    ),
-                    Text(
-                      '${data.upiCount} top-ups',
-                      style: const TextStyle(fontSize: 11, color: Color(0xFF7C3AED)),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0FDF4),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFBBF7D0)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Cash Money',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF15803D)),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '₹${data.cashMoney.toStringAsFixed(2)}',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF166534)),
-                    ),
-                    Text(
-                      '${data.cashCount} top-ups',
-                      style: const TextStyle(fontSize: 11, color: Color(0xFF15803D)),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-
-        // 4. Core Money Grid: Money Added & Money Refunded
-        Row(
-          children: [
-            Expanded(
-              child: _buildMetricTile(
-                icon: Icons.add_card,
-                label: 'Money Added',
-                value: '₹${data.moneyAdded.toStringAsFixed(0)}',
-                subValue: '${data.rechargeCount} total top-ups',
-                color: AppColors.success,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: _buildMetricTile(
-                icon: Icons.assignment_return,
-                label: 'Money Refunded',
-                value: '₹${data.moneyRefunded.toStringAsFixed(0)}',
-                subValue: '${data.refundCount} cards returned',
-                color: AppColors.error,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.sm),
-
-        // 5. Cancellations & Voided Activity
-        Row(
-          children: [
-            Expanded(
-              child: _buildMetricTile(
-                icon: Icons.cancel_outlined,
-                label: 'Cancelled Top-ups',
-                value: '₹${data.cancelledTopUps.toStringAsFixed(0)}',
-                subValue: '${data.cancelledTopUpsCount} voided top-ups',
-                color: Colors.orange.shade700,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: _buildMetricTile(
-                icon: Icons.remove_shopping_cart_outlined,
-                label: 'Cancelled Food Orders',
-                value: '₹${data.cancelledOrdersVolume.toStringAsFixed(0)}',
-                subValue: '${data.cancelledOrdersCount} voided orders',
-                color: Colors.deepOrange,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.sm),
-
-        // 6. Food Sales (POS)
-        _buildMetricTile(
-          icon: Icons.restaurant,
-          label: 'Food Sales (POS)',
-          value: '₹${data.purchaseVolume.toStringAsFixed(0)}',
-          subValue: '${data.purchaseCount} orders served',
-          color: AppColors.primary,
-        ),
-      ],
-    );
-  }
-
-  // ─── Tab 2: Card Analytics ───
-  Widget _buildCardAnalytics(BuildContext context, BranchPerformanceMetric data) {
-    final totalSessions = data.sessionCount > 0 ? data.sessionCount : (data.activeSessionsCount + data.settledSessionsCount);
-    final activePct = totalSessions > 0 ? ((data.activeSessionsCount / totalSessions) * 100).toStringAsFixed(0) : '0';
-
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: AppSpacing.paddingMd,
-      children: [
-        const SectionHeader(title: 'Card Fleet & Session Lifecycle'),
-        const SizedBox(height: AppSpacing.sm),
-
-        // Card Operations Grid
-        Row(
-          children: [
-            Expanded(
-              child: _buildMetricTile(
-                icon: Icons.credit_card,
-                label: 'In Circulation',
-                value: '${data.activeSessionsCount}',
-                subValue: 'Active card sessions',
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: _buildMetricTile(
-                icon: Icons.check_circle_outline,
-                label: 'Settled Cards',
-                value: '${data.settledSessionsCount}',
-                subValue: 'Returned & settled',
-                color: AppColors.success,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Row(
-          children: [
-            Expanded(
-              child: _buildMetricTile(
-                icon: Icons.history,
-                label: 'Total Sessions',
-                value: '$totalSessions',
-                subValue: 'Lifetime session count',
-                color: AppColors.primaryDark,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: _buildMetricTile(
-                icon: Icons.refresh,
-                label: 'Card Top-Ups',
-                value: '${data.rechargeCount}',
-                subValue: 'Wallet recharge actions',
-                color: AppColors.info,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.md),
-
-        // Session Distribution Card
-        AppCard(
-          padding: AppSpacing.paddingMd,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        // Row 2: Canceled Recharge Amount & Total Sales
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'Circulation vs. Settled Ratio',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                '$activePct% of all recorded card sessions are actively circulating with customers.',
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: totalSessions > 0 ? (data.activeSessionsCount / totalSessions) : 0,
-                  backgroundColor: AppColors.borderLight,
-                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-                  minHeight: 8,
+              Expanded(
+                child: _buildCompactMetricCard(
+                  title: 'Canceled Recharge Amount',
+                  totalText: '₹${data.cancelledTopUps.toStringAsFixed(2)}',
+                  line1Text: 'Void: ₹${_formatCompactSubAmount(data.cancelledTopUps)}',
+                  line2Text: 'UPI: ₹0',
+                  icon: Icons.cancel_outlined,
+                  accentColor: Colors.deepOrange,
                 ),
               ),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: AppColors.primary,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Active (${data.activeSessionsCount})',
-                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: AppColors.borderLight,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Settled (${data.settledSessionsCount})',
-                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
-                      ),
-                    ],
-                  ),
-                ],
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildCompactMetricCard(
+                  title: 'Total Sales',
+                  totalText: '₹${data.netMoneyCollected.toStringAsFixed(2)}',
+                  line1Text: 'Cash: ₹${_formatCompactSubAmount(data.cashInDrawer)}',
+                  line2Text: 'UPI: ₹${_formatCompactSubAmount(data.upiMoney)}',
+                  icon: Icons.payments_outlined,
+                  accentColor: AppColors.success,
+                ),
               ),
             ],
           ),
         ),
+        const SizedBox(height: 10),
+
+        // Row 3: Wallet Activation & Recharge Count
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _buildCompactMetricCard(
+                  title: 'Wallet Activation',
+                  totalText: '${data.cardsGivenOut} Cards',
+                  line1Text: 'Active: ${data.activeSessionsCount}',
+                  line2Text: 'Settled: ${data.settledSessionsCount}',
+                  icon: Icons.credit_card,
+                  accentColor: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildCompactMetricCard(
+                  title: 'Recharge Count',
+                  totalText: '${data.rechargeCount} Recharges',
+                  line1Text: 'Cash: ${data.cashCount}',
+                  line2Text: 'UPI: ${data.upiCount}',
+                  icon: Icons.sync,
+                  accentColor: AppColors.info,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // Row 4: Refund Count & Canceled Recharges
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _buildCompactMetricCard(
+                  title: 'Refund Count',
+                  totalText: '${data.refundCount} Refunds',
+                  line1Text: 'Cards: ${data.refundCount}',
+                  line2Text: 'Ret: ₹${_formatCompactSubAmount(data.refundVolume)}',
+                  icon: Icons.keyboard_return,
+                  accentColor: AppColors.warning,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildCompactMetricCard(
+                  title: 'Canceled Recharges',
+                  totalText: '${data.cancelledTopUpsCount} Recharges',
+                  line1Text: 'Void: ${data.cancelledTopUpsCount}',
+                  line2Text: 'Ded: ₹${_formatCompactSubAmount(data.cancelledTopUps)}',
+                  icon: Icons.money_off,
+                  accentColor: Colors.brown,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
       ],
     );
   }
 
-
-
-  Widget _buildMetricTile({
-    required IconData icon,
-    required String label,
-    required String value,
-    required String subValue,
-    required Color color,
+  Widget _buildCompactMetricCard({
+    required String title,
+    required String totalText,
+    String? line1Text,
+    String? line2Text,
+    IconData? icon,
+    Color accentColor = AppColors.primary,
   }) {
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.md),
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.borderLight),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 14, color: accentColor),
+                const SizedBox(width: 5),
+              ],
+              Expanded(
+                child: Text(
+                  title.toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.3,
+                    color: AppColors.textSecondaryLight,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            totalText,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: accentColor,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (line1Text != null || line2Text != null) ...[
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (line1Text != null)
+                  Expanded(
+                    child: Text(
+                      line1Text,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textSecondaryLight,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                if (line1Text != null && line2Text != null)
+                  const SizedBox(width: 4),
+                if (line2Text != null)
+                  Expanded(
+                    child: Text(
+                      line2Text,
+                      textAlign: line1Text != null ? TextAlign.end : TextAlign.start,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textSecondaryLight,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ─── Tab 2: Menu Analytics Tab ───
+  Widget _buildMenuAnalyticsTab(
+    BuildContext context,
+    AnalyticsState state,
+    AnalyticsNotifier notifier,
+  ) {
+    if (state.isLoading) {
+      return const AppLoadingView(message: 'Loading menu analytics...');
+    }
+
+    if (state.errorMessage != null) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          const SizedBox(height: 80),
+          Center(
+            child: Padding(
+              padding: AppSpacing.paddingLg,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    state.errorMessage!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: AppColors.error),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  ElevatedButton(
+                    onPressed: notifier.loadAnalytics,
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    final data = state.analytics;
+    if (data == null) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: const [
+          SizedBox(height: 80),
+          AppEmptyState(
+            title: 'No Menu Analytics',
+            description: 'No menu performance metrics available for this counter.',
+            icon: Icons.restaurant_menu_outlined,
+          ),
+        ],
+      );
+    }
+
+    final demands = data.productDemand ?? [];
+
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
+      children: [
+        // Summary Cards
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _buildMenuSummaryCard(
+                  title: 'Food Sales',
+                  value: '₹${data.purchaseVolume.toStringAsFixed(2)}',
+                  subtitle: '${data.purchaseCount} orders placed',
+                  icon: Icons.payments_outlined,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildMenuSummaryCard(
+                  title: 'Food Quantity',
+                  value: '${data.productsSoldCount} Items',
+                  subtitle: 'Total items sold',
+                  icon: Icons.fastfood_outlined,
+                  color: AppColors.success,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        _buildMenuSummaryCard(
+          title: 'Cancelled Orders',
+          value: '${data.cancelledOrdersCount} Orders',
+          subtitle: '₹${data.cancelledOrdersVolume.toStringAsFixed(2)} voided',
+          icon: Icons.remove_shopping_cart_outlined,
+          color: AppColors.error,
+        ),
+        const SizedBox(height: 16),
+
+        // All Ordered Menu Items Dropdown Accordion
+        Material(
+          color: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(color: AppColors.borderLight),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              initiallyExpanded: true,
+              tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              leading: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.restaurant_menu,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
+              ),
+              title: const Text(
+                'ALL ORDERED MENU ITEMS',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                  color: AppColors.textPrimaryLight,
+                ),
+              ),
+              subtitle: Text(
+                '${demands.length} items ordered in this period',
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
+              ),
+              children: [
+                const Divider(height: 1, color: AppColors.borderLight),
+                const SizedBox(height: 10),
+                if (demands.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Center(
+                      child: Text(
+                        'No menu items sold yet in this period',
+                        style: TextStyle(color: AppColors.textSecondaryLight, fontSize: 13),
+                      ),
+                    ),
+                  )
+                else
+                  ...demands.map((item) {
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceVariantLight,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.productName,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textPrimaryLight,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${item.quantitySold} units sold',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondaryLight,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            '₹${item.totalRevenue.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primaryDark,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildMenuSummaryCard({
+    required String title,
+    required String value,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.3,
+                    color: AppColors.textSecondaryLight,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
           Text(
             value,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
+          const SizedBox(height: 2),
           Text(
-            label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-          ),
-          Text(
-            subValue,
-            style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
+            subtitle,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textSecondaryLight,
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

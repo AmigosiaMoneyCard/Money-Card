@@ -118,6 +118,7 @@ class Transaction {
   final String? cardNumber;
   final String? customerName;
   final String? customerPhone;
+  final bool canCancel;
 
   const Transaction({
     required this.id,
@@ -141,7 +142,10 @@ class Transaction {
     this.cardNumber,
     this.customerName,
     this.customerPhone,
+    this.canCancel = true,
   });
+
+  String? get paymentReference => externalReference;
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
     final itemsRaw = json['items'];
@@ -153,6 +157,7 @@ class Transaction {
         (itemsRaw is Map<String, dynamic> ? itemsRaw['cancelledAt'] as String? : null);
     final String? cancelBy = json['cancelledByUserName'] as String? ??
         (itemsRaw is Map<String, dynamic> ? itemsRaw['cancelledByUserName'] as String? : null);
+    final bool canCancel = json['canCancel'] as bool? ?? (!isCancelled);
 
     List<PurchaseItem>? parsedItems;
     if (itemsRaw is List) {
@@ -196,6 +201,7 @@ class Transaction {
       cardNumber: json['cardNumber'] as String?,
       customerName: json['customerName'] as String?,
       customerPhone: json['customerPhone'] as String?,
+      canCancel: canCancel,
     );
   }
 
@@ -220,6 +226,7 @@ class Transaction {
         if (cancelledByUserName != null) 'cancelledByUserName': cancelledByUserName,
         if (cardNumber != null) 'cardNumber': cardNumber,
         if (customerName != null) 'customerName': customerName,
-        if (customerPhone != null) 'customerPhone': customerPhone,
       };
+
+  String get displayTransactionId => id.length > 8 ? id.substring(0, 8).toUpperCase() : id.toUpperCase();
 }

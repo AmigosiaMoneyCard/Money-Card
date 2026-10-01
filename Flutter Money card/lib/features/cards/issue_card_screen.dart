@@ -60,7 +60,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
 
     if (branch == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select an active cafeteria before issuing a card.')),
+        const SnackBar(content: Text('Please select an active cafeteria before issuing a wallet.')),
       );
       return;
     }
@@ -82,7 +82,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
               Icon(Icons.person_add_alt_1, color: AppColors.primary, size: 22),
               SizedBox(width: 8),
               Expanded(
-                child: Text('Confirm Card Issuance', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                child: Text('Confirm Wallet Issuance', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -104,7 +104,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Card Number:', style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight)),
+                          const Text('Wallet Number:', style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight)),
                           Text(
                             card.physicalCardNumber,
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
@@ -133,12 +133,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                const Text(
-                  'Customer Details (Required for Customer History):',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
-                ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 TextField(
                   controller: nameCtrl,
                   autofocus: true,
@@ -152,7 +147,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                     }
                   },
                   decoration: InputDecoration(
-                    labelText: 'Customer Name *',
+                    labelText: 'Customer Name (Optional)',
                     hintText: 'e.g. John Doe',
                     errorText: nameError,
                     prefixIcon: const Icon(Icons.person_outline, size: 18),
@@ -178,7 +173,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                     }
                   },
                   decoration: InputDecoration(
-                    labelText: 'Phone Number (10 Digits) *',
+                    labelText: 'Phone Number (Optional - 10 Digits)',
                     hintText: 'e.g. 9876543210',
                     prefixIcon: const Icon(Icons.phone_outlined, size: 18),
                     errorText: phoneError,
@@ -186,11 +181,6 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                     isDense: true,
                     border: const OutlineInputBorder(),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                const Text(
-                  'Customer details are saved to Customer History. Then the card becomes active.',
-                  style: TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
                 ),
               ],
             ),
@@ -202,28 +192,18 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
             ),
             ElevatedButton(
               onPressed: () {
-                final name = nameCtrl.text.trim();
                 final phone = phoneCtrl.text.trim();
 
                 bool hasError = false;
-                String? newNameError;
                 String? newPhoneError;
 
-                if (name.isEmpty) {
-                  newNameError = 'Customer name is required';
-                  hasError = true;
-                }
-                if (phone.isEmpty) {
-                  newPhoneError = 'Phone number is required';
-                  hasError = true;
-                } else if (phone.length != 10) {
+                if (phone.isNotEmpty && phone.length != 10) {
                   newPhoneError = 'Phone number must be exactly 10 digits';
                   hasError = true;
                 }
 
                 if (hasError) {
                   setDialogState(() {
-                    nameError = newNameError;
                     phoneError = newPhoneError;
                   });
                   return;
@@ -240,11 +220,14 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
 
     if (confirm != true) return;
 
+    final resolvedName = nameCtrl.text.trim();
+    final resolvedPhone = phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim();
+
     final session = await ref.read(cardDetailsNotifierProvider.notifier).issueCardSession(
           cardId: card.id,
           branchId: branch.id,
-          customerName: nameCtrl.text.trim(),
-          customerPhone: phoneCtrl.text.trim(),
+          customerName: resolvedName,
+          customerPhone: resolvedPhone,
         );
 
     if (session != null && mounted) {
@@ -254,7 +237,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Card ${card.physicalCardNumber} issued successfully!'),
+          content: Text('Wallet ${card.physicalCardNumber} issued successfully!'),
           backgroundColor: AppColors.success,
         ),
       );
@@ -338,7 +321,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Issue New Card'),
+        title: const Text('Issue New Wallet'),
         actions: [
           if (assignedBranches.length > 1 && branch != null)
             Padding(
@@ -386,12 +369,12 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                 segments: const [
                   ButtonSegment(
                     value: IssueCardTab.manual,
-                    label: Text('Available Cards'),
-                    icon: Icon(Icons.credit_card),
+                    label: Text('Available Wallets'),
+                    icon: Icon(Icons.account_balance_wallet_outlined),
                   ),
                   ButtonSegment(
                     value: IssueCardTab.scan,
-                    label: Text('Scan Card QR'),
+                    label: Text('Scan Wallet QR'),
                     icon: Icon(Icons.qr_code_scanner),
                   ),
                 ],
@@ -470,7 +453,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
               ref.read(availableCardsNotifierProvider.notifier).setSearchQuery(val);
             },
             decoration: InputDecoration(
-              hintText: 'Search available cards (e.g. MC-001)...',
+              hintText: 'Search available wallets (e.g. MC-001)...',
               prefixIcon: const Icon(Icons.search, size: 20),
               isDense: true,
               suffixIcon: _searchController.text.isNotEmpty
@@ -493,15 +476,15 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
           child: cards.isEmpty
               ? (state.searchQuery.isNotEmpty
                   ? AppEmptyState(
-                      title: 'No Matching Cards',
-                      description: 'No available cards match "${state.searchQuery}".',
+                      title: 'No Matching Wallets',
+                      description: 'No available wallets match "${state.searchQuery}".',
                       icon: Icons.search_off,
                     )
                   : AppEmptyState(
-                      title: 'No Available Cards',
+                      title: 'No Available Wallets',
                       description:
-                          'No pre-created cards found. You can switch to the "Scan QR Code" tab to scan any card QR code and issue it instantly.',
-                      icon: Icons.credit_card_off_outlined,
+                          'No pre-created wallets found. You can switch to the "Scan Wallet QR" tab to scan any wallet QR code and issue it instantly.',
+                      icon: Icons.account_balance_wallet_outlined,
                     ))
               : RefreshIndicator(
                   onRefresh: () => ref
@@ -524,7 +507,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                                 borderRadius: AppSpacing.roundedSm,
                               ),
                               child: const Icon(
-                                Icons.credit_card,
+                                Icons.account_balance_wallet_outlined,
                                 color: AppColors.primary,
                                 size: 24,
                               ),
@@ -599,7 +582,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
               const Text(
-                'Card Not Registered',
+                'Wallet Not Registered',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -608,7 +591,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
               ),
               const SizedBox(height: AppSpacing.sm),
               const Text(
-                'This QR card is not registered in your cafeteria.',
+                'This QR wallet is not registered in your cafeteria.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
@@ -617,7 +600,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
               ),
               const SizedBox(height: AppSpacing.xl),
               AppButton(
-                label: 'Scan Another Card',
+                label: 'Scan Another Wallet',
                 icon: Icons.qr_code_scanner,
                 onPressed: _resetScan,
               ),
@@ -705,7 +688,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                     SizedBox(width: AppSpacing.xs),
                     Expanded(
                       child: Text(
-                        'Card is AVAILABLE and ready to be issued.',
+                        'Wallet is AVAILABLE and ready to be issued.',
                         style: TextStyle(
                           color: AppColors.textPrimaryLight,
                           fontWeight: FontWeight.w600,
@@ -718,7 +701,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
               ),
               const SizedBox(height: AppSpacing.lg),
               AppButton(
-                label: 'Issue Card',
+                label: 'Issue Wallet',
                 icon: Icons.play_arrow,
                 isLoading: cardDetailsState.isSubmitting,
                 onPressed: cardDetailsState.isSubmitting
@@ -738,7 +721,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                     SizedBox(width: AppSpacing.xs),
                     Expanded(
                       child: Text(
-                        'Card is already ACTIVE with an active session. Cannot issue an active card.',
+                        'Wallet is already ACTIVE with an active session. Cannot issue an active wallet.',
                         style: TextStyle(
                           color: AppColors.textPrimaryLight,
                           fontWeight: FontWeight.w600,
@@ -751,8 +734,8 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
               ),
               const SizedBox(height: AppSpacing.lg),
               AppButton(
-                label: 'View Active Card Details',
-                icon: Icons.credit_card,
+                label: 'View Active Wallet Details',
+                icon: Icons.account_balance_wallet_outlined,
                 onPressed: () {
                   if (GoRouter.maybeOf(context) != null) {
                     context.push(
@@ -778,7 +761,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
                     SizedBox(width: AppSpacing.xs),
                     Expanded(
                       child: Text(
-                        'Card is BLOCKED. Cannot issue a blocked card.',
+                        'Wallet is BLOCKED. Cannot issue a blocked wallet.',
                         style: TextStyle(
                           color: AppColors.error,
                           fontWeight: FontWeight.w600,
@@ -791,8 +774,8 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
               ),
               const SizedBox(height: AppSpacing.lg),
               AppButton(
-                label: 'View Blocked Card',
-                icon: Icons.credit_card,
+                label: 'View Blocked Wallet',
+                icon: Icons.account_balance_wallet_outlined,
                 onPressed: () {
                   if (GoRouter.maybeOf(context) != null) {
                     context.push(
@@ -805,7 +788,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
             ],
             const SizedBox(height: AppSpacing.md),
             AppOutlinedButton(
-              label: 'Scan Another Card',
+              label: 'Scan Another Wallet',
               icon: Icons.qr_code_scanner,
               onPressed: _resetScan,
             ),
@@ -818,8 +801,8 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
     return Stack(
       children: [
         QrScannerView(
-          title: 'Scan Card QR to Issue',
-          prompt: 'Point camera at the registered Card QR code',
+          title: 'Scan Wallet QR to Issue',
+          prompt: 'Point camera at the registered Wallet QR code',
           onQrScanned: _handleQrScanned,
         ),
         if (AppConfig.useMockApi)
@@ -869,7 +852,7 @@ class _IssueCardScreenState extends ConsumerState<IssueCardScreen> {
             color: Colors.black54,
             child: const Center(
               child: AppLoadingView(
-                message: 'Verifying card in inventory...',
+                message: 'Verifying wallet in inventory...',
               ),
             ),
           ),

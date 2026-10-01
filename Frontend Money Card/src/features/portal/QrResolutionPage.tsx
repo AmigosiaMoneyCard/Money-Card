@@ -14,7 +14,7 @@ export function QrResolutionPage() {
   const navigate = useNavigate();
 
   const [isLoading, setIsLoading] = useState(true);
-  const [errorTitle, setErrorTitle] = useState<string>('Card Resolution Error');
+  const [errorTitle, setErrorTitle] = useState<string>('Wallet Resolution Error');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const resolveQr = async () => {
@@ -33,9 +33,9 @@ export function QrResolutionPage() {
 
       if (!res.success) {
         if (res.error.code === 'CARD_BLOCKED') {
-          setErrorTitle('Card Blocked');
+          setErrorTitle('Wallet Blocked');
           setErrorMessage(
-            res.error.message || 'This physical card has been blocked. Please visit cafeteria desk.',
+            res.error.message || 'This physical wallet has been blocked. Please visit cafeteria desk.',
           );
         } else if (res.error.code === 'SESSION_NOT_FOUND') {
           setErrorTitle('No Active Session');
@@ -77,9 +77,9 @@ export function QrResolutionPage() {
 
         if (!res.success) {
           if (res.error.code === 'CARD_BLOCKED') {
-            setErrorTitle('Card Blocked');
+            setErrorTitle('Wallet Blocked');
             setErrorMessage(
-              res.error.message || 'This physical card has been blocked. Please visit cafeteria desk.',
+              res.error.message || 'This physical wallet has been blocked. Please visit cafeteria desk.',
             );
           } else if (res.error.code === 'SESSION_NOT_FOUND') {
             setErrorTitle('No Active Session');
@@ -116,7 +116,7 @@ export function QrResolutionPage() {
   if (isLoading) {
     return (
       <div className="py-12">
-        <LoadingState message="Resolving Card QR credential & establishing portal session..." />
+        <LoadingState message="Resolving Wallet QR credential & establishing portal session..." />
       </div>
     );
   }

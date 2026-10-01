@@ -272,6 +272,32 @@ function usePeakPageData() {
     }
   };
 
+  const handleStartDateChange = (newStart: string) => {
+    setCustomStartDate(newStart);
+    let effectiveEnd = customEndDate;
+    if (customEndDate && newStart > customEndDate) {
+      effectiveEnd = newStart;
+      setCustomEndDate(newStart);
+    }
+    if (newStart && effectiveEnd) {
+      setStartDate(newStart);
+      setEndDate(effectiveEnd);
+    }
+  };
+
+  const handleEndDateChange = (newEnd: string) => {
+    setCustomEndDate(newEnd);
+    let effectiveStart = customStartDate;
+    if (customStartDate && newEnd < customStartDate) {
+      effectiveStart = newEnd;
+      setCustomStartDate(newEnd);
+    }
+    if (effectiveStart && newEnd) {
+      setStartDate(effectiveStart);
+      setEndDate(newEnd);
+    }
+  };
+
   const handleApplyCustomDates = () => {
     if (!customStartDate || !customEndDate) {
       notify.error('Please select both start and end dates.');
@@ -286,7 +312,7 @@ function usePeakPageData() {
   };
 
   const handleResetToToday = () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = formatLocalDate(new Date());
     setCustomStartDate(today);
     setCustomEndDate(today);
     setStartDate(today);
@@ -516,6 +542,8 @@ function usePeakPageData() {
     setPdfPreviewUrl,
     pdfSections,
     handlePresetChange,
+    handleStartDateChange,
+    handleEndDateChange,
     handleApplyCustomDates,
     handleResetToToday,
     fetchPeakData,
@@ -876,7 +904,9 @@ interface PeakFilterToolbarProps {
   setCustomEndDate: (d: string) => void;
   startDate: string;
   endDate: string;
-  handleApplyCustomDates: () => void;
+  handleStartDateChange: (d: string) => void;
+  handleEndDateChange: (d: string) => void;
+  handleApplyCustomDates?: () => void;
   handleResetToToday: () => void;
 }
 
@@ -888,12 +918,14 @@ function PeakFilterToolbar({
   selectedDateRange,
   handlePresetChange,
   customStartDate,
-  setCustomStartDate,
+  setCustomStartDate: _setCustomStartDate,
   customEndDate,
-  setCustomEndDate,
+  setCustomEndDate: _setCustomEndDate,
   startDate,
   endDate,
-  handleApplyCustomDates,
+  handleStartDateChange,
+  handleEndDateChange,
+  handleApplyCustomDates: _handleApplyCustomDates,
   handleResetToToday,
 }: PeakFilterToolbarProps) {
   return (
@@ -956,7 +988,7 @@ function PeakFilterToolbar({
               id="peak-start-date"
               type="date"
               value={customStartDate}
-              onChange={(e) => setCustomStartDate(e.target.value)}
+              onChange={(e) => handleStartDateChange(e.target.value)}
               className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none shadow-sm"
             />
           </div>
@@ -968,19 +1000,10 @@ function PeakFilterToolbar({
               id="peak-end-date"
               type="date"
               value={customEndDate}
-              onChange={(e) => setCustomEndDate(e.target.value)}
+              onChange={(e) => handleEndDateChange(e.target.value)}
               className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none shadow-sm"
             />
           </div>
-          <Button
-            id="peak-apply-custom-date"
-            size="sm"
-            variant="primary"
-            onClick={handleApplyCustomDates}
-            className="h-8"
-          >
-            Apply Range
-          </Button>
           <Button
             id="peak-reset-today"
             size="sm"
@@ -1093,6 +1116,8 @@ export function PeakPage() {
     setPdfPreviewUrl,
     pdfSections,
     handlePresetChange,
+    handleStartDateChange,
+    handleEndDateChange,
     handleApplyCustomDates,
     handleResetToToday,
     fetchPeakData,
@@ -1156,6 +1181,8 @@ export function PeakPage() {
         setCustomEndDate={setCustomEndDate}
         startDate={startDate}
         endDate={endDate}
+        handleStartDateChange={handleStartDateChange}
+        handleEndDateChange={handleEndDateChange}
         handleApplyCustomDates={handleApplyCustomDates}
         handleResetToToday={handleResetToToday}
       />

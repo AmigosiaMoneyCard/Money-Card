@@ -215,13 +215,13 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify Screen Title & Active Segment
-      expect(find.text('Card Sessions'), findsOneWidget);
+      expect(find.text('Wallet Sessions'), findsOneWidget);
       expect(find.text('Active'), findsOneWidget);
 
       // Verify Active Sessions Rendered with Card Identifier & Balance
-      expect(find.text('Card MC-101'), findsOneWidget);
+      expect(find.text('Wallet MC-101'), findsOneWidget);
       expect(find.text('₹350.00'), findsOneWidget);
-      expect(find.text('Card MC-102'), findsOneWidget);
+      expect(find.text('Wallet MC-102'), findsOneWidget);
       expect(find.text('₹150.00'), findsOneWidget);
       expect(find.text('ACTIVE'), findsNWidgets(2));
 
@@ -329,7 +329,7 @@ void main() {
 
       expect(find.text('₹350.00'), findsOneWidget);
       expect(find.text('ACTIVE'), findsOneWidget);
-      expect(find.text('Card Issued'), findsOneWidget);
+      expect(find.text('Wallet Issued'), findsOneWidget);
     });
     testWidgets('SessionDetailsScreen renders transactions with itemized purchased products', (tester) async {
       const mockUser = AuthUser(

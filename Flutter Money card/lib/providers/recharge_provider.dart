@@ -7,7 +7,7 @@ import 'api_providers.dart';
 import 'session_operations_provider.dart';
 
 class RechargeState {
-  final PaymentMethod paymentMethod;
+  final PaymentMethod? paymentMethod;
   final double amount;
   final String? paymentReference;
   final bool isStaffVerified;
@@ -16,7 +16,7 @@ class RechargeState {
   final String? errorMessage;
 
   const RechargeState({
-    this.paymentMethod = PaymentMethod.cash,
+    this.paymentMethod,
     this.amount = 0.0,
     this.paymentReference,
     this.isStaffVerified = false,
@@ -26,8 +26,8 @@ class RechargeState {
   });
 
   bool get canSubmit {
-    if (amount <= 0 || isSubmitting) return false;
-    if (paymentMethod == PaymentMethod.upi && !isStaffVerified) return false;
+    if (paymentMethod == null) return false;
+    if (amount <= 0 || amount > 9999 || isSubmitting) return false;
     return true;
   }
 
@@ -60,7 +60,7 @@ class RechargeNotifier extends StateNotifier<RechargeState> {
   RechargeNotifier(this._sessionRepository, [this._sessionDetailsNotifier, this._onRechargeSuccess])
       : super(const RechargeState());
 
-  void setPaymentMethod(PaymentMethod method) {
+  void setPaymentMethod(PaymentMethod? method) {
     state = state.copyWith(
       paymentMethod: method,
       isStaffVerified: false,
@@ -69,6 +69,7 @@ class RechargeNotifier extends StateNotifier<RechargeState> {
   }
 
   void setAmount(double amount) {
+    if (amount > 9999) return;
     state = state.copyWith(amount: amount, errorMessage: null);
   }
 
@@ -84,7 +85,7 @@ class RechargeNotifier extends StateNotifier<RechargeState> {
   }
 
   Future<RechargeResult?> executeRecharge(String sessionId, {String? branchId}) async {
-    if (!state.canSubmit) return null;
+    if (!state.canSubmit || state.paymentMethod == null) return null;
 
     state = state.copyWith(isSubmitting: true, errorMessage: null);
 
@@ -92,7 +93,7 @@ class RechargeNotifier extends StateNotifier<RechargeState> {
       final result = await _sessionRepository.recharge(
         sessionId: sessionId,
         amount: state.amount,
-        paymentMethod: state.paymentMethod,
+        paymentMethod: state.paymentMethod!,
         externalReference: state.paymentReference,
         branchId: branchId,
       );

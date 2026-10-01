@@ -9,6 +9,7 @@ export {
   truncate,
   extractTransactionItems,
   getPublicCustomerPortalUrl,
+  formatLocalDate,
   type FormattedTransactionItem,
 } from './formatters';
 export { storage, STORAGE_KEYS } from './storage';

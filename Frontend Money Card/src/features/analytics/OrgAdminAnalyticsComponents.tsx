@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   TrendingUp,
@@ -17,6 +17,11 @@ import {
   ArrowRight,
   Download,
   Wallet,
+  ShoppingBag,
+  UtensilsCrossed,
+  Ban,
+  Search,
+  ChevronDown,
 } from 'lucide-react';
 import { Card, StatCard, Badge, Button, Select, Modal, ModalFooter } from '@/components/ui';
 import { formatCurrency } from '@/utils/formatters';
@@ -38,6 +43,7 @@ interface FinancialSectionProps {
   cashRecharge?: number;
   upiRecharge?: number;
   totalRefund?: number;
+  leadingCard?: React.ReactNode;
 }
 
 export interface KpiCardsProps {
@@ -49,113 +55,128 @@ export function OrgAdminFinancialSection({
   cashRecharge = 0,
   upiRecharge = 0,
   totalRefund = 0,
+  leadingCard,
 }: FinancialSectionProps) {
-  const moneyAdded = analytics.moneyAdded ?? (cashRecharge + upiRecharge);
-  const moneyRefunded = analytics.moneyRefunded ?? totalRefund;
+  const moneyAdded = analytics.moneyAdded ?? analytics.totalRechargeVolume ?? (cashRecharge + upiRecharge);
+  const moneyRefunded = analytics.moneyRefunded ?? analytics.totalRefundVolume ?? totalRefund;
   const cancelledTopUps = analytics.cancelledTopUps ?? 0;
-  const cancelledTopUpsCount = analytics.cancelledTopUpsCount ?? 0;
-  const cancelledOrdersVolume = analytics.cancelledOrdersVolume ?? 0;
-  const cancelledOrdersCount = analytics.cancelledOrdersCount ?? 0;
 
   const netMoneyCollected = analytics.netMoneyCollected ?? (moneyAdded - moneyRefunded);
 
   const upiMoney = analytics.upiMoney ?? upiRecharge;
-  const upiCount = analytics.upiCount ?? (analytics.upiRechargeCount ?? 0);
   const cashMoney = analytics.cashMoney ?? cashRecharge;
-  const cashCount = analytics.cashCount ?? (analytics.cashRechargeCount ?? 0);
+  const walletActivations = analytics.cardsGivenOut ?? analytics.activeCardsCount ?? 0;
 
   return (
     <div className="space-y-4">
-      {/* Financial Summaries (3 Uniform Cards) */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        {/* Net Money Collected */}
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Net Money Collected
+      {/* 1. Highlighted Total Sales Card (Centered in the Middle) */}
+      <div className="flex justify-center w-full">
+        <Card
+          padding="md"
+          className="w-full max-w-sm sm:max-w-md border-emerald-300 bg-gradient-to-r from-emerald-50/60 via-white to-teal-50/30 shadow-xs ring-1 ring-emerald-500/20 transition-all flex flex-col items-center justify-center text-center py-4 px-6"
+        >
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-800">
+              Total Sales
             </span>
-            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
-              Added - Refunded
-            </span>
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-emerald-100/70 text-emerald-700">
+              <TrendingUp className="h-3.5 w-3.5" />
+            </div>
           </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-slate-900">
+          <div className="mt-1.5">
+            <p className="font-mono text-3xl font-extrabold text-slate-900">
               {formatCurrency(netMoneyCollected)}
-            </p>
-            <p className="mt-1 text-xs text-slate-500 leading-snug">
-              Total money retained across online UPI and cash deposits
-            </p>
-          </div>
-        </Card>
-
-        {/* Online UPI Money */}
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Online UPI Money
-            </span>
-            <span className="rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700">
-              Instant QR & App
-            </span>
-          </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-purple-700">
-              {formatCurrency(upiMoney)}
-            </p>
-            <p className="mt-1 text-xs text-slate-500 leading-snug">
-              {upiCount} top-ups
-            </p>
-          </div>
-        </Card>
-
-        {/* Cash Money */}
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Cash Money
-            </span>
-            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-              Paper Bills
-            </span>
-          </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-emerald-700">
-              {formatCurrency(cashMoney)}
-            </p>
-            <p className="mt-1 text-xs text-slate-500 leading-snug">
-              {cashCount} top-ups
             </p>
           </div>
         </Card>
       </div>
 
-      {/* Core Activity Flow (4 Uniform Cards) */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Money Added */}
+      {/* 2. Unified Single Recharge Box (3 Columns in 1 Box) */}
+      <Card
+        padding="none"
+        className="border-slate-200 bg-white shadow-xs overflow-hidden"
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-100">
+          {/* Recharge Total */}
+          <div className="p-4 sm:p-5 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Recharges
+              </span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                <Wallet className="h-4 w-4" />
+              </div>
+            </div>
+            <div className="mt-2">
+              <p className="font-mono text-2xl font-bold text-slate-900">
+                {formatCurrency(moneyAdded)}
+              </p>
+            </div>
+          </div>
+
+          {/* UPI Recharge */}
+          <div className="p-4 sm:p-5 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                UPI Recharge
+              </span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-50 text-purple-700">
+                <CreditCard className="h-4 w-4" />
+              </div>
+            </div>
+            <div className="mt-2">
+              <p className="font-mono text-2xl font-bold text-purple-700">
+                {formatCurrency(upiMoney)}
+              </p>
+            </div>
+          </div>
+
+          {/* Cash Recharge */}
+          <div className="p-4 sm:p-5 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Cash Recharge
+              </span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+                <DollarSign className="h-4 w-4" />
+              </div>
+            </div>
+            <div className="mt-2">
+              <p className="font-mono text-2xl font-bold text-emerald-700">
+                {formatCurrency(cashMoney)}
+              </p>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* 3. Follow-up Metric Cards Below */}
+      <div className={`grid gap-4 sm:grid-cols-2 ${leadingCard ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
+        {/* Wallet Activations */}
         <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Money Added
+              Wallet Activations
             </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-              <Wallet className="h-4 w-4" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+              <CreditCard className="h-4 w-4" />
             </div>
           </div>
           <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-slate-900">
-              {formatCurrency(moneyAdded)}
-            </p>
-            <p className="mt-1 text-xs text-slate-500 leading-snug">
-              Total top-ups loaded onto cards
+              {walletActivations.toLocaleString()} Wallets
             </p>
           </div>
         </Card>
+
+        {/* Optional Leading Card (e.g. Cafeterias in Super Admin) */}
+        {leadingCard}
 
         {/* Money Refunded */}
         <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Money Refunded
+              Refunds
             </span>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
               <ArrowUpDown className="h-4 w-4" />
@@ -164,9 +185,6 @@ export function OrgAdminFinancialSection({
           <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-rose-600">
               {formatCurrency(moneyRefunded)}
-            </p>
-            <p className="mt-1 text-xs text-slate-500 leading-snug">
-              Remaining balance given back to customers
             </p>
           </div>
         </Card>
@@ -184,29 +202,6 @@ export function OrgAdminFinancialSection({
           <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-amber-600">
               {formatCurrency(cancelledTopUps)}
-            </p>
-            <p className="mt-1 text-xs text-slate-500 leading-snug">
-              {cancelledTopUpsCount} recharges reversed
-            </p>
-          </div>
-        </Card>
-
-        {/* Cancelled Food Orders */}
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Cancelled Food Orders
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
-              <AlertCircle className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-orange-600">
-              {formatCurrency(cancelledOrdersVolume)}
-            </p>
-            <p className="mt-1 text-xs text-slate-500 leading-snug">
-              {cancelledOrdersCount} orders restored
             </p>
           </div>
         </Card>
@@ -252,12 +247,12 @@ export function OrgAdminLifecycleCards({ analytics }: KpiCardsProps) {
 
   return (
     <div className="space-y-3">
-      <h2 className="text-base font-bold text-slate-900">Card Lifecycle & Activity</h2>
+      <h2 className="text-base font-bold text-slate-900">Wallet Lifecycle & Activity</h2>
       <div className="grid gap-4 sm:grid-cols-3">
         <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Active Card Recharges
+              Active Wallet Recharges
             </span>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
               <RefreshCw className="h-4 w-4" />
@@ -272,8 +267,8 @@ export function OrgAdminLifecycleCards({ analytics }: KpiCardsProps) {
             </p>
             <p className="mt-1 text-xs text-slate-500">
               {reRechargeCount > 0
-                ? `${reRechargeCount} repeat top-up${reRechargeCount === 1 ? '' : 's'} on active cards`
-                : 'Total times active cards were recharged'}
+                ? `${reRechargeCount} repeat top-up${reRechargeCount === 1 ? '' : 's'} on active wallets`
+                : 'Total times active wallets were recharged'}
             </p>
           </div>
         </Card>
@@ -281,7 +276,7 @@ export function OrgAdminLifecycleCards({ analytics }: KpiCardsProps) {
         <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Closed Cards
+              Closed Wallets
             </span>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
               <CheckCircle2 className="h-4 w-4" />
@@ -291,17 +286,17 @@ export function OrgAdminLifecycleCards({ analytics }: KpiCardsProps) {
             <p className="font-mono text-2xl font-bold text-slate-900">
               {closedCount.toLocaleString()}{' '}
               <span className="text-xs font-normal text-slate-500">
-                {closedCount === 1 ? 'Card' : 'Cards'}
+                {closedCount === 1 ? 'Wallet' : 'Wallets'}
               </span>
             </p>
-            <p className="mt-1 text-xs text-slate-500">Completed & settled card sessions</p>
+            <p className="mt-1 text-xs text-slate-500">Completed & settled wallet sessions</p>
           </div>
         </Card>
 
         <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Active Cards (Zero Balance)
+              Active Wallets (Zero Balance)
             </span>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
               <AlertCircle className="h-4 w-4" />
@@ -311,7 +306,7 @@ export function OrgAdminLifecycleCards({ analytics }: KpiCardsProps) {
             <p className="font-mono text-2xl font-bold text-amber-700">
               {zeroBalanceCount.toLocaleString()}{' '}
               <span className="text-xs font-normal text-slate-500">
-                {zeroBalanceCount === 1 ? 'Card' : 'Cards'}
+                {zeroBalanceCount === 1 ? 'Wallet' : 'Wallets'}
               </span>
             </p>
             <p className="mt-1 text-xs text-slate-500">Currently in use with ₹0 unspent balance</p>
@@ -874,5 +869,175 @@ export function OrgAdminBranchDetailModal({ branch, onClose }: BranchDetailModal
         </ModalFooter>
       </div>
     </Modal>
+  );
+}
+
+// ─── Menu Analytics Tab Section ──────────────────────────────────────────
+export interface MenuAnalyticsSectionProps {
+  analytics: AnalyticsOverview;
+}
+
+export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSectionProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isTableOpen, setIsTableOpen] = useState(true);
+
+  const itemsSold = analytics.productsSoldCount ?? 0;
+  const cancelledOrders = analytics.cancelledOrdersCount ?? 0;
+
+  const rawDemandList = useMemo(() => {
+    return analytics.allProductDemand ?? [];
+  }, [analytics.allProductDemand]);
+
+  const filteredItems = useMemo(() => {
+    if (!searchTerm.trim()) return rawDemandList;
+    const lower = searchTerm.toLowerCase();
+    return rawDemandList.filter((item) =>
+      item.productName.toLowerCase().includes(lower)
+    );
+  }, [rawDemandList, searchTerm]);
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    if (!isTableOpen && value.trim()) {
+      setIsTableOpen(true);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* 2 Summary KPI Cards */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Food Quantity
+            </span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
+              <ShoppingBag className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <p className="font-mono text-2xl font-bold text-slate-900">
+              {itemsSold} Items
+            </p>
+          </div>
+        </Card>
+
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Cancelled Orders
+            </span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+              <Ban className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <p className="font-mono text-2xl font-bold text-slate-900">
+              {cancelledOrders} Orders
+            </p>
+          </div>
+        </Card>
+      </div>
+
+      {/* All Ordered Menu Items Collapsible Table */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => setIsTableOpen(!isTableOpen)}
+            className="flex items-center gap-2 text-left cursor-pointer group select-none"
+            aria-expanded={isTableOpen}
+          >
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100 transition-colors">
+              <UtensilsCrossed className="h-4 w-4" />
+            </div>
+            <h2 className="text-base font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
+              All Ordered Menu Items
+            </h2>
+            <Badge variant="default" className="text-xs font-semibold">
+              {filteredItems.length} Dishes
+            </Badge>
+            <div className={`p-1 rounded text-slate-400 group-hover:text-slate-600 transition-transform duration-200 ${isTableOpen ? 'rotate-180' : 'rotate-0'}`}>
+              <ChevronDown className="h-4 w-4" />
+            </div>
+          </button>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search dishes..."
+                value={searchTerm}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="h-8 w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-xs text-slate-800 placeholder-slate-400 focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsTableOpen(!isTableOpen)}
+              className="h-8 px-2.5 text-xs font-semibold shrink-0 cursor-pointer"
+            >
+              {isTableOpen ? 'Hide' : 'Show'}
+            </Button>
+          </div>
+        </div>
+
+        {isTableOpen ? (
+          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
+            <table className="w-full text-left text-xs text-slate-600">
+              <thead className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th scope="col" className="px-4 py-3 text-left">
+                    Dish Name
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-right">
+                    Price
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-right">
+                    Quantity Sold
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-right">
+                    Total Revenue
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredItems.length > 0 ? (
+                  filteredItems.map((item, idx) => (
+                    <tr key={item.productId || idx} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="px-4 py-3 font-semibold text-slate-900">
+                        {item.productName}
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-slate-700">
+                        {formatCurrency(item.unitPrice)}
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono font-medium text-slate-900">
+                        {item.quantitySold}
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono font-semibold text-emerald-600">
+                        {formatCurrency(item.totalRevenue)}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
+                      No ordered dishes found for this period.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-xs text-slate-400 py-1">
+            Table collapsed. Tap Show or the header to view all ordered dishes.
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

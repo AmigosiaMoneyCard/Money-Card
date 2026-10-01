@@ -13,7 +13,7 @@ const ROUTE_LABELS: Record<string, string> = {
   dashboard: 'Dashboard',
   branches: 'Counters',
   staff: 'Staff',
-  cards: 'Cards',
+  cards: 'Wallets',
   sessions: 'Sessions',
   products: 'Products',
   inventory: 'Inventory',

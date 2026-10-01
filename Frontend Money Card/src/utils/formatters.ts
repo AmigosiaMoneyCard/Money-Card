@@ -207,3 +207,14 @@ export function getPublicCustomerPortalUrl(token: string): string {
   return `${origin}/c/${token}`;
 }
 
+/**
+ * Formats a Date object into 'YYYY-MM-DD' using local timezone date components.
+ * Prevents UTC off-by-one errors caused by toISOString() on midnight/early morning boundaries.
+ */
+export function formatLocalDate(d: Date = new Date()): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+

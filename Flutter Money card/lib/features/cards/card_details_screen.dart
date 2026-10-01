@@ -18,7 +18,6 @@ import '../../widgets/common/app_dialog.dart';
 import '../../widgets/common/section_header.dart';
 import '../../widgets/guards/permission_guard.dart';
 import '../../widgets/states/app_loading_view.dart';
-import '../../core/utils/formatters.dart';
 
 class CardDetailsScreen extends ConsumerStatefulWidget {
   final String cardId;
@@ -60,11 +59,6 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
     super.dispose();
   }
 
-  String _formatDateTime(String? raw) {
-    if (raw == null || raw.isEmpty) return '—';
-    final formatted = AppFormatters.formatIsoDate(raw);
-    return formatted == '-' ? '—' : formatted;
-  }
 
   AppBadgeVariant _getCardStatusVariant(CardStatus status) {
     switch (status) {
@@ -96,7 +90,6 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
 
     final nameCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
-    String? nameError;
     String? phoneError;
 
     final confirm = await showDialog<bool>(
@@ -107,10 +100,10 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
           insetPadding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
           title: Row(
             children: const [
-              Icon(Icons.credit_card, color: AppColors.primary, size: 22),
+              Icon(Icons.account_balance_wallet_outlined, color: AppColors.primary, size: 22),
               SizedBox(width: 8),
               Expanded(
-                child: Text('Confirm Card Activation', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                child: Text('Confirm Wallet Activation', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -132,7 +125,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Card Number:', style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight)),
+                          const Text('Wallet Number:', style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight)),
                           Text(
                             card.physicalCardNumber,
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
@@ -161,31 +154,18 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                const Text(
-                  'Customer Details (Required for Customer History):',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
-                ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 TextField(
                   controller: nameCtrl,
                   autofocus: true,
                   textInputAction: TextInputAction.next,
                   scrollPadding: const EdgeInsets.only(bottom: 140),
-                  onChanged: (val) {
-                    if (nameError != null) {
-                      setDialogState(() {
-                        nameError = null;
-                      });
-                    }
-                  },
-                  decoration: InputDecoration(
-                    labelText: 'Customer Name *',
+                  decoration: const InputDecoration(
+                    labelText: 'Customer Name (Optional)',
                     hintText: 'e.g. John Doe',
-                    errorText: nameError,
-                    prefixIcon: const Icon(Icons.person_outline, size: 18),
+                    prefixIcon: Icon(Icons.person_outline, size: 18),
                     isDense: true,
-                    border: const OutlineInputBorder(),
+                    border: OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -206,7 +186,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                     }
                   },
                   decoration: InputDecoration(
-                    labelText: 'Phone Number (10 Digits) *',
+                    labelText: 'Phone Number (Optional, 10 Digits)',
                     hintText: 'e.g. 9876543210',
                     prefixIcon: const Icon(Icons.phone_outlined, size: 18),
                     errorText: phoneError,
@@ -214,11 +194,6 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                     isDense: true,
                     border: const OutlineInputBorder(),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                const Text(
-                  'Customer details are saved to Customer History. Then the card becomes active.',
-                  style: TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
                 ),
               ],
             ),
@@ -230,29 +205,11 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
             ),
             ElevatedButton(
               onPressed: () {
-                final name = nameCtrl.text.trim();
                 final phone = phoneCtrl.text.trim();
 
-                bool hasError = false;
-                String? newNameError;
-                String? newPhoneError;
-
-                if (name.isEmpty) {
-                  newNameError = 'Customer name is required';
-                  hasError = true;
-                }
-                if (phone.isEmpty) {
-                  newPhoneError = 'Phone number is required';
-                  hasError = true;
-                } else if (phone.length != 10) {
-                  newPhoneError = 'Phone number must be exactly 10 digits';
-                  hasError = true;
-                }
-
-                if (hasError) {
+                if (phone.isNotEmpty && phone.length != 10) {
                   setDialogState(() {
-                    nameError = newNameError;
-                    phoneError = newPhoneError;
+                    phoneError = 'Phone number must be exactly 10 digits';
                   });
                   return;
                 }
@@ -268,10 +225,11 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
 
     if (confirm != true) return;
 
+    final customerNameVal = nameCtrl.text.trim();
     final session = await ref.read(sessionDetailsNotifierProvider.notifier).createSession(
           cardId: card.id,
           branchId: branch.id,
-          customerName: nameCtrl.text.trim(),
+          customerName: customerNameVal,
           customerPhone: phoneCtrl.text.trim(),
         );
 
@@ -300,7 +258,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
     final branchName = currentBranch?.name ?? 'Main Branch';
     final defaultBlockerStr = '$blockerName ($blockerRole - $branchName)';
 
-    String selectedReason = 'Lost or Stolen Card';
+    String selectedReason = 'Lost or Stolen Wallet';
     final additionalReasonCtrl = TextEditingController();
 
     final confirm = await showDialog<bool>(
@@ -313,64 +271,33 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
             children: const [
               Icon(Icons.block, color: AppColors.error, size: 24),
               SizedBox(width: AppSpacing.xs),
-              Text('Block Card', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('Block Wallet', style: TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Are you sure you want to block this card? It will be disabled for purchases.',
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-              ),
-              const Divider(height: AppSpacing.lg),
-
-              // Default Who is Blocking
               const Text(
-                'Blocked By (Default):',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
-              ),
-              const SizedBox(height: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceLight,
-                  borderRadius: AppSpacing.roundedSm,
-                  border: Border.all(color: AppColors.borderLight),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.person_pin, size: 16, color: AppColors.primary),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        defaultBlockerStr,
-                        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
+                'Are you sure you want to block this wallet? It will be disabled for purchases.',
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
               ),
               const SizedBox(height: AppSpacing.md),
-
-              // Default Reason Selector
               const Text(
-                'Primary Reason:',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
+                'Reason',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimaryLight),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               DropdownButtonFormField<String>(
                 initialValue: selectedReason,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   isDense: true,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                  border: OutlineInputBorder(),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 items: const [
-                  DropdownMenuItem(value: 'Lost or Stolen Card', child: Text('Lost or Stolen Card', style: TextStyle(fontSize: 13))),
-                  DropdownMenuItem(value: 'Damaged / Hardware Failure', child: Text('Damaged / Hardware Failure', style: TextStyle(fontSize: 13))),
+                  DropdownMenuItem(value: 'Lost or Stolen Wallet', child: Text('Lost or Stolen Wallet', style: TextStyle(fontSize: 13))),
+                  DropdownMenuItem(value: 'Damaged / Hardware Failure', child: Text('Damaged Card', style: TextStyle(fontSize: 13))),
                   DropdownMenuItem(value: 'Suspicious Activity / Fraud', child: Text('Suspicious Activity / Fraud', style: TextStyle(fontSize: 13))),
                   DropdownMenuItem(value: 'Customer Request', child: Text('Customer Request', style: TextStyle(fontSize: 13))),
                   DropdownMenuItem(value: 'Staff Discretion', child: Text('Staff Discretion', style: TextStyle(fontSize: 13))),
@@ -384,24 +311,19 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                   }
                 },
               ),
-              const SizedBox(height: AppSpacing.md),
-
-              // Additional Reason Option
-              const Text(
-                'Additional Reason / Notes (Optional):',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
-              ),
-              const SizedBox(height: 4),
-              TextField(
-                controller: additionalReasonCtrl,
-                maxLines: 2,
-                decoration: const InputDecoration(
-                  hintText: 'Type additional notes (e.g. customer left card at Counter 3)...',
-                  hintStyle: TextStyle(fontSize: 12),
-                  isDense: true,
-                  border: OutlineInputBorder(),
+              if (selectedReason == 'Other Reason') ...[
+                const SizedBox(height: AppSpacing.sm),
+                TextField(
+                  controller: additionalReasonCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'Specify reason...',
+                    hintStyle: const TextStyle(fontSize: 12),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
           actions: [
@@ -413,9 +335,11 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.error,
                 foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Block'),
+              child: const Text('Block Wallet'),
             ),
           ],
         ),
@@ -436,7 +360,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
         ref.read(availableCardsNotifierProvider.notifier).loadAvailableCards();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Card has been blocked: $combinedReason'),
+            content: Text('Wallet has been blocked: $combinedReason'),
             backgroundColor: AppColors.error,
           ),
         );
@@ -447,8 +371,8 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
   Future<void> _handleUnblockCard() async {
     final confirm = await AppDialog.show(
       context,
-      title: 'Unblock Card',
-      message: 'Unblocking this card will make it available for transactions again.',
+      title: 'Unblock Wallet',
+      message: 'Unblocking this wallet will make it available for transactions again.',
       confirmLabel: 'Unblock',
     );
 
@@ -459,7 +383,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
         ref.read(availableCardsNotifierProvider.notifier).loadAvailableCards();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Card unblocked successfully.'),
+            content: Text('Wallet unblocked successfully.'),
             backgroundColor: AppColors.success,
           ),
         );
@@ -476,16 +400,16 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
 
     if (cardState.isLoading) {
       return const Scaffold(
-        body: AppLoadingView(message: 'Loading card details...'),
+        body: AppLoadingView(message: 'Loading wallet details...'),
       );
     }
 
     if (card == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Card Details')),
+        appBar: AppBar(title: const Text('Wallet Details')),
         body: Center(
           child: Text(
-            cardState.errorMessage ?? 'Card not found.',
+            cardState.errorMessage ?? 'Wallet not found.',
             style: const TextStyle(color: AppColors.error),
           ),
         ),
@@ -498,27 +422,50 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Card ${card.physicalCardNumber}'),
+        title: Text('Wallet ${card.physicalCardNumber}'),
       ),
       body: ListView(
         padding: AppSpacing.paddingMd,
         children: [
-          // Card Header Summary Card
+          // Unified Minimal Wallet & Session Card
           AppCard(
-            padding: AppSpacing.paddingLg,
+            padding: AppSpacing.paddingMd,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      card.physicalCardNumber,
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.1,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          card.physicalCardNumber,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        if (isActive && activeSession != null && activeSession.cycleNumber != null) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                            ),
+                            child: Text(
+                              'Cycle ${activeSession.cycleNumber}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     AppBadge(
                       label: card.status.value,
@@ -526,89 +473,72 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                     ),
                   ],
                 ),
-                if (isActive) ...[
-                  const SizedBox(height: AppSpacing.xs),
-                  Builder(
-                    builder: (context) {
-                      final branchState = ref.watch(branchNotifierProvider);
-                      final sessionBranchName = activeSession?.branchName ?? card.currentBranchName;
-                      final matchedBranch = branchState.assignedBranches
-                          .where((b) => b.id == (activeSession?.branchId ?? card.currentBranchId))
-                          .firstOrNull;
-                      final resolvedBranchName = sessionBranchName ??
-                          matchedBranch?.name ??
-                          branchState.currentBranch?.name ??
-                          'Main Branch';
-
-                      return Row(
+                if (isActive && activeSession != null) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(
-                            Icons.storefront_outlined,
-                            size: 15,
-                            color: AppColors.textSecondaryLight,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            resolvedBranchName,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
+                          const Text(
+                            'Current Balance',
+                            style: TextStyle(
+                              fontSize: 12,
                               color: AppColors.textSecondaryLight,
                             ),
                           ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '₹${activeSession.balance.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                          ),
                         ],
-                      );
-                    },
+                      ),
+                      if (activeSession.customerName != null && activeSession.customerName!.isNotEmpty)
+                        Text(
+                          'Customer: ${activeSession.customerName}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textSecondaryLight,
+                          ),
+                        ),
+                    ],
                   ),
                 ],
                 if (isBlocked) ...[
                   const SizedBox(height: AppSpacing.sm),
                   Container(
                     width: double.infinity,
-                    padding: AppSpacing.paddingSm,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: AppColors.errorLight,
                       borderRadius: AppSpacing.roundedSm,
                       border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
-                        Row(
-                          children: const [
-                            Icon(Icons.block, size: 16, color: AppColors.error),
-                            SizedBox(width: 6),
-                            Text(
-                              'Card is Blocked',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.error,
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (card.blockedReason != null && card.blockedReason!.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            card.blockedReason!,
+                        const Icon(Icons.block, size: 14, color: AppColors.error),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            card.blockedReason != null && card.blockedReason!.isNotEmpty
+                                ? 'Blocked: ${card.blockedReason}'
+                                : 'Wallet is Blocked',
                             style: const TextStyle(
                               fontSize: 12,
-                              color: AppColors.textPrimaryLight,
                               fontWeight: FontWeight.w500,
+                              color: AppColors.error,
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ],
-                        if (card.blockedBy != null && card.blockedBy!.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            'Blocked by: ${card.blockedBy}',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondaryLight,
-                            ),
-                          ),
-                        ],
+                        ),
                       ],
                     ),
                   ),
@@ -616,81 +546,10 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.lg),
-
-          // Active Session Card (if session is active)
-          if (isActive && activeSession != null) ...[
-            const SectionHeader(title: 'Active Session'),
-            const SizedBox(height: AppSpacing.xs),
-            AppCard(
-              padding: AppSpacing.paddingLg,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Current Balance',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppColors.textSecondaryLight,
-                        ),
-                      ),
-                      const AppBadge(
-                        label: 'SESSION ACTIVE',
-                        variant: AppBadgeVariant.success,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    '₹${activeSession.balance.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  if (activeSession.customerName != null && activeSession.customerName!.isNotEmpty) ...[
-                    const SizedBox(height: AppSpacing.xs),
-                    Row(
-                      children: [
-                        const Icon(Icons.person_outline, size: 16, color: AppColors.primary),
-                        const SizedBox(width: AppSpacing.xs),
-                        Text(
-                          'Customer: ${activeSession.customerName}${activeSession.customerPhone != null && activeSession.customerPhone!.isNotEmpty ? " (${activeSession.customerPhone})" : ""}',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimaryLight,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  const Divider(height: AppSpacing.lg),
-                  Row(
-                    children: [
-                      const Icon(Icons.access_time, size: 16, color: AppColors.textSecondaryLight),
-                      const SizedBox(width: AppSpacing.xs),
-                      Text(
-                        'Started: ${_formatDateTime(activeSession.startedAt)}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondaryLight,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-          ],
+          const SizedBox(height: AppSpacing.md),
 
           // Actions Section
-          const SectionHeader(title: 'Card Actions'),
+          const SectionHeader(title: 'Wallet Actions'),
           const SizedBox(height: AppSpacing.sm),
 
           // Start Session Action (when available)
@@ -710,7 +569,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
             PermissionGuard.single(
               permission: AppPermission.recharge,
               child: AppButton(
-                label: 'Recharge Card (Cash / UPI)',
+                label: 'Recharge',
                 icon: Icons.add_card,
                 onPressed: () => context.push(
                   '/app/recharge/${activeSession.id}?card=${card.physicalCardNumber}',
@@ -721,7 +580,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
             PermissionGuard.single(
               permission: AppPermission.purchase,
               child: AppOutlinedButton(
-                label: 'New POS Purchase',
+                label: 'Billing',
                 icon: Icons.point_of_sale,
                 onPressed: () => context.push('/app/pos/${activeSession.id}'),
               ),
@@ -730,7 +589,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
             PermissionGuard.single(
               permission: AppPermission.cardReturn,
               child: AppOutlinedButton(
-                label: 'Return & Settle Card',
+                label: 'Return & Refund',
                 icon: Icons.assignment_return_outlined,
                 onPressed: () => context.push(
                   '/app/return/${activeSession.id}?card=${card.physicalCardNumber}',
@@ -745,7 +604,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
             PermissionGuard.single(
               permission: AppPermission.cardUnblock,
               child: AppButton(
-                label: 'Unblock Card',
+                label: 'Unblock Wallet',
                 icon: Icons.lock_open,
                 backgroundColor: AppColors.success,
                 isLoading: cardState.isSubmitting,
@@ -757,7 +616,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
             PermissionGuard.single(
               permission: AppPermission.cardBlock,
               child: AppOutlinedButton(
-                label: 'Block Card',
+                label: 'Block Wallet',
                 icon: Icons.block,
                 textColor: AppColors.error,
                 borderColor: AppColors.error,

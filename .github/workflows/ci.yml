@@ -1,0 +1,126 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - staging
+      - main
+  pull_request:
+    branches:
+      - staging
+      - main
+
+jobs:
+  frontend:
+    name: Frontend Tests and Typecheck
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: './Frontend Money Card'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: './Frontend Money Card/package-lock.json'
+
+      - name: Setup environment file
+        run: cp .env.example .env
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript typecheck
+        run: npx tsc --noEmit
+
+      - name: Run unit and integration tests
+        run: npm test -- --run
+
+  backend:
+    name: Backend Tests and Typecheck
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: money_card
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: './Backend Money Card'
+    env:
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/money_card?schema=public"
+      JWT_SECRET: "test-jwt-secret-key-12345"
+      JWT_REFRESH_SECRET: "test-jwt-refresh-secret-12345"
+      NODE_ENV: "test"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: './Backend Money Card/package-lock.json'
+
+      - name: Setup environment file
+        run: cp .env.example .env
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Push Prisma schema to test database
+        run: npx prisma db push --skip-generate --accept-data-loss
+
+      - name: TypeScript typecheck
+        run: npx tsc --noEmit
+
+      - name: Run backend tests
+        run: npm test
+
+  mobile:
+    name: Mobile POS Tests and Analysis
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: './Flutter Money card'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Static code analysis
+        run: flutter analyze --no-pub
+
+      - name: Run unit and widget tests
+        run: flutter test

@@ -4,13 +4,13 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../models/card_session.dart';
+import '../../providers/api_providers.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/branch_provider.dart';
 import '../../providers/card_operations_provider.dart';
 import '../../providers/return_card_provider.dart';
 import '../../providers/session_operations_provider.dart';
 import '../../widgets/common/app_badge.dart';
-import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_card.dart';
 import '../../widgets/common/app_dialog.dart';
 import '../../widgets/receipt/digital_receipt_dialog.dart';
@@ -31,6 +31,8 @@ class ReturnCardScreen extends ConsumerStatefulWidget {
 }
 
 class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
+  bool _isRefunding = false;
+
   @override
   void initState() {
     super.initState();
@@ -45,10 +47,10 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
 
     final confirm = await AppDialog.show(
       context,
-      title: 'Confirm Card Return',
+      title: 'Confirm Wallet Return',
       message: session.balance > 0
-          ? 'Refund ₹${session.balance.toStringAsFixed(2)} to customer and settle this card session?'
-          : 'Settle this card session and return card to AVAILABLE state?',
+          ? 'Refund ₹${session.balance.toStringAsFixed(2)} to customer and settle this wallet session?'
+          : 'Settle this wallet session and return wallet to AVAILABLE state?',
       confirmLabel: 'Confirm & Settle',
       isDestructive: session.balance > 0,
     );
@@ -63,6 +65,67 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
       ref.read(sessionListNotifierProvider.notifier).loadSessions();
 
       _showReturnSuccessDialog(result);
+    }
+  }
+
+  Future<void> _handleRefundOnly(CardSession session) async {
+    if (session.balance <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No remaining money to refund (Balance: ₹0.00).'),
+          backgroundColor: AppColors.info,
+        ),
+      );
+      return;
+    }
+
+    final confirm = await AppDialog.show(
+      context,
+      title: 'Confirm Balance Refund',
+      message: 'Refund available money of ₹${session.balance.toStringAsFixed(2)} to customer?',
+      confirmLabel: 'Refund Money',
+      isDestructive: true,
+    );
+
+    if (confirm != true) return;
+
+    setState(() {
+      _isRefunding = true;
+    });
+
+    try {
+      final sessionRepo = ref.read(sessionRepositoryProvider);
+      final result = await sessionRepo.refundSession(session.id);
+
+      await ref.read(sessionDetailsNotifierProvider.notifier).loadSessionById(widget.sessionId);
+      ref.read(cardListNotifierProvider.notifier).loadCards();
+      ref.read(sessionListNotifierProvider.notifier).loadSessions();
+
+      if (mounted) {
+        setState(() {
+          _isRefunding = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Refund of ₹${result.refundedAmount.toStringAsFixed(2)} processed. Wallet remains active.',
+            ),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isRefunding = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Refund failed: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     }
   }
 
@@ -82,7 +145,7 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
 
     final itemsList = [
       {
-        'name': 'Card Return & Balance Refund',
+        'name': 'Wallet Return & Balance Refund',
         'quantity': 1,
         'price': result.refundedAmount,
         'total': result.refundedAmount,
@@ -101,7 +164,7 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
       previousBalance: result.refundedAmount,
       sessionId: session?.id ?? widget.sessionId,
       staffName: user?.name,
-      title: 'Card Returned Successfully',
+      title: 'Wallet Returned Successfully',
       receiptTitle: 'SETTLEMENT RECEIPT',
       paymentMethod: 'CASH REFUND',
       onDone: () {
@@ -125,7 +188,7 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
 
     if (session == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Return Card')),
+        appBar: AppBar(title: const Text('Return & Refund')),
         body: Center(
           child: Text(
             sessionState.errorMessage ?? 'Session not found.',
@@ -139,7 +202,7 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Return & Settle Card'),
+        title: const Text('Return & Refund'),
       ),
       body: SafeArea(
         child: ListView(
@@ -188,32 +251,41 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-
-            // Refund Summary Card
-            AppCard(
-              padding: AppSpacing.paddingLg,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Refund Calculation',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
+                  const SizedBox(height: 16),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Refund to Customer:'),
-                      Text(
-                        '₹${session.balance.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primaryDark,
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.payments_outlined, size: 16),
+                          label: const Text('Refund', style: TextStyle(fontWeight: FontWeight.bold)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: session.balance > 0 ? AppColors.warning : Colors.grey,
+                            side: BorderSide(
+                              color: session.balance > 0 ? AppColors.warning : Colors.grey.shade300,
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          onPressed: isSettled || _isRefunding || returnState.isSubmitting
+                              ? null
+                              : () => _handleRefundOnly(session),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.assignment_return_outlined, size: 16),
+                          label: const Text('Return', style: TextStyle(fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.error,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          onPressed: isSettled || _isRefunding || returnState.isSubmitting
+                              ? null
+                              : () => _handleConfirmReturn(session),
                         ),
                       ),
                     ],
@@ -246,16 +318,6 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
             ],
-
-            // Return & Settle Button
-            AppButton(
-              label: 'Confirm Return & Settle (₹${session.balance.toStringAsFixed(2)})',
-              icon: Icons.assignment_return_outlined,
-              isLoading: returnState.isSubmitting,
-              onPressed: isSettled || returnState.isSubmitting
-                  ? null
-                  : () => _handleConfirmReturn(session),
-            ),
           ],
         ),
       ),

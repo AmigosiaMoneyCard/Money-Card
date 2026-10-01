@@ -1,12 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../models/receipt_bill.dart';
-import '../../widgets/common/app_button.dart';
 
-class BillReceiptScreen extends StatefulWidget {
+class BillReceiptScreen extends ConsumerStatefulWidget {
   final ReceiptBill bill;
   final Directory? targetDownloadDirectory;
   final VoidCallback? onDone;
@@ -19,10 +19,19 @@ class BillReceiptScreen extends StatefulWidget {
   });
 
   @override
-  State<BillReceiptScreen> createState() => _BillReceiptScreenState();
+  ConsumerState<BillReceiptScreen> createState() => _BillReceiptScreenState();
 }
 
-class _BillReceiptScreenState extends State<BillReceiptScreen> {
+class _BillReceiptScreenState extends ConsumerState<BillReceiptScreen> {
+  late ReceiptBill _activeBill;
+
+  @override
+  void initState() {
+    super.initState();
+    _activeBill = widget.bill;
+  }
+
+
   /// Action: [ Done ]
   void _handleDone() {
     if (widget.onDone != null) {
@@ -34,7 +43,7 @@ class _BillReceiptScreenState extends State<BillReceiptScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bill = widget.bill;
+    final bill = _activeBill;
     final dateStr = DateFormat('dd MMM yyyy').format(bill.timestamp);
     final timeStr = DateFormat('hh:mm a').format(bill.timestamp);
 
@@ -48,6 +57,41 @@ class _BillReceiptScreenState extends State<BillReceiptScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: _handleDone,
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Center(
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(6),
+                  onTap: _handleDone,
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(6),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.3),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.check,
+                      size: 22,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -113,7 +157,7 @@ class _BillReceiptScreenState extends State<BillReceiptScreen> {
                     const SizedBox(height: 10),
 
                     // Bill Metadata
-                    _buildReceiptRow('Bill No:', bill.displayBillNo),
+                    _buildReceiptRow('Bill Number:', bill.displayBillNo, isBold: true),
                     _buildReceiptRow('Card:', bill.displayCardId),
                     _buildReceiptRow('Date:', '$dateStr  $timeStr'),
                     if (bill.staffName != null && bill.staffName!.isNotEmpty)
@@ -254,7 +298,8 @@ class _BillReceiptScreenState extends State<BillReceiptScreen> {
                     const SizedBox(height: 10),
 
                     // Payment & Branch Information (Session removed as requested)
-                    _buildReceiptRow('Payment:', bill.paymentMethod),
+                    if (bill.paymentMethod != 'Card Session' && !bill.paymentMethod.toLowerCase().contains('session'))
+                      _buildReceiptRow('Payment:', bill.paymentMethod),
                     if (bill.paymentReference != null && bill.paymentReference!.isNotEmpty)
                       _buildReceiptRow('UPI Reference:', bill.paymentReference!),
                     _buildReceiptRow('Counter:', bill.branchName),
@@ -288,16 +333,7 @@ class _BillReceiptScreenState extends State<BillReceiptScreen> {
                 ),
               ),
 
-              const SizedBox(height: AppSpacing.lg),
-
-              // Button: [ Done ]
-              AppButton(
-                label: 'Done',
-                icon: Icons.check,
-                onPressed: _handleDone,
-              ),
-
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.sm),
             ],
           ),
         ),

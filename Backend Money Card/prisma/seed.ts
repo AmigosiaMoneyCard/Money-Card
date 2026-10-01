@@ -61,6 +61,7 @@ async function ensureUser(userData: {
   organizationId: string | null;
   permissions: PermissionCode[];
   branchIds?: string[];
+  phone?: string;
 }) {
   const cleanEmail = userData.email.toLowerCase().replace(/\s+/g, '');
   const existing = await prisma.user.findUnique({
@@ -75,6 +76,7 @@ async function ensureUser(userData: {
       data: {
         id: userData.id,
         email: cleanEmail,
+        phone: userData.phone || null,
         passwordHash,
         name: userData.name,
         role: userData.role,
@@ -98,7 +100,7 @@ async function ensureUser(userData: {
       }
     }
 
-    console.log(`✅ Created user: ${cleanEmail} (${userData.role})`);
+    console.log(`✅ Created user: ${cleanEmail} (${userData.role}, Phone: ${userData.phone || 'none'})`);
     return created;
   } else {
     // If user exists, update password hash to support standard password if needed, ensure active status
@@ -106,6 +108,7 @@ async function ensureUser(userData: {
       where: { id: existing.id },
       data: {
         status: UserStatus.ACTIVE,
+        phone: userData.phone !== undefined ? userData.phone : existing.phone,
         passwordHash, // Set known valid password hash
         organizationId: existing.organizationId || userData.organizationId,
       },
@@ -289,11 +292,24 @@ async function main() {
     branchIds: [mainBranch.id, branchTwo.id],
   });
 
-  // 6. Ensure Staff Accounts (including eros@staff.com, staff@maincafe.com, staff@example.com)
+  // 6. Ensure Staff Accounts (including eros@staff.com, staff@localhost.com, staff@maincafe.com, staff@example.com)
   const staffUser = await ensureUser({
     id: 'usr_staff_eros',
     email: 'eros@staff.com',
+    phone: '9876543212',
     name: 'Eros Counter Staff',
+    role: Role.STAFF,
+    defaultPassword: 'password', // Standard password
+    organizationId: org.id,
+    permissions: STAFF_DEFAULT_PERMISSIONS,
+    branchIds: [mainBranch.id, branchTwo.id],
+  });
+
+  await ensureUser({
+    id: 'usr_staff_localhost',
+    email: 'staff@localhost.com',
+    phone: '9876543210',
+    name: 'Localhost Counter Staff',
     role: Role.STAFF,
     defaultPassword: 'password', // Standard password
     organizationId: org.id,
@@ -304,6 +320,7 @@ async function main() {
   await ensureUser({
     id: 'usr_staff_001',
     email: 'staff@maincafe.com',
+    phone: '9876543211',
     name: 'Rahul Counter Staff',
     role: Role.STAFF,
     defaultPassword: 'password',
@@ -315,6 +332,7 @@ async function main() {
   await ensureUser({
     id: 'staff_001',
     email: 'staff@example.com',
+    phone: '9876543213',
     name: 'John Staff',
     role: Role.STAFF,
     defaultPassword: 'password',
@@ -326,6 +344,7 @@ async function main() {
   await ensureUser({
     id: 'staff_002',
     email: 'staff@moneycard.io',
+    phone: '9876543214',
     name: 'Alex Counter Staff',
     role: Role.STAFF,
     defaultPassword: 'password',

@@ -30,9 +30,22 @@ class QrValidator {
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
       try {
         final uri = Uri.parse(trimmed);
-        final segments = uri.pathSegments;
+        if (uri.queryParameters.containsKey('token') && uri.queryParameters['token']!.isNotEmpty) {
+          return uri.queryParameters['token']!.trim();
+        }
+        if (uri.queryParameters.containsKey('qr') && uri.queryParameters['qr']!.isNotEmpty) {
+          return uri.queryParameters['qr']!.trim();
+        }
+        final segments = uri.pathSegments
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
         if (segments.isNotEmpty) {
-          // If URL path is /c/{token} or /card/{token} or last segment
+          // If URL path contains /c/{token}
+          final cIdx = segments.indexOf('c');
+          if (cIdx != -1 && cIdx + 1 < segments.length) {
+            return segments[cIdx + 1];
+          }
           return segments.last;
         }
       } catch (_) {
@@ -40,8 +53,8 @@ class QrValidator {
       }
     }
 
-    // Direct token string (e.g., QR-MOCK-001, CARD001, CC-12345)
-    if (trimmed.length >= 4) {
+    // Direct token string (e.g., QR-MOCK-001, CARD001, CC-12345, 1, 01, any string)
+    if (trimmed.isNotEmpty) {
       return trimmed;
     }
 

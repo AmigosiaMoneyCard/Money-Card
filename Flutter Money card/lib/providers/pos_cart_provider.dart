@@ -28,11 +28,90 @@ class PosCatalogState {
     this.errorMessage,
   });
 
+  /// Filtered active products for POS checkout/billing
   List<Product> get filteredProducts {
-    var list = products.where((p) => p.status.toUpperCase() == 'ACTIVE').toList();
+    return allFilteredProducts.where((p) => p.status.toUpperCase() == 'ACTIVE').toList();
+  }
+
+  /// All filtered products (both ACTIVE and INACTIVE) for Menu & Products management
+  List<Product> get allFilteredProducts {
+    var list = products;
     if (selectedCategory != 'All') {
       final filter = selectedCategory.toLowerCase();
       list = list.where((p) {
+        if (filter == 'drinks') {
+          return p.category.any((c) {
+            final lower = c.toLowerCase();
+            return lower == 'drinks' ||
+                lower == 'drink' ||
+                lower == 'beverages' ||
+                lower == 'beverage' ||
+                lower.contains('drink') ||
+                lower.contains('beverage') ||
+                lower.contains('juice') ||
+                lower.contains('coffee') ||
+                lower.contains('tea') ||
+                lower.contains('chai');
+          });
+        }
+        if (filter == 'non-veg' || filter == 'non veg') {
+          return p.category.any((c) {
+            final lower = c.toLowerCase();
+            return lower == 'non-veg' || lower == 'non veg' || lower == 'nonveg';
+          });
+        }
+        if (filter == 'veg') {
+          return p.category.any((c) {
+            final lower = c.toLowerCase();
+            return (lower == 'veg' || lower == 'vegan') && !lower.contains('non');
+          });
+        }
+        return p.category.any((c) => c.toLowerCase() == filter);
+      }).toList();
+    }
+    if (searchQuery.trim().isNotEmpty) {
+      final query = searchQuery.trim().toLowerCase();
+      list = list.where((p) {
+        final matchesName = p.itemName.toLowerCase().contains(query);
+        final matchesCategory = p.category.any((c) => c.toLowerCase().contains(query));
+        return matchesName || matchesCategory;
+      }).toList();
+    }
+    return list;
+  }
+
+  List<Product> get managementProducts {
+    var list = List<Product>.from(products);
+    if (selectedCategory != 'All') {
+      final filter = selectedCategory.toLowerCase();
+      list = list.where((p) {
+        if (filter == 'drinks') {
+          return p.category.any((c) {
+            final lower = c.toLowerCase();
+            return lower == 'drinks' ||
+                lower == 'drink' ||
+                lower == 'beverages' ||
+                lower == 'beverage' ||
+                lower.contains('drink') ||
+                lower.contains('beverage') ||
+                lower.contains('juice') ||
+                lower.contains('coffee') ||
+                lower.contains('tea') ||
+                lower.contains('chai');
+          });
+        }
+        if (filter == 'non-veg' || filter == 'non veg') {
+          return p.category.any((c) {
+            final lower = c.toLowerCase();
+            return lower == 'non-veg' || lower == 'non veg' || lower == 'nonveg';
+          });
+        }
+        if (filter == 'veg') {
+          return p.category.any((c) {
+            final lower = c.toLowerCase();
+            return (lower == 'veg' || lower == 'vegan') && !lower.contains('non');
+          });
+        }
         return p.category.any((c) => c.toLowerCase() == filter);
       }).toList();
     }
@@ -90,7 +169,6 @@ class PosCatalogNotifier extends StateNotifier<PosCatalogState> {
     try {
       final products = await _productRepository.getProducts(
         branchId: branchId,
-        status: 'ACTIVE',
       );
       state = state.copyWith(
         isLoading: false,

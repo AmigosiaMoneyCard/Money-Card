@@ -20,10 +20,10 @@ class AppEmptyState extends StatelessWidget {
 
   factory AppEmptyState.noCards({VoidCallback? onIssueCard}) {
     return AppEmptyState(
-      icon: Icons.credit_card_outlined,
-      title: 'No Cards Found',
-      description: 'No physical cards are assigned to this counter yet.',
-      actionLabel: onIssueCard != null ? 'Issue Card' : null,
+      icon: Icons.account_balance_wallet_outlined,
+      title: 'No Wallets Found',
+      description: 'No physical wallets are assigned to this counter yet.',
+      actionLabel: onIssueCard != null ? 'Issue Wallet' : null,
       onAction: onIssueCard,
     );
   }
@@ -32,7 +32,7 @@ class AppEmptyState extends StatelessWidget {
     return const AppEmptyState(
       icon: Icons.account_balance_wallet_outlined,
       title: 'No Active Sessions',
-      description: 'Scan a card to start a new cafeteria session.',
+      description: 'Scan a wallet to start a new cafeteria session.',
     );
   }
 

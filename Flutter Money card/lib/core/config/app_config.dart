@@ -22,6 +22,7 @@ class AppConfig {
   AppConfig._();
 
   static String? _overrideEnvironment;
+  static String? get overrideEnvironment => _overrideEnvironment;
 
   static const String appVersion = '1.0.1';
 
@@ -46,7 +47,10 @@ class AppConfig {
     if (env.isNotEmpty) {
       return env.toLowerCase();
     }
-    // 3. Fallback: default to staging
+    // 3. Fallback: on Web (localhost/Chrome) default to development, else staging
+    if (kIsWeb) {
+      return 'development';
+    }
     return 'staging';
   }
 
@@ -56,20 +60,20 @@ class AppConfig {
 
   static String get appName {
     if (isProduction) return 'Money Card';
-    if (isDevelopment) return 'Money Card (Dev)';
+    if (isDevelopment) return 'Money Card - Localhost';
     return 'Money Card (Staging)';
   }
 
   /// Staging API URL (connected to money-card-backend-staging)
   static const String stagingBaseUrl = String.fromEnvironment(
     'STAGING_BASE_URL',
-    defaultValue: 'https://money-card-backend-staging.onrender.com/api/v1',
+    defaultValue: 'https://money-card-backend-staging-681a.onrender.com/api/v1',
   );
 
   /// Production API URL (used strictly in production builds)
   static const String productionBaseUrl = String.fromEnvironment(
     'PROD_BASE_URL',
-    defaultValue: 'https://money-card-backend.onrender.com/api/v1',
+    defaultValue: 'https://money-card-backend-0nx1.onrender.com/api/v1',
   );
 
   /// Primary USB Reverse / Local Loopback endpoint
@@ -80,7 +84,7 @@ class AppConfig {
   static const String defaultEmulatorBaseUrl = 'http://10.0.2.2:3000/api/v1';
 
   /// Current active Laptop Wi-Fi LAN endpoint
-  static const String defaultLanBaseUrl = 'http://192.168.105.39:3000/api/v1';
+  static const String defaultLanBaseUrl = 'http://192.168.105.22:3000/api/v1';
 
   /// Optional host passed via --dart-define=API_HOST=192.168.x.x[:port]
   static const String _envApiHost = String.fromEnvironment('API_HOST', defaultValue: '');
@@ -108,6 +112,10 @@ class AppConfig {
       return normalizeUrl(productionBaseUrl);
     }
     if (isDevelopment) {
+      if (kIsWeb) {
+        final host = Uri.base.host.isNotEmpty ? Uri.base.host : '127.0.0.1';
+        return normalizeUrl('http://$host:3000/api/v1');
+      }
       return normalizeUrl(defaultBaseUrl);
     }
     // Default for staging: stagingBaseUrl

@@ -1,120 +1,95 @@
 // ─── Super Admin Analytics View (Platform Scope) ─────────────────────────
-// Global platform metrics across all organizations, subscription plans, and POS transactions.
-// Strictly provides [ View PDF ] and [ Download PDF ] via jsPDF native download.
+// Global platform metrics across organizations and POS transactions.
+// Structured with Financial Overview and Card Analytics tabs matching Org Admin design.
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { apiService } from '@/services/api';
 import type {
   AnalyticsOverview,
   OrganizationOverview,
-  SubscriptionPayment,
-  Plan,
   Branch,
   PeakAnalyticsOverview,
-  PlanChangeRequest,
 } from '@/types';
 import {
   Button,
   Card,
-  Badge,
-  StatCard,
-  Modal,
-  ModalFooter,
   Select,
   LoadingState,
   ErrorState,
 } from '@/components/ui';
-import { DataTable } from '@/components/tables';
-import { notify, formatCurrency } from '@/utils';
+import { notify, formatLocalDate } from '@/utils';
 import {
-  generatePlatformAnalyticsPdfBlob,
-  downloadPlatformAnalyticsPdf,
-  type GeneratePlatformAnalyticsPdfParams,
-  type PlatformPdfSectionOptions,
+  OrgAdminFinancialSection,
+  OrgAdminPdfModal,
+  OrgAdminMenuAnalyticsSection,
+} from './OrgAdminAnalyticsComponents';
+import { OrgAdminCardTracker } from './OrgAdminCardTracker';
+import {
+  generateAnalyticsPdfBlob,
+  downloadOrgAnalyticsPdf,
+  downloadFinancialOverviewPdf,
+  downloadCardAnalyticsPdf,
+  type GenerateOrgPdfOptions,
+  type OrgPdfSectionOptions,
 } from './analyticsPdfExport';
 import {
   Building2,
-  Layers,
   RefreshCw,
   Eye,
-  Download,
-  Check,
-  SlidersHorizontal,
-  Users,
   CreditCard,
+  BarChart3,
+  UtensilsCrossed,
 } from 'lucide-react';
-
-export type DatePreset = 'all' | 'today' | 'yesterday' | 'last7' | 'last30' | 'thisMonth' | 'custom';
-
-function formatLocalDate(d: Date): string {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-export function getPresetDates(preset: DatePreset): { startDate: string; endDate: string } {
-  const now = new Date();
-  const todayStr = formatLocalDate(now);
-
-  if (preset === 'today') {
-    return { startDate: todayStr, endDate: todayStr };
-  }
-  if (preset === 'yesterday') {
-    const yest = new Date(now);
-    yest.setDate(yest.getDate() - 1);
-    const yestStr = formatLocalDate(yest);
-    return { startDate: yestStr, endDate: yestStr };
-  }
-  if (preset === 'last7') {
-    const start = new Date(now);
-    start.setDate(start.getDate() - 7);
-    return { startDate: formatLocalDate(start), endDate: todayStr };
-  }
-  if (preset === 'last30') {
-    const start = new Date(now);
-    start.setDate(start.getDate() - 30);
-    return { startDate: formatLocalDate(start), endDate: todayStr };
-  }
-  if (preset === 'thisMonth') {
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { startDate: formatLocalDate(start), endDate: todayStr };
-  }
-
-  return { startDate: '', endDate: '' };
-}
 
 export function SuperAdminAnalyticsView() {
   const [analytics, setAnalytics] = useState<AnalyticsOverview | null>(null);
   const [peakData, setPeakData] = useState<PeakAnalyticsOverview | null>(null);
   const [orgs, setOrgs] = useState<OrganizationOverview[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [payments, setPayments] = useState<SubscriptionPayment[]>([]);
-  const [plans, setPlans] = useState<Plan[]>([]);
-  const [planRequests, setPlanRequests] = useState<PlanChangeRequest[]>([]);
 
-  // Time Period & Cafeteria Filter State
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Active Tab: Financial Overview vs Card Analytics vs Menu Analytics
+  const [activeTab, setActiveTab] = useState<'overview' | 'cards' | 'menu'>(() => {
+    const t = searchParams.get('tab');
+    if (t === 'cards') return 'cards';
+    if (t === 'menu') return 'menu';
+    return 'overview';
+  });
+
+  const handleTabChange = (tab: 'overview' | 'cards' | 'menu') => {
+    setActiveTab(tab);
+    const newParams = new URLSearchParams(searchParams);
+    if (tab === 'overview') {
+      newParams.delete('tab');
+    } else {
+      newParams.set('tab', tab);
+    }
+    setSearchParams(newParams);
+  };
+
+  // Cafeteria Filter & Custom Date Range Only
   const [selectedOrgId, setSelectedOrgId] = useState<string>('');
-  const [datePreset, setDatePreset] = useState<DatePreset>('all');
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
+  const [startDate, setStartDate] = useState<string>(() => formatLocalDate(new Date()));
+  const [endDate, setEndDate] = useState<string>(() => formatLocalDate(new Date()));
 
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // PDF Viewer Modal & Option-Wise Customizer State
+  // PDF Viewer Modal & Section State
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
-  const [pdfSections, setPdfSections] = useState<PlatformPdfSectionOptions>({
-    includePlatformKpis: true,
-    includeFinancialSummary: false,
-    includeTenantOrgs: true,
-    includeBranchPerformance: false,
-    includeProductDemand: false,
-    includePeakTraffic: false,
-    includeSubscriptionPlans: true,
+  const [pdfSections, setPdfSections] = useState<OrgPdfSectionOptions>({
+    includeExecutiveKpis: true,
+    includeCardLifecycle: true,
+    includePaymentBreakdown: false,
+    includeRushKpis: false,
+    includeTrafficDistribution: false,
+    includeFoodDemand: false,
+    includeBranchComparison: false,
+    includeStaffPerformance: false,
   });
 
   // Clean up object URL when component unmounts or preview changes
@@ -126,21 +101,12 @@ export function SuperAdminAnalyticsView() {
     };
   }, [pdfPreviewUrl]);
 
-  const handlePresetChange = (preset: DatePreset) => {
-    setDatePreset(preset);
-    if (preset !== 'custom') {
-      const { startDate: s, endDate: e } = getPresetDates(preset);
-      setStartDate(s);
-      setEndDate(e);
-    }
-  };
-
   const fetchPlatformData = useCallback(async (isSilent = false) => {
     if (!isSilent) setIsLoading(true);
     setIsRefreshing(true);
     setError(null);
     try {
-      const [analyticsRes, peakRes, orgsRes, branchesRes, payRes, plansRes, reqsRes] = await Promise.all([
+      const [analyticsRes, peakRes, orgsRes, branchesRes] = await Promise.all([
         apiService.analytics.getOverview({
           organizationId: selectedOrgId || undefined,
           branchId: undefined,
@@ -154,9 +120,6 @@ export function SuperAdminAnalyticsView() {
         }),
         apiService.organizations.getOrganizations({ limit: 100 }),
         apiService.branches.getBranches(),
-        apiService.subscriptions.getPayments(),
-        apiService.plans.getPlans(),
-        apiService.subscriptions.getPlanRequests(),
       ]);
 
       if (!analyticsRes.success) {
@@ -166,11 +129,14 @@ export function SuperAdminAnalyticsView() {
 
       setAnalytics(analyticsRes.data);
       if (peakRes.success) setPeakData(peakRes.data);
-      if (orgsRes.success) setOrgs(orgsRes.data.items);
+      if (orgsRes.success) {
+        const fetchedOrgs = orgsRes.data.items;
+        setOrgs(fetchedOrgs);
+        if (selectedOrgId && !fetchedOrgs.some((o) => o.id === selectedOrgId && o.status === 'ACTIVE')) {
+          setSelectedOrgId('');
+        }
+      }
       if (branchesRes.success) setBranches(branchesRes.data.items);
-      if (payRes.success) setPayments(payRes.data);
-      if (plansRes.success) setPlans(plansRes.data);
-      if (reqsRes.success) setPlanRequests(reqsRes.data || []);
     } catch {
       setError('Unable to connect to the server. Please try again.');
     } finally {
@@ -183,224 +149,46 @@ export function SuperAdminAnalyticsView() {
     fetchPlatformData(false);
   }, [fetchPlatformData]);
 
-  // Monthly Gateway Revenue (calculated on a monthly basis)
-  const monthlyGatewayRevenue = useMemo(() => {
-    const successPayments = payments.filter((p) => {
-      if (p.status !== 'SUCCESS') return false;
-      if (selectedOrgId && p.organizationId !== selectedOrgId) return false;
-      return true;
-    });
+  const activeOrgs = useMemo(() => orgs.filter((o) => o.status === 'ACTIVE'), [orgs]);
+  const selectedOrg = useMemo(() => activeOrgs.find((o) => o.id === selectedOrgId), [activeOrgs, selectedOrgId]);
+  const cafeteriaDisplayName = selectedOrg ? selectedOrg.name : `${activeOrgs.length} Cafeterias`;
+  const dateRangeLabel = startDate && endDate ? `${startDate} to ${endDate}` : 'Custom Range';
 
-    if (startDate && endDate) {
-      return successPayments
-        .filter((p) => {
-          if (!p.createdAt) return true;
-          const payDate = p.createdAt.split('T')[0];
-          return payDate >= startDate && payDate <= endDate;
-        })
-        .reduce((sum, p) => sum + p.amount, 0);
-    }
-
-    // Default to current month's collections
-    const now = new Date();
-    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const currentMonthPayments = successPayments.filter((p) => {
-      if (!p.createdAt) return true;
-      return p.createdAt.startsWith(currentMonthKey);
-    });
-
-    if (currentMonthPayments.length > 0) {
-      return currentMonthPayments.reduce((sum, p) => sum + p.amount, 0);
-    }
-
-    return successPayments.reduce((sum, p) => sum + p.amount, 0);
-  }, [payments, selectedOrgId, startDate, endDate]);
-
-  const recurringMrr = useMemo(() => {
-    return orgs
-      .filter((o) => (selectedOrgId ? o.id === selectedOrgId : true) && o.status === 'ACTIVE')
-      .reduce((sum, o) => {
-        const price = o.plan?.price || 0;
-        return sum + (o.plan?.billingInterval === 'YEARLY' ? Math.round(price / 12) : price);
-      }, 0);
-  }, [orgs, selectedOrgId]);
-
-  const subscriptionRevenue = monthlyGatewayRevenue > 0 ? monthlyGatewayRevenue : recurringMrr;
-
-  const activeOrgsCount = orgs.filter((o) => o.status === 'ACTIVE').length;
-
-  const pendingRequestsCount = planRequests.filter((r) => {
-    if (selectedOrgId && r.organizationId !== selectedOrgId) return false;
-    return r.status === 'PENDING';
-  }).length;
-
-  // Helper to compile full report parameters object with optional section override
-  const buildReportParams = (overrideSections?: Partial<PlatformPdfSectionOptions>): GeneratePlatformAnalyticsPdfParams | null => {
+  // Helper to compile report options
+  const getOrgReportOptions = (overrideSections?: Partial<OrgPdfSectionOptions>): GenerateOrgPdfOptions | null => {
     if (!analytics) return null;
-
-    const orgMap = new Map<string, string>();
-    orgs.forEach((o) => orgMap.set(o.id, o.name));
-    const totalAdmins = orgs.filter((o) => Boolean(o.adminUser)).length;
-
-    let dateLabel = 'Custom Range';
-    switch (datePreset) {
-      case 'all':
-        dateLabel = 'All Recorded History';
-        break;
-      case 'today':
-        dateLabel = 'Today';
-        break;
-      case 'yesterday':
-        dateLabel = 'Yesterday';
-        break;
-      case 'last7':
-        dateLabel = 'Last 7 Days';
-        break;
-      case 'last30':
-        dateLabel = 'Last 30 Days';
-        break;
-      case 'thisMonth':
-        dateLabel = 'This Month';
-        break;
-      default:
-        if (startDate && endDate) {
-          dateLabel = `${startDate} to ${endDate}`;
-        }
-        break;
-    }
-
     return {
-      reportDateRange: dateLabel,
-      selectedOrgFilter: 'All Platform Cafeterias',
-      totalOrganizations: orgs.length,
-      totalAdmins,
-      activeSubscriptions: activeOrgsCount,
-      totalGatewayRevenue: subscriptionRevenue,
-      pendingRequestsCount,
-      totalPurchaseVolume: analytics.totalPurchaseVolume,
-      totalRechargeVolume: analytics.totalRechargeVolume,
-      totalRefundVolume: analytics.totalRefundVolume ?? 0,
-      totalTransactions: analytics.totalTransactions,
-      activeSessionsCount: analytics.activeSessionsCount,
-      lowStockItemsCount: analytics.lowStockItemsCount,
-      organizations: orgs.map((o) => ({
-        id: o.id,
-        name: o.name,
-        status: o.status,
-        planName: o.plan?.name || 'Standard',
-        branchCount: o.usage?.branchCount ?? 0,
-        branchLimit: o.usage?.branchLimit ?? 3,
-        staffCount: o.usage?.staffCount ?? 0,
-        staffLimit: o.usage?.staffLimit ?? 25,
-        cardCount: o.usage?.cardCount ?? 0,
-        cardLimit: o.usage?.cardLimit ?? 1000,
-        adminUser: o.adminUser || null,
-      })),
-      branches: branches.map((b) => ({
-        id: b.id,
-        name: b.name,
-        orgName: orgMap.get(b.organizationId) || 'Platform Cafeteria',
-        status: b.status,
-        transactionCount: 120,
-        purchaseCount: 80,
-        rechargeCount: 40,
-        totalRevenue: 28500,
-        sessionCount: 45,
-        productsSoldCount: 150,
-      })),
-      products: peakData?.productDemand.map((p) => ({
-        id: p.productId,
-        name: p.productName,
-        category: p.category,
-        quantitySold: p.quantitySold,
-        revenue: p.revenue,
-        stockStatus: p.stockStatus,
-      })) || [],
-      peakInfo: peakData
-        ? {
-            peakHoursRange: peakData.comparison.peakHoursRange,
-            peakTransactions: peakData.comparison.peakTransactions,
-            offPeakTransactions: peakData.comparison.offPeakTransactions,
-            peakVolume: peakData.comparison.peakVolume,
-            offPeakVolume: peakData.comparison.offPeakVolume,
-            busiestHour: peakData.comparison.busiestHour,
-            busiestBranchName: peakData.comparison.busiestBranchName,
-            hourlyDistribution: peakData.hourlyDistribution.map((h) => ({
-              hourLabel: h.hourLabel,
-              transactionCount: h.transactionCount,
-              totalVolume: h.totalVolume,
-              isPeak: h.isPeak,
-            })),
-          }
-        : undefined,
-      plans: plans.map((p) => ({
-        id: p.id,
-        name: p.name,
-        price: p.price,
-        billingInterval: p.billingInterval,
-        branchLimit: p.branchLimit ?? 3,
-        staffLimit: p.staffLimit ?? 25,
-        cardLimit: p.cardLimit ?? 1000,
-        tenantCount: orgs.filter((o) => o.plan?.id === p.id || o.plan?.name === p.name).length,
-      })),
+      analytics,
+      peakData,
+      branches,
+      selectedBranchName: cafeteriaDisplayName,
+      dateRangeLabel,
+      organizationName: selectedOrg ? selectedOrg.name : 'Platform Cafeterias',
       sections: overrideSections ?? pdfSections,
     };
   };
 
-  const refreshPdfPreview = (sectionsToUse: PlatformPdfSectionOptions) => {
-    try {
-      const params = buildReportParams(sectionsToUse);
-      if (!params) return;
-      const blob = generatePlatformAnalyticsPdfBlob(params);
-      if (pdfPreviewUrl) {
-        URL.revokeObjectURL(pdfPreviewUrl);
-      }
-      const url = URL.createObjectURL(blob);
-      setPdfPreviewUrl(url);
-    } catch (err) {
-      console.error('Failed to refresh Super Admin PDF preview:', err);
-    }
-  };
-
-  const handleToggleSection = (sectionKey: keyof PlatformPdfSectionOptions) => {
-    const updated = {
-      ...pdfSections,
-      [sectionKey]: !pdfSections[sectionKey],
-    };
-    setPdfSections(updated);
-    refreshPdfPreview(updated);
-  };
-
-  const handleSetAllSections = (enable: boolean) => {
-    const updated: PlatformPdfSectionOptions = {
-      includePlatformKpis: enable,
-      includeFinancialSummary: false,
-      includeTenantOrgs: enable,
-      includeBranchPerformance: false,
-      includeProductDemand: false,
-      includePeakTraffic: false,
-      includeSubscriptionPlans: enable,
-    };
-    setPdfSections(updated);
-    refreshPdfPreview(updated);
-  };
-
-  // ── 1. View PDF Action ─────────────────────────────────────
   const handleViewPdf = () => {
     setIsExportingPdf(true);
     try {
-      const params = buildReportParams(pdfSections);
-      if (!params) {
-        notify.error('No analytics data available to render PDF.');
+      const defaultSections: OrgPdfSectionOptions = {
+        includeExecutiveKpis: true,
+        includeCardLifecycle: true,
+        includePaymentBreakdown: false,
+        includeRushKpis: false,
+        includeTrafficDistribution: false,
+        includeFoodDemand: false,
+        includeBranchComparison: false,
+        includeStaffPerformance: false,
+      };
+      setPdfSections(defaultSections);
+      const options = getOrgReportOptions(defaultSections);
+      if (!options) {
+        notify.error('No analytics data available to preview.');
         return;
       }
 
-      const blob = generatePlatformAnalyticsPdfBlob(params);
-      const dateStr = new Date().toISOString().split('T')[0];
-      const filename = `MoneyCard_SuperAdmin_Analytics_${dateStr}.pdf`;
-
-      console.log('[Super Admin] PDF Preview Ready:', { size: blob.size, type: blob.type, filename });
-
+      const blob = generateAnalyticsPdfBlob(options);
       if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
       const url = URL.createObjectURL(blob);
       setPdfPreviewUrl(url);
@@ -412,93 +200,137 @@ export function SuperAdminAnalyticsView() {
     }
   };
 
-  // ── 2. Download PDF Action (Explicit .pdf binary file) ───────
-  const handleDownloadPdf = () => {
-    setIsExportingPdf(true);
+  const handleUpdatePreviewSections = (selected: { financial: boolean; cards: boolean }) => {
+    const updated: OrgPdfSectionOptions = {
+      ...pdfSections,
+      includeExecutiveKpis: selected.financial,
+      includeCardLifecycle: selected.cards,
+    };
+    setPdfSections(updated);
     try {
-      const params = buildReportParams(pdfSections);
-      if (!params) {
-        notify.error('No analytics data available to download.');
-        return;
-      }
-
-      const dateStr = new Date().toISOString().split('T')[0];
-      const filename = `MoneyCard_SuperAdmin_Analytics_${dateStr}.pdf`;
-
-      // Execute native jsPDF file download strictly matching enabled options
-      downloadPlatformAnalyticsPdf(params, filename);
-
-      notify.success(`Analytics report downloaded: ${filename}`);
-    } catch {
-      notify.error('Failed to download Analytics PDF.');
-    } finally {
-      setIsExportingPdf(false);
+      const options = getOrgReportOptions(updated);
+      if (!options) return;
+      const blob = generateAnalyticsPdfBlob(options);
+      if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+      const url = URL.createObjectURL(blob);
+      setPdfPreviewUrl(url);
+    } catch (err) {
+      console.error('Failed to refresh PDF preview:', err);
     }
   };
 
-  const orgColumns = [
-    {
-      key: 'name',
-      header: 'Cafeteria',
-      render: (org: OrganizationOverview) => (
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-            <Building2 className="h-4 w-4" />
-          </div>
-          <div>
-            <p className="font-semibold text-slate-900">{org.name}</p>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: 'plan',
-      header: 'Subscribed Plan',
-      render: (org: OrganizationOverview) => (
-        <Badge variant="outline" className="border-emerald-200 text-emerald-700 bg-emerald-50/50">
-          {org.plan?.name || 'Standard'}
-        </Badge>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (org: OrganizationOverview) => (
-        <Badge variant={org.status === 'ACTIVE' ? 'success' : 'danger'}>
-          {org.status}
-        </Badge>
-      ),
-    },
-    {
-      key: 'usage',
-      header: 'Quota Utilization',
-      render: (org: OrganizationOverview) => (
-        <span className="text-xs text-slate-600 font-mono">
-          {org.usage?.branchCount ?? 0} Branches • {org.usage?.staffCount ?? 0} Staff • {org.usage?.cardCount ?? 0} Cards
-        </span>
-      ),
-    },
-  ];
+  const handleDownloadFinancialPdf = () => {
+    const options = getOrgReportOptions(pdfSections);
+    if (!options) return;
+    const dateStr = new Date().toISOString().split('T')[0];
+    downloadFinancialOverviewPdf(options, `MoneyCard_SuperAdmin_Financial_Overview_${dateStr}.pdf`);
+    notify.success('Financial Overview PDF downloaded.');
+  };
+
+  const handleDownloadCardAnalyticsPdf = () => {
+    const options = getOrgReportOptions(pdfSections);
+    if (!options) return;
+    const dateStr = new Date().toISOString().split('T')[0];
+    downloadCardAnalyticsPdf(options, `MoneyCard_SuperAdmin_Card_Analytics_${dateStr}.pdf`);
+    notify.success('Card Analytics PDF downloaded.');
+  };
+
+  const handleDownloadBothPdf = () => {
+    const options = getOrgReportOptions({
+      ...pdfSections,
+      includeExecutiveKpis: true,
+      includeCardLifecycle: true,
+    });
+    if (!options) return;
+    const dateStr = new Date().toISOString().split('T')[0];
+    downloadOrgAnalyticsPdf(options, `MoneyCard_SuperAdmin_Analytics_${dateStr}.pdf`);
+    notify.success('Analytics report downloaded.');
+  };
 
   return (
-    <div className="space-y-8">
-      {/* Header Bar with View PDF and Download PDF buttons */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-6">
+      {/* ── Header Bar: Title on Left, Filter Options & Actions on Right ── */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-200 pb-5">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Platform Analytics</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+            Platform Analytics
+          </h1>
         </div>
 
-        {/* Action Buttons: [ Refresh ] and [ View PDF ] */}
+        {/* Filter Controls: Cafeteria Filter + Custom Date Range + Actions */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Cafeteria Filter */}
+          <div className="w-44 sm:w-52">
+            <Select
+              id="analytics-cafeteria-filter"
+              value={selectedOrgId}
+              onChange={(e) => setSelectedOrgId(e.target.value)}
+              options={[
+                { value: '', label: 'All Cafeterias' },
+                ...activeOrgs.map((o) => ({ value: o.id, label: o.name })),
+              ]}
+              className="h-9 py-1.5 pl-3 pr-8 text-xs leading-normal font-medium"
+            />
+          </div>
+
+          {/* Custom Date Pickers — strictly custom range only (Auto-applied) */}
+          <div className="flex flex-wrap items-center gap-1.5 bg-slate-50 p-1 rounded-lg border border-slate-200">
+            <input
+              id="superadmin-analytics-start-date"
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                const val = e.target.value;
+                setStartDate(val);
+                if (endDate && val > endDate) {
+                  setEndDate(val);
+                }
+              }}
+              className="h-8 px-2 text-xs bg-white border border-slate-200 rounded text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium"
+              aria-label="Start date"
+            />
+            <span className="text-xs text-slate-400">to</span>
+            <input
+              id="superadmin-analytics-end-date"
+              type="date"
+              value={endDate}
+              onChange={(e) => {
+                const val = e.target.value;
+                setEndDate(val);
+                if (startDate && val < startDate) {
+                  setStartDate(val);
+                }
+              }}
+              className="h-8 px-2 text-xs bg-white border border-slate-200 rounded text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium"
+              aria-label="End date"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const today = formatLocalDate(new Date());
+                setStartDate(today);
+                setEndDate(today);
+              }}
+              className="h-8 px-2 text-xs font-semibold text-slate-600 hover:text-slate-900 border-slate-200 bg-white"
+            >
+              Reset to Today
+            </Button>
+          </div>
+
+          {/* Refresh Data */}
           <Button
             variant="outline"
             size="sm"
-            onClick={() => fetchPlatformData()}
-            leftIcon={<RefreshCw className="h-4 w-4" />}
+            onClick={() => fetchPlatformData(true)}
+            isLoading={isRefreshing}
+            leftIcon={<RefreshCw className={`h-3.5 w-3.5 text-slate-600 ${isRefreshing ? 'animate-spin' : ''}`} />}
+            title="Refresh platform analytics"
           >
             Refresh
           </Button>
 
+          {/* View PDF */}
           <Button
             variant="primary"
             size="sm"
@@ -512,163 +344,92 @@ export function SuperAdminAnalyticsView() {
         </div>
       </div>
 
+      {/* ── Tab Navigation: Financial Overview, Card Analytics & Menu Analytics ── */}
+      <div className="flex items-center gap-2 border-b border-slate-200">
+        <button
+          type="button"
+          onClick={() => handleTabChange('overview')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+            activeTab === 'overview'
+              ? 'border-emerald-600 text-emerald-700 bg-emerald-50/50 rounded-t-lg'
+              : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+          }`}
+        >
+          <BarChart3 className="h-4 w-4" />
+          <span>Financial Overview</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabChange('cards')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+            activeTab === 'cards'
+              ? 'border-emerald-600 text-emerald-700 bg-emerald-50/50 rounded-t-lg'
+              : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+          }`}
+        >
+          <CreditCard className="h-4 w-4 text-indigo-600" />
+          <span>Card Analytics</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabChange('menu')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+            activeTab === 'menu'
+              ? 'border-emerald-600 text-emerald-700 bg-emerald-50/50 rounded-t-lg'
+              : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+          }`}
+        >
+          <UtensilsCrossed className="h-4 w-4 text-emerald-600" />
+          <span>Menu Analytics</span>
+        </button>
+      </div>
+
       {isLoading ? (
         <LoadingState message="Aggregating platform-wide analytics..." />
       ) : error ? (
-        <ErrorState title="Failed to load platform analytics" message={error} onRetry={fetchPlatformData} />
-      ) : analytics ? (
-        <div className="space-y-8">
-          {/* ── Filter Toolbar (Cafeteria Scope, Time Window, Refresh Data) ── */}
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Cafeteria Scope Filter */}
-              <div className="w-full sm:w-56">
-                <label htmlFor="analytics-cafeteria-filter" className="mb-1 block text-[11px] font-medium text-slate-600">Cafeteria Scope</label>
-                <Select
-                  id="analytics-cafeteria-filter"
-                  value={selectedOrgId}
-                  onChange={(e) => setSelectedOrgId(e.target.value)}
-                  options={[
-                    { value: '', label: 'All Cafeterias' },
-                    ...orgs.map((o) => ({ value: o.id, label: o.name })),
-                  ]}
-                />
-              </div>
-
-              {/* Time Window Filter */}
-              <div className="w-full sm:w-48">
-                <label htmlFor="analytics-preset-filter" className="mb-1 block text-[11px] font-medium text-slate-600">Time Window</label>
-                <Select
-                  id="analytics-preset-filter"
-                  value={datePreset}
-                  onChange={(e) => handlePresetChange(e.target.value as DatePreset)}
-                  options={[
-                    { value: 'all', label: 'All Time' },
-                    { value: 'today', label: 'Today' },
-                    { value: 'yesterday', label: 'Yesterday' },
-                    { value: 'last7', label: 'Last 7 Days' },
-                    { value: 'last30', label: 'Last 30 Days' },
-                    { value: 'thisMonth', label: 'This Month' },
-                    { value: 'custom', label: 'Custom Range' },
-                  ]}
-                />
-              </div>
-
-              {/* Custom Date Inputs (if selected) */}
-              {datePreset === 'custom' && (
-                <div className="flex flex-wrap items-end gap-2">
-                  <div>
-                    <label htmlFor="analytics-start-date" className="mb-1 block text-[11px] font-medium text-slate-600">Start Date</label>
-                    <input
-                      id="analytics-start-date"
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none shadow-sm"
-                    />
+        <ErrorState title="Failed to load platform analytics" message={error} onRetry={() => fetchPlatformData(false)} />
+      ) : activeTab === 'overview' ? (
+        analytics && (
+          <OrgAdminFinancialSection
+            analytics={analytics}
+            cashRecharge={analytics.cashMoney ?? analytics.cashRechargeVolume ?? 0}
+            upiRecharge={analytics.upiMoney ?? analytics.upiRechargeVolume ?? 0}
+            totalRefund={analytics.totalRefundVolume ?? 0}
+            leadingCard={
+              <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    Organization
+                  </span>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                    <Building2 className="h-4 w-4" />
                   </div>
-                  <div>
-                    <label htmlFor="analytics-end-date" className="mb-1 block text-[11px] font-medium text-slate-600">End Date</label>
-                    <input
-                      id="analytics-end-date"
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none shadow-sm"
-                    />
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const today = new Date().toISOString().split('T')[0];
-                      setStartDate(today);
-                      setEndDate(today);
-                    }}
-                    className="h-8 px-2.5 text-xs font-semibold border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer"
-                  >
-                    Reset to Today
-                  </Button>
                 </div>
-              )}
-            </div>
+                <div className="mt-2">
+                  <p className="font-mono text-2xl font-bold text-slate-900">
+                    {selectedOrgId ? '1 Cafeteria' : `${activeOrgs.length} Cafeterias`}
+                  </p>
+                </div>
+              </Card>
+            }
+          />
+        )
+      ) : activeTab === 'cards' ? (
+        <OrgAdminCardTracker
+          cardFleet={analytics?.cardFleetAnalytics}
+          closedCardsCount={analytics?.closedCardsCount}
+          zeroBalanceActiveCardsCount={analytics?.zeroBalanceActiveCardsCount}
+          activeCardsRechargeCount={analytics?.activeCardsRechargeCount}
+          reRechargedCardsCount={analytics?.reRechargedCardsCount}
+        />
+      ) : (
+        analytics && <OrgAdminMenuAnalyticsSection analytics={analytics} />
+      )}
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fetchPlatformData(true)}
-              isLoading={isRefreshing}
-              leftIcon={<RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />}
-              className="shrink-0 self-start lg:self-center"
-            >
-              Refresh Data
-            </Button>
-          </div>
-
-          {/* Top Platform KPI Cards (Super Admin B2B SaaS Metrics) */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              label="Total Cafeterias"
-              value={`${orgs.length} Cafeterias`}
-              icon={<Building2 className="h-5 w-5 text-emerald-600" />}
-            />
-
-            <StatCard
-              label="Cafeteria Admins"
-              value={`${orgs.filter((o) => Boolean(o.adminUser)).length} Admins`}
-              icon={<Users className="h-5 w-5 text-teal-600" />}
-            />
-
-            <StatCard
-              label="Active Subscriptions"
-              value={`${activeOrgsCount} Active`}
-              icon={<Layers className="h-5 w-5 text-emerald-600" />}
-            />
-
-            <StatCard
-              label="Subscription Revenue"
-              value={`${formatCurrency(subscriptionRevenue)} / mo`}
-              icon={<CreditCard className="h-5 w-5 text-emerald-600" />}
-            />
-          </div>
-
-          {/* Section 1: Tenant Organizations Summary */}
-          <div className="space-y-4">
-            <h2 className="text-lg font-bold text-slate-900">Platform Cafeterias Performance</h2>
-            <Card padding="none">
-              <DataTable<OrganizationOverview>
-                data={selectedOrgId ? orgs.filter((o) => o.id === selectedOrgId) : orgs}
-                columns={orgColumns}
-                keyExtractor={(item: OrganizationOverview) => item.id}
-              />
-            </Card>
-          </div>
-
-          {/* Section 2: Catalog Plans Overview */}
-          <div className="space-y-4">
-            <h2 className="text-lg font-bold text-slate-900">Subscription Plans Distribution</h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {plans.map((plan) => {
-                const count = orgs.filter((o) => o.plan?.id === plan.id || o.plan?.name === plan.name).length;
-                return (
-                  <div key={plan.id} className="rounded-xl border border-slate-200 bg-white p-4 space-y-2 shadow-sm">
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold text-slate-900">{plan.name}</span>
-                      <Badge variant="outline">{count} Tenants</Badge>
-                    </div>
-                    <p className="font-mono text-lg font-bold text-emerald-600">
-                      {formatCurrency(plan.price)} <span className="text-xs text-slate-500 font-normal">/{plan.billingInterval.toLowerCase()}</span>
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {/* ── PDF Viewer Modal ─────────────────────────────────────── */}
-      <Modal
+      {/* ── PDF Viewer Modal (OrgAdminPdfModal with Financial and Card tiles) ── */}
+      <OrgAdminPdfModal
         isOpen={showPdfModal}
         onClose={() => {
           setShowPdfModal(false);
@@ -677,117 +438,13 @@ export function SuperAdminAnalyticsView() {
             setPdfPreviewUrl(null);
           }
         }}
-        title="Cafeteria Analytics Report — PDF Preview"
-        size="xl"
-      >
-        <div className="space-y-4">
-          {/* Option-Wise Report Section Customizer Toolbar */}
-          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-2xs">
-            <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100">
-                  <SlidersHorizontal className="h-4 w-4" />
-                </div>
-                <h4 className="text-xs font-bold text-slate-900">Customize Report Sections</h4>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  id="platform-pdf-select-all"
-                  onClick={() => handleSetAllSections(true)}
-                  className="rounded-md px-2 py-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors cursor-pointer"
-                >
-                  Select All
-                </button>
-                <span className="text-slate-300">|</span>
-                <button
-                  type="button"
-                  id="platform-pdf-clear-all"
-                  onClick={() => handleSetAllSections(false)}
-                  className="rounded-md px-2 py-1 text-[11px] font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
-                >
-                  Clear All
-                </button>
-              </div>
-            </div>
-
-            {/* Clickable Report Sections Toolbar */}
-            <div className="pt-2.5">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-                Optional Report Sections (Click to Include / Exclude)
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                {[
-                  { key: 'includePlatformKpis' as const, label: '1. Platform Overview', id: 'platform-toggle-kpis' },
-                  { key: 'includeTenantOrgs' as const, label: '2. Platform Cafeterias Performance', id: 'platform-toggle-orgs' },
-                  { key: 'includeSubscriptionPlans' as const, label: '3. Subscription Plans Distribution', id: 'platform-toggle-plans' },
-                ].map((sec) => {
-                  const isSelected = !!pdfSections[sec.key];
-                  return (
-                    <button
-                      key={sec.key}
-                      type="button"
-                      id={sec.id}
-                      onClick={() => handleToggleSection(sec.key)}
-                      className={`flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-all cursor-pointer ${
-                        isSelected
-                          ? 'border-emerald-500 bg-emerald-50 text-emerald-950 shadow-2xs ring-1 ring-emerald-500/30'
-                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      <div
-                        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
-                          isSelected
-                            ? 'border-emerald-600 bg-emerald-600 text-white'
-                            : 'border-slate-300 bg-white'
-                        }`}
-                      >
-                        {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
-                      </div>
-                      <span className="text-xs font-semibold">{sec.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {pdfPreviewUrl && (
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-lg">
-              <iframe
-                src={`${pdfPreviewUrl}#toolbar=0`}
-                className="w-full h-[70vh] rounded-lg"
-                title="Cafeteria Analytics Report PDF Preview"
-              />
-            </div>
-          )}
-
-          <ModalFooter>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setShowPdfModal(false);
-                if (pdfPreviewUrl) {
-                  URL.revokeObjectURL(pdfPreviewUrl);
-                  setPdfPreviewUrl(null);
-                }
-              }}
-            >
-              Close
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleDownloadPdf}
-              leftIcon={<Download className="h-4 w-4" />}
-              id="download-platform-customized-pdf-btn"
-            >
-              Download PDF
-            </Button>
-          </ModalFooter>
-        </div>
-      </Modal>
+        pdfPreviewUrl={pdfPreviewUrl}
+        onDownloadPdf={handleDownloadFinancialPdf}
+        onDownloadFinancial={handleDownloadFinancialPdf}
+        onDownloadCardAnalytics={handleDownloadCardAnalyticsPdf}
+        onDownloadBoth={handleDownloadBothPdf}
+        onPreviewSectionsChange={handleUpdatePreviewSections}
+      />
     </div>
   );
 }

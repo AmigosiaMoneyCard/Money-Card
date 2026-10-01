@@ -62,7 +62,7 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
   },
   {
     id: 'cards',
-    label: 'Cards & History',
+    label: 'Wallets & History',
     path: '/cards',
     iconName: 'CreditCard',
     roles: ['ORG_ADMIN', 'STAFF'],
@@ -88,6 +88,6 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
     label: 'Settings',
     path: '/settings',
     iconName: 'Settings',
-    roles: ['SUPER_ADMIN', 'STAFF'],
+    roles: [],
   },
 ];

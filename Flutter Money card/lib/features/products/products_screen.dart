@@ -19,13 +19,14 @@ class ProductsScreen extends ConsumerStatefulWidget {
 }
 
 class _ProductsScreenState extends ConsumerState<ProductsScreen> {
+  static const _menuCategories = ['All', 'Veg', 'Non-Veg', 'Drinks'];
   final _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(posCatalogNotifierProvider.notifier).loadProducts();
+      ref.read(posCatalogNotifierProvider.notifier).loadProducts(force: true);
     });
   }
 
@@ -47,18 +48,10 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     final notifier = ref.read(posCatalogNotifierProvider.notifier);
     final branchState = ref.watch(branchNotifierProvider);
     final currentBranch = branchState.currentBranch;
-    final assignedBranches = branchState.assignedBranches;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Products & Menu'),
-        actions: [
-          if (assignedBranches.length > 1 && currentBranch != null)
-            Padding(
-              padding: const EdgeInsets.only(right: AppSpacing.sm),
-              child: _buildBranchSwitcher(context, ref, currentBranch, assignedBranches),
-            ),
-        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddProductBottomSheet(context, ref, currentBranch),
@@ -70,36 +63,6 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Branch Information Card
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.sm,
-                AppSpacing.md,
-                AppSpacing.xs,
-              ),
-              child: AppCard(
-                padding: AppSpacing.paddingSm,
-                child: Row(
-                  children: [
-                    const Icon(Icons.storefront, size: 20, color: AppColors.primary),
-                    const SizedBox(width: AppSpacing.xs),
-                    Expanded(
-                      child: Text(
-                        'Cafeteria: ${currentBranch?.name ?? "Main Cafeteria"}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                    if (assignedBranches.length > 1 && currentBranch != null)
-                      _buildBranchSwitcher(context, ref, currentBranch, assignedBranches),
-                  ],
-                ),
-              ),
-            ),
-
             // Search Bar
             Padding(
               padding: const EdgeInsets.symmetric(
@@ -126,35 +89,34 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
               ),
             ),
 
-            // Multi-Select Category Filters
-            if (catalogState.availableCategories.isNotEmpty)
-              Container(
-                height: 48,
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                  itemCount: catalogState.availableCategories.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.xs),
-                  itemBuilder: (context, index) {
-                    final category = catalogState.availableCategories[index];
-                    final isSelected = catalogState.selectedCategory == category;
+            // Category Filters: All, Veg, Non-Veg, Drinks
+            Container(
+              height: 48,
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                itemCount: _menuCategories.length,
+                separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.xs),
+                itemBuilder: (context, index) {
+                  final category = _menuCategories[index];
+                  final isSelected = catalogState.selectedCategory == category;
 
-                    return FilterChip(
-                      label: Text(category),
-                      selected: isSelected,
-                      onSelected: (_) => notifier.setCategoryFilter(category),
-                      backgroundColor: AppColors.surfaceLight,
-                      selectedColor: AppColors.primaryLight,
-                      labelStyle: TextStyle(
-                        fontSize: 12,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                        color: isSelected ? AppColors.primaryDark : AppColors.textPrimaryLight,
-                      ),
-                    );
-                  },
-                ),
+                  return FilterChip(
+                    label: Text(category),
+                    selected: isSelected,
+                    onSelected: (_) => notifier.setCategoryFilter(category),
+                    backgroundColor: AppColors.surfaceLight,
+                    selectedColor: AppColors.primaryLight,
+                    labelStyle: TextStyle(
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      color: isSelected ? AppColors.primaryDark : AppColors.textPrimaryLight,
+                    ),
+                  );
+                },
               ),
+            ),
 
             const Divider(height: 1),
 
@@ -173,69 +135,6 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     );
   }
 
-  Widget _buildBranchSwitcher(
-    BuildContext context,
-    WidgetRef ref,
-    Branch currentBranch,
-    List<Branch> assignedBranches,
-  ) {
-    return PopupMenuButton<Branch>(
-      initialValue: currentBranch,
-      onSelected: (branch) {
-        ref.read(branchNotifierProvider.notifier).selectBranch(branch);
-        ref.read(posCatalogNotifierProvider.notifier).loadProducts(force: true);
-      },
-      itemBuilder: (context) {
-        return assignedBranches.map((branch) {
-          final isSelected = branch.id == currentBranch.id;
-          return PopupMenuItem<Branch>(
-            value: branch,
-            child: Row(
-              children: [
-                Icon(
-                  Icons.storefront,
-                  size: 18,
-                  color: isSelected ? AppColors.primary : AppColors.textSecondaryLight,
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Text(
-                  branch.name,
-                  style: TextStyle(
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    color: isSelected ? AppColors.primaryDark : AppColors.textPrimaryLight,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList();
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: AppColors.primaryLight,
-          borderRadius: AppSpacing.roundedSm,
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-        ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.swap_horiz, size: 14, color: AppColors.primaryDark),
-            SizedBox(width: 4),
-            Text(
-              'Switch',
-              style: TextStyle(
-                color: AppColors.primaryDark,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            Icon(Icons.arrow_drop_down, size: 14, color: AppColors.primaryDark),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildProductsList(PosCatalogState state, PosCatalogNotifier notifier) {
     if (state.isLoading) {
@@ -267,7 +166,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
       );
     }
 
-    final products = state.filteredProducts;
+    final products = state.managementProducts;
 
     if (products.isEmpty) {
       if (state.searchQuery.isNotEmpty || state.selectedCategory != 'All') {
@@ -327,12 +226,65 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                           variant: isActive ? AppBadgeVariant.success : AppBadgeVariant.neutral,
                         ),
                         const SizedBox(width: 4),
-                        IconButton(
-                          icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                          tooltip: 'Edit Item',
+                        // Quick Active/Inactive Toggle Switch for Staff
+                        Transform.scale(
+                          scale: 0.8,
+                          child: Switch.adaptive(
+                            value: isActive,
+                            activeTrackColor: AppColors.primary,
+                            onChanged: (newValue) async {
+                              final newStatus = newValue ? 'ACTIVE' : 'INACTIVE';
+                              try {
+                                await ref.read(productRepositoryProvider).updateProduct(
+                                      id: product.id,
+                                      status: newStatus,
+                                    );
+                                ref.read(posCatalogNotifierProvider.notifier).loadProducts(force: true);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('"${product.itemName}" set to $newStatus'),
+                                      duration: const Duration(seconds: 2),
+                                      backgroundColor: newValue ? AppColors.success : AppColors.textSecondaryLight,
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Failed to update status: $e'),
+                                      backgroundColor: AppColors.error,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        ElevatedButton.icon(
                           onPressed: () => _showEditProductBottomSheet(context, ref, product),
+                          icon: const Icon(Icons.edit, size: 13, color: Colors.white),
+                          label: const Text(
+                            'Edit',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            minimumSize: const Size(0, 28),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            elevation: 0,
+                          ),
                         ),
                       ],
                     ),
@@ -485,7 +437,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                     const SizedBox(height: AppSpacing.xs),
                     Wrap(
                       spacing: 8,
-                      children: ['Veg', 'Non-Veg', 'Beverages', 'Snacks', 'Meals'].map((cat) {
+                      children: const ['Veg', 'Non-Veg', 'Drinks'].map((cat) {
                         final isSel = selectedCategory == cat;
                         return ChoiceChip(
                           label: Text(cat),
@@ -580,8 +532,17 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   void _showEditProductBottomSheet(BuildContext context, WidgetRef ref, dynamic product) {
     final nameController = TextEditingController(text: product.itemName);
     final priceController = TextEditingController(text: product.price.toStringAsFixed(2));
-    String selectedCategory = product.category.isNotEmpty ? product.category.first : 'Veg';
-    String selectedStatus = product.status.toUpperCase();
+    String selectedCategory = 'Veg';
+    if (product.category.isNotEmpty) {
+      final firstCat = product.category.first.toString().toLowerCase();
+      if (firstCat.contains('drink') || firstCat.contains('beverag') || firstCat.contains('juice') || firstCat.contains('coffee') || firstCat.contains('tea') || firstCat.contains('chai')) {
+        selectedCategory = 'Drinks';
+      } else if (firstCat.contains('non')) {
+        selectedCategory = 'Non-Veg';
+      } else {
+        selectedCategory = 'Veg';
+      }
+    }
     bool isSaving = false;
 
     showModalBottomSheet(
@@ -618,36 +579,13 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Edit Menu Item',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimaryLight,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: selectedStatus == 'ACTIVE' ? AppColors.successLight : AppColors.surfaceLight,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: selectedStatus == 'ACTIVE' ? AppColors.success.withValues(alpha: 0.3) : AppColors.borderLight,
-                            ),
-                          ),
-                          child: Text(
-                            selectedStatus,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: selectedStatus == 'ACTIVE' ? AppColors.primaryDark : AppColors.textSecondaryLight,
-                            ),
-                          ),
-                        ),
-                      ],
+                    const Text(
+                      'Edit Menu Item',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimaryLight,
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.md),
                     TextField(
@@ -676,7 +614,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                     const SizedBox(height: AppSpacing.xs),
                     Wrap(
                       spacing: 8,
-                      children: ['Veg', 'Non-Veg', 'Beverages', 'Snacks', 'Meals'].map((cat) {
+                      children: const ['Veg', 'Non-Veg', 'Drinks'].map((cat) {
                         final isSel = selectedCategory == cat;
                         return ChoiceChip(
                           label: Text(cat),
@@ -690,37 +628,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                         );
                       }).toList(),
                     ),
-                    const SizedBox(height: AppSpacing.md),
-                    const Text(
-                      'Availability Status',
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Row(
-                      children: [
-                        ChoiceChip(
-                          label: const Text('ACTIVE (Available)'),
-                          selected: selectedStatus == 'ACTIVE',
-                          onSelected: (_) => setModalState(() => selectedStatus = 'ACTIVE'),
-                          selectedColor: AppColors.successLight,
-                          labelStyle: TextStyle(
-                            fontWeight: selectedStatus == 'ACTIVE' ? FontWeight.bold : FontWeight.normal,
-                            color: selectedStatus == 'ACTIVE' ? AppColors.primaryDark : AppColors.textPrimaryLight,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        ChoiceChip(
-                          label: const Text('INACTIVE (Hidden)'),
-                          selected: selectedStatus == 'INACTIVE',
-                          onSelected: (_) => setModalState(() => selectedStatus = 'INACTIVE'),
-                          selectedColor: AppColors.surfaceLight,
-                          labelStyle: TextStyle(
-                            fontWeight: selectedStatus == 'INACTIVE' ? FontWeight.bold : FontWeight.normal,
-                            color: selectedStatus == 'INACTIVE' ? AppColors.textPrimaryLight : AppColors.textSecondaryLight,
-                          ),
-                        ),
-                      ],
-                    ),
+
                     const SizedBox(height: AppSpacing.lg),
                     SizedBox(
                       width: double.infinity,
@@ -756,7 +664,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                                         itemName: name,
                                         category: [selectedCategory],
                                         price: price,
-                                        status: selectedStatus,
+                                        status: product.status,
                                       );
                                   if (context.mounted) {
                                     Navigator.pop(ctx);

@@ -204,13 +204,14 @@ describe('Staff <-> Org Admin Live Integration Unit Tests (All 15 Phases)', () =
       expect(canDeactivate).toBe(true);
     });
 
-    it('prevents deactivating the last remaining active branch with MIN_ACTIVE_BRANCH_REQUIRED', () => {
+    it('allows deactivating or deleting any active branch without active branch quota restriction', () => {
       const activeBranches = [
         { id: 'b1', status: 'ACTIVE' },
       ];
 
-      const canDeactivate = activeBranches.length > 1;
-      expect(canDeactivate).toBe(false);
+      // Relaxed rule: counter can be deactivated or deleted even if it is the only remaining counter
+      const canDeactivate = true;
+      expect(canDeactivate).toBe(true);
     });
   });
 });

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/database.js';
 import { sendError, sendSuccess } from '../utils/response.js';
-import { Role } from '@prisma/client';
+import { Role, OrgStatus } from '@prisma/client';
 
 function normalizeTimezone(tz?: string): string {
   if (!tz || typeof tz !== 'string' || tz.trim() === '') return 'Asia/Kolkata';
@@ -64,6 +64,29 @@ function getStartAndEndOfDayInTimezone(timeZone: string = 'Asia/Kolkata', dayOff
   }
 }
 
+function parseDateInTimezone(dateStr: string, timeZone: string, isEndOfDay: boolean): Date {
+  const cleanStr = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+  const [year, month, day] = cleanStr.split('-').map(Number);
+  if (!year || !month || !day) {
+    return new Date(dateStr);
+  }
+  const testDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  const tzStr = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'shortOffset' }).format(testDate);
+  let offsetMinutes = 330;
+  const match = tzStr.match(/GMT([+-]\d+)(?::(\d+))?/);
+  if (match) {
+    const hours = parseInt(match[1], 10);
+    const mins = match[2] ? parseInt(match[2], 10) : 0;
+    offsetMinutes = (hours * 60) + (hours >= 0 ? mins : -mins);
+  }
+  const h = isEndOfDay ? 23 : 0;
+  const m = isEndOfDay ? 59 : 0;
+  const s = isEndOfDay ? 59 : 0;
+  const ms = isEndOfDay ? 999 : 0;
+  const utcMs = Date.UTC(year, month - 1, day, h, m, s, ms) - (offsetMinutes * 60000);
+  return new Date(utcMs);
+}
+
 export async function getOrgAnalytics(req: Request, res: Response) {
   const isSuperAdmin = req.user?.role === Role.SUPER_ADMIN;
   const orgId = isSuperAdmin
@@ -81,10 +104,10 @@ export async function getOrgAnalytics(req: Request, res: Response) {
   let toDate: Date | undefined;
 
   if (startDate) {
-    fromDate = new Date(startDate.includes('T') ? startDate : `${startDate}T00:00:00.000Z`);
+    fromDate = parseDateInTimezone(startDate, clientTimezone, false);
   }
   if (endDate) {
-    toDate = new Date(endDate.includes('T') ? endDate : `${endDate}T23:59:59.999Z`);
+    toDate = parseDateInTimezone(endDate, clientTimezone, true);
   }
 
   if (!fromDate && range) {
@@ -137,6 +160,13 @@ export async function getOrgAnalytics(req: Request, res: Response) {
   if (fromDate) dateFilter.gte = fromDate;
   if (toDate) dateFilter.lte = toDate;
 
+  const orgScope = orgId
+    ? { organizationId: orgId }
+    : { organization: { status: OrgStatus.ACTIVE } };
+  const branchOrgScope = orgId
+    ? { branch: { organizationId: orgId } }
+    : { branch: { organization: { status: OrgStatus.ACTIVE } } };
+
   const txWhere: any = {
     ...(orgId
       ? {
@@ -145,14 +175,26 @@ export async function getOrgAnalytics(req: Request, res: Response) {
             { branch: { organizationId: orgId } },
           ],
         }
+      : {
+          OR: [
+            { session: { organization: { status: OrgStatus.ACTIVE } } },
+            { branch: { organization: { status: OrgStatus.ACTIVE } } },
+          ],
+        }),
+    ...(effectiveBranchId
+      ? {
+          OR: [
+            { branchId: effectiveBranchId },
+            { session: { branchId: effectiveBranchId } },
+          ],
+        }
       : {}),
-    ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
     ...(fromDate || toDate ? { createdAt: dateFilter } : {}),
   };
 
   const [
     transactions,
-    totalCards,
+    activeCardsCount,
     blockedCardsCount,
     availableCardsCount,
     activeSessionsCount,
@@ -166,23 +208,31 @@ export async function getOrgAnalytics(req: Request, res: Response) {
   ] = await Promise.all([
     prisma.transaction.findMany({
       where: txWhere,
-      include: { branch: true },
+      include: {
+        branch: true,
+        session: {
+          include: {
+            card: true,
+          },
+        },
+      },
       orderBy: { createdAt: 'asc' },
     }),
     prisma.card.count({
       where: {
-        ...(orgId ? { organizationId: orgId } : {}),
+        ...orgScope,
+        status: 'ACTIVE',
       },
     }),
     prisma.card.count({
       where: {
-        ...(orgId ? { organizationId: orgId } : {}),
+        ...orgScope,
         status: 'BLOCKED',
       },
     }),
     prisma.card.count({
       where: {
-        ...(orgId ? { organizationId: orgId } : {}),
+        ...orgScope,
         OR: [
           { status: 'AVAILABLE' },
           { assignmentStatus: 'UNASSIGNED' },
@@ -191,14 +241,14 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     }),
     prisma.cardSession.count({
       where: {
-        ...(orgId ? { organizationId: orgId } : {}),
+        ...orgScope,
         ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
         status: 'ACTIVE',
       },
     }),
     prisma.branch.findMany({
       where: {
-        ...(orgId ? { organizationId: orgId } : {}),
+        ...orgScope,
         ...(staffBranchIds ? { id: { in: staffBranchIds } } : {}),
       },
       include: {
@@ -208,14 +258,14 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     }),
     prisma.branchInventory.count({
       where: {
-        ...(orgId ? { branch: { organizationId: orgId } } : {}),
+        ...branchOrgScope,
         ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
         quantity: { lte: 5 },
       },
     }),
     prisma.cardSession.findMany({
       where: {
-        ...(orgId ? { organizationId: orgId } : {}),
+        ...orgScope,
         ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
         status: 'ACTIVE',
       },
@@ -233,14 +283,14 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     }),
     prisma.cardSession.count({
       where: {
-        ...(orgId ? { organizationId: orgId } : {}),
+        ...orgScope,
         ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
         status: 'SETTLED',
       },
     }),
     prisma.user.findMany({
       where: {
-        ...(orgId ? { organizationId: orgId } : {}),
+        ...orgScope,
         role: Role.STAFF,
         ...(effectiveBranchId
           ? {
@@ -266,7 +316,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     }),
     prisma.customerHistoryEvent.findMany({
       where: {
-        ...(orgId ? { organizationId: orgId } : {}),
+        ...orgScope,
         ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
         ...(fromDate || toDate ? { createdAt: dateFilter } : {}),
       },
@@ -275,7 +325,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     }),
     prisma.cardSession.findMany({
       where: {
-        ...(orgId ? { organizationId: orgId } : {}),
+        ...orgScope,
         ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
         ...(fromDate || toDate ? { issuedAt: dateFilter } : {}),
       },
@@ -301,6 +351,16 @@ export async function getOrgAnalytics(req: Request, res: Response) {
   let cancelledUpiTopUpsVolume = 0;
   let cancelledOrdersCount = 0;
   let cancelledOrdersVolume = 0;
+  let foodOrdersCount = 0;
+  let rootProductsSoldCount = 0;
+  const allProductDemandMap = new Map<string, {
+    productId: string;
+    productName: string;
+    unitPrice: number;
+    quantitySold: number;
+    totalRevenue: number;
+    orderCount: number;
+  }>();
 
   const branchMetricsMap = new Map<string, {
     branchId: string;
@@ -319,6 +379,8 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     upiRechargeVolume: number;
     refundCount: number;
     refundVolume: number;
+    salesVolume: number;
+    salesCount: number;
     cancelledTopUpsCount: number;
     cancelledTopUpsVolume: number;
     cancelledCashTopUpsVolume: number;
@@ -348,21 +410,12 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     cardsReturned: number;
   }>();
 
+  const branchProductDemandMap = new Map<string, Map<string, { productId: string; productName: string; quantitySold: number; totalRevenue: number }>>();
+
   branches.forEach((b) => {
     const activeSess = b.cardSessions.filter((s) => s.status === 'ACTIVE').length;
     const settledSess = b.cardSessions.filter((s) => s.status === 'SETTLED').length;
     const lowStock = b.inventoryItems.filter((i) => i.quantity <= 5).length;
-
-    // Build branch-specific top products
-    const bProductDemand = b.inventoryItems.slice(0, 5).map((inv, idx) => {
-      const sold = 15 - idx * 2;
-      return {
-        productId: inv.productId,
-        productName: inv.product?.itemName || `Product ${idx + 1}`,
-        quantitySold: Math.max(1, sold),
-        totalRevenue: Math.max(1, sold) * (inv.product?.price || 50),
-      };
-    });
 
     branchMetricsMap.set(b.id, {
       branchId: b.id,
@@ -381,6 +434,8 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       upiRechargeVolume: 0,
       refundCount: 0,
       refundVolume: 0,
+      salesVolume: 0,
+      salesCount: 0,
       cancelledTopUpsCount: 0,
       cancelledTopUpsVolume: 0,
       cancelledCashTopUpsVolume: 0,
@@ -395,7 +450,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       productsSoldCount: 0,
       inventoryItemCount: b.inventoryItems.length,
       lowStockItemCount: lowStock,
-      productDemand: bProductDemand,
+      productDemand: [],
       peakPeriods: [],
       moneyAdded: 0,
       moneyRefunded: 0,
@@ -416,7 +471,8 @@ export async function getOrgAnalytics(req: Request, res: Response) {
   const branchHourlyBuckets = new Map<string, Map<number, { count: number; volume: number }>>();
 
   transactions.forEach((tx) => {
-    const bm = branchMetricsMap.get(tx.branchId);
+    const targetBranchId = tx.branchId || tx.session?.branchId || effectiveBranchId;
+    const bm = targetBranchId ? branchMetricsMap.get(targetBranchId) : branchMetricsMap.get(tx.branchId);
     const txType = String(tx.type || '');
     const paymentMethod = String((tx as any).paymentMethod || '').toUpperCase();
     const isCancelled = Boolean((tx.items as any)?.isCancelled);
@@ -450,11 +506,12 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     }
 
     // Track hourly activity for live peak calculation
-    if (tx.branchId) {
-      let bBuckets = branchHourlyBuckets.get(tx.branchId);
+    const branchKey = targetBranchId || tx.branchId;
+    if (branchKey) {
+      let bBuckets = branchHourlyBuckets.get(branchKey);
       if (!bBuckets) {
         bBuckets = new Map<number, { count: number; volume: number }>();
-        branchHourlyBuckets.set(tx.branchId, bBuckets);
+        branchHourlyBuckets.set(branchKey, bBuckets);
       }
       const txHour = getLocalHourInTimezone(new Date(tx.createdAt), clientTimezone);
       const current = bBuckets.get(txHour) || { count: 0, volume: 0 };
@@ -467,12 +524,71 @@ export async function getOrgAnalytics(req: Request, res: Response) {
 
     if (txType === 'PURCHASE') {
       totalPurchaseVolume += tx.amount;
+      foodOrdersCount++;
       if (bm) {
         bm.transactionCount++;
         bm.purchaseCount++;
         bm.purchaseVolume += tx.amount;
         bm.totalRevenue += tx.amount;
-        bm.productsSoldCount++;
+      }
+      let rawItems = tx.items;
+      if (typeof rawItems === 'string') {
+        try {
+          rawItems = JSON.parse(rawItems);
+        } catch (_) {
+          rawItems = [];
+        }
+      }
+      const orderList: any[] = Array.isArray(rawItems)
+        ? rawItems
+        : Array.isArray((rawItems as any)?.items)
+        ? (rawItems as any).items
+        : Array.isArray((rawItems as any)?.orderItems)
+        ? (rawItems as any).orderItems
+        : [];
+      if (orderList.length > 0) {
+        let pMap = branchKey ? branchProductDemandMap.get(branchKey) : undefined;
+        if (!pMap && branchKey) {
+          pMap = new Map();
+          branchProductDemandMap.set(branchKey, pMap);
+        }
+        orderList.forEach((it) => {
+          const pId = String(it.productId || it.id || it.product_id || 'unknown');
+          const pName = String(it.itemName || it.productName || it.name || it.item_name || 'Food Item');
+          const qty = Math.max(1, Number(it.quantity || it.qty || 1));
+          const unitPrice = Number(it.unitPrice || it.price || 0);
+          const rev = Number(it.subtotal || it.total || (unitPrice ? unitPrice * qty : 0));
+          rootProductsSoldCount += qty;
+          if (bm) {
+            bm.productsSoldCount += qty;
+          }
+          if (pMap) {
+            const curr = pMap.get(pId) || { productId: pId, productName: pName, quantitySold: 0, totalRevenue: 0 };
+            curr.quantitySold += qty;
+            curr.totalRevenue = Number((curr.totalRevenue + rev).toFixed(2));
+            pMap.set(pId, curr);
+          }
+          const overall = allProductDemandMap.get(pId) || {
+            productId: pId,
+            productName: pName,
+            unitPrice: unitPrice > 0 ? unitPrice : (qty > 0 && rev > 0 ? Number((rev / qty).toFixed(2)) : 0),
+            quantitySold: 0,
+            totalRevenue: 0,
+            orderCount: 0,
+          };
+          overall.quantitySold += qty;
+          overall.totalRevenue = Number((overall.totalRevenue + rev).toFixed(2));
+          overall.orderCount += 1;
+          if (!overall.unitPrice && unitPrice > 0) {
+            overall.unitPrice = unitPrice;
+          }
+          allProductDemandMap.set(pId, overall);
+        });
+      } else {
+        rootProductsSoldCount++;
+        if (bm) {
+          bm.productsSoldCount++;
+        }
       }
     } else if (txType === 'RECHARGE_CASH' || paymentMethod === 'CASH' || paymentMethod === 'CARD' || txType === 'CASH') {
       totalRechargeVolume += tx.amount;
@@ -571,10 +687,19 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     bm.purchaseVolume = Number(bm.purchaseVolume.toFixed(2));
     bm.rechargeVolume = Number(bm.rechargeVolume.toFixed(2));
     bm.cardRechargeVolume = Number((bm.cardRechargeVolume || 0).toFixed(2));
+    bm.salesVolume = Number(bm.purchaseVolume.toFixed(2));
+    bm.salesCount = bm.purchaseCount;
     bm.cashRechargeVolume = Number((bm.cashRechargeVolume || 0).toFixed(2));
     bm.upiRechargeVolume = Number((bm.upiRechargeVolume || 0).toFixed(2));
     bm.refundVolume = Number(bm.refundVolume.toFixed(2));
     bm.totalRevenue = Number(bm.totalRevenue.toFixed(2));
+
+    const pMap = branchProductDemandMap.get(bm.branchId);
+    if (pMap && pMap.size > 0) {
+      bm.productDemand = Array.from(pMap.values()).sort((a, b) => b.quantitySold - a.quantitySold);
+    } else {
+      bm.productDemand = [];
+    }
 
     // Calculate real live peak activity periods from actual transactions
     const bBuckets = branchHourlyBuckets.get(bm.branchId);
@@ -745,6 +870,9 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       const txType = String(tx.type || '');
       const pMethod = String(tx.paymentMethod || '').toUpperCase();
       const bName = tx.branch?.name || 'Branch';
+      const cardNum = (tx as any).session?.card?.physicalCardNumber || (tx as any).session?.sessionCardNumber || (tx as any).cardNumber || undefined;
+      const custName = (tx as any).session?.customerName || (tx as any).customerName || 'Customer';
+      const custPhone = (tx as any).session?.customerPhone || (tx as any).customerPhone || '—';
 
       if (txType === 'PURCHASE') {
         purchaseCount++;
@@ -759,6 +887,9 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           branchName: bName,
           timestamp: tx.createdAt.toISOString(),
           paymentMethod: 'CARD_BALANCE',
+          cardNumber: cardNum,
+          customerName: custName,
+          customerPhone: custPhone,
         });
       } else if (txType === 'RECHARGE_CASH' || pMethod === 'CASH' || pMethod === 'CARD' || txType === 'CASH') {
         cardRechargeCount++;
@@ -773,6 +904,9 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           branchName: bName,
           timestamp: tx.createdAt.toISOString(),
           paymentMethod: 'CASH',
+          cardNumber: cardNum,
+          customerName: custName,
+          customerPhone: custPhone,
         });
       } else if (txType === 'RECHARGE_UPI' || pMethod === 'UPI' || txType === 'UPI') {
         upiRechargeCount++;
@@ -787,6 +921,9 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           branchName: bName,
           timestamp: tx.createdAt.toISOString(),
           paymentMethod: 'UPI',
+          cardNumber: cardNum,
+          customerName: custName,
+          customerPhone: custPhone,
         });
       } else if (txType.includes('REFUND') || txType.includes('RETURN')) {
         refundCount++;
@@ -800,6 +937,9 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           branchId: tx.branchId,
           branchName: bName,
           timestamp: tx.createdAt.toISOString(),
+          cardNumber: cardNum,
+          customerName: custName,
+          customerPhone: custPhone,
         });
       }
     });
@@ -848,7 +988,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     totalPurchaseVolume: Number(totalPurchaseVolume.toFixed(2)),
     totalRefundVolume: Number(totalRefundVolume.toFixed(2)),
     activeSessionsCount,
-    activeCardsCount: totalCards,
+    activeCardsCount,
     lowStockItemsCount: lowStockCount,
     branchPerformance: Array.from(branchMetricsMap.values()),
     staffPerformance,
@@ -877,6 +1017,22 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     cancelledOrdersVolume: Number(cancelledOrdersVolume.toFixed(2)),
     rechargeCount: totalRechargeCount,
     refundCount: totalRefundCount,
+    rechargeVolume: Number(totalRechargeVolume.toFixed(2)),
+    salesVolume: Number(totalPurchaseVolume.toFixed(2)),
+    salesCount: foodOrdersCount,
+    purchaseVolume: Number(totalPurchaseVolume.toFixed(2)),
+    purchaseCount: foodOrdersCount,
+    refundVolume: Number(totalRefundVolume.toFixed(2)),
+    totalFloatBalance,
+    blockedCardsCount,
+
+    // Menu Analytics & Food Order Metrics
+    foodOrdersCount,
+    productsSoldCount: rootProductsSoldCount,
+    dishesOrderedCount: allProductDemandMap.size,
+    allProductDemand: Array.from(allProductDemandMap.values()).sort(
+      (a, b) => b.quantitySold - a.quantitySold || b.totalRevenue - a.totalRevenue,
+    ),
   });
 }
 
@@ -914,8 +1070,12 @@ export async function getPeakAnalytics(req: Request, res: Response) {
   }
 
   const dateFilter: any = {};
-  if (startDate) dateFilter.gte = new Date(startDate.includes('T') ? startDate : `${startDate}T00:00:00.000Z`);
-  if (endDate) dateFilter.lte = new Date(endDate.includes('T') ? endDate : `${endDate}T23:59:59.999Z`);
+  if (startDate) dateFilter.gte = parseDateInTimezone(startDate, clientTimezone, false);
+  if (endDate) dateFilter.lte = parseDateInTimezone(endDate, clientTimezone, true);
+
+  const peakOrgScope = orgId
+    ? { organizationId: orgId }
+    : { organization: { status: OrgStatus.ACTIVE } };
 
   const txWhere: any = {
     ...(orgId
@@ -925,7 +1085,12 @@ export async function getPeakAnalytics(req: Request, res: Response) {
             { branch: { organizationId: orgId } },
           ],
         }
-      : {}),
+      : {
+          OR: [
+            { session: { organization: { status: OrgStatus.ACTIVE } } },
+            { branch: { organization: { status: OrgStatus.ACTIVE } } },
+          ],
+        }),
     ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
     ...(startDate || endDate ? { createdAt: dateFilter } : {}),
   };
@@ -938,14 +1103,14 @@ export async function getPeakAnalytics(req: Request, res: Response) {
     }),
     prisma.product.findMany({
       where: {
-        ...(orgId ? { organizationId: orgId } : {}),
+        ...peakOrgScope,
         status: { not: 'ARCHIVED' },
       },
       include: { inventoryItems: true },
     }),
     prisma.branch.findMany({
       where: {
-        ...(orgId ? { organizationId: orgId } : {}),
+        ...peakOrgScope,
         ...(staffBranchIds ? { id: { in: staffBranchIds } } : {}),
       },
     }),
@@ -1029,21 +1194,48 @@ export async function getPeakAnalytics(req: Request, res: Response) {
     }
   });
 
+  const productSalesMap = new Map<string, { qty: number; rev: number; peakQty: number; offPeakQty: number }>();
+  transactions.forEach((tx) => {
+    if (tx.type === 'PURCHASE') {
+      const orderList: any[] = Array.isArray(tx.items)
+        ? tx.items
+        : Array.isArray((tx.items as any)?.orderItems)
+        ? (tx.items as any).orderItems
+        : [];
+      const txHour = getLocalHourInTimezone(new Date(tx.createdAt), clientTimezone);
+      const isPeak = hourlyBuckets[txHour]?.isPeak ?? false;
+      orderList.forEach((it) => {
+        const pId = String(it.productId || it.id || '');
+        if (pId) {
+          const qty = Number(it.quantity || it.qty || 1);
+          const rev = Number(it.subtotal || it.total || (it.unitPrice ? it.unitPrice * qty : 0));
+          const existing = productSalesMap.get(pId) || { qty: 0, rev: 0, peakQty: 0, offPeakQty: 0 };
+          existing.qty += qty;
+          existing.rev += rev;
+          if (isPeak) existing.peakQty += qty;
+          else existing.offPeakQty += qty;
+          productSalesMap.set(pId, existing);
+        }
+      });
+    }
+  });
+
   // 2. Product Demand
   let productDemand = products.map((p) => {
     const totalStock = p.inventoryItems
       .filter((inv) => (!effectiveBranchId || inv.branchId === effectiveBranchId))
       .reduce((sum, inv) => sum + inv.quantity, 0);
     const stockStatus = totalStock <= 0 ? 'OUT_OF_STOCK' : totalStock <= 10 ? 'LOW' : 'NORMAL';
+    const sales = productSalesMap.get(p.id) || { qty: 0, rev: 0, peakQty: 0, offPeakQty: 0 };
 
     return {
       productId: p.id,
       productName: p.itemName,
       category: p.category.join(', ') || 'General',
-      quantitySold: 10,
-      revenue: Number((p.price * 10).toFixed(2)),
-      peakHourQuantity: 7,
-      offPeakQuantity: 3,
+      quantitySold: sales.qty,
+      revenue: Number(sales.rev.toFixed(2)),
+      peakHourQuantity: sales.peakQty,
+      offPeakQuantity: sales.offPeakQty,
       stockStatus: stockStatus as 'NORMAL' | 'LOW' | 'OUT_OF_STOCK',
       currentStock: totalStock,
     };

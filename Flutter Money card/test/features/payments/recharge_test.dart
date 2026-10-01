@@ -63,25 +63,29 @@ void main() {
       final sessionNotifier = SessionDetailsNotifier(fakeRepo);
       final notifier = RechargeNotifier(fakeRepo, sessionNotifier);
 
-      expect(notifier.state.paymentMethod, PaymentMethod.cash);
-      expect(notifier.state.canSubmit, isFalse); // Amount is 0
+      expect(notifier.state.paymentMethod, isNull);
+      expect(notifier.state.canSubmit, isFalse); // Amount is 0 and no method selected
 
-      // Set Cash Amount
+      // Set Amount
       notifier.setAmount(150.0);
+      expect(notifier.state.canSubmit, isFalse); // Method still not selected
+
+      // Select Cash
+      notifier.setPaymentMethod(PaymentMethod.cash);
       expect(notifier.state.canSubmit, isTrue);
 
       // Switch to UPI
       notifier.setPaymentMethod(PaymentMethod.upi);
-      expect(notifier.state.canSubmit, isFalse); // Requires staff verification for UPI
+      expect(notifier.state.canSubmit, isTrue); // Streamlined UPI without verification checkbox
 
-      // Set Reference
+      // Set Reference (optional)
       notifier.setPaymentReference('UTR-123456');
       expect(notifier.state.paymentReference, 'UTR-123456');
-      expect(notifier.state.canSubmit, isFalse); // Still requires verification
-
-      // Staff verifies
-      notifier.setStaffVerified(true);
       expect(notifier.state.canSubmit, isTrue);
+
+      // Verify 4-digit limit (amount cannot exceed 9999)
+      notifier.setAmount(10000.0);
+      expect(notifier.state.amount, 150.0); // blocked, remains 150.0
 
       // Execute Recharge
       final result = await notifier.executeRecharge('sess-1');
@@ -123,10 +127,15 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('MC-101'), findsOneWidget);
-      expect(find.text('₹200.00'), findsOneWidget);
       expect(find.text('CASH'), findsOneWidget);
       expect(find.text('UPI'), findsOneWidget);
+      expect(find.text('Recharge Amount (₹)'), findsNothing);
+
+      // Select Cash payment method
+      await tester.tap(find.text('CASH'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Recharge Amount (₹)'), findsOneWidget);
 
       // Tap quick amount +₹100
       await tester.tap(find.text('+₹100'));
@@ -135,24 +144,16 @@ void main() {
       expect(find.text('Expected New Balance:'), findsOneWidget);
       expect(find.text('₹300.00'), findsOneWidget);
 
-      // Tap Confirm Recharge button
-      await tester.tap(find.text('Confirm Recharge'));
-      await tester.pumpAndSettle();
-
-      // Confirmation dialog shows
-      expect(find.text('Confirm Recharge'), findsNWidgets(2)); // Screen title + Dialog
-      expect(find.text('+₹100.00'), findsOneWidget);
-
-      // Tap Confirm in dialog
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Confirm'));
+      // Tap Recharge Wallet button
+      await tester.tap(find.text('Recharge Wallet'));
       await tester.pumpAndSettle();
 
       // Success dialog renders
       expect(find.text('Recharge Successful'), findsOneWidget);
       expect(find.text('₹100.00'), findsWidgets);
       expect(find.text('₹300.00'), findsWidgets);
-      expect(find.text('Generate & View PDF'), findsOneWidget);
-      expect(find.text('Download PDF'), findsOneWidget);
+      expect(find.text('Generate & View PDF'), findsNothing);
+      expect(find.text('Download PDF'), findsNothing);
       expect(find.text('Share PDF'), findsNothing);
       expect(find.text('Done'), findsOneWidget);
     });
@@ -196,41 +197,20 @@ void main() {
       await tester.tap(find.text('UPI'));
       await tester.pumpAndSettle();
 
-      // Check UPI manual verification card is shown
-      expect(find.text('UPI Payment Verification'), findsOneWidget);
-      expect(find.text('Customer pays using the store\'s existing counter UPI QR code.'), findsOneWidget);
-
       // Tap quick amount +₹200
       await tester.tap(find.text('+₹200'));
       await tester.pumpAndSettle();
 
-      // Enter optional reference in UPI verification card
-      await tester.enterText(find.byType(TextField).first, 'UPI987654');
-      await tester.pumpAndSettle();
-
-      // Toggle verification checkbox
-      await tester.tap(find.byType(CheckboxListTile));
-      await tester.pumpAndSettle();
-
-      // Scroll ListView down to reveal Confirm Recharge button
+      // Scroll ListView down to reveal Recharge Wallet button
       await tester.drag(find.byType(ListView), const Offset(0, -400));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Confirm Recharge'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Confirm Recharge'), findsWidgets);
-      expect(find.text('+₹200.00'), findsOneWidget);
-      expect(find.text('UPI (Manual Verification)'), findsOneWidget);
-      expect(find.text('UPI987654'), findsWidgets);
-
-      // Confirm dialog
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Confirm'));
+      await tester.tap(find.text('Recharge Wallet'));
       await tester.pumpAndSettle();
 
       expect(find.text('Recharge Successful'), findsOneWidget);
       expect(find.text('₹200.00'), findsWidgets);
-      expect(find.text('Generate & View PDF'), findsOneWidget);
-      expect(find.text('Download PDF'), findsOneWidget);
+      expect(find.text('Generate & View PDF'), findsNothing);
+      expect(find.text('Download PDF'), findsNothing);
       expect(find.text('Share PDF'), findsNothing);
       expect(find.text('Done'), findsOneWidget);
     });

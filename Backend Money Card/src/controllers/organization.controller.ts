@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/database.js';
 import { sendError, sendSuccess } from '../utils/response.js';
-import { Role, UserStatus, PermissionCode } from '@prisma/client';
+import { Role, UserStatus, PermissionCode, OrgStatus } from '@prisma/client';
 import { getEffectiveLimits, formatSubscription } from '../utils/limits.js';
 import { hashPassword } from '../utils/crypto.js';
 
@@ -109,6 +109,8 @@ export async function getBranches(req: Request, res: Response) {
   const where: any = {};
   if (orgId) {
     where.organizationId = orgId;
+  } else {
+    where.organization = { status: OrgStatus.ACTIVE };
   }
 
   // Staff only see active branches assigned to them
@@ -150,41 +152,57 @@ export async function getBranches(req: Request, res: Response) {
               name: true,
               phone: true,
               email: true,
+              permissions: {
+                select: {
+                  permission: true,
+                },
+              },
             },
           },
         },
-        take: 1,
+        orderBy: { assignedAt: 'desc' },
       },
     },
     orderBy: { createdAt: 'asc' },
   });
 
-  const formatted = branches.map((b) => ({
-    id: b.id,
-    organizationId: b.organizationId,
-    name: b.name,
-    location: b.location,
-    status: b.status,
-    staffCount: b._count.staffAssignments,
-    inventoryCount: b._count.inventoryItems,
-    sessionCount: b._count.cardSessions,
-    manager: b.staffAssignments?.[0]?.user
-      ? {
-          id: b.staffAssignments[0].user.id,
-          name: b.staffAssignments[0].user.name,
-          phone: b.staffAssignments[0].user.phone,
-        }
-      : null,
-    credentials: b.staffAssignments?.[0]?.user
-      ? {
-          name: b.name,
-          phone: b.staffAssignments[0].user.phone || '',
-          password: '123456',
-        }
-      : undefined,
-    createdAt: b.createdAt,
-    updatedAt: b.updatedAt,
-  }));
+  const formatted = branches.map((b) => {
+    // Prioritize the user who has STAFF_MANAGE or BRANCH_MANAGE as counter manager
+    const managerAssignment =
+      b.staffAssignments?.find((sa) =>
+        sa.user.permissions?.some(
+          (p) => p.permission === PermissionCode.STAFF_MANAGE || p.permission === PermissionCode.BRANCH_MANAGE,
+        ),
+      ) || b.staffAssignments?.[0];
+    const managerUser = managerAssignment?.user || null;
+
+    return {
+      id: b.id,
+      organizationId: b.organizationId,
+      name: b.name,
+      location: b.location,
+      status: b.status,
+      staffCount: b._count.staffAssignments,
+      inventoryCount: b._count.inventoryItems,
+      sessionCount: b._count.cardSessions,
+      manager: managerUser
+        ? {
+            id: managerUser.id,
+            name: managerUser.name,
+            phone: managerUser.phone,
+          }
+        : null,
+      credentials: managerUser
+        ? {
+            name: b.name,
+            phone: managerUser.phone || '',
+            password: '12345678',
+          }
+        : undefined,
+      createdAt: b.createdAt,
+      updatedAt: b.updatedAt,
+    };
+  });
 
   return sendSuccess(res, formatted);
 }
@@ -200,13 +218,24 @@ export async function createBranch(req: Request, res: Response) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'Counter name is required');
   }
 
-  const cleanPhone = phone ? phone.trim().replace(/\D/g, '') : undefined;
-  if (cleanPhone && (cleanPhone.length < 10 || cleanPhone.length > 15)) {
-    return sendError(res, 400, 'VALIDATION_ERROR', 'Phone number must be at least 10 digits');
+  const trimmedName = name.trim();
+  if (trimmedName.length < 2 || trimmedName.length > 20) {
+    return sendError(res, 400, 'VALIDATION_ERROR', 'Counter name must be between 2 and 20 characters');
   }
 
-  if (password && (password.length < 6 || password.length > 30)) {
-    return sendError(res, 400, 'VALIDATION_ERROR', 'Password must be between 6 and 30 characters');
+  const nameRegex = /^[a-zA-Z0-9\s\-&]+$/;
+  if (!nameRegex.test(trimmedName)) {
+    return sendError(res, 400, 'VALIDATION_ERROR', 'Counter name can only contain letters, numbers, spaces, hyphens, and ampersands');
+  }
+
+  const rawDigits = phone ? String(phone).trim().replace(/\D/g, '') : undefined;
+  const cleanPhone = rawDigits ? rawDigits.slice(-10) : undefined;
+  if (cleanPhone && cleanPhone.length !== 10) {
+    return sendError(res, 400, 'VALIDATION_ERROR', 'Phone number must be a valid 10-digit mobile number');
+  }
+
+  if (password && (password.length < 8 || password.length > 30)) {
+    return sendError(res, 400, 'VALIDATION_ERROR', 'Password must be between 8 and 30 characters');
   }
 
   // Authoritative Effective Branch Limit Check
@@ -226,8 +255,14 @@ export async function createBranch(req: Request, res: Response) {
 
   // Check if phone number is already registered by another organization
   if (cleanPhone) {
-    const existingUser = await prisma.user.findUnique({
-      where: { phone: cleanPhone },
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { phone: cleanPhone },
+          { phone: `91${cleanPhone}` },
+          { phone: `+91${cleanPhone}` },
+        ],
+      },
     });
     if (existingUser && existingUser.organizationId && existingUser.organizationId !== orgId) {
       return sendError(
@@ -239,7 +274,7 @@ export async function createBranch(req: Request, res: Response) {
     }
   }
 
-  const effectivePassword = password || '123456';
+  const effectivePassword = password || '12345678';
   const passwordHash = await hashPassword(effectivePassword);
 
   const result = await prisma.$transaction(async (tx) => {
@@ -251,32 +286,27 @@ export async function createBranch(req: Request, res: Response) {
     const created = await tx.branch.create({
       data: {
         organizationId: orgId,
-        name: name.trim(),
+        name: trimmedName,
         location: location?.trim(),
       },
     });
 
-    // Auto-assign existing active staff in this organization to newly created branch
-    const orgStaff = await tx.user.findMany({
-      where: { organizationId: orgId, role: Role.STAFF, status: 'ACTIVE' },
-      select: { id: true },
-    });
-    for (const staff of orgStaff) {
-      await tx.userBranch.create({
-        data: { userId: staff.id, branchId: created.id },
-      }).catch(() => {});
-    }
-
     // Provision or update counter manager account if phone is provided
     if (cleanPhone) {
-      let counterUser = await tx.user.findUnique({
-        where: { phone: cleanPhone },
+      let counterUser = await tx.user.findFirst({
+        where: {
+          OR: [
+            { phone: cleanPhone },
+            { phone: `91${cleanPhone}` },
+            { phone: `+91${cleanPhone}` },
+          ],
+        },
       });
 
       if (!counterUser) {
         counterUser = await tx.user.create({
           data: {
-            name: `Staff - ${name.trim()}`,
+            name: `Staff - ${trimmedName}`,
             phone: cleanPhone,
             passwordHash,
             role: Role.STAFF,
@@ -288,6 +318,7 @@ export async function createBranch(req: Request, res: Response) {
         await tx.user.update({
           where: { id: counterUser.id },
           data: {
+            phone: cleanPhone,
             passwordHash,
             status: UserStatus.ACTIVE,
           },
@@ -400,19 +431,20 @@ export async function createBranchesBatch(req: Request, res: Response) {
       continue;
     }
 
-    const cleanPhone = item?.phone ? String(item.phone).replace(/\D/g, '') : undefined;
-    if (cleanPhone && (cleanPhone.length < 10 || cleanPhone.length > 15)) {
-      errors.push({ index: i, message: 'Phone number must be at least 10 digits' });
+    const rawDigits = item?.phone ? String(item.phone).replace(/\D/g, '') : undefined;
+    const cleanPhone = rawDigits ? rawDigits.slice(-10) : undefined;
+    if (cleanPhone && cleanPhone.length !== 10) {
+      errors.push({ index: i, message: 'Please enter a valid 10-digit mobile number' });
       continue;
     }
-    if (cleanPhone && cleanPhone.length === 10 && !/^[6-9]\d{9}$/.test(cleanPhone)) {
+    if (cleanPhone && !/^[6-9]\d{9}$/.test(cleanPhone)) {
       errors.push({ index: i, message: 'Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9' });
       continue;
     }
 
-    const effectivePassword = item?.password || '123456';
-    if (effectivePassword.length < 6 || effectivePassword.length > 30) {
-      errors.push({ index: i, message: 'Password must be between 6 and 30 characters' });
+    const effectivePassword = item?.password || '12345678';
+    if (effectivePassword.length < 8 || effectivePassword.length > 30) {
+      errors.push({ index: i, message: 'Password must be between 8 and 30 characters' });
       continue;
     }
 
@@ -433,78 +465,12 @@ export async function createBranchesBatch(req: Request, res: Response) {
           },
         });
 
-        const orgStaff = await tx.user.findMany({
-          where: { organizationId: orgId, role: Role.STAFF, status: 'ACTIVE' },
-          select: { id: true },
-        });
-        for (const staff of orgStaff) {
-          await tx.userBranch.create({
-            data: { userId: staff.id, branchId: branch.id },
-          }).catch(() => {});
-        }
-
-        if (cleanPhone) {
-          let counterUser = await tx.user.findUnique({ where: { phone: cleanPhone } });
-          if (!counterUser) {
-            counterUser = await tx.user.create({
-              data: {
-                name: `Staff - ${name}`,
-                phone: cleanPhone,
-                passwordHash,
-                role: Role.STAFF,
-                organizationId: orgId,
-                status: UserStatus.ACTIVE,
-              },
-            });
-          } else {
-            await tx.user.update({
-              where: { id: counterUser.id },
-              data: { passwordHash, status: UserStatus.ACTIVE },
-            });
-          }
-
-          const defaultPermissions: PermissionCode[] = [
-            PermissionCode.CARD_VIEW,
-            PermissionCode.CARD_ISSUE,
-            PermissionCode.CARD_RETURN,
-            PermissionCode.CARD_BLOCK,
-            PermissionCode.CARD_UNBLOCK,
-            PermissionCode.SESSION_VIEW,
-            PermissionCode.RECHARGE,
-            PermissionCode.PURCHASE,
-            PermissionCode.REFUND,
-            PermissionCode.PRODUCT_VIEW,
-            PermissionCode.PRODUCT_MANAGE,
-            PermissionCode.INVENTORY_VIEW,
-            PermissionCode.INVENTORY_MANAGE,
-            PermissionCode.VIEW_ANALYTICS,
-            PermissionCode.VIEW_REPORTS,
-            PermissionCode.STAFF_VIEW,
-            PermissionCode.STAFF_MANAGE,
-          ];
-
-          for (const perm of defaultPermissions) {
-            await tx.userPermission.upsert({
-              where: { userId_permission: { userId: counterUser.id, permission: perm } },
-              create: { userId: counterUser.id, permission: perm },
-              update: {},
-            }).catch(() => {});
-          }
-
-          await tx.userBranch.upsert({
-            where: { userId_branchId: { userId: counterUser.id, branchId: branch.id } },
-            create: { userId: counterUser.id, branchId: branch.id },
-            update: {},
-          }).catch(() => {});
-        }
-
         return branch;
       });
 
       created.push({
         id: result.id,
         name: result.name,
-        credentials: cleanPhone ? { name: result.name, phone: cleanPhone, password: effectivePassword } : undefined,
       });
     } catch (err: any) {
       errors.push({ index: i, message: err?.message === 'BRANCH_LIMIT_REACHED' ? 'Counter limit reached' : 'Failed to create counter' });
@@ -538,10 +504,15 @@ export async function getBranchById(req: Request, res: Response) {
               name: true,
               phone: true,
               email: true,
+              permissions: {
+                select: {
+                  permission: true,
+                },
+              },
             },
           },
         },
-        take: 1,
+        orderBy: { assignedAt: 'desc' },
       },
     },
   });
@@ -550,22 +521,28 @@ export async function getBranchById(req: Request, res: Response) {
     return sendError(res, 404, 'NOT_FOUND', 'Branch not found');
   }
 
-  const manager = branch.staffAssignments?.[0]?.user
-    ? {
-        id: branch.staffAssignments[0].user.id,
-        name: branch.staffAssignments[0].user.name,
-        phone: branch.staffAssignments[0].user.phone,
-      }
-    : null;
+  const managerAssignment =
+    branch.staffAssignments?.find((sa) =>
+      sa.user.permissions?.some(
+        (p) => p.permission === PermissionCode.STAFF_MANAGE || p.permission === PermissionCode.BRANCH_MANAGE,
+      ),
+    ) || branch.staffAssignments?.[0];
+  const manager = managerAssignment?.user || null;
 
   return sendSuccess(res, {
     ...branch,
-    manager,
+    manager: manager
+      ? {
+          id: manager.id,
+          name: manager.name,
+          phone: manager.phone,
+        }
+      : null,
     credentials: manager
       ? {
           name: branch.name,
           phone: manager.phone || '',
-          password: '123456',
+          password: '12345678',
         }
       : undefined,
   });
@@ -586,9 +563,13 @@ export async function updateBranch(req: Request, res: Response) {
           },
         },
         include: {
-          user: true,
+          user: {
+            include: {
+              permissions: true,
+            },
+          },
         },
-        take: 1,
+        orderBy: { assignedAt: 'desc' },
       },
     },
   });
@@ -610,7 +591,8 @@ export async function updateBranch(req: Request, res: Response) {
   }
 
   // Validate Phone if provided
-  const cleanPhone = phone ? String(phone).trim().replace(/\D/g, '') : undefined;
+  const rawDigits = phone ? String(phone).trim().replace(/\D/g, '') : undefined;
+  const cleanPhone = rawDigits ? rawDigits.slice(-10) : undefined;
   if (phone !== undefined && phone !== '') {
     if (!cleanPhone || cleanPhone.length !== 10 || !/^[6-9]\d{9}$/.test(cleanPhone)) {
       return sendError(res, 400, 'VALIDATION_ERROR', 'Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9');
@@ -619,27 +601,8 @@ export async function updateBranch(req: Request, res: Response) {
 
   // Validate Password if provided
   if (password !== undefined && password !== '') {
-    if (typeof password !== 'string' || password.length < 6 || password.length > 30) {
-      return sendError(res, 400, 'VALIDATION_ERROR', 'Password must be between 6 and 30 characters');
-    }
-  }
-
-  // Prevent disabling all branches - at least one active branch is strictly required per organization
-  if (status && status !== 'ACTIVE' && branch.status === 'ACTIVE') {
-    const activeBranchesCount = await prisma.branch.count({
-      where: {
-        organizationId: branch.organizationId,
-        status: 'ACTIVE',
-      },
-    });
-
-    if (activeBranchesCount <= 1) {
-      return sendError(
-        res,
-        400,
-        'MIN_ACTIVE_BRANCH_REQUIRED',
-        'Cannot disable this counter. A cafeteria must have at least one active counter.',
-      );
+    if (typeof password !== 'string' || password.length < 8 || password.length > 30) {
+      return sendError(res, 400, 'VALIDATION_ERROR', 'Password must be between 8 and 30 characters');
     }
   }
 
@@ -659,49 +622,114 @@ export async function updateBranch(req: Request, res: Response) {
       },
     });
 
-    const existingManager = branch.staffAssignments?.[0]?.user;
+    const managerAssignment =
+      branch.staffAssignments?.find((sa) =>
+        sa.user.permissions?.some(
+          (p) => p.permission === PermissionCode.STAFF_MANAGE || p.permission === PermissionCode.BRANCH_MANAGE,
+        ),
+      ) || branch.staffAssignments?.[0];
+    let existingManager = managerAssignment?.user;
+
     if (existingManager) {
-      await tx.user.update({
-        where: { id: existingManager.id },
-        data: {
-          ...(name !== undefined ? { name: `Staff - ${String(name).trim()}` } : {}),
-          ...(cleanPhone ? { phone: cleanPhone } : {}),
-          ...(passwordHash ? { passwordHash } : {}),
-        },
-      });
+      if (cleanPhone || passwordHash) {
+        await tx.user.update({
+          where: { id: existingManager.id },
+          data: {
+            ...(cleanPhone ? { phone: cleanPhone } : {}),
+            ...(passwordHash ? { passwordHash } : {}),
+            status: UserStatus.ACTIVE,
+          },
+        });
+      }
     } else if (cleanPhone) {
-      const defaultPassword = effectivePassword || '123456';
-      const hash = passwordHash || await hashPassword(defaultPassword);
-
-      const newManager = await tx.user.upsert({
-        where: { phone: cleanPhone },
-        create: {
-          name: `Staff - ${(name ? String(name).trim() : branch.name)}`,
-          phone: cleanPhone,
-          passwordHash: hash,
-          role: Role.STAFF,
-          organizationId: branch.organizationId,
-          status: UserStatus.ACTIVE,
-        },
-        update: {
-          passwordHash: hash,
-          status: UserStatus.ACTIVE,
+      // Find or provision counter manager user if none was assigned to this branch
+      let user = await tx.user.findFirst({
+        where: {
+          OR: [
+            { phone: cleanPhone },
+            { phone: `91${cleanPhone}` },
+            { phone: `+91${cleanPhone}` },
+          ],
         },
       });
 
+      const effectivePasswordHash = passwordHash || (await hashPassword('12345678'));
+
+      if (!user) {
+        user = await tx.user.create({
+          data: {
+            name: `Staff - ${updated.name}`,
+            phone: cleanPhone,
+            passwordHash: effectivePasswordHash,
+            role: Role.STAFF,
+            organizationId: orgId,
+            status: UserStatus.ACTIVE,
+          },
+        });
+      } else {
+        await tx.user.update({
+          where: { id: user.id },
+          data: {
+            phone: cleanPhone,
+            passwordHash: effectivePasswordHash,
+            status: UserStatus.ACTIVE,
+          },
+        });
+      }
+
+      // Assign default counter manager permissions
+      const defaultPermissions: PermissionCode[] = [
+        PermissionCode.CARD_VIEW,
+        PermissionCode.CARD_ISSUE,
+        PermissionCode.CARD_RETURN,
+        PermissionCode.CARD_BLOCK,
+        PermissionCode.CARD_UNBLOCK,
+        PermissionCode.SESSION_VIEW,
+        PermissionCode.RECHARGE,
+        PermissionCode.PURCHASE,
+        PermissionCode.REFUND,
+        PermissionCode.PRODUCT_VIEW,
+        PermissionCode.PRODUCT_MANAGE,
+        PermissionCode.INVENTORY_VIEW,
+        PermissionCode.INVENTORY_MANAGE,
+        PermissionCode.VIEW_ANALYTICS,
+        PermissionCode.VIEW_REPORTS,
+        PermissionCode.STAFF_VIEW,
+        PermissionCode.STAFF_MANAGE,
+      ];
+
+      for (const perm of defaultPermissions) {
+        await tx.userPermission.upsert({
+          where: {
+            userId_permission: {
+              userId: user.id,
+              permission: perm,
+            },
+          },
+          create: {
+            userId: user.id,
+            permission: perm,
+          },
+          update: {},
+        }).catch(() => {});
+      }
+
+      // Link counter user with this branch
       await tx.userBranch.upsert({
         where: {
           userId_branchId: {
-            userId: newManager.id,
+            userId: user.id,
             branchId: id,
           },
         },
         create: {
-          userId: newManager.id,
+          userId: user.id,
           branchId: id,
         },
         update: {},
       }).catch(() => {});
+
+      existingManager = user as any;
     }
 
     return updated;
@@ -746,26 +774,10 @@ export async function deleteBranch(req: Request, res: Response) {
     return sendError(res, 404, 'NOT_FOUND', 'Branch not found');
   }
 
-  const remainingActiveCount = await prisma.branch.count({
-    where: {
-      organizationId: branch.organizationId,
-      id: { not: id },
-      status: 'ACTIVE',
-    },
-  });
-
   const hasFinancialRecords = branch._count.cardSessions > 0 || branch._count.transactions > 0;
 
   if (hasFinancialRecords) {
     if (force) {
-      if (remainingActiveCount === 0 && branch.status === 'ACTIVE') {
-        return sendError(
-          res,
-          400,
-          'MIN_ACTIVE_BRANCH_REQUIRED',
-          'Cannot deactivate this branch. An organization must have at least one active branch.',
-        );
-      }
       const updated = await prisma.branch.update({
         where: { id },
         data: { status: 'INACTIVE' },
@@ -787,15 +799,6 @@ export async function deleteBranch(req: Request, res: Response) {
         cardSessionsCount: branch._count.cardSessions,
         transactionsCount: branch._count.transactions,
       },
-    );
-  }
-
-  if (branch.status === 'ACTIVE' && remainingActiveCount === 0) {
-    return sendError(
-      res,
-      400,
-      'MIN_ACTIVE_BRANCH_REQUIRED',
-      'Cannot delete this branch. An organization must have at least one active branch.',
     );
   }
 

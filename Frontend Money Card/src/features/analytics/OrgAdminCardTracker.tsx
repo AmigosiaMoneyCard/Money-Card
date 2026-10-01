@@ -41,9 +41,6 @@ export function OrgAdminCardTracker({
           <p className="font-mono text-2xl font-bold text-slate-900">
             {totalInCirculation.toLocaleString()}
           </p>
-          <p className="mt-1 text-xs text-slate-500 leading-snug">
-            In customer hands
-          </p>
         </div>
       </Card>
 
@@ -60,9 +57,6 @@ export function OrgAdminCardTracker({
         <div className="mt-2">
           <p className="font-mono text-2xl font-bold text-slate-900">
             {closedCardsCount.toLocaleString()}
-          </p>
-          <p className="mt-1 text-xs text-slate-500 leading-snug">
-            Completed card sessions
           </p>
         </div>
       </Card>
@@ -81,9 +75,6 @@ export function OrgAdminCardTracker({
           <p className="font-mono text-2xl font-bold text-rose-600">
             {blockedCount.toLocaleString()}
           </p>
-          <p className="mt-1 text-xs text-slate-500 leading-snug">
-            Locked due to security / loss
-          </p>
         </div>
       </Card>
 
@@ -101,9 +92,6 @@ export function OrgAdminCardTracker({
           <p className="font-mono text-2xl font-bold text-amber-700">
             {zeroBalanceActiveCardsCount.toLocaleString()}
           </p>
-          <p className="mt-1 text-xs text-slate-500 leading-snug">
-            In use with ₹0 balance
-          </p>
         </div>
       </Card>
 
@@ -120,9 +108,6 @@ export function OrgAdminCardTracker({
         <div className="mt-2">
           <p className="font-mono text-2xl font-bold text-orange-700">
             {inactiveCount.toLocaleString()}
-          </p>
-          <p className="mt-1 text-xs text-slate-500 leading-snug">
-            Inactive cards but have balance in it
           </p>
         </div>
       </Card>

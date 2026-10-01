@@ -13,6 +13,8 @@ import {
   DirectPaymentMethod,
   PaymentRecordStatus,
   PlanRequestStatus,
+  CardStatus,
+  SessionStatus,
 } from '@prisma/client';
 
 export function formatSubscription(sub: any) {
@@ -65,26 +67,41 @@ export async function getOrganizations(req: Request, res: Response) {
     whereClause.status = status as OrgStatus;
   }
 
-  const orgs = await prisma.organization.findMany({
-    where: whereClause,
-    include: {
-      plan: true,
-      subscription: true,
-      users: {
-        where: { role: Role.ORG_ADMIN },
-        select: { id: true, name: true, email: true, mustChangePassword: true, status: true },
-        take: 1,
-      },
-      _count: {
-        select: {
-          branches: true,
-          users: { where: { role: Role.STAFF, status: { not: UserStatus.DEACTIVATED } } },
-          cards: true,
+  const [orgs, activeCardsGrouped, activeSessionsGrouped] = await Promise.all([
+    prisma.organization.findMany({
+      where: whereClause,
+      include: {
+        plan: true,
+        subscription: true,
+        users: {
+          where: { role: Role.ORG_ADMIN },
+          select: { id: true, name: true, email: true, mustChangePassword: true, status: true },
+          take: 1,
+        },
+        _count: {
+          select: {
+            branches: true,
+            users: { where: { role: Role.STAFF, status: { not: UserStatus.DEACTIVATED } } },
+            cards: true,
+          },
         },
       },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.card.groupBy({
+      by: ['organizationId'],
+      where: { status: CardStatus.ACTIVE },
+      _count: { id: true },
+    }),
+    prisma.cardSession.groupBy({
+      by: ['organizationId'],
+      where: { status: SessionStatus.ACTIVE },
+      _count: { id: true },
+    }),
+  ]);
+
+  const activeCardsMap = new Map(activeCardsGrouped.map((g) => [g.organizationId, g._count.id]));
+  const activeSessionsMap = new Map(activeSessionsGrouped.map((g) => [g.organizationId, g._count.id]));
 
   const formatted = orgs.map((org) => {
     const subFormatted = formatSubscription(org.subscription);
@@ -104,6 +121,8 @@ export async function getOrganizations(req: Request, res: Response) {
         staffLimit: org.subscription?.staffLimitOverride || org.plan?.staffLimit || 25,
         cardCount: org._count.cards,
         cardLimit: org.subscription?.cardLimitOverride || org.plan?.cardLimit || 1000,
+        activeCardCount: activeCardsMap.get(org.id) || 0,
+        activeSessionCount: activeSessionsMap.get(org.id) || 0,
       },
       createdAt: org.createdAt,
       updatedAt: org.updatedAt,
@@ -336,39 +355,62 @@ export async function deleteOrganization(req: Request, res: Response) {
     // 1. Delete customer history events
     await tx.customerHistoryEvent.deleteMany({ where: { organizationId: id } });
 
-    // 2. Delete transactions, card sessions & cards
+    // 2. Delete transactions (by branch, session, or staff user belonging to the organization)
     await tx.transaction.deleteMany({
       where: {
-        branch: { organizationId: id },
+        OR: [
+          { branch: { organizationId: id } },
+          { session: { organizationId: id } },
+          { staff: { organizationId: id } },
+        ],
       },
     });
-    await tx.cardSession.deleteMany({ where: { organizationId: id } });
+
+    // 3. Delete card sessions (by org, issuing staff, or settling staff)
+    await tx.cardSession.deleteMany({
+      where: {
+        OR: [
+          { organizationId: id },
+          { issuedBy: { organizationId: id } },
+          { settledBy: { organizationId: id } },
+        ],
+      },
+    });
+
+    // 4. Delete cards
     await tx.card.deleteMany({ where: { organizationId: id } });
 
-    // 3. Delete inventory & products
+    // 5. Delete inventory & products
     await tx.branchInventory.deleteMany({
       where: { branch: { organizationId: id } },
     });
     await tx.product.deleteMany({ where: { organizationId: id } });
 
-    // 4. Delete user permissions, user branches & users
+    // 6. Delete user permissions & user branches (by user OR branch)
     await tx.userPermission.deleteMany({
       where: { user: { organizationId: id } },
     });
     await tx.userBranch.deleteMany({
-      where: { user: { organizationId: id } },
+      where: {
+        OR: [
+          { user: { organizationId: id } },
+          { branch: { organizationId: id } },
+        ],
+      },
     });
+
+    // 7. Delete users belonging to the organization
     await tx.user.deleteMany({ where: { organizationId: id } });
 
-    // 5. Delete branches
+    // 8. Delete branches
     await tx.branch.deleteMany({ where: { organizationId: id } });
 
-    // 6. Delete subscriptions, payments & plan change requests
+    // 9. Delete subscriptions, payments & plan change requests
     await tx.subscriptionPayment.deleteMany({ where: { organizationId: id } });
     await tx.planChangeRequest.deleteMany({ where: { organizationId: id } });
     await tx.subscription.deleteMany({ where: { organizationId: id } });
 
-    // 7. Delete organization
+    // 10. Delete organization
     await tx.organization.delete({ where: { id } });
   });
 

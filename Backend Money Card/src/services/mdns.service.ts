@@ -82,11 +82,11 @@ export function startMdnsAdvertisement(port: number): void {
 
     isPublishing = true;
 
-    console.log(`📡 [mDNS] Registered service: ${service.name} (${service.type} on port ${service.port})`);
+    console.log(`[mDNS] Registered service: ${service.name} (${service.type} on port ${service.port})`);
     if (primaryIp) {
-      console.log(`📡 [mDNS] Emitting mDNS advertisements on active LAN interface: ${primaryIp}`);
+      console.log(`[mDNS] Emitting mDNS advertisements on active LAN interface: ${primaryIp}`);
     }
-    console.log(`📡 [mDNS] Mobile Flutter devices on the same Wi-Fi can now discover this backend automatically.`);
+    console.log(`[mDNS] Mobile Flutter devices on the same Wi-Fi can now discover this backend automatically.`);
 
     // Cleanup handlers
     const cleanUp = () => {
@@ -97,7 +97,7 @@ export function startMdnsAdvertisement(port: number): void {
     process.once('SIGTERM', cleanUp);
     process.once('beforeExit', cleanUp);
   } catch (err) {
-    console.error('⚠️ [mDNS] Failed to publish mDNS service:', err);
+    console.error('[mDNS] Failed to publish mDNS service:', err);
   }
 }
 
@@ -112,14 +112,14 @@ export function stopMdnsAdvertisement(): Promise<void> {
     }
 
     try {
-      console.log('📡 [mDNS] Unpublishing mDNS service...');
+      console.log('[mDNS] Unpublishing mDNS service...');
       bonjourInstance.unpublishAll(() => {
         try {
           bonjourInstance?.destroy();
         } catch (_) {}
         bonjourInstance = null;
         isPublishing = false;
-        console.log('📡 [mDNS] mDNS service unregistered.');
+        console.log('[mDNS] mDNS service unregistered.');
         resolve();
       });
     } catch (_) {

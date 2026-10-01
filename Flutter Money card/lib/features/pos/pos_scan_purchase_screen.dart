@@ -6,13 +6,17 @@ import '../../core/config/app_config.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/constants/permission_constants.dart';
+import '../../core/errors/api_exception.dart';
 import '../../models/card.dart';
 import '../../models/card_session.dart';
+import '../../models/product.dart';
 import '../../models/transaction.dart';
+import '../../providers/analytics_provider.dart';
 import '../../providers/api_providers.dart';
 import '../../providers/branch_provider.dart';
 import '../../providers/card_operations_provider.dart';
 import '../../providers/permission_provider.dart';
+import '../../providers/pos_cart_provider.dart';
 import '../../providers/session_operations_provider.dart';
 import '../../widgets/common/app_badge.dart';
 import '../../widgets/common/app_button.dart';
@@ -34,7 +38,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
   // Resolution state
   String? _scannedQrToken;
   bool _isResolving = false;
-  String? _scanErrorMessage;
   Card? _resolvedCard;
   CardSession? _activeSession;
 
@@ -50,7 +53,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     setState(() {
       _scannedQrToken = null;
       _isResolving = false;
-      _scanErrorMessage = null;
       _resolvedCard = null;
       _activeSession = null;
       _settlementResult = null;
@@ -64,7 +66,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     setState(() {
       _scannedQrToken = qrToken;
       _isResolving = true;
-      _scanErrorMessage = null;
       _resolvedCard = null;
       _activeSession = null;
       _settlementResult = null;
@@ -98,7 +99,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
 
           final nameCtrl = TextEditingController();
           final phoneCtrl = TextEditingController();
-          String? nameError;
           String? phoneError;
 
           final confirm = await showDialog<bool>(
@@ -113,7 +113,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                     Icon(Icons.credit_card, color: AppColors.primary, size: 22),
                     SizedBox(width: 8),
                     Expanded(
-                      child: Text('Confirm Card Activation', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      child: Text('Confirm Wallet Activation', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -133,7 +133,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text('Card Number:', style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight)),
+                            const Text('Wallet Number:', style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight)),
                             Text(
                               result.card.displayCardNumber,
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
@@ -141,27 +141,18 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.sm),
-                      const Text(
-                        'Customer Details (Required for Customer History):',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
-                      ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       TextField(
                         controller: nameCtrl,
                         autofocus: true,
                         textInputAction: TextInputAction.next,
                         scrollPadding: const EdgeInsets.only(bottom: 140),
-                        onChanged: (val) {
-                          if (nameError != null) setDialogState(() => nameError = null);
-                        },
-                        decoration: InputDecoration(
-                          labelText: 'Customer Name *',
+                        decoration: const InputDecoration(
+                          labelText: 'Customer Name (Optional)',
                           hintText: 'e.g. John Doe',
-                          errorText: nameError,
-                          prefixIcon: const Icon(Icons.person_outline, size: 18),
+                          prefixIcon: Icon(Icons.person_outline, size: 18),
                           isDense: true,
-                          border: const OutlineInputBorder(),
+                          border: OutlineInputBorder(),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -178,7 +169,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                           if (phoneError != null) setDialogState(() => phoneError = null);
                         },
                         decoration: InputDecoration(
-                          labelText: 'Phone Number (10 Digits) *',
+                          labelText: 'Phone Number (Optional, 10 Digits)',
                           hintText: 'e.g. 9876543210',
                           prefixIcon: const Icon(Icons.phone_outlined, size: 18),
                           errorText: phoneError,
@@ -186,11 +177,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                           isDense: true,
                           border: const OutlineInputBorder(),
                         ),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      const Text(
-                        'Customer details are saved to Customer History. Then the card becomes active.',
-                        style: TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
                       ),
                     ],
                   ),
@@ -202,26 +188,10 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                   ),
                   ElevatedButton(
                     onPressed: () {
-                      final name = nameCtrl.text.trim();
                       final phone = phoneCtrl.text.trim();
-                      bool hasError = false;
-                      String? nError;
-                      String? pError;
-                      if (name.isEmpty) {
-                        nError = 'Customer name is required';
-                        hasError = true;
-                      }
-                      if (phone.isEmpty) {
-                        pError = 'Phone number is required';
-                        hasError = true;
-                      } else if (phone.length != 10) {
-                        pError = 'Phone number must be exactly 10 digits';
-                        hasError = true;
-                      }
-                      if (hasError) {
+                      if (phone.isNotEmpty && phone.length != 10) {
                         setDialogState(() {
-                          nameError = nError;
-                          phoneError = pError;
+                          phoneError = 'Phone number must be exactly 10 digits';
                         });
                         return;
                       }
@@ -244,10 +214,11 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
           }
 
           final sessionRepo = ref.read(sessionRepositoryProvider);
+          final customerNameVal = nameCtrl.text.trim();
           final newSession = await sessionRepo.createSession(
             cardId: result.card.id,
             branchId: branch.id,
-            customerName: nameCtrl.text.trim(),
+            customerName: customerNameVal,
             customerPhone: phoneCtrl.text.trim(),
           );
 
@@ -277,7 +248,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Card ${activeCard.displayCardNumber} activated successfully!',
+                      'Wallet ${activeCard.displayCardNumber} activated successfully!',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -299,13 +270,31 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
 
       if (result.session != null) {
         ref.read(sessionDetailsNotifierProvider.notifier).loadSessionById(result.session!.id);
+        _refreshSession();
       }
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _isResolving = false;
-        _scanErrorMessage = e.toString().replaceAll('ApiException: ', '');
+        _scannedQrToken = null;
       });
+      final errorMsg = e is ApiException
+          ? e.message
+          : e.toString().replaceAll('ApiException: ', '').replaceAll('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(child: Text(errorMsg)),
+            ],
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -346,6 +335,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       await context.push('/app/pos/${session.id}');
     }
     await _refreshSession();
+    ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
   }
 
   Future<void> _openRecharge() async {
@@ -356,6 +346,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       await context.push('/app/recharge/${session.id}');
     }
     await _refreshSession();
+    ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
   }
 
   Future<void> _handleSettleReturn() async {
@@ -365,10 +356,10 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
 
     final confirm = await AppDialog.show(
       context,
-      title: 'Confirm Card Return & Settlement',
+      title: 'Confirm Wallet Return & Settlement',
       message: session.balance > 0
-          ? 'Refund remaining balance of ₹${session.balance.toStringAsFixed(2)} to customer and settle this card session?'
-          : 'Settle this card session and return card ${card.displayCardNumber} to AVAILABLE state?',
+          ? 'Refund remaining balance of ₹${session.balance.toStringAsFixed(2)} to customer and settle this wallet session?'
+          : 'Settle this wallet session and return wallet ${card.displayCardNumber} to AVAILABLE state?',
       confirmLabel: 'Confirm & Settle',
       isDestructive: session.balance > 0,
     );
@@ -386,6 +377,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       // Refresh global stores
       ref.read(sessionListNotifierProvider.notifier).loadSessions();
       ref.read(cardListNotifierProvider.notifier).loadCards();
+      ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
 
       if (mounted) {
         setState(() {
@@ -425,7 +417,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     if (_settlementResult != null && _resolvedCard != null) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Card Return & Settlement'),
+          title: const Text('Wallet Return & Settlement'),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () {
@@ -452,73 +444,18 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                   child: const Icon(Icons.check_circle, size: 54, color: AppColors.success),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                const Text(
-                  'Card Returned Successfully',
-                  style: TextStyle(
+                Text(
+                  '${_resolvedCard!.displayCardNumber.toUpperCase().startsWith("MC-") ? _resolvedCard!.displayCardNumber : "MC-${_resolvedCard!.displayCardNumber}"} Returned Successfully',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimaryLight,
                   ),
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Card: ${_resolvedCard!.displayCardNumber.toUpperCase().startsWith("MC-") ? _resolvedCard!.displayCardNumber : "MC-${_resolvedCard!.displayCardNumber}"}',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Container(
-                  padding: AppSpacing.paddingMd,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryLight,
-                    borderRadius: AppSpacing.roundedSm,
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Refunded Amount:'),
-                          Text(
-                            '₹${_settlementResult!.refundedAmount.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: AppColors.primaryDark,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: const [
-                          Text('Card Status:'),
-                          AppBadge(label: 'AVAILABLE', variant: AppBadgeVariant.primary),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: const [
-                          Text('Session Status:'),
-                          AppBadge(label: 'SETTLED', variant: AppBadgeVariant.neutral),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                const Text(
-                  'This card has been returned to inventory and is ready for new issuance.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondaryLight,
-                  ),
-                ),
                 const SizedBox(height: AppSpacing.lg),
                 AppButton(
-                  label: 'Scan Another Card',
+                  label: 'Scan Another Wallet',
                   icon: Icons.qr_code_scanner,
                   onPressed: _resetScan,
                 ),
@@ -541,80 +478,11 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       );
     }
 
-    // 2. Unregistered Error State
-    if (_scanErrorMessage != null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Scan QR Card'),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => context.pop(),
-          ),
-        ),
-        body: Center(
-          child: Padding(
-            padding: AppSpacing.paddingLg,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: const BoxDecoration(
-                    color: AppColors.errorLight,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.credit_card_off, size: 48, color: AppColors.error),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                const Text(
-                  'Card Not Registered',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.error,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                const Text(
-                  'This QR card is not registered in your counter. Try scanning a different card.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textSecondaryLight,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Row(
-                  children: [
-                    Expanded(
-                      child: AppOutlinedButton(
-                        label: 'Cancel',
-                        icon: Icons.close,
-                        onPressed: () => context.pop(),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: AppButton(
-                        label: 'Scan Another',
-                        icon: Icons.qr_code_scanner,
-                        onPressed: _resetScan,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    // 3. Card Resolved but BLOCKED
+    // 2. Card Resolved but BLOCKED
     if (_resolvedCard != null && _resolvedCard!.status == CardStatus.blocked) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Scan QR Card'),
+          title: const Text('Scan QR Wallet'),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () => context.pop(),
@@ -645,7 +513,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
               const Text(
-                'Cannot perform operations on a blocked card. This card is blocked and cannot be used. Please contact your manager.',
+                'Cannot perform operations on a blocked wallet. This wallet is blocked and cannot be used. Please contact your manager.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppColors.error,
@@ -683,7 +551,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     if (_resolvedCard != null && (_activeSession == null || _activeSession!.status != SessionStatus.active)) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Scan QR Card'),
+          title: const Text('Scan QR Wallet'),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () => context.pop(),
@@ -714,7 +582,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
               const Text(
-                'Card has no active session.',
+                'Wallet has no active session.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
@@ -724,7 +592,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
               ),
               const SizedBox(height: 4),
               const Text(
-                'A card session must be issued before making purchases or recharging.',
+                'A wallet session must be issued before making purchases or recharging.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 13,
@@ -733,7 +601,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
               ),
               const SizedBox(height: AppSpacing.lg),
               AppButton(
-                label: 'Issue Card Session First',
+                label: 'Issue Wallet Session First',
                 icon: Icons.add_card,
                 onPressed: () {
                   context.pushReplacement(
@@ -743,7 +611,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
               ),
               const SizedBox(height: AppSpacing.sm),
               AppOutlinedButton(
-                label: 'Scan Another Card',
+                label: 'Scan Another Wallet',
                 icon: Icons.qr_code_scanner,
                 onPressed: _resetScan,
               ),
@@ -763,9 +631,10 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       body: Stack(
         children: [
           QrScannerView(
-            title: 'Scan QR Card',
-            prompt: 'Point camera at customer\'s Money Card QR code',
+            title: 'Scan QR Wallet',
+            prompt: 'Point camera at customer\'s wallet QR code',
             onQrScanned: _handleQrScanned,
+            isProcessing: _isResolving,
           ),
           if (AppConfig.useMockApi)
             Positioned(
@@ -835,22 +704,13 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     final session = _activeSession!;
     final permissions = ref.watch(permissionCheckerProvider);
 
-    final canPurchase = permissions.hasPermission(AppPermission.purchase);
     final canRecharge = permissions.hasPermission(AppPermission.recharge);
-    final canViewSession = permissions.hasPermission(AppPermission.sessionView);
     final canSettleReturn = permissions.hasPermission(AppPermission.cardReturn) ||
         permissions.hasPermission(AppPermission.refund);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Card: ${card.displayCardNumber}'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.qr_code_scanner),
-            tooltip: 'Scan Another Card',
-            onPressed: _resetScan,
-          ),
-        ],
+        title: Text('Wallet: ${card.displayCardNumber}'),
       ),
       body: RefreshIndicator(
         onRefresh: _refreshSession,
@@ -858,144 +718,53 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
           padding: AppSpacing.paddingMd,
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            // 1. Authoritative Compact Card Summary Header
+            // 1. Authoritative Card Summary Header (relocated from recharge screen)
             AppCard(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 14),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              card.displayCardNumber,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5,
-                                color: AppColors.textPrimaryLight,
-                              ),
-                            ),
-                            if (session.customerName != null && session.customerName!.trim().isNotEmpty) ...[
-                              const SizedBox(height: 2),
-                              Row(
-                                children: [
-                                  const Icon(Icons.person, size: 14, color: AppColors.primary),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      session.customerName!.trim(),
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.textPrimaryLight,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ],
+                        child: Text(
+                          card.displayCardNumber,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                       const SizedBox(width: AppSpacing.xs),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (session.balance < 100) ...[
-                            const AppBadge(
-                              label: 'LOW BAL',
-                              variant: AppBadgeVariant.warning,
-                            ),
-                            const SizedBox(width: AppSpacing.xs),
-                          ],
-                          const AppBadge(
-                            label: 'ACTIVE',
-                            variant: AppBadgeVariant.success,
-                          ),
-                        ],
+                      const AppBadge(
+                        label: 'ACTIVE',
+                        variant: AppBadgeVariant.success,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  const Divider(height: 1),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(
-                        child: Text.rich(
-                          TextSpan(
-                            children: [
-                              const TextSpan(
-                                text: 'Balance: ',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.textSecondaryLight,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              TextSpan(
-                                text: '₹${session.balance.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            ],
-                          ),
+                      const Expanded(
+                        child: Text(
+                          'Current Balance',
                           overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondaryLight,
+                          ),
                         ),
                       ),
                       const SizedBox(width: AppSpacing.xs),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: AppColors.success,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Text(
-                            'Session Active',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondaryLight,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(Icons.access_time, size: 14, color: AppColors.textSecondaryLight),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          'Started: ${_formatDateTime(session.startedAt)}',
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondaryLight,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      Text(
+                        '₹${session.balance.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
                         ),
                       ),
                     ],
@@ -1007,91 +776,41 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
 
             // 2. Action Hub Section Header
             const SectionHeader(
-              title: 'Card Actions & Operations',
+              title: 'Actions',
             ),
             const SizedBox(height: AppSpacing.sm),
 
-            // OPTION 1: ADD PRODUCTS
-            if (canPurchase) ...[
-              _buildActionTile(
-                icon: Icons.add_shopping_cart,
-                iconColor: AppColors.primary,
-                title: 'Add Products',
-                subtitle: 'Order food items from menu catalog',
-                onTap: _openAddProducts,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-            ],
-
-            // OPTION 2: RECHARGE CARD (ADD MONEY)
+            // OPTION 1: RECHARGE (Direct to RechargeScreen)
             if (canRecharge) ...[
               _buildActionTile(
                 icon: Icons.account_balance_wallet_outlined,
                 iconColor: AppColors.success,
-                title: 'Recharge Card',
-                subtitle: 'Load cash or online UPI balance onto card',
+                title: 'Recharge',
                 onTap: _openRecharge,
               ),
               const SizedBox(height: AppSpacing.sm),
             ],
 
-            // OPTION 3: TOP-UP HISTORY (WITH CANCEL TOP-UP FLOW)
+            // OPTION 2: BILLING (Direct to PosCheckoutScreen)
             _buildActionTile(
-              icon: Icons.receipt_long_outlined,
-              iconColor: Colors.purple,
-              title: 'Top-up History',
-              subtitle: 'View recharges or cancel wrong top-ups',
-              onTap: () => _showTopUpHistorySheet(context, session),
+              icon: Icons.point_of_sale_outlined,
+              iconColor: AppColors.primary,
+              title: 'Billing',
+              onTap: _openAddProducts,
             ),
             const SizedBox(height: AppSpacing.sm),
 
-            // OPTION 4: FOOD ORDERS (WITH CANCEL ORDER FLOW)
-            _buildActionTile(
-              icon: Icons.fastfood_outlined,
-              iconColor: AppColors.primaryDark,
-              title: 'Food Orders',
-              subtitle: 'View total orders placed or cancel order',
-              onTap: () => _showFoodOrdersSheet(context, session),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-
-            // OPTION 5: SETTLE / RETURN CARD
+            // OPTION 3: RETURN & REFUND (Merged Settle / Return Wallet + Wallet Info & Statistics)
             if (canSettleReturn) ...[
               _buildActionTile(
                 icon: Icons.assignment_return_outlined,
                 iconColor: AppColors.warning,
-                title: 'Settle / Return Card',
-                subtitle: session.balance > 0
-                    ? 'Refund ₹${session.balance.toStringAsFixed(2)} and close card'
-                    : 'Close session & return card to available stock',
-                isDestructive: session.balance > 0,
-                onTap: _handleSettleReturn,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-            ],
-
-            // OPTION 6: VIEW SESSION & TRANSACTION HISTORY
-            if (canViewSession) ...[
-              _buildActionTile(
-                icon: Icons.history_outlined,
-                iconColor: AppColors.textSecondaryLight,
-                title: 'View Session & Transaction History',
-                subtitle: 'View full audit log of all card events',
-                onTap: () {
-                  if (GoRouter.maybeOf(context) != null) {
-                    context.push('/app/sessions/${session.id}');
-                  }
-                },
+                title: 'Return & Refund',
+                isDestructive: (_activeSession ?? session).balance > 0,
+                onTap: () => _showReturnRefundSheet(context, _activeSession ?? session, card),
               ),
               const SizedBox(height: AppSpacing.md),
             ],
-
-            // Footer Action: Scan Another Card
-            AppOutlinedButton(
-              label: 'Scan Another Card',
-              icon: Icons.qr_code_scanner,
-              onPressed: _resetScan,
-            ),
           ],
         ),
       ),
@@ -1157,10 +876,11 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
   }
 
   // ==========================================
-  // TOP-UP HISTORY BOTTOM SHEET & CANCEL FLOW
+  // RECHARGE HUB SHEET (Merged Recharge + History)
   // ==========================================
 
-  void _showTopUpHistorySheet(BuildContext context, CardSession session) {
+  // ignore: unused_element
+  void _showRechargeHubSheet(BuildContext context, CardSession session, Card card) {
     final allTx = session.transactions ?? [];
     final topUps = allTx.where((t) => t.type == TransactionType.recharge).toList();
 
@@ -1169,7 +889,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetCtx) => Container(
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -1194,11 +914,11 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Top-up History',
+                        'Recharge',
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       Text(
-                        'Card Balance: ₹${session.balance.toStringAsFixed(2)}',
+                        'Wallet: ${card.displayCardNumber} • Balance: ₹${session.balance.toStringAsFixed(2)}',
                         style: const TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w600),
                       ),
                     ],
@@ -1210,7 +930,32 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                 ],
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
+              child: AppButton(
+                label: 'Recharge',
+                icon: Icons.account_balance_wallet,
+                backgroundColor: AppColors.success,
+                onPressed: () {
+                  Navigator.of(sheetCtx).pop();
+                  _openRecharge();
+                },
+              ),
+            ),
             const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.md, 10, AppSpacing.md, 4),
+              child: Row(
+                children: const [
+                  Icon(Icons.history, size: 16, color: AppColors.textSecondaryLight),
+                  SizedBox(width: 6),
+                  Text(
+                    'Top-up History',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
+                  ),
+                ],
+              ),
+            ),
             Expanded(
               child: topUps.isEmpty
                   ? Center(
@@ -1223,7 +968,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                             SizedBox(height: 12),
                             Text(
                               'No top-ups recorded yet',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
                             ),
                           ],
                         ),
@@ -1271,7 +1016,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                                           borderRadius: BorderRadius.circular(4),
                                         ),
                                         child: Text(
-                                          isCash ? '💵 Cash' : '📱 UPI',
+                                          isCash ? 'Cash' : 'UPI',
                                           style: TextStyle(
                                             fontSize: 11,
                                             fontWeight: FontWeight.bold,
@@ -1288,21 +1033,18 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                                         color: Colors.grey.shade200,
                                         borderRadius: BorderRadius.circular(4),
                                       ),
-                                      child: const Text(
-                                        'CANCELLED',
-                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black54),
-                                      ),
+                                      child: const Text('VOIDED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
                                     )
                                   else
                                     OutlinedButton.icon(
                                       style: OutlinedButton.styleFrom(
                                         foregroundColor: AppColors.error,
-                                        side: const BorderSide(color: AppColors.error),
+                                        side: const BorderSide(color: AppColors.error, width: 1),
                                         visualDensity: VisualDensity.compact,
                                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
                                       ),
                                       icon: const Icon(Icons.cancel_outlined, size: 14),
-                                      label: const Text('Cancel Top-up', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                      label: const Text('Cancel Recharge', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                                       onPressed: () {
                                         Navigator.of(sheetCtx).pop();
                                         _handleCancelRecharge(t.id, t.amount, session);
@@ -1310,12 +1052,12 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                                     ),
                                 ],
                               ),
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 4),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    'Staff: ${t.staffName ?? 'Counter Staff'}',
+                                    'Staff: ${t.staffName ?? 'Staff Cashier'}',
                                     style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
                                   ),
                                   Text(
@@ -1344,10 +1086,11 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
   }
 
   // ==========================================
-  // FOOD ORDERS BOTTOM SHEET & CANCEL FLOW
+  // BILLING HUB SHEET (Merged Add Products + Food Orders)
   // ==========================================
 
-  void _showFoodOrdersSheet(BuildContext context, CardSession session) {
+  // ignore: unused_element
+  void _showBillingHubSheet(BuildContext context, CardSession session, Card card) {
     final allTx = session.transactions ?? [];
     final orders = allTx.where((t) => t.type == TransactionType.purchase).toList();
 
@@ -1356,7 +1099,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetCtx) => Container(
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -1381,12 +1124,12 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Food Orders',
+                        'Billing',
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       Text(
-                        '${orders.length} orders recorded on this card',
-                        style: const TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
+                        'Wallet: ${card.displayCardNumber} • Balance: ₹${session.balance.toStringAsFixed(2)}',
+                        style: const TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
@@ -1397,7 +1140,32 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                 ],
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
+              child: AppButton(
+                label: 'Start Billing / Add Products',
+                icon: Icons.add_shopping_cart,
+                backgroundColor: AppColors.primary,
+                onPressed: () {
+                  Navigator.of(sheetCtx).pop();
+                  _openAddProducts();
+                },
+              ),
+            ),
             const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.md, 10, AppSpacing.md, 4),
+              child: Row(
+                children: const [
+                  Icon(Icons.fastfood_outlined, size: 16, color: AppColors.textSecondaryLight),
+                  SizedBox(width: 6),
+                  Text(
+                    'Food Orders',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
+                  ),
+                ],
+              ),
+            ),
             Expanded(
               child: orders.isEmpty
                   ? Center(
@@ -1410,7 +1178,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                             SizedBox(height: 12),
                             Text(
                               'No food orders placed yet',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
                             ),
                           ],
                         ),
@@ -1455,25 +1223,41 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                                         color: Colors.grey.shade200,
                                         borderRadius: BorderRadius.circular(4),
                                       ),
-                                      child: const Text(
-                                        'CANCELLED',
-                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black54),
-                                      ),
+                                      child: const Text('CANCELLED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
                                     )
                                   else
-                                    OutlinedButton.icon(
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: AppColors.error,
-                                        side: const BorderSide(color: AppColors.error),
-                                        visualDensity: VisualDensity.compact,
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                                      ),
-                                      icon: const Icon(Icons.remove_shopping_cart_outlined, size: 14),
-                                      label: const Text('Cancel Order', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                      onPressed: () {
-                                        Navigator.of(sheetCtx).pop();
-                                        _handleCancelOrder(t.id, t.amount, session);
-                                      },
+                                    Row(
+                                      children: [
+                                        OutlinedButton.icon(
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: AppColors.primary,
+                                            side: const BorderSide(color: AppColors.primary, width: 1),
+                                            visualDensity: VisualDensity.compact,
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                          ),
+                                          icon: const Icon(Icons.edit_outlined, size: 14),
+                                          label: const Text('Edit', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                          onPressed: () {
+                                            Navigator.of(sheetCtx).pop();
+                                            _handleEditOrder(t, session);
+                                          },
+                                        ),
+                                        const SizedBox(width: 6),
+                                        OutlinedButton.icon(
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: AppColors.error,
+                                            side: const BorderSide(color: AppColors.error, width: 1),
+                                            visualDensity: VisualDensity.compact,
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                          ),
+                                          icon: const Icon(Icons.remove_shopping_cart_outlined, size: 14),
+                                          label: const Text('Cancel Order', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                          onPressed: () {
+                                            Navigator.of(sheetCtx).pop();
+                                            _handleCancelOrder(t.id, t.amount, session);
+                                          },
+                                        ),
+                                      ],
                                     ),
                                 ],
                               ),
@@ -1523,13 +1307,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                                   ),
                                 ],
                               ),
-                              if (t.isCancelled && t.cancellationReason != null) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Reason: ${t.cancellationReason}',
-                                  style: const TextStyle(fontSize: 11, color: Colors.black54, fontStyle: FontStyle.italic),
-                                ),
-                              ],
                             ],
                           ),
                         );
@@ -1543,15 +1320,368 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
   }
 
   // ==========================================
+  // RETURN & REFUND HUB SHEET (Merged Return + Info/Stats)
+  // ==========================================
+
+  void _showReturnRefundSheet(BuildContext context, CardSession session, Card card) {
+    final allTx = session.transactions ?? [];
+    final recharges = allTx.where((t) => t.type == TransactionType.recharge && !t.isCancelled).toList();
+    final cancelledRecharges = allTx.where((t) => t.type == TransactionType.recharge && t.isCancelled).toList();
+    final purchases = allTx.where((t) => t.type == TransactionType.purchase && !t.isCancelled).toList();
+    final cancelledPurchases = allTx.where((t) => t.type == TransactionType.purchase && t.isCancelled).toList();
+    final returns = allTx.where((t) => t.type == TransactionType.refund).toList();
+
+    final totalRechargeVol = recharges.fold<double>(0.0, (sum, t) => sum + t.amount);
+    final totalSpent = purchases.fold<double>(0.0, (sum, t) => sum + t.amount);
+    final totalRefundVol = returns.fold<double>(0.0, (sum, t) => sum + t.amount) +
+        cancelledPurchases.fold<double>(0.0, (sum, t) => sum + t.amount);
+    final totalCancelledRechargeVol = cancelledRecharges.fold<double>(0.0, (sum, t) => sum + t.amount);
+
+    final cycleNumber = session.cycleNumber ?? 1;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => Container(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.9),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 10, bottom: 6),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Return & Refund',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(sheetCtx).pop(),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView(
+                padding: AppSpacing.paddingMd,
+                children: [
+                  // 1. UNIFIED CARD & ACTIONS
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceLight,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.borderLight),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  'Wallet: ${card.displayCardNumber}',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textPrimaryLight,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                                  ),
+                                  child: Text(
+                                    'Cycle $cycleNumber',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                const Text(
+                                  'Available',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textSecondaryLight,
+                                  ),
+                                ),
+                                Text(
+                                  '₹${session.balance.toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.success,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                icon: const Icon(Icons.payments_outlined, size: 16),
+                                label: const Text('Refund', style: TextStyle(fontWeight: FontWeight.bold)),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: session.balance > 0 ? AppColors.warning : Colors.grey,
+                                  side: BorderSide(
+                                    color: session.balance > 0 ? AppColors.warning : Colors.grey.shade300,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                                onPressed: () {
+                                  Navigator.of(sheetCtx).pop();
+                                  _handleRefundOnly(session);
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                icon: const Icon(Icons.assignment_return_outlined, size: 16),
+                                label: const Text('Return', style: TextStyle(fontWeight: FontWeight.bold)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.error,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                                onPressed: () {
+                                  Navigator.of(sheetCtx).pop();
+                                  _handleSettleReturn();
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // 2. MINIMALIST 2x2 STATISTICS GRID
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.borderLight),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Recharges', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 4),
+                              Text('${recharges.length} times', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimaryLight)),
+                              Text('₹${totalRechargeVol.toStringAsFixed(2)} total', style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight)),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.borderLight),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Refunds', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 4),
+                              Text('${returns.length + cancelledPurchases.length} times', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimaryLight)),
+                              Text('₹${totalRefundVol.toStringAsFixed(2)} total', style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.borderLight),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Food Orders', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 4),
+                              Text('${purchases.length} orders', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimaryLight)),
+                              Text('₹${totalSpent.toStringAsFixed(2)} spent', style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight)),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.borderLight),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Cancelled Recharges', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${cancelledRecharges.length} times',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: cancelledRecharges.isNotEmpty ? AppColors.error : AppColors.textPrimaryLight,
+                                ),
+                              ),
+                              Text('₹${totalCancelledRechargeVol.toStringAsFixed(2)} voided', style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  if (session.customerName != null && session.customerName!.isNotEmpty) ...[
+                    Text(
+                      'Customer: ${session.customerName}${session.customerPhone != null && session.customerPhone!.isNotEmpty ? " (${session.customerPhone})" : ""}',
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
+                    ),
+                    const SizedBox(height: 2),
+                  ],
+                  Text(
+                    'Session Started: ${_formatDateTime(session.startedAt)}',
+                    style: const TextStyle(fontSize: 11, color: AppColors.textTertiaryLight),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleRefundOnly(CardSession session) async {
+    if (session.balance <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No remaining money to refund (Balance: ₹0.00).'),
+          backgroundColor: AppColors.info,
+        ),
+      );
+      return;
+    }
+
+    final confirm = await AppDialog.show(
+      context,
+      title: 'Confirm Balance Refund',
+      message: 'Refund available money of ₹${session.balance.toStringAsFixed(2)} to customer?',
+      confirmLabel: 'Refund Money',
+      isDestructive: true,
+    );
+
+    if (confirm != true) return;
+
+    setState(() {
+      _isResolving = true;
+    });
+
+    try {
+      final sessionRepo = ref.read(sessionRepositoryProvider);
+      final result = await sessionRepo.refundSession(session.id);
+
+      await _refreshSession();
+      ref.read(sessionListNotifierProvider.notifier).loadSessions();
+      ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
+
+      if (mounted) {
+        setState(() {
+          _isResolving = false;
+          _activeSession = _activeSession?.copyWith(balance: 0.0);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Refund of ₹${result.refundedAmount.toStringAsFixed(2)} processed. Wallet remains active.',
+            ),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isResolving = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Refund failed: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  // ==========================================
   // CANCELLATION HANDLERS
   // ==========================================
 
   Future<void> _handleCancelRecharge(String txId, double amount, CardSession session) async {
-    if (session.balance < amount) {
+    final currentBal = _activeSession?.balance ?? session.balance;
+    if (currentBal < amount) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Cannot cancel top-up: Customer already spent ₹${(amount - session.balance).toStringAsFixed(2)}. Current balance is only ₹${session.balance.toStringAsFixed(2)}.',
+            'Cannot cancel top-up: Customer already spent ₹${(amount - currentBal).toStringAsFixed(2)}. Current balance is only ₹${currentBal.toStringAsFixed(2)}.',
           ),
           backgroundColor: AppColors.error,
         ),
@@ -1570,7 +1700,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
             children: const [
               Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 24),
               SizedBox(width: 8),
-              Text('Cancel Top-up?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              Text('Cancel Recharge?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
             ],
           ),
           content: Column(
@@ -1578,7 +1708,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'This will void the top-up and deduct ₹${amount.toStringAsFixed(2)} from the card balance.',
+                'This will cancel the recharge and deduct ₹${amount.toStringAsFixed(2)} from the card balance.',
                 style: const TextStyle(fontSize: 14, color: AppColors.textPrimaryLight),
               ),
               const SizedBox(height: 16),
@@ -1591,7 +1721,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                 initialValue: selectedReason,
                 items: const [
                   DropdownMenuItem(value: 'Wrong Amount Entered', child: Text('Wrong Amount Entered')),
-                  DropdownMenuItem(value: 'Customer Changed Mind', child: Text('Customer Changed Mind')),
                   DropdownMenuItem(value: 'Duplicate Scan', child: Text('Duplicate Scan')),
                   DropdownMenuItem(value: 'Payment Failed', child: Text('Payment Failed')),
                   DropdownMenuItem(value: 'Other Reason', child: Text('Other Reason')),
@@ -1622,12 +1751,12 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Keep Top-up'),
+              child: const Text('Keep Recharge'),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Confirm Void', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text('Cancel Recharge', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -1644,6 +1773,8 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       final sessionService = ref.read(sessionServiceProvider);
       await sessionService.cancelRecharge(transactionId: txId, reason: reason);
       await _refreshSession();
+      ref.read(sessionListNotifierProvider.notifier).loadSessions();
+      ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1653,9 +1784,10 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       );
     } catch (e) {
       if (!mounted) return;
+      final msg = e is ApiException ? e.message : e.toString();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Cancellation failed: $e'),
+          content: Text('Cancellation failed: $msg'),
           backgroundColor: AppColors.error,
         ),
       );
@@ -1663,7 +1795,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
   }
 
   Future<void> _handleCancelOrder(String txId, double amount, CardSession session) async {
-    String selectedReason = 'Customer Changed Mind';
+    String selectedReason = 'Ordered Wrong Item';
     final customReasonCtrl = TextEditingController();
 
     final confirm = await showDialog<bool>(
@@ -1694,7 +1826,6 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
               DropdownButtonFormField<String>(
                 initialValue: selectedReason,
                 items: const [
-                  DropdownMenuItem(value: 'Customer Changed Mind', child: Text('Customer Changed Mind')),
                   DropdownMenuItem(value: 'Ordered Wrong Item', child: Text('Ordered Wrong Item')),
                   DropdownMenuItem(value: 'Item Out of Stock', child: Text('Item Out of Stock')),
                   DropdownMenuItem(value: 'Other Reason', child: Text('Other Reason')),
@@ -1747,6 +1878,8 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       final sessionService = ref.read(sessionServiceProvider);
       await sessionService.cancelOrder(transactionId: txId, reason: reason);
       await _refreshSession();
+      ref.read(sessionListNotifierProvider.notifier).loadSessions();
+      ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1756,12 +1889,117 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       );
     } catch (e) {
       if (!mounted) return;
+      final msg = e is ApiException ? e.message : e.toString();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Order cancellation failed: $e'),
+          content: Text('Order cancellation failed: $msg'),
           backgroundColor: AppColors.error,
         ),
       );
     }
   }
+
+  Future<void> _handleEditOrder(Transaction orderTx, CardSession session) async {
+    final items = orderTx.items ?? [];
+    final itemsSummary = items.isNotEmpty
+        ? items.map((i) => '${i.quantity}x ${i.itemName ?? "Item"}').join(', ')
+        : 'Order #${orderTx.displayTransactionId}';
+
+    final confirmAction = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: const [
+            Icon(Icons.edit_note_outlined, color: AppColors.primary, size: 24),
+            SizedBox(width: 8),
+            Text('Edit Food Order?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Order: $itemsSummary',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Amount to refund: ₹${orderTx.amount.toStringAsFixed(2)}',
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.primaryDark),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Keep Order'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Proceed to Edit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmAction != true) return;
+
+    try {
+      final sessionService = ref.read(sessionServiceProvider);
+      await sessionService.cancelOrder(
+        transactionId: orderTx.id,
+        reason: 'Staff edited and revised order',
+      );
+      await _refreshSession();
+      ref.read(sessionListNotifierProvider.notifier).loadSessions();
+      ref.read(analyticsNotifierProvider.notifier).loadAnalytics();
+
+      // Pre-fill the cart with items from this order
+      final catalogProducts = ref.read(posCatalogNotifierProvider).products;
+
+      ref.read(posCartNotifierProvider.notifier).clearCart();
+      for (final it in items) {
+        final matchingProduct = catalogProducts
+            .where((p) => p.id == it.productId || p.itemName.toLowerCase() == (it.itemName ?? '').toLowerCase())
+            .firstOrNull;
+        final product = matchingProduct ??
+            Product(
+              id: it.productId,
+              branchId: session.branchId,
+              itemName: it.itemName ?? 'Food Item',
+              price: it.unitPrice ?? (it.totalAmount != null && it.quantity > 0 ? it.totalAmount! / it.quantity : 0.0),
+              category: const ['General'],
+              status: 'ACTIVE',
+            );
+        for (int q = 0; q < it.quantity; q++) {
+          ref.read(posCartNotifierProvider.notifier).addToCart(product);
+        }
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Order cancelled & ₹${orderTx.amount.toStringAsFixed(2)} refunded. Modifying cart...'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+
+      if (GoRouter.maybeOf(context) != null) {
+        await context.push('/app/pos/${session.id}');
+      }
+      await _refreshSession();
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e is ApiException ? e.message : e.toString();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to edit order: $msg'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
 }

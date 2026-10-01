@@ -28,7 +28,7 @@ describe('New Requirements: Phone Auth, WhatsApp Sharing & Auto-Register Cards',
         password: 'StaffPassword123',
       };
       const result = createStaffMemberSchema.parse(formatted);
-      expect(result.phone).toBe('919876543210');
+      expect(result.phone).toBe('9876543210');
     });
 
     it('should reject phone numbers with less than 10 digits', () => {
@@ -96,6 +96,31 @@ describe('New Requirements: Phone Auth, WhatsApp Sharing & Auto-Register Cards',
       expect(codes).toContain('RECHARGE');
       expect(codes).toContain('PURCHASE');
       expect(codes).toContain('PRODUCT_VIEW');
+    });
+  });
+
+  describe('4. QR Token Extraction & Cross-Tenant Resolution Guard', () => {
+    it('should extract token from standard /c/ path with trailing slash', async () => {
+      const { extractCleanToken } = await import('../../src/controllers/cards.controller.js');
+      expect(extractCleanToken('https://money-card-frontend-staging.vercel.app/c/qtk_abc123/')).toBe('qtk_abc123');
+    });
+
+    it('should extract token from ?token= or ?qr= query parameters', async () => {
+      const { extractCleanToken } = await import('../../src/controllers/cards.controller.js');
+      expect(extractCleanToken('https://moneycard.app/portal?token=qtk_param123')).toBe('qtk_param123');
+      expect(extractCleanToken('https://moneycard.app/portal?qr=qtk_qrparam456')).toBe('qtk_qrparam456');
+    });
+
+    it('should handle URL encoded characters and mc: prefix', async () => {
+      const { extractCleanToken } = await import('../../src/controllers/cards.controller.js');
+      expect(extractCleanToken('mc:qtk_prefix999')).toBe('qtk_prefix999');
+      expect(extractCleanToken('https%3A%2F%2Fmoney-card.vercel.app%2Fc%2Fqtk_encoded777')).toBe('qtk_encoded777');
+    });
+
+    it('should preserve raw card tokens and card numbers without corruption', async () => {
+      const { extractCleanToken } = await import('../../src/controllers/cards.controller.js');
+      expect(extractCleanToken('  MC-001  ')).toBe('MC-001');
+      expect(extractCleanToken('qtk_raw_token_888')).toBe('qtk_raw_token_888');
     });
   });
 });

@@ -42,6 +42,9 @@ class CardSession {
     return 'Card';
   }
 
+  bool get isActive => status == SessionStatus.active;
+  bool get isSettled => status == SessionStatus.settled;
+
   final String id;
   final String cardId;
   final String? physicalCardNumber;
@@ -285,5 +288,37 @@ class SessionReturnResult {
         'refundedAmount': refundedAmount,
         'sessionStatus': sessionStatus,
         'cardStatus': cardStatus,
+      };
+}
+
+/// Result of a session balance refund operation (POST /api/v1/card-sessions/:id/refund)
+class SessionRefundResult {
+  final String sessionId;
+  final double refundedAmount;
+  final double balance;
+  final String sessionStatus;
+
+  const SessionRefundResult({
+    required this.sessionId,
+    required this.refundedAmount,
+    required this.balance,
+    required this.sessionStatus,
+  });
+
+  factory SessionRefundResult.fromJson(Map<String, dynamic> json) {
+    final sess = json['session'] is Map<String, dynamic> ? json['session'] as Map<String, dynamic> : null;
+    return SessionRefundResult(
+      sessionId: json['sessionId'] as String? ?? sess?['id'] as String? ?? '',
+      refundedAmount: (json['refundedAmount'] as num? ?? json['refundAmount'] as num?)?.toDouble() ?? 0.0,
+      balance: (sess?['balance'] as num? ?? json['balance'] as num?)?.toDouble() ?? 0.0,
+      sessionStatus: (sess?['status'] as String? ?? json['sessionStatus'] as String? ?? 'ACTIVE'),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'sessionId': sessionId,
+        'refundedAmount': refundedAmount,
+        'balance': balance,
+        'sessionStatus': sessionStatus,
       };
 }

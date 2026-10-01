@@ -104,14 +104,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
         userMessage = 'Your staff account is no longer active. Please contact your Organization Administrator.';
       } else if (e.code.name.toUpperCase().contains('ORGANIZATION_INACTIVE') || e.message.toLowerCase().contains('organization')) {
         userMessage = 'Your organization account is currently inactive or suspended. Please contact platform administration.';
+      } else if (e.message.isNotEmpty && (e.message.contains("doesn't exist") || e.message.contains("Credentials are wrong") || e.message.contains("not exist"))) {
+        userMessage = e.message;
       } else if (e.code == ApiErrorCode.unauthorized || e.statusCode == 401) {
-        userMessage = 'Phone number, email or password is incorrect.';
+        userMessage = e.message.isNotEmpty ? e.message : 'Credentials are wrong.';
       } else if (e.code == ApiErrorCode.networkError || e.code == ApiErrorCode.timeoutError) {
         userMessage = 'Unable to connect. Check your internet connection and try again.';
       } else if (e.code == ApiErrorCode.validationError) {
         userMessage = e.message.isNotEmpty ? e.message : 'Please check your login credentials and password.';
       } else {
-        userMessage = 'Something went wrong. Please try again.';
+        userMessage = e.message.isNotEmpty ? e.message : 'Something went wrong. Please try again.';
       }
 
       state = AuthState(

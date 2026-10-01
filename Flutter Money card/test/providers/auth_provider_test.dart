@@ -115,7 +115,7 @@ void main() {
 
       expect(result, isFalse);
       expect(notifier.state.status, AuthStatus.error);
-      expect(notifier.state.errorMessage, 'Phone number, email or password is incorrect.');
+      expect(notifier.state.errorMessage, 'Invalid credentials');
       expect(notifier.state.isAuthenticated, isFalse);
     });
 

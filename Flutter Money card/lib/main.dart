@@ -7,7 +7,11 @@ import 'routing/app_router.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  AppConfig.initialize();
+  if (AppConfig.overrideEnvironment == null) {
+    AppConfig.initialize(env: 'development');
+  } else {
+    AppConfig.initialize();
+  }
   await ServerConfigStorage().initialize();
 
   runApp(

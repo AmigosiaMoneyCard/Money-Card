@@ -143,7 +143,7 @@ export const mockBranchesHandlers = {
 
   async updateBranch(
     id: string,
-    data: { name?: string; status?: 'ACTIVE' | 'INACTIVE' },
+    data: { name?: string; status?: 'ACTIVE' | 'INACTIVE'; phone?: string; password?: string },
   ): Promise<ApiResult<Branch>> {
     await mockDelay();
     const branchIndex = mockStore.branches.findIndex((b) => b.id === id);
@@ -152,23 +152,18 @@ export const mockBranchesHandlers = {
     }
 
     const existing = mockStore.branches[branchIndex];
-
-    if (data.status && data.status !== 'ACTIVE' && existing.status === 'ACTIVE') {
-      const activeCount = mockStore.branches.filter(
-        (b) => b.organizationId === existing.organizationId && b.status === 'ACTIVE',
-      ).length;
-      if (activeCount <= 1) {
-        return createMockError(
-          'VALIDATION_ERROR',
-          'Cannot disable this branch. An organization must have at least one active branch.',
-        );
-      }
-    }
+    const newPhone = data.phone !== undefined ? data.phone : existing.credentials?.phone;
+    const newPassword = data.password !== undefined ? data.password : existing.credentials?.password;
 
     const updated: Branch = {
       ...existing,
       ...(data.name ? { name: data.name } : {}),
       ...(data.status ? { status: data.status } : {}),
+      credentials: (newPhone || newPassword) ? {
+        name: data.name || existing.name,
+        phone: newPhone || '',
+        password: newPassword || '12345678',
+      } : existing.credentials,
       updatedAt: mockStore.getTimestamp(),
     };
 

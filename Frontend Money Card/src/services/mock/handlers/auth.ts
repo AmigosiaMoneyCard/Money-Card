@@ -22,18 +22,59 @@ export const mockAuthHandlers = {
     await mockDelay();
     return createMockSuccess({ valid: true, user: { id: 'usr_001', name: 'Demo User', email: 'user@example.com', role: 'STAFF', organizationName: 'Demo Org' } });
   },
-  async login(credentials: LoginCredentials): Promise<ApiResult<AuthResponseData>> {
+  async login(credentials: LoginCredentials & { portal?: string }): Promise<ApiResult<AuthResponseData>> {
     await mockDelay();
 
     const searchIdentifier = (credentials.email || credentials.phone || '').trim().toLowerCase();
-    const userMatch = mockStore.staffUsers.find((u) => {
+    const requestedPortal = (credentials.portal || '').toUpperCase();
+
+    // Check staffUsers and branches (for counter credentials)
+    let userMatch = mockStore.staffUsers.find((u) => {
       const emailMatches = u.email && u.email.toLowerCase() === searchIdentifier;
       const phoneMatches = u.phone && (u.phone === searchIdentifier || u.phone.endsWith(searchIdentifier));
       return emailMatches || phoneMatches;
     });
 
-    if (!userMatch || userMatch.passwordHash !== credentials.password) {
+    if (!userMatch && (requestedPortal === 'COUNTER' || !requestedPortal)) {
+      const branchMatch = mockStore.branches.find((b) => b.credentials?.phone === searchIdentifier);
+      if (branchMatch) {
+        userMatch = {
+          id: `usr_counter_${branchMatch.id}`,
+          name: branchMatch.name,
+          email: `${branchMatch.id}@counter.local`,
+          phone: branchMatch.credentials?.phone,
+          role: 'STAFF',
+          organizationId: branchMatch.organizationId,
+          passwordHash: branchMatch.credentials?.password || 'password',
+          status: 'ACTIVE',
+          permissions: ['CARD_VIEW', 'CARD_ISSUE', 'SESSION_VIEW', 'RECHARGE', 'PURCHASE'],
+          assignedBranchIds: [branchMatch.id],
+        };
+      }
+    }
+
+    if (!userMatch) {
+      if (requestedPortal === 'COUNTER') {
+        return createMockError('UNAUTHORIZED', "Counter doesn't exist.");
+      }
+      if (requestedPortal === 'ORG_ADMIN') {
+        return createMockError('UNAUTHORIZED', "Org Admin doesn't exist.");
+      }
+      if (requestedPortal === 'STAFF') {
+        return createMockError('UNAUTHORIZED', "Staff doesn't exist.");
+      }
       return createMockError('UNAUTHORIZED', 'Invalid credentials');
+    }
+
+    if (requestedPortal === 'COUNTER' && userMatch.role !== 'STAFF') {
+      return createMockError('UNAUTHORIZED', "Counter doesn't exist.");
+    }
+    if (requestedPortal === 'ORG_ADMIN' && userMatch.role !== 'ORG_ADMIN') {
+      return createMockError('UNAUTHORIZED', "Org Admin doesn't exist.");
+    }
+
+    if (userMatch.passwordHash !== credentials.password) {
+      return createMockError('UNAUTHORIZED', 'Credentials are wrong.');
     }
 
     if ('status' in userMatch && (userMatch as { status?: string }).status === 'PENDING_ACTIVATION') {

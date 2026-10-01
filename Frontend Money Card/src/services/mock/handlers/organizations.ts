@@ -42,6 +42,10 @@ export const mockOrganizationsHandlers = {
     const staffLimit = subscription?.overrides?.staffLimit ?? plan?.staffLimit ?? 25;
     const cardLimit = subscription?.overrides?.cardLimit ?? plan?.cardLimit ?? 1000;
 
+    const orgCardIds = new Set(mockStore.cards.filter((c) => c.organizationId === orgId).map((c) => c.id));
+    const activeCardCount = mockStore.cards.filter((c) => c.organizationId === orgId && c.status === 'ACTIVE').length;
+    const activeSessionCount = mockStore.sessions.filter((s) => orgCardIds.has(s.cardId) && s.status === 'ACTIVE').length;
+
     return createMockSuccess({
       ...org,
       plan: plan || mockStore.plans[0],
@@ -53,6 +57,8 @@ export const mockOrganizationsHandlers = {
         staffLimit,
         cardCount,
         cardLimit,
+        activeCardCount,
+        activeSessionCount,
       },
     });
   },
@@ -120,6 +126,10 @@ export const mockOrganizationsHandlers = {
       const staffLimit = subscription?.overrides?.staffLimit ?? plan?.staffLimit ?? 25;
       const cardLimit = subscription?.overrides?.cardLimit ?? plan?.cardLimit ?? 1000;
 
+      const orgCardIds = new Set(mockStore.cards.filter((c) => c.organizationId === org.id).map((c) => c.id));
+      const activeCardCount = mockStore.cards.filter((c) => c.organizationId === org.id && c.status === 'ACTIVE').length;
+      const activeSessionCount = mockStore.sessions.filter((s) => orgCardIds.has(s.cardId) && s.status === 'ACTIVE').length;
+
       return {
         ...org,
         plan: plan || mockStore.plans[0],
@@ -131,6 +141,8 @@ export const mockOrganizationsHandlers = {
           staffLimit,
           cardCount,
           cardLimit,
+          activeCardCount,
+          activeSessionCount,
         },
       };
     });
@@ -289,6 +301,10 @@ export const mockOrganizationsHandlers = {
     const staffLimit = subscription?.overrides?.staffLimit ?? plan?.staffLimit ?? 25;
     const cardLimit = subscription?.overrides?.cardLimit ?? plan?.cardLimit ?? 1000;
 
+    const orgCardIds = new Set(mockStore.cards.filter((c) => c.organizationId === org.id).map((c) => c.id));
+    const activeCardCount = mockStore.cards.filter((c) => c.organizationId === org.id && c.status === 'ACTIVE').length;
+    const activeSessionCount = mockStore.sessions.filter((s) => orgCardIds.has(s.cardId) && s.status === 'ACTIVE').length;
+
     return createMockSuccess({
       ...org,
       plan: plan || mockStore.plans[0],
@@ -300,6 +316,8 @@ export const mockOrganizationsHandlers = {
         staffLimit,
         cardCount,
         cardLimit,
+        activeCardCount,
+        activeSessionCount,
       },
     });
   },

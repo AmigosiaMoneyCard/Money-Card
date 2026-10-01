@@ -113,6 +113,15 @@ class SessionService {
     );
   }
 
+  /// Refund balance of card session without returning card (POST /api/v1/card-sessions/:id/refund)
+  Future<SessionRefundResult> refundSession(String sessionId) async {
+    return _apiService.post<SessionRefundResult>(
+      ApiEndpoints.refundSession(sessionId),
+      data: {},
+      fromJson: (data) => SessionRefundResult.fromJson(data as Map<String, dynamic>),
+    );
+  }
+
   /// Cancel a recharge transaction (POST /api/v1/card-sessions/transactions/:id/cancel-recharge)
   Future<void> cancelRecharge({
     required String transactionId,

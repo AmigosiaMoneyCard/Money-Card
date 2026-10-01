@@ -110,7 +110,9 @@ class BranchNotifier extends StateNotifier<BranchState> {
           .where((b) => b.status.toUpperCase() == 'ACTIVE')
           .toList();
 
-      final assigned = activeBranches.isNotEmpty ? activeBranches : allBranches;
+      final assigned = activeBranches
+          .where((b) => assignedBranchIds.contains(b.id))
+          .toList();
 
       Branch? active = state.currentBranch;
       if (active == null || !assigned.any((b) => b.id == active!.id)) {

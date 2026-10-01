@@ -45,19 +45,14 @@ class ApiException implements Exception {
 
     final targetUri = dioException.requestOptions.uri;
     final host = targetUri.host.isNotEmpty ? targetUri.host : 'backend';
-    final port = targetUri.port != 0 && targetUri.port != 80 && targetUri.port != 443
-        ? ':${targetUri.port}'
-        : '';
-    final targetDisplay = '$host$port';
 
     switch (dioException.type) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
-        return ApiException(
+        return const ApiException(
           code: ApiErrorCode.timeoutError,
-          message:
-              'Connection to $targetDisplay timed out. Ensure your phone and laptop are on the same Wi-Fi.',
+          message: 'Network error. Please check your connection and try again.',
         );
       case DioExceptionType.connectionError:
         final isLoopback = host == 'localhost' || host == '127.0.0.1';
@@ -65,7 +60,7 @@ class ApiException implements Exception {
           code: ApiErrorCode.networkError,
           message: isLoopback
               ? 'Cannot connect to localhost from a physical device. Tap Server Settings to set your Laptop LAN IP.'
-              : 'Cannot connect to server at $targetDisplay. Ensure backend server is running on laptop.',
+              : 'Network error. Please check your connection and try again.',
         );
       case DioExceptionType.cancel:
         return const ApiException(
@@ -80,9 +75,9 @@ class ApiException implements Exception {
       case DioExceptionType.badResponse:
       case DioExceptionType.unknown:
       default:
-        return ApiException(
+        return const ApiException(
           code: ApiErrorCode.unknownError,
-          message: dioException.message ?? 'An unexpected network error occurred.',
+          message: 'Network error. Please check your connection and try again.',
         );
     }
   }

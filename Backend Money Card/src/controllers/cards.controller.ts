@@ -579,32 +579,77 @@ export async function unblockCard(req: Request, res: Response) {
   });
 }
 
+export function extractCleanToken(input: string): string {
+  let cleaned = String(input || '').trim();
+  if (!cleaned) return '';
+
+  try {
+    cleaned = decodeURIComponent(cleaned);
+  } catch (_) {}
+
+  cleaned = cleaned.replace(/\/+$/, '');
+
+  if (cleaned.toLowerCase().startsWith('mc:')) {
+    cleaned = cleaned.substring(3).trim();
+  }
+
+  if (cleaned.startsWith('http://') || cleaned.startsWith('https://')) {
+    try {
+      const parsedUrl = new URL(cleaned);
+      if (parsedUrl.searchParams.has('token') && parsedUrl.searchParams.get('token')) {
+        return parsedUrl.searchParams.get('token')!.trim();
+      }
+      if (parsedUrl.searchParams.has('qr') && parsedUrl.searchParams.get('qr')) {
+        return parsedUrl.searchParams.get('qr')!.trim();
+      }
+      const segments = parsedUrl.pathname.split('/').filter(Boolean);
+      const cIdx = segments.indexOf('c');
+      if (cIdx !== -1 && cIdx + 1 < segments.length) {
+        return segments[cIdx + 1].trim();
+      }
+      if (segments.length > 0) {
+        return segments[segments.length - 1].trim();
+      }
+    } catch (_) {
+      if (cleaned.includes('/c/')) {
+        cleaned = cleaned.split('/c/')[1].split('?')[0].split('#')[0].replace(/\/+$/, '');
+      }
+    }
+  } else if (cleaned.includes('/c/')) {
+    cleaned = cleaned.split('/c/')[1].split('?')[0].split('#')[0].replace(/\/+$/, '');
+  }
+
+  return cleaned.trim();
+}
+
 export async function resolveCard(req: Request, res: Response) {
   const orgId = req.user?.organizationId;
   const { qrToken, qrCode, physicalCardNumber, cardNumber } = req.body;
-  let rawInput = String(qrToken || qrCode || physicalCardNumber || cardNumber || '').trim();
+  const rawInput = String(qrToken || qrCode || physicalCardNumber || cardNumber || '').trim();
 
   if (!rawInput) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'qrToken, qrCode, or cardNumber is required');
   }
 
-  if (rawInput.includes('/c/')) {
-    rawInput = rawInput.split('/c/')[1].split('?')[0].split('#')[0];
+  const cleanInput = extractCleanToken(rawInput);
+  if (!cleanInput) {
+    return sendError(res, 400, 'VALIDATION_ERROR', 'qrToken, qrCode, or cardNumber is required');
   }
 
-  const tokenStr = rawInput.toLowerCase().startsWith('qtk_')
-    ? rawInput
-    : `qtk_${rawInput.replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const tokenStr = cleanInput.toLowerCase().startsWith('qtk_')
+    ? cleanInput
+    : `qtk_${cleanInput.replace(/[^a-zA-Z0-9_-]/g, '')}`;
 
   let card = await prisma.card.findFirst({
     where: {
       organizationId: orgId || undefined,
       OR: [
-        { physicalCardNumber: rawInput.toUpperCase() },
-        { qrToken: rawInput },
+        { physicalCardNumber: { equals: cleanInput, mode: 'insensitive' } },
+        { physicalCardNumber: { equals: rawInput, mode: 'insensitive' } },
+        { qrToken: cleanInput },
+        { qrToken: { equals: cleanInput, mode: 'insensitive' } },
         { qrToken: tokenStr },
-        { qrToken: rawInput.toLowerCase() },
-        { qrToken: rawInput.toUpperCase() },
+        { qrToken: rawInput },
       ],
     },
     include: {
@@ -614,6 +659,39 @@ export async function resolveCard(req: Request, res: Response) {
       },
     },
   });
+
+  if (!card) {
+    const existingGlobal = await prisma.card.findFirst({
+      where: {
+        OR: [
+          { qrToken: cleanInput },
+          { qrToken: { equals: cleanInput, mode: 'insensitive' } },
+          { qrToken: tokenStr },
+          { qrToken: rawInput },
+        ],
+      },
+      include: {
+        organization: { select: { id: true, name: true } },
+        sessions: {
+          where: { status: 'ACTIVE' },
+          include: { branch: true },
+        },
+      },
+    });
+
+    if (existingGlobal) {
+      if (orgId && existingGlobal.organizationId !== orgId) {
+        const orgName = existingGlobal.organization?.name || 'Another cafeteria organization';
+        return sendError(
+          res,
+          400,
+          'CARD_ORGANIZATION_MISMATCH',
+          `This card is already registered to another cafeteria organization (${orgName}). It cannot be used in your organization.`,
+        );
+      }
+      card = existingGlobal as any;
+    }
+  }
 
   if (!card) {
     if (!orgId) {
@@ -634,8 +712,8 @@ export async function resolveCard(req: Request, res: Response) {
       );
     }
 
-    const cardName = rawInput.trim().toUpperCase();
-    const token = rawInput.trim();
+    const cardName = cleanInput.trim().toUpperCase();
+    const token = cleanInput.trim();
 
     // Check if card with physicalCardNumber already exists in this org
     const existingNamedCard = await prisma.card.findUnique({
@@ -673,16 +751,17 @@ export async function resolveCard(req: Request, res: Response) {
           },
         });
       } catch (err: any) {
-        // In case of conflict, retrieve existing card
-        card = await prisma.card.findFirst({
+        // Handle race conditions or duplicate conflicts safely
+        const existingAfterConflict = await prisma.card.findFirst({
           where: {
-            organizationId: orgId,
             OR: [
-              { physicalCardNumber: cardName },
               { qrToken: token },
+              { qrToken: { equals: token, mode: 'insensitive' } },
+              { physicalCardNumber: cardName },
             ],
           },
           include: {
+            organization: { select: { id: true, name: true } },
             sessions: {
               where: { status: 'ACTIVE' },
               include: { branch: true },
@@ -690,11 +769,32 @@ export async function resolveCard(req: Request, res: Response) {
           },
         });
 
-        if (!card) {
-          return sendError(res, 400, 'CARD_REGISTRATION_FAILED', 'Failed to auto-register card: ' + (err?.message || 'Conflict'));
+        if (existingAfterConflict) {
+          if (existingAfterConflict.organizationId === orgId) {
+            card = existingAfterConflict as any;
+          } else {
+            const orgName = existingAfterConflict.organization?.name || 'Another cafeteria organization';
+            return sendError(
+              res,
+              400,
+              'CARD_ORGANIZATION_MISMATCH',
+              `This card is already registered to another cafeteria organization (${orgName}). It cannot be used in your organization.`,
+            );
+          }
+        } else {
+          return sendError(
+            res,
+            400,
+            'CARD_REGISTRATION_FAILED',
+            'Failed to register card. Please check if the card is already in use.',
+          );
         }
       }
     }
+  }
+
+  if (!card) {
+    return sendError(res, 404, 'CARD_NOT_FOUND', 'Card could not be found or registered');
   }
 
   // Ensure card has physicalCardNumber and is marked ASSIGNED

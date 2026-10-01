@@ -60,6 +60,7 @@ export async function getProducts(req: Request, res: Response) {
   if (branchId && branchId !== 'ALL') {
     whereClause.OR = [
       { branchId },
+      { branchId: null },
       { inventoryItems: { some: { branchId } } },
     ];
   }
