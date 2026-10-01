@@ -104,27 +104,11 @@ function OrgAdminSubscriptionsView() {
   const [modalApiError, setModalApiError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Individual Plan Collapsible Dropdown State
-  const [expandedPlanIds, setExpandedPlanIds] = useState<Record<string, boolean>>({});
+  // Global Collapsible State for Available Plans Details (Single Master Toggle)
+  const [allPlansExpanded, setAllPlansExpanded] = useState(true);
 
-  const togglePlanDetails = (planId: string) => {
-    setExpandedPlanIds((prev) => ({
-      ...prev,
-      [planId]: !prev[planId],
-    }));
-  };
-
-  const allPlansExpanded = plans.length > 0 && plans.every((p) => expandedPlanIds[p.id]);
   const handleToggleAllPlans = () => {
-    if (allPlansExpanded) {
-      setExpandedPlanIds({});
-    } else {
-      const next: Record<string, boolean> = {};
-      plans.forEach((p) => {
-        next[p.id] = true;
-      });
-      setExpandedPlanIds(next);
-    }
+    setAllPlansExpanded((prev) => !prev);
   };
 
   // ── Fetch Organization Subscription Data ───────────────────
@@ -534,17 +518,22 @@ function OrgAdminSubscriptionsView() {
 
               <button
                 type="button"
+                id="toggle-all-plans-details"
                 onClick={handleToggleAllPlans}
-                className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition-colors cursor-pointer self-start sm:self-auto"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition-colors cursor-pointer self-start sm:self-auto"
               >
-                {allPlansExpanded ? 'Collapse All Details' : 'Expand All Details'}
+                <span>{allPlansExpanded ? 'Collapse All Details' : 'Expand All Details'}</span>
+                <ChevronDown
+                  className={`h-3.5 w-3.5 text-emerald-600 transition-transform duration-200 ${
+                    allPlansExpanded ? 'rotate-180' : ''
+                  }`}
+                />
               </button>
             </div>
 
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {plans.map((plan) => {
                 const isCurrent = plan.id === currentPlan?.id;
-                const isExpanded = !!expandedPlanIds[plan.id];
 
                 return (
                   <div
@@ -575,24 +564,8 @@ function OrgAdminSubscriptionsView() {
                         </p>
                       </div>
 
-                      {/* Individual Plan Dropdown Toggle */}
-                      <button
-                        type="button"
-                        id={`toggle-plan-${plan.id}-details`}
-                        onClick={() => togglePlanDetails(plan.id)}
-                        className="flex w-full items-center justify-between rounded-lg bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors border border-slate-200 cursor-pointer"
-                        aria-expanded={isExpanded}
-                      >
-                        <span>{isExpanded ? 'Collapse Details' : 'View Plan Details'}</span>
-                        <ChevronDown
-                          className={`h-4 w-4 text-emerald-600 transition-transform duration-200 ${
-                            isExpanded ? 'rotate-180' : ''
-                          }`}
-                        />
-                      </button>
-
                       {/* Collapsible Details: Technical Limits & Entitlements */}
-                      {isExpanded && (
+                      {allPlansExpanded && (
                         <div className="space-y-4 pt-1">
                           {/* Technical Limits List */}
                           <div className="space-y-2 border-t border-b border-slate-200 py-3 text-xs">
