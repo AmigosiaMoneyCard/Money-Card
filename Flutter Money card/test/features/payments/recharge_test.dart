@@ -63,11 +63,15 @@ void main() {
       final sessionNotifier = SessionDetailsNotifier(fakeRepo);
       final notifier = RechargeNotifier(fakeRepo, sessionNotifier);
 
-      expect(notifier.state.paymentMethod, PaymentMethod.cash);
-      expect(notifier.state.canSubmit, isFalse); // Amount is 0
+      expect(notifier.state.paymentMethod, isNull);
+      expect(notifier.state.canSubmit, isFalse); // Amount is 0 and no method selected
 
-      // Set Cash Amount
+      // Set Amount
       notifier.setAmount(150.0);
+      expect(notifier.state.canSubmit, isFalse); // Method still not selected
+
+      // Select Cash
+      notifier.setPaymentMethod(PaymentMethod.cash);
       expect(notifier.state.canSubmit, isTrue);
 
       // Switch to UPI
@@ -125,6 +129,10 @@ void main() {
 
       expect(find.text('CASH'), findsOneWidget);
       expect(find.text('UPI'), findsOneWidget);
+
+      // Select Cash payment method
+      await tester.tap(find.text('CASH'));
+      await tester.pumpAndSettle();
 
       // Tap quick amount +₹100
       await tester.tap(find.text('+₹100'));

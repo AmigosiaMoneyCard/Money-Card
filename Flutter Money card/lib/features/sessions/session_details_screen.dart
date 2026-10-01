@@ -669,18 +669,33 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  if (isRecharge && !txn.isCancelled && session.isActive)
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.error,
-                        side: const BorderSide(color: AppColors.error, width: 1),
-                        visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                  if (isRecharge && !txn.isCancelled && session.isActive) ...[
+                    if (!txn.canCancel || session.balance < txn.amount)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: const Text(
+                          'CANNOT VOID',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textTertiaryLight),
+                        ),
+                      )
+                    else
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.error,
+                          side: const BorderSide(color: AppColors.error, width: 1),
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                        ),
+                        icon: const Icon(Icons.cancel_outlined, size: 14),
+                        label: const Text('Cancel Recharge', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        onPressed: () => _handleCancelRecharge(txn.id, txn.amount, session),
                       ),
-                      icon: const Icon(Icons.cancel_outlined, size: 14),
-                      label: const Text('Cancel Recharge', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                      onPressed: () => _handleCancelRecharge(txn.id, txn.amount, session),
-                    )
+                  ]
                   else if (txn.isCancelled)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

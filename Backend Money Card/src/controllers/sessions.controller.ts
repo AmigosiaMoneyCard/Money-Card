@@ -974,6 +974,10 @@ export async function listRecharges(req: Request, res: Response) {
     const cancelMeta = (t.items as any) || {};
     const isUpi = String(t.type).includes('UPI') || String(t.paymentMethod || '').toUpperCase() === 'UPI';
 
+    const sessionActive = t.session?.status === SessionStatus.ACTIVE;
+    const sessionBalance = Number(t.session?.balance ?? 0);
+    const canCancel = !isCancelled && sessionActive && sessionBalance >= t.amount;
+
     return {
       id: t.id,
       sessionId: t.sessionId,
@@ -989,6 +993,9 @@ export async function listRecharges(req: Request, res: Response) {
       paymentMethod: isUpi ? 'UPI' : 'CASH',
       balanceBefore: t.balanceBefore,
       balanceAfter: t.balanceAfter,
+      sessionStatus: t.session?.status || null,
+      sessionBalance,
+      canCancel,
       isCancelled,
       cancelledAt: cancelMeta.cancelledAt || null,
       cancelledByUserName: cancelMeta.cancelledByUserName || null,

@@ -60,6 +60,16 @@ class _RechargesScreenState extends ConsumerState<RechargesScreen> {
   }
 
   Future<void> _showCancelDialog(Transaction tx) async {
+    if (!tx.canCancel) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot cancel top-up: Customer balance is insufficient or session is closed.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
     String selectedReason = 'Wrong Amount Entered';
     final customReasonCtrl = TextEditingController();
 
@@ -526,7 +536,7 @@ class _RechargesScreenState extends ConsumerState<RechargesScreen> {
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
-                                    isCash ? '💵 Cash' : '📱 UPI',
+                                    isCash ? 'Cash' : 'UPI',
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
@@ -546,6 +556,19 @@ class _RechargesScreenState extends ConsumerState<RechargesScreen> {
                                 child: const Text(
                                   'CANCELLED',
                                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black54),
+                                ),
+                              )
+                            else if (!tx.canCancel)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: Colors.grey.shade300),
+                                ),
+                                child: const Text(
+                                  'CANNOT VOID',
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textTertiaryLight),
                                 ),
                               )
                             else

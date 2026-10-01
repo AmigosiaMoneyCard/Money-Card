@@ -259,6 +259,19 @@ class _RechargeScreenState extends ConsumerState<RechargeScreen> {
                                       ),
                                       child: const Text('CANCELLED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
                                     )
+                                  else if (!t.canCancel || session.balance < t.amount || !session.isActive)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(color: Colors.grey.shade300),
+                                      ),
+                                      child: const Text(
+                                        'CANNOT VOID',
+                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textTertiaryLight),
+                                      ),
+                                    )
                                   else
                                     OutlinedButton.icon(
                                       style: OutlinedButton.styleFrom(
@@ -486,30 +499,149 @@ class _RechargeScreenState extends ConsumerState<RechargeScreen> {
             padding: AppSpacing.paddingMd,
             children: [
               // Payment Method Selector
-              const Text(
-                'Payment Method',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Payment Method',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                  if (rechargeState.paymentMethod == null)
+                    const Text(
+                      'Select one to proceed',
+                      style: TextStyle(fontSize: 12, color: AppColors.error, fontWeight: FontWeight.w500),
+                    ),
+                ],
               ),
               const SizedBox(height: AppSpacing.xs),
-              SegmentedButton<PaymentMethod>(
-                segments: const [
-                  ButtonSegment(
-                    value: PaymentMethod.cash,
-                    label: Text('CASH'),
-                    icon: Icon(Icons.payments_outlined),
+              Row(
+                children: [
+                  // Cash Card
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => rechargeNotifier.setPaymentMethod(PaymentMethod.cash),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: rechargeState.paymentMethod == PaymentMethod.cash
+                              ? const Color(0xFFECFDF5)
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: rechargeState.paymentMethod == PaymentMethod.cash
+                                ? AppColors.primary
+                                : AppColors.borderLight,
+                            width: rechargeState.paymentMethod == PaymentMethod.cash ? 2 : 1,
+                          ),
+                          boxShadow: rechargeState.paymentMethod == PaymentMethod.cash
+                              ? [
+                                  BoxShadow(
+                                    color: AppColors.primary.withValues(alpha: 0.12),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.payments_outlined,
+                              size: 20,
+                              color: rechargeState.paymentMethod == PaymentMethod.cash
+                                  ? AppColors.primary
+                                  : AppColors.textSecondaryLight,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'CASH',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: rechargeState.paymentMethod == PaymentMethod.cash
+                                    ? AppColors.primary
+                                    : AppColors.textPrimaryLight,
+                              ),
+                            ),
+                            if (rechargeState.paymentMethod == PaymentMethod.cash) ...[
+                              const SizedBox(width: 6),
+                              const Icon(
+                                Icons.check_circle,
+                                size: 16,
+                                color: AppColors.primary,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                  ButtonSegment(
-                    value: PaymentMethod.upi,
-                    label: Text('UPI'),
-                    icon: Icon(Icons.account_balance_wallet_outlined),
+                  const SizedBox(width: 12),
+                  // UPI Card
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => rechargeNotifier.setPaymentMethod(PaymentMethod.upi),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: rechargeState.paymentMethod == PaymentMethod.upi
+                              ? const Color(0xFFF3E8FF)
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: rechargeState.paymentMethod == PaymentMethod.upi
+                                ? const Color(0xFF7C3AED)
+                                : AppColors.borderLight,
+                            width: rechargeState.paymentMethod == PaymentMethod.upi ? 2 : 1,
+                          ),
+                          boxShadow: rechargeState.paymentMethod == PaymentMethod.upi
+                              ? [
+                                  BoxShadow(
+                                    color: const Color(0xFF7C3AED).withValues(alpha: 0.12),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.account_balance_wallet_outlined,
+                              size: 20,
+                              color: rechargeState.paymentMethod == PaymentMethod.upi
+                                  ? const Color(0xFF7C3AED)
+                                  : AppColors.textSecondaryLight,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'UPI',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: rechargeState.paymentMethod == PaymentMethod.upi
+                                    ? const Color(0xFF7C3AED)
+                                    : AppColors.textPrimaryLight,
+                              ),
+                            ),
+                            if (rechargeState.paymentMethod == PaymentMethod.upi) ...[
+                              const SizedBox(width: 6),
+                              const Icon(
+                                Icons.check_circle,
+                                size: 16,
+                                color: Color(0xFF7C3AED),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ],
-                selected: {rechargeState.paymentMethod},
-                onSelectionChanged: (set) {
-                  if (set.isNotEmpty) {
-                    rechargeNotifier.setPaymentMethod(set.first);
-                  }
-                },
               ),
               const SizedBox(height: AppSpacing.lg),
 

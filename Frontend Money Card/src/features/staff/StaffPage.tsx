@@ -958,8 +958,8 @@ export function StaffPage() {
     let amountClass = 'text-slate-900';
 
     if (act.type === 'CARD_ACTIVATION') {
-      title = 'New Wallet Issued';
-      badgeLabel = 'Wallet';
+      title = 'Wallet issued';
+      badgeLabel = 'Issued';
       badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200/70';
       amountText = act.amount !== undefined && act.amount > 0 ? `+${formatCurrency(act.amount)}` : (act.cardNumber ? `#${act.cardNumber}` : 'Issued');
       amountClass = act.amount !== undefined && act.amount > 0 ? 'text-emerald-600' : 'text-slate-700';
@@ -982,11 +982,12 @@ export function StaffPage() {
       amountText = act.amount !== undefined ? formatCurrency(act.amount) : '—';
       amountClass = 'text-slate-900';
     } else if (act.type === 'CARD_SETTLEMENT') {
-      title = 'Wallet Closed / Returned';
+      title = 'Wallet closed';
       badgeLabel = 'Closed';
       badgeClass = 'bg-slate-100 text-slate-600 border-slate-200';
-      amountText = act.amount !== undefined && act.amount > 0 ? formatCurrency(act.amount) : 'Settled';
-      amountClass = 'text-slate-500';
+      const cardIdDisplay = act.cardNumber ? (act.cardNumber.startsWith('#') ? act.cardNumber : `#${act.cardNumber}`) : (act.customerName || 'Closed');
+      amountText = cardIdDisplay;
+      amountClass = 'text-slate-700 font-semibold';
     } else if (act.type === 'REFUND') {
       title = 'Refund';
       badgeLabel = 'Refund';
@@ -2591,8 +2592,8 @@ export function StaffPage() {
                   className="h-8.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-none"
                 >
                   <option value="ALL">All Activities</option>
-                  <option value="CARD_ACTIVATION">New Wallets Issued</option>
-                  <option value="CARD_SETTLEMENT">Wallets Closed</option>
+                  <option value="CARD_ACTIVATION">Wallet issued</option>
+                  <option value="CARD_SETTLEMENT">Wallet closed</option>
                   <option value="RECHARGE">Recharges</option>
                   <option value="PURCHASE">Food Sales</option>
                   <option value="REFUND">Refunds</option>

@@ -26,7 +26,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(posCatalogNotifierProvider.notifier).loadProducts();
+      ref.read(posCatalogNotifierProvider.notifier).loadProducts(force: true);
     });
   }
 
@@ -166,7 +166,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
       );
     }
 
-    final products = state.filteredProducts;
+    final products = state.managementProducts;
 
     if (products.isEmpty) {
       if (state.searchQuery.isNotEmpty || state.selectedCategory != 'All') {
