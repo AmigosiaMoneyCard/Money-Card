@@ -1058,25 +1058,9 @@ export function CounterStaffCardsView() {
                   {selectedSessionForDetail.customerPhone && (
                     <p className="text-xs text-slate-500">{selectedSessionForDetail.customerPhone}</p>
                   )}
-                  <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-slate-600">
-                    <span className="text-[11px] text-slate-500">
-                      Started {formatDate(selectedSessionForDetail.issuedAt || selectedSessionForDetail.startedAt || selectedSessionForDetail.createdAt)}
-                    </span>
-                    {selectedSessionForDetail.settledAt && (
-                      <>
-                        <span className="text-slate-300">•</span>
-                        <span className="text-[11px] text-slate-500">
-                          Settled {formatDate(selectedSessionForDetail.settledAt)}
-                        </span>
-                      </>
-                    )}
-                  </div>
                 </div>
 
                 <div className="text-right shrink-0">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block mb-0.5">
-                    Session Balance
-                  </span>
                   <div className="text-2xl font-bold font-mono text-emerald-600">
                     {formatCurrency(selectedSessionForDetail.balance ?? 0)}
                   </div>
@@ -1095,9 +1079,6 @@ export function CounterStaffCardsView() {
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                   Breakdown
                 </h4>
-                <span className="text-[11px] text-slate-400">
-                  {sessionDetailTxns.length} {sessionDetailTxns.length === 1 ? 'item' : 'items'}
-                </span>
               </div>
 
               {isLoadingSessionDetailTxns ? (
