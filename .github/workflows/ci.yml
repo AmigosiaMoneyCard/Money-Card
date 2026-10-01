@@ -28,6 +28,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: './Frontend Money Card/package-lock.json'
 
+      - name: Setup environment file
+        run: cp .env.example .env
+
       - name: Install dependencies
         run: npm ci
 
@@ -43,6 +46,11 @@ jobs:
     defaults:
       run:
         working-directory: './Backend Money Card'
+    env:
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/money_card?schema=public"
+      JWT_SECRET: "test-jwt-secret-key-12345"
+      JWT_REFRESH_SECRET: "test-jwt-refresh-secret-12345"
+      NODE_ENV: "test"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -53,6 +61,9 @@ jobs:
           node-version: 20
           cache: 'npm'
           cache-dependency-path: './Backend Money Card/package-lock.json'
+
+      - name: Setup environment file
+        run: cp .env.example .env
 
       - name: Install dependencies
         run: npm ci
