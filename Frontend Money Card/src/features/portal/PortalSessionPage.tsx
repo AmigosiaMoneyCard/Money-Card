@@ -334,7 +334,7 @@ export function PortalSessionPage() {
             <div>
               <span className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider block">Customer</span>
               <p className="text-base font-bold text-slate-900 leading-tight">
-                {sessionDetail.customerName || 'Walk-in Customer'}
+                {sessionDetail.customerName || ''}
               </p>
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                 <span className="font-mono text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">

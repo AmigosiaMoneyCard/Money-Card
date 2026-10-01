@@ -311,7 +311,7 @@ export const mockAnalyticsHandlers = {
           title: 'Card Activated & Issued',
           description: `Issued new card session for ${sess.customerName || 'Customer'} (Card: ${cardNum})`,
           cardNumber: cardNum,
-          customerName: sess.customerName || 'Walk-in Customer',
+          customerName: sess.customerName || '',
           customerPhone: sess.customerPhone || '—',
           branchId: sess.branchId,
           branchName: mockStore.branches.find((b) => b.id === sess.branchId)?.name || 'Main Cafeteria',
@@ -374,7 +374,7 @@ export const mockAnalyticsHandlers = {
         const sess = mockStore.sessions.find((s) => s.id === tx.sessionId);
         const card = sess ? mockStore.cards.find((c) => c.id === sess.cardId) : undefined;
         const cardNum = card?.physicalCardNumber || sess?.sessionCardNumber || (tx as any).cardNumber || 'MC-Card';
-        const custName = sess?.customerName || (tx as any).customerName || 'Walk-in Customer';
+        const custName = sess?.customerName || (tx as any).customerName || '';
         const custPhone = sess?.customerPhone || (tx as any).customerPhone || '—';
 
         if (txType === 'PURCHASE') {
