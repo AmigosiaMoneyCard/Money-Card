@@ -1,124 +1,126 @@
-# Implementation Plan — Super Admin Organization Label Alignment & Mobile Staff Menu Active/Inactive Toggle
+# Implementation Plan: Mobile Recharge Progressive Amount Display, Cancel Label Parity, and Refund Cancellation Analysis
 
-Update the Super Admin Dashboard terminology from Cafeteria to Organization, and empower staff members to set menu products Active/Inactive directly in the mobile application.
-
-## User Requirements
-1. **Super Admin Dashboard**: Change "Cafeteria" / "Cafeterias" labels to "Organization" / "Organizations" (Quick Action button, KPI StatCard, Action Needed notices).
-2. **Mobile App Menu Permissions & Controls**: Give staff permission to set menu items Active/Inactive in the mobile app, with instant switch toggling and backend/mock permission enablement.
-3. **Plan Update**: Maintain and update `implementation_plan.md`.
+This plan addresses:
+1. Mobile Recharge Screen: Remove the "Select one to proceed" helper text. Hide the recharge amount section (amount field, quick chips, balance preview, error banner, and recharge button) completely until staff clicks either Cash or UPI.
+2. Mobile Recharges History & Session Details: Rename the "CANNOT VOID" badge to "Cancel" with disabled styling (`onPressed: null`) so that non-voidable transactions display a disabled "Cancel" button.
+3. Cash Refund Cancellation Architectural Review: Analysis and recommendation on whether staff should be able to cancel a cash refund.
 
 ---
 
-## Proposed Changes
+## Domain Analysis & Recommendation: Should We Allow Canceling a Cash Refund?
 
-### 1. Super Admin Dashboard (Web Frontend)
-File: `Frontend Money Card/src/features/dashboard/SuperAdminDashboard.tsx`
-- **Quick Action Button**: Change `'Add Cafeteria'` to `'Add Organization'`.
-- **Primary Metric Card**: Change `label="Cafeterias"` to `label="Organizations"`.
-- **Urgent Action Notice**:
-  - Update `'A cafeteria requested plan renewal'` to `'An organization requested plan renewal'`.
-  - Update `'Cafeterias submitted plan changes requiring your approval.'` to `'Organizations submitted plan changes requiring your approval.'`.
+Recommendation: NO (Do not add a Cancel option for Cash Refunds).
 
-### 2. Staff Menu Active/Inactive Permission & Fast Toggle (Mobile App)
-File: `Flutter Money card/lib/providers/pos_cart_provider.dart`
-- In `loadProducts()`: Remove hardcoded `status: 'ACTIVE'` query parameter so all menu items (both ACTIVE and INACTIVE) for the branch are loaded into `PosCatalogState.products`.
-- In `PosCatalogState`:
-  - Preserve `filteredProducts` (filtering `status.toUpperCase() == 'ACTIVE'`) for the POS billing checkout flow so inactive items cannot be ordered.
-  - Provide `managementProducts` / `allFilteredProducts` getters (applying category & search filters across both active and inactive products) for the Menu management view.
-
-File: `Flutter Money card/lib/features/products/products_screen.dart`
-- Switch list source to `catalogState.managementProducts` so staff can see both active and inactive menu items.
-- On each product card:
-  - Add an inline adaptive Switch (`Switch.adaptive`) alongside the status badge.
-  - When toggled, call `productRepository.updateProduct(id: product.id, status: newStatus)`.
-  - Provide immediate feedback via a SnackBar confirming the status change.
-  - Refresh catalog so the item reflects the updated state instantly.
-- In `_showEditProductBottomSheet`: Ensure the status ChoiceChips (`ACTIVE (Available)` vs `INACTIVE (Hidden)`) function smoothly and allow staff to save status changes.
-
-File: `Flutter Money card/lib/core/network/interceptors/mock_api_interceptor.dart`
-- Add PUT / PATCH handler for `/products/:id` (`ApiEndpoints.products`).
-- Grant permission to update status to users having either `AppPermission.productManage` OR `AppPermission.productView` (or role `STAFF`).
-- Update `mockProducts` in-memory state with the updated status, price, category, or itemName.
-
-### 3. Backend API Permissions for Staff Menu Status
-File: `Backend Money Card/src/routes/products.routes.ts`
-- Update `PATCH /products/:id` and `PUT /products/:id` route guards from `requirePermission(PermissionCode.PRODUCT_MANAGE)` to `requireAnyPermission(PermissionCode.PRODUCT_MANAGE, PermissionCode.PRODUCT_VIEW)`.
-- This ensures counter staff with `PRODUCT_VIEW` or `PRODUCT_MANAGE` are authorized to toggle product availability (active/inactive) without requiring full admin privilege.
-
-### 4. Staff Daily Activity & Mobile Recharge Enhancements (Previously Staged)
-- Web Staff Daily Activity Summary: "Wallet issued" and "Wallet closed" with card name/number.
-- Mobile Recharge: Explicit selection between Cash and UPI with prominent, high-contrast selectable UI cards.
-- Mobile Recharges History: "Cannot Void" guard when top-up cannot be cancelled.
+Financial and Operational Reasons:
+1. Physical Cash Discrepancy: When a cash refund is issued at card return/settlement, physical cash is handed out of the register to the customer. Canceling the transaction in software does not guarantee the customer returns the cash, introducing register shortage discrepancies.
+2. Session Lifecycle & State Integrity: A cash refund occurs during wallet settlement (`CARD_SETTLEMENT`). Settlement closes the card session (`SessionStatus.COMPLETED`) and detaches the physical card back to `AVAILABLE` inventory. Canceling a refund would require resurrecting a closed session and reclaiming a card that may already have been re-issued to another patron.
+3. Audit and Fraud Prevention: In POS standards, completed settlement refunds must be irreversible audit records. If cash was refunded by mistake, the operational standard is simply to issue a new session or perform a fresh cash recharge.
 
 ---
 
-## ASCII Wireframes
+## User Interface Wireframe
 
-### 1. Super Admin Dashboard (After Terminology Alignment)
+### Mobile Recharge Screen — Initial State (No Payment Method Selected)
+
 ```
-+------------------------------------------------------------------------------------+
-| Welcome back, Super Admin                                         [ Refresh ]     |
-+------------------------------------------------------------------------------------+
-| [!] Action Needed: 1 Request Awaiting Approval                            [URGENT] |
-| An organization requested plan renewal. Tap to approve.      [ Review Requests -> ]|
-+------------------------------------------------------------------------------------+
-| Quick Actions:                                                                     |
-| +-------------------+  +-------------------+  +-----------------+  +-------------+ |
-| | [+] Add           |  | [!] Review        |  | [#] Manage      |  | [=] View    | |
-| |     Organization  |  |     Requests      |  |     Plans       |  |     Reports | |
-| +-------------------+  +-------------------+  +-----------------+  +-------------+ |
-+------------------------------------------------------------------------------------+
-| SaaS Platform Metrics:                                                             |
-| +-------------------+  +-------------------+  +-----------------+  +-------------+ |
-| | Organizations [#] |  | Active Cardh. [@] |  | Active Count.[#]|  | Staff [@#]  | |
-| | 2                 |  | 2                 |  | 2               |  | 4           | |
-| +-------------------+  +-------------------+  +-----------------+  +-------------+ |
-+------------------------------------------------------------------------------------+
++-----------------------------------------------------------+
+| < Recharge                                        History |
++-----------------------------------------------------------+
+|                                                           |
+| Payment Method                                            |
+|                                                           |
+| +-------------------------+   +-------------------------+ |
+| |        ( ) Cash         |   |        ( ) UPI          | |
+| |                         |   |                         | |
+| +-------------------------+   +-------------------------+ |
+|                                                           |
+| (Amount input, quick chips, and submit button are HIDDEN) |
+|                                                           |
++-----------------------------------------------------------+
 ```
 
-### 2. Mobile App Menu Screen (Products & Menu) with Staff Active/Inactive Toggle
+### Mobile Recharge Screen — After Clicking Cash or UPI
+
 ```
-+----------------------------------------------------+
-| Products & Menu                                    |
-+----------------------------------------------------+
-| [ Q Search products by name...                   ] |
-| [ All ] [ Veg ] [ Non-Veg ] [ Drinks ]             |
-+----------------------------------------------------+
-| +------------------------------------------------+ |
-| | [Food]  Veg Fried Rice         [ACTIVE] ( O)   | |  <-- Switch toggles ACTIVE / INACTIVE
-| |         ₹120.00                   [Edit]       | |
-| |         [Veg] [Rice]                           | |
-| +------------------------------------------------+ |
-| +------------------------------------------------+ |
-| | [Food]  Cold Coffee           [INACTIVE] (O )  | |  <-- Inactive item visible to staff
-| |         ₹60.00                    [Edit]       | |
-| |         [Drinks]                               | |
-| +------------------------------------------------+ |
-+----------------------------------------------------+
-|                                [+ Add Menu Item]   |
-+----------------------------------------------------+
++-----------------------------------------------------------+
+| < Recharge                                        History |
++-----------------------------------------------------------+
+|                                                           |
+| Payment Method                                            |
+|                                                           |
+| +-------------------------+   +-------------------------+ |
+| | [x] CASH          (V)   |   |        ( ) UPI          | |
+| | (Emerald border & bg)   |   |                         | |
+| +-------------------------+   +-------------------------+ |
+|                                                           |
+| Recharge Amount (INR)                                     |
+| [ INR  Enter amount (max 9,999)                         ] |
+|                                                           |
+| [+50]  [+100]  [+200]  [+500]                             |
+|                                                           |
+| Expected New Balance:                           INR 350.00|
+|                                                           |
+| [================ Recharge Wallet ======================] |
++-----------------------------------------------------------+
 ```
+
+### Mobile Recharges History — Disabled Cancel Button
+
+```
++-----------------------------------------------------------+
+| Top-up History                                            |
++-----------------------------------------------------------+
+| +INR 200.00   [Cash]                                      |
+| Wallet: #MC-101                                           |
+| Customer: John Doe                                        |
+| Time: 12:10 PM                                            |
+|                                                           |
+| [ Cancel ] <-- Disabled greyed-out button (non-clickable) |
+| (Balance already spent or session closed)                 |
++-----------------------------------------------------------+
+```
+
+---
+
+## Technical Design & Exact Code Changes
+
+### 1. Flutter Mobile: `Flutter Money card/lib/features/payments/recharge_screen.dart`
+- In `build` method:
+  - Remove the helper text:
+    `if (rechargeState.paymentMethod == null) const Text('Select one to proceed', ...)`
+  - Wrap the amount section in `if (rechargeState.paymentMethod != null) ...[`:
+    - Amount input label and `TextFormField`
+    - Quick amount chips (`_quickAmounts`)
+    - Expected new balance card preview
+    - Error banner
+    - Submit `AppButton` (`Recharge Wallet`)
+  - In `_showTopUpHistorySheet`:
+    - For non-cancellable transactions (`!t.canCancel || session.balance < t.amount || !session.isActive`), replace the "CANNOT VOID" container with a disabled `OutlinedButton` displaying label `'Cancel'` with `onPressed: null`.
+
+### 2. Flutter Mobile: `Flutter Money card/lib/features/recharges/recharges_screen.dart`
+- In `_buildTransactionCard`:
+  - For transactions where `!tx.canCancel`:
+    - Replace the "CANNOT VOID" badge with a disabled `OutlinedButton` with icon `Icons.cancel_outlined`, label `Text('Cancel')`, and `onPressed: null` (or disabled badge container with `'Cancel'`).
+
+### 3. Flutter Mobile: `Flutter Money card/lib/features/sessions/session_details_screen.dart`
+- In `_buildTransactionCard`:
+  - For recharge transactions where `!txn.canCancel || session.balance < txn.amount`:
+    - Replace the "CANNOT VOID" container with a disabled `OutlinedButton` with label `'Cancel'` and `onPressed: null`.
+
+### 4. Automated Tests: `Flutter Money card/test/features/payments/recharge_test.dart`
+- Verify that widget tests assert amount input is not visible until payment method is tapped.
+- Ensure all 171+ Flutter tests continue to pass.
 
 ---
 
 ## Verification Plan
 
-### Automated Tests
-1. **Frontend Money Card**:
-   - `npm run type-check` (verify 0 TypeScript compiler errors).
-   - `npm run test` (verify all 284 vitest unit tests pass).
-2. **Backend Money Card**:
-   - `npm run build` or `npm run typecheck` (verify TypeScript compilation).
-
-### Manual Verification
-1. Log in as Super Admin (`superadmin@moneycard.io`):
-   - Observe Dashboard:
-     - StatCard label displays **"Organizations"**.
-     - Quick Action button displays **"Add Organization"**.
-     - Renewal / change notices refer to **"organization" / "organizations"**.
-2. Mobile App (Products & Menu):
-   - Log in as Counter Staff.
-   - Open Menu (`/app/products`).
-   - Notice both Active and Inactive items are listed.
-   - Tap the Switch on any item: it toggles between ACTIVE and INACTIVE with a feedback toast.
-   - Switch to POS Billing screen: verify only ACTIVE items appear in the billing catalog.
+1. Proactive Flutter Tests:
+   - Run `flutter analyze --no-pub` to ensure 0 lint or analyzer errors.
+   - Run `flutter test` to ensure 100% test pass rate.
+2. Web & Backend Regression:
+   - Run `npx tsc --noEmit` and `npm test -- --run` in `Frontend Money Card`.
+   - Run `npm test` in `Backend Money Card`.
+3. Local Git:
+   - Auto-approved commit on `staging`.
+   - Ask user before pushing to remote or Shorebird.

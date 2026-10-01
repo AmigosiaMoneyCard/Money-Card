@@ -129,10 +129,13 @@ void main() {
 
       expect(find.text('CASH'), findsOneWidget);
       expect(find.text('UPI'), findsOneWidget);
+      expect(find.text('Recharge Amount (₹)'), findsNothing);
 
       // Select Cash payment method
       await tester.tap(find.text('CASH'));
       await tester.pumpAndSettle();
+
+      expect(find.text('Recharge Amount (₹)'), findsOneWidget);
 
       // Tap quick amount +₹100
       await tester.tap(find.text('+₹100'));

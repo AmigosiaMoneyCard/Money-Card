@@ -559,17 +559,16 @@ class _RechargesScreenState extends ConsumerState<RechargesScreen> {
                                 ),
                               )
                             else if (!tx.canCancel)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade100,
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: Colors.grey.shade300),
+                              OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.textTertiaryLight,
+                                  side: BorderSide(color: Colors.grey.shade300),
+                                  visualDensity: VisualDensity.compact,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 ),
-                                child: const Text(
-                                  'CANNOT VOID',
-                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textTertiaryLight),
-                                ),
+                                icon: const Icon(Icons.cancel_outlined, size: 14, color: AppColors.textTertiaryLight),
+                                label: const Text('Cancel', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                onPressed: null,
                               )
                             else
                               OutlinedButton.icon(

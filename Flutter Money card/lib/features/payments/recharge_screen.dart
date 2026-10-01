@@ -260,17 +260,16 @@ class _RechargeScreenState extends ConsumerState<RechargeScreen> {
                                       child: const Text('CANCELLED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
                                     )
                                   else if (!t.canCancel || session.balance < t.amount || !session.isActive)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.shade100,
-                                        borderRadius: BorderRadius.circular(4),
-                                        border: Border.all(color: Colors.grey.shade300),
+                                    OutlinedButton.icon(
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppColors.textTertiaryLight,
+                                        side: BorderSide(color: Colors.grey.shade300, width: 1),
+                                        visualDensity: VisualDensity.compact,
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
                                       ),
-                                      child: const Text(
-                                        'CANNOT VOID',
-                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textTertiaryLight),
-                                      ),
+                                      icon: const Icon(Icons.cancel_outlined, size: 14, color: AppColors.textTertiaryLight),
+                                      label: const Text('Cancel', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                      onPressed: null,
                                     )
                                   else
                                     OutlinedButton.icon(
@@ -499,19 +498,9 @@ class _RechargeScreenState extends ConsumerState<RechargeScreen> {
             padding: AppSpacing.paddingMd,
             children: [
               // Payment Method Selector
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Payment Method',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                  ),
-                  if (rechargeState.paymentMethod == null)
-                    const Text(
-                      'Select one to proceed',
-                      style: TextStyle(fontSize: 12, color: AppColors.error, fontWeight: FontWeight.w500),
-                    ),
-                ],
+              const Text(
+                'Payment Method',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: AppSpacing.xs),
               Row(
@@ -647,111 +636,113 @@ class _RechargeScreenState extends ConsumerState<RechargeScreen> {
 
 
 
-              // Amount Input Field
-              const Text(
-                'Recharge Amount (₹)',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              TextFormField(
-                controller: _amountController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(4),
-                ],
-                onChanged: _onAmountChanged,
-                decoration: const InputDecoration(
-                  hintText: 'Enter amount (max ₹9,999)',
-                  prefixIcon: Icon(Icons.currency_rupee, size: 20),
-                  isDense: true,
+              if (rechargeState.paymentMethod != null) ...[
+                // Amount Input Field
+                const Text(
+                  'Recharge Amount (₹)',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                 ),
-                validator: (val) {
-                  if (val == null || val.trim().isEmpty) {
-                    return 'Amount is required';
-                  }
-                  final parsed = double.tryParse(val.trim());
-                  if (parsed == null || parsed <= 0) {
-                    return 'Amount must be greater than 0';
-                  }
-                  if (parsed > 9999) {
-                    return 'Amount cannot exceed ₹9,999 (4 digits maximum)';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: AppSpacing.sm),
-
-              // Quick Amount Chips
-              Wrap(
-                spacing: AppSpacing.sm,
-                children: _quickAmounts.map((amt) {
-                  return ActionChip(
-                    label: Text('+₹${amt.toStringAsFixed(0)}'),
-                    onPressed: () => _addQuickAmount(amt),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-
-              // Expected New Balance Preview
-              if (rechargeState.amount > 0) ...[
-                AppCard(
-                  padding: AppSpacing.paddingMd,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Expected New Balance:',
-                        style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
-                      ),
-                      Text(
-                        '₹${newPreviewBalance.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
+                const SizedBox(height: AppSpacing.xs),
+                TextFormField(
+                  controller: _amountController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(4),
+                  ],
+                  onChanged: _onAmountChanged,
+                  decoration: const InputDecoration(
+                    hintText: 'Enter amount (max ₹9,999)',
+                    prefixIcon: Icon(Icons.currency_rupee, size: 20),
+                    isDense: true,
                   ),
+                  validator: (val) {
+                    if (val == null || val.trim().isEmpty) {
+                      return 'Amount is required';
+                    }
+                    final parsed = double.tryParse(val.trim());
+                    if (parsed == null || parsed <= 0) {
+                      return 'Amount must be greater than 0';
+                    }
+                    if (parsed > 9999) {
+                      return 'Amount cannot exceed ₹9,999 (4 digits maximum)';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: AppSpacing.sm),
+
+                // Quick Amount Chips
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  children: _quickAmounts.map((amt) {
+                    return ActionChip(
+                      label: Text('+₹${amt.toStringAsFixed(0)}'),
+                      onPressed: () => _addQuickAmount(amt),
+                    );
+                  }).toList(),
                 ),
                 const SizedBox(height: AppSpacing.lg),
-              ],
 
-              // Error Banner
-              if (rechargeState.errorMessage != null) ...[
-                Container(
-                  padding: AppSpacing.paddingMd,
-                  decoration: BoxDecoration(
-                    color: AppColors.errorLight,
-                    borderRadius: AppSpacing.roundedSm,
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.error_outline, color: AppColors.error, size: 18),
-                      const SizedBox(width: AppSpacing.xs),
-                      Expanded(
-                        child: Text(
-                          rechargeState.errorMessage!,
-                          style: const TextStyle(color: AppColors.error, fontSize: 13),
+                // Expected New Balance Preview
+                if (rechargeState.amount > 0) ...[
+                  AppCard(
+                    padding: AppSpacing.paddingMd,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Expected New Balance:',
+                          style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
                         ),
-                      ),
-                    ],
+                        Text(
+                          '₹${newPreviewBalance.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-              ],
+                  const SizedBox(height: AppSpacing.lg),
+                ],
 
-              // Submit Button
-              AppButton(
-                label: 'Recharge Wallet',
-                icon: Icons.account_balance_wallet,
-                isLoading: rechargeState.isSubmitting,
-                onPressed: rechargeState.canSubmit
-                    ? () => _handleConfirmRecharge(session)
-                    : null,
-              ),
+                // Error Banner
+                if (rechargeState.errorMessage != null) ...[
+                  Container(
+                    padding: AppSpacing.paddingMd,
+                    decoration: BoxDecoration(
+                      color: AppColors.errorLight,
+                      borderRadius: AppSpacing.roundedSm,
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline, color: AppColors.error, size: 18),
+                        const SizedBox(width: AppSpacing.xs),
+                        Expanded(
+                          child: Text(
+                            rechargeState.errorMessage!,
+                            style: const TextStyle(color: AppColors.error, fontSize: 13),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                ],
+
+                // Submit Button
+                AppButton(
+                  label: 'Recharge Wallet',
+                  icon: Icons.account_balance_wallet,
+                  isLoading: rechargeState.isSubmitting,
+                  onPressed: rechargeState.canSubmit
+                      ? () => _handleConfirmRecharge(session)
+                      : null,
+                ),
+              ],
             ],
           ),
         ),
