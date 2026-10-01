@@ -225,7 +225,44 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                           label: product.status,
                           variant: isActive ? AppBadgeVariant.success : AppBadgeVariant.neutral,
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 4),
+                        // Quick Active/Inactive Toggle Switch for Staff
+                        Transform.scale(
+                          scale: 0.8,
+                          child: Switch.adaptive(
+                            value: isActive,
+                            activeColor: AppColors.primary,
+                            onChanged: (newValue) async {
+                              final newStatus = newValue ? 'ACTIVE' : 'INACTIVE';
+                              try {
+                                await ref.read(productRepositoryProvider).updateProduct(
+                                      id: product.id,
+                                      status: newStatus,
+                                    );
+                                ref.read(posCatalogNotifierProvider.notifier).loadProducts(force: true);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('"${product.itemName}" set to $newStatus'),
+                                      duration: const Duration(seconds: 2),
+                                      backgroundColor: newValue ? AppColors.success : AppColors.textSecondaryLight,
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Failed to update status: $e'),
+                                      backgroundColor: AppColors.error,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 4),
                         ElevatedButton.icon(
                           onPressed: () => _showEditProductBottomSheet(context, ref, product),
                           icon: const Icon(Icons.edit, size: 13, color: Colors.white),

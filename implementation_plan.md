@@ -1,141 +1,102 @@
-# Implementation Plan — Activity Summary Labels, Mobile Recharge Choice UI, Cancel Guard & Menu Page Fix
+# Implementation Plan — Super Admin Organization Label Alignment & Mobile Staff Menu Active/Inactive Toggle
 
-Address the user requests across the Web Admin and Mobile POS apps:
-1. Web Staff Daily Activity Summary: Rename to "Wallet issued" and "Wallet closed", and display the card name/number instead of "Settled".
-2. Mobile Recharge: Require explicit selection between Cash and UPI (no direct default to Cash) with prominent, high-contrast selectable UI cards.
-3. Mobile Recharges History: Make the "Cancel Recharge" button inaccessible when a top-up cannot be cancelled (insufficient balance or settled session).
-4. Mobile Menu Page: Fix product catalog loading and reflection so all menu items appear on the Menu page.
+Update the Super Admin Dashboard terminology from Cafeteria to Organization, and empower staff members to set menu products Active/Inactive directly in the mobile application.
+
+## User Requirements
+1. **Super Admin Dashboard**: Change "Cafeteria" / "Cafeterias" labels to "Organization" / "Organizations" (Quick Action button, KPI StatCard, Action Needed notices).
+2. **Mobile App Menu Permissions & Controls**: Give staff permission to set menu items Active/Inactive in the mobile app, with instant switch toggling and backend/mock permission enablement.
+3. **Plan Update**: Maintain and update `implementation_plan.md`.
 
 ---
 
 ## Proposed Changes
 
-### 1. Web App — Staff Daily Activity Summary
-File: `Frontend Money Card/src/features/staff/StaffPage.tsx`
-- In `getActivityDetails`:
-  - `CARD_ACTIVATION`:
-    - Set `title = 'Wallet issued'` (was `'New Wallet Issued'`)
-    - Set `badgeLabel = 'Issued'`
-  - `CARD_SETTLEMENT`:
-    - Set `title = 'Wallet closed'` (was `'Wallet Closed / Returned'`)
-    - Set `badgeLabel = 'Closed'`
-    - When settled: replace `'Settled'` in `amountText` with the card identifier/name: `act.cardNumber ? `#${act.cardNumber}` : (act.customerName || 'Closed')`.
-- In Activity Filter Dropdown (lines 2593-2598):
-  - Change `<option value="CARD_ACTIVATION">New Wallets Issued</option>` to `<option value="CARD_ACTIVATION">Wallet issued</option>`
-  - Change `<option value="CARD_SETTLEMENT">Wallets Closed</option>` to `<option value="CARD_SETTLEMENT">Wallet closed</option>`
+### 1. Super Admin Dashboard (Web Frontend)
+File: `Frontend Money Card/src/features/dashboard/SuperAdminDashboard.tsx`
+- **Quick Action Button**: Change `'Add Cafeteria'` to `'Add Organization'`.
+- **Primary Metric Card**: Change `label="Cafeterias"` to `label="Organizations"`.
+- **Urgent Action Notice**:
+  - Update `'A cafeteria requested plan renewal'` to `'An organization requested plan renewal'`.
+  - Update `'Cafeterias submitted plan changes requiring your approval.'` to `'Organizations submitted plan changes requiring your approval.'`.
 
-### 2. Mobile App — Recharge Cash vs UPI Explicit Selection & Visible UI
-File: `Flutter Money card/lib/providers/recharge_provider.dart`
-- In `RechargeState`:
-  - Change `paymentMethod` to nullable `PaymentMethod? paymentMethod = null` (no pre-selected default to Cash).
-  - Update `canSubmit`: require `paymentMethod != null && amount > 0 && amount <= 9999 && !isSubmitting`.
-- In `RechargeNotifier`:
-  - `reset()` resets `paymentMethod` to `null`.
-  - Add `setPaymentMethod(PaymentMethod? method)`.
-File: `Flutter Money card/lib/features/payments/recharge_screen.dart`
-- Replace `SegmentedButton` with two large, prominent, high-contrast selection cards side-by-side:
-  - **CASH card**:
-    - Unselected: White background, slate border, slate text.
-    - Selected: Emerald-50 background, 2px solid emerald-600 border, emerald-900 bold text, checkmark badge.
-  - **UPI card**:
-    - Unselected: White background, slate border, slate text.
-    - Selected: Purple-50 background, 2px solid purple-600 border, purple-900 bold text, checkmark badge.
-- If no method is selected, show an inline guidance notice: "Please select Cash or UPI to proceed."
-- Keep the submit button disabled until a method is chosen.
-
-### 3. Mobile App & Backend — Inaccessible Cancel Top-up When Non-Cancellable
-File: `Backend Money Card/src/controllers/sessions.controller.ts`
-- In `listRecharges`:
-  - For each transaction, determine:
-    `const canCancel = !isCancelled && t.session?.status === 'ACTIVE' && Number(t.session?.balance ?? 0) >= t.amount;`
-  - Include `canCancel`, `sessionStatus: t.session?.status`, and `sessionBalance: Number(t.session?.balance ?? 0)` in each transaction response item.
-File: `Flutter Money card/lib/models/transaction.dart`
-- Add `final bool canCancel;` to `Transaction` model (parsed from JSON, defaults to `!isCancelled`).
-File: `Flutter Money card/lib/features/recharges/recharges_screen.dart`
-- In `_buildTransactionCard`:
-  - If `tx.isCancelled`: display `CANCELLED` badge.
-  - Else if `!tx.canCancel`: display a disabled `Cannot Void` badge (with tooltip/note) instead of the active `Cancel Top-up` button.
-  - Else: display the active `Cancel Top-up` button.
-File: `Flutter Money card/lib/features/payments/recharge_screen.dart`
-- In `_showTopUpHistorySheet`:
-  - Check `final canCancel = !t.isCancelled && session.isActive && session.balance >= t.amount;`
-  - If `!canCancel`, show `CANNOT VOID` badge instead of the clickable `Cancel Recharge` button.
-File: `Flutter Money card/lib/features/sessions/session_details_screen.dart`
-- In timeline card (line 672):
-  - Check `if (isRecharge && !txn.isCancelled && session.isActive && session.balance >= txn.amount)` before rendering the Cancel button.
-
-### 4. Mobile App & Backend — Menu Reflecting in Menu Page Fix
-File: `Backend Money Card/src/controllers/products.controller.ts`
-- In `getProducts`:
-  - When filtering by `branchId`, include org-level items with `branchId: null`:
-    ```ts
-    if (branchId && branchId !== 'ALL') {
-      whereClause.OR = [
-        { branchId },
-        { branchId: null },
-        { inventoryItems: { some: { branchId } } },
-      ];
-    }
-    ```
-File: `Flutter Money card/lib/services/product_service.dart`
-- In `getProducts`:
-  - When `branchId` is empty or null, omit `branchId` query param so org products return rather than an empty query.
+### 2. Staff Menu Active/Inactive Permission & Fast Toggle (Mobile App)
 File: `Flutter Money card/lib/providers/pos_cart_provider.dart`
-- In `PosCatalogNotifier.loadProducts()`:
-  - Remove hardcoded `status: 'ACTIVE'` query parameter so all menu items (both active and inactive) are fetched into the catalog.
-  - Allow optional `branchId` parameter: `Future<void> loadProducts({String? branchId, bool force = false})`.
+- In `loadProducts()`: Remove hardcoded `status: 'ACTIVE'` query parameter so all menu items (both ACTIVE and INACTIVE) for the branch are loaded into `PosCatalogState.products`.
 - In `PosCatalogState`:
-  - Add `List<Product> get managementProducts` getter: returns all menu items matching category and search (without filtering out inactive items), so the Menu management screen reflects the complete menu.
+  - Preserve `filteredProducts` (filtering `status.toUpperCase() == 'ACTIVE'`) for the POS billing checkout flow so inactive items cannot be ordered.
+  - Provide `managementProducts` / `allFilteredProducts` getters (applying category & search filters across both active and inactive products) for the Menu management view.
+
 File: `Flutter Money card/lib/features/products/products_screen.dart`
-- Use `catalogState.managementProducts` instead of `filteredProducts` so staff can see and manage all menu items.
-- In `initState`, retrieve `currentBranch` and trigger `loadProducts(force: true)`.
+- Switch list source to `catalogState.managementProducts` so staff can see both active and inactive menu items.
+- On each product card:
+  - Add an inline adaptive Switch (`Switch.adaptive`) alongside the status badge.
+  - When toggled, call `productRepository.updateProduct(id: product.id, status: newStatus)`.
+  - Provide immediate feedback via a SnackBar confirming the status change.
+  - Refresh catalog so the item reflects the updated state instantly.
+- In `_showEditProductBottomSheet`: Ensure the status ChoiceChips (`ACTIVE (Available)` vs `INACTIVE (Hidden)`) function smoothly and allow staff to save status changes.
+
+File: `Flutter Money card/lib/core/network/interceptors/mock_api_interceptor.dart`
+- Add PUT / PATCH handler for `/products/:id` (`ApiEndpoints.products`).
+- Grant permission to update status to users having either `AppPermission.productManage` OR `AppPermission.productView` (or role `STAFF`).
+- Update `mockProducts` in-memory state with the updated status, price, category, or itemName.
+
+### 3. Backend API Permissions for Staff Menu Status
+File: `Backend Money Card/src/routes/products.routes.ts`
+- Update `PATCH /products/:id` and `PUT /products/:id` route guards from `requirePermission(PermissionCode.PRODUCT_MANAGE)` to `requireAnyPermission(PermissionCode.PRODUCT_MANAGE, PermissionCode.PRODUCT_VIEW)`.
+- This ensures counter staff with `PRODUCT_VIEW` or `PRODUCT_MANAGE` are authorized to toggle product availability (active/inactive) without requiring full admin privilege.
+
+### 4. Staff Daily Activity & Mobile Recharge Enhancements (Previously Staged)
+- Web Staff Daily Activity Summary: "Wallet issued" and "Wallet closed" with card name/number.
+- Mobile Recharge: Explicit selection between Cash and UPI with prominent, high-contrast selectable UI cards.
+- Mobile Recharges History: "Cannot Void" guard when top-up cannot be cancelled.
 
 ---
 
 ## ASCII Wireframes
 
-### Mobile App — Recharge Payment Method Selector (High-Contrast Tiles)
+### 1. Super Admin Dashboard (After Terminology Alignment)
 ```
-+-------------------------------------------------------------+
-| Payment Method                                              |
-|                                                             |
-| +-------------------------+     +-------------------------+ |
-| | [Payments Icon]         |     | [QR / Wallet Icon]      | |
-| |                         |     |                         | |
-| | CASH                    |     | UPI                     | |
-| | Physical Cash           |     | Online Transfer         | |
-| |                         |     |                         | |
-| | [ Selected ✓ ]          |     | [ Select ]              | |
-| +-------------------------+     +-------------------------+ |
-|   (Emerald Border / Tint)         (Clean Slate Border)      |
-|                                                             |
-| Recharge Amount (₹)                                         |
-| [ ₹ 200                                                   ] |
-|                                                             |
-| [ Recharge Wallet                                         ] |
-+-------------------------------------------------------------+
-```
-
-### Mobile App — Recharges History (Non-Cancellable Top-up Protected)
-```
-+-------------------------------------------------------------+
-| +₹500.00  [ Cash ]                          [ Cannot Void ] |
-| Wallet: MC-101   Customer: John Doe                         |
-| (Customer already spent balance — void is locked)           |
-+-------------------------------------------------------------+
-| +₹200.00  [ UPI ]                       [ Cancel Top-up ]   |
-| Wallet: MC-102   Customer: Alice Smith                      |
-| (Balance is intact — void is permitted)                     |
-+-------------------------------------------------------------+
++------------------------------------------------------------------------------------+
+| Welcome back, Super Admin                                         [ Refresh ]     |
++------------------------------------------------------------------------------------+
+| [!] Action Needed: 1 Request Awaiting Approval                            [URGENT] |
+| An organization requested plan renewal. Tap to approve.      [ Review Requests -> ]|
++------------------------------------------------------------------------------------+
+| Quick Actions:                                                                     |
+| +-------------------+  +-------------------+  +-----------------+  +-------------+ |
+| | [+] Add           |  | [!] Review        |  | [#] Manage      |  | [=] View    | |
+| |     Organization  |  |     Requests      |  |     Plans       |  |     Reports | |
+| +-------------------+  +-------------------+  +-----------------+  +-------------+ |
++------------------------------------------------------------------------------------+
+| SaaS Platform Metrics:                                                             |
+| +-------------------+  +-------------------+  +-----------------+  +-------------+ |
+| | Organizations [#] |  | Active Cardh. [@] |  | Active Count.[#]|  | Staff [@#]  | |
+| | 2                 |  | 2                 |  | 2               |  | 4           | |
+| +-------------------+  +-------------------+  +-----------------+  +-------------+ |
++------------------------------------------------------------------------------------+
 ```
 
-### Web App — Staff Daily Activity Summary
+### 2. Mobile App Menu Screen (Products & Menu) with Staff Active/Inactive Toggle
 ```
-+----------------------------------------------------------------------------------------------+
-| 09:30 AM    Wallet issued   [Issued]                              #MC-101                    |
-| 10:15 AM    Recharge (Cash) [Cash]                                +₹500.00                   |
-| 10:45 AM    Wallet closed   [Closed]                              #MC-101                    |
-+----------------------------------------------------------------------------------------------+
++----------------------------------------------------+
+| Products & Menu                                    |
++----------------------------------------------------+
+| [ Q Search products by name...                   ] |
+| [ All ] [ Veg ] [ Non-Veg ] [ Drinks ]             |
++----------------------------------------------------+
+| +------------------------------------------------+ |
+| | [Food]  Veg Fried Rice         [ACTIVE] ( O)   | |  <-- Switch toggles ACTIVE / INACTIVE
+| |         ₹120.00                   [Edit]       | |
+| |         [Veg] [Rice]                           | |
+| +------------------------------------------------+ |
+| +------------------------------------------------+ |
+| | [Food]  Cold Coffee           [INACTIVE] (O )  | |  <-- Inactive item visible to staff
+| |         ₹60.00                    [Edit]       | |
+| |         [Drinks]                               | |
+| +------------------------------------------------+ |
++----------------------------------------------------+
+|                                [+ Add Menu Item]   |
++----------------------------------------------------+
 ```
 
 ---
@@ -143,14 +104,21 @@ File: `Flutter Money card/lib/features/products/products_screen.dart`
 ## Verification Plan
 
 ### Automated Tests
-- Run `npx tsc --noEmit` in `Frontend Money Card` (0 errors).
-- Run `npm test -- --run` in `Frontend Money Card` (all 284 vitest unit tests pass).
-- Run `flutter analyze --no-pub` in `Flutter Money card` (0 issues).
-- Run `flutter test` in `Flutter Money card` (verify unit/widget tests pass).
-- Run backend tests: `npm test` in `Backend Money Card`.
+1. **Frontend Money Card**:
+   - `npm run type-check` (verify 0 TypeScript compiler errors).
+   - `npm run test` (verify all 284 vitest unit tests pass).
+2. **Backend Money Card**:
+   - `npm run build` or `npm run typecheck` (verify TypeScript compilation).
 
 ### Manual Verification
-- Open Web Staff page -> click Daily Activity Summary on any staff member -> verify "Wallet issued" and "Wallet closed" titles appear with card number/name instead of "Settled".
-- Open Mobile POS -> Recharge -> verify Cash is NOT pre-selected; test tapping Cash and UPI; confirm clear, visible styling; submit enabled only after selecting a method.
-- Open Mobile POS -> Recharges History -> verify transactions whose card balance has already been spent show "Cannot Void" and cannot be clicked.
-- Open Mobile POS -> Menu page -> verify all products appear properly in the catalog.
+1. Log in as Super Admin (`superadmin@moneycard.io`):
+   - Observe Dashboard:
+     - StatCard label displays **"Organizations"**.
+     - Quick Action button displays **"Add Organization"**.
+     - Renewal / change notices refer to **"organization" / "organizations"**.
+2. Mobile App (Products & Menu):
+   - Log in as Counter Staff.
+   - Open Menu (`/app/products`).
+   - Notice both Active and Inactive items are listed.
+   - Tap the Switch on any item: it toggles between ACTIVE and INACTIVE with a feedback toast.
+   - Switch to POS Billing screen: verify only ACTIVE items appear in the billing catalog.

@@ -1960,6 +1960,45 @@ class MockApiInterceptor extends Interceptor {
       return _resolve(handler, options, newProduct);
     }
 
+    // Update Product: PUT /products/:id or PATCH /products/:id
+    final isProductUpdate = (path.contains('/products/') || path.contains('${ApiEndpoints.products}/')) &&
+        (method == 'PUT' || method == 'PATCH');
+    if (isProductUpdate) {
+      if (!_hasPermission(AppPermission.productManage) &&
+          !_hasPermission(AppPermission.productView) &&
+          currentActiveUser['role'] != 'STAFF') {
+        return _reject(handler, options, 403, 'FORBIDDEN', 'Permission denied: Cannot update product');
+      }
+
+      final prodId = path.split('/').last.split('?').first;
+      final idx = mockProducts.indexWhere((p) => p['id'] == prodId);
+      if (idx == -1) {
+        return _reject(handler, options, 404, 'NOT_FOUND', 'Product not found');
+      }
+
+      final data = options.data is String ? jsonDecode(options.data) : options.data;
+      final existing = Map<String, dynamic>.from(mockProducts[idx]);
+      if (data is Map<String, dynamic>) {
+        if (data.containsKey('itemName') && data['itemName'] != null) {
+          existing['itemName'] = data['itemName'];
+        }
+        if (data.containsKey('category') && data['category'] != null) {
+          if (data['category'] is List) {
+            existing['category'] = (data['category'] as List).map((e) => e.toString()).toList();
+          }
+        }
+        if (data.containsKey('price') && data['price'] != null) {
+          existing['price'] = (data['price'] as num).toDouble();
+        }
+        if (data.containsKey('status') && data['status'] != null) {
+          existing['status'] = data['status'];
+        }
+        existing['updatedAt'] = DateTime.now().toIso8601String();
+      }
+      mockProducts[idx] = existing;
+      return _resolve(handler, options, existing);
+    }
+
     // ==========================================
     // 6. INVENTORY ENDPOINTS
     // ==========================================

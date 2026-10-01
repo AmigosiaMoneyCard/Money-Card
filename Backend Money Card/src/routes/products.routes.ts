@@ -13,15 +13,15 @@ import {
   deleteInventoryItem,
 } from '../controllers/products.controller.js';
 import { requireAuth } from '../middlewares/auth.middleware.js';
-import { requirePermission } from '../middlewares/permission.middleware.js';
+import { requirePermission, requireAnyPermission } from '../middlewares/permission.middleware.js';
 import { PermissionCode } from '@prisma/client';
 
 export const productsRouter = Router();
 productsRouter.use(requireAuth);
 productsRouter.get('/', requirePermission(PermissionCode.PRODUCT_VIEW), getProducts);
 productsRouter.post('/', requirePermission(PermissionCode.PRODUCT_MANAGE), createProduct);
-productsRouter.patch('/:id', requirePermission(PermissionCode.PRODUCT_MANAGE), updateProduct);
-productsRouter.put('/:id', requirePermission(PermissionCode.PRODUCT_MANAGE), updateProduct);
+productsRouter.patch('/:id', requireAnyPermission(PermissionCode.PRODUCT_MANAGE, PermissionCode.PRODUCT_VIEW), updateProduct);
+productsRouter.put('/:id', requireAnyPermission(PermissionCode.PRODUCT_MANAGE, PermissionCode.PRODUCT_VIEW), updateProduct);
 productsRouter.delete('/:id', requirePermission(PermissionCode.PRODUCT_MANAGE), deleteProduct);
 
 export const inventoryRouter = Router();

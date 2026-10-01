@@ -139,8 +139,8 @@ export function SuperAdminDashboard() {
                 </div>
                 <p className="text-xs text-slate-600 mt-1">
                   {pendingRequests.some((r) => r.requestType === 'RENEWAL')
-                    ? `${pendingRequests[0]?.organizationName || 'A cafeteria'} requested plan renewal. Tap to approve.`
-                    : 'Cafeterias submitted plan changes requiring your approval.'}
+                    ? `${pendingRequests[0]?.organizationName || 'An organization'} requested plan renewal. Tap to approve.`
+                    : 'Organizations submitted plan changes requiring your approval.'}
                 </p>
               </div>
             </div>
@@ -185,7 +185,7 @@ export function SuperAdminDashboard() {
             </div>
             <div>
               <span className="text-sm font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
-                Add Cafeteria
+                Add Organization
               </span>
             </div>
           </button>
@@ -240,10 +240,10 @@ export function SuperAdminDashboard() {
         <ErrorState title="Could not load dashboard data" message={error} onRetry={() => fetchPlatformData(false)} />
       ) : (
         <div className="space-y-6">
-          {/* ── 4. Super Admin SaaS Platform Metrics (Cafeterias, Active Cardholders, Active Counters, Staff Members) ── */}
+          {/* ── 4. Super Admin SaaS Platform Metrics (Organizations, Active Cardholders, Active Counters, Staff Members) ── */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
-              label="Cafeterias"
+              label="Organizations"
               value={activeOrgsCount}
               icon={<Building2 className="h-5 w-5 text-emerald-600" />}
             />

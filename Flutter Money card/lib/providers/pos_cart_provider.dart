@@ -28,8 +28,14 @@ class PosCatalogState {
     this.errorMessage,
   });
 
+  /// Filtered active products for POS checkout/billing
   List<Product> get filteredProducts {
-    var list = products.where((p) => p.status.toUpperCase() == 'ACTIVE').toList();
+    return allFilteredProducts.where((p) => p.status.toUpperCase() == 'ACTIVE').toList();
+  }
+
+  /// All filtered products (both ACTIVE and INACTIVE) for Menu & Products management
+  List<Product> get allFilteredProducts {
+    var list = products;
     if (selectedCategory != 'All') {
       final filter = selectedCategory.toLowerCase();
       list = list.where((p) {
