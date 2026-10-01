@@ -964,13 +964,13 @@ export function StaffPage() {
       amountText = act.amount !== undefined && act.amount > 0 ? `+${formatCurrency(act.amount)}` : (act.cardNumber ? `#${act.cardNumber}` : 'Issued');
       amountClass = act.amount !== undefined && act.amount > 0 ? 'text-emerald-600' : 'text-slate-700';
     } else if (act.type === 'RECHARGE_CASH') {
-      title = 'Money Loaded (Cash)';
+      title = 'Recharge (Cash)';
       badgeLabel = 'Cash';
       badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200/70';
       amountText = act.amount !== undefined ? `+${formatCurrency(act.amount)}` : '—';
       amountClass = 'text-emerald-600';
     } else if (act.type === 'RECHARGE_UPI') {
-      title = 'Money Loaded (UPI)';
+      title = 'Recharge (UPI)';
       badgeLabel = 'UPI';
       badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200/70';
       amountText = act.amount !== undefined ? `+${formatCurrency(act.amount)}` : '—';
@@ -988,7 +988,7 @@ export function StaffPage() {
       amountText = act.amount !== undefined && act.amount > 0 ? formatCurrency(act.amount) : 'Settled';
       amountClass = 'text-slate-500';
     } else if (act.type === 'REFUND') {
-      title = 'Money Refunded';
+      title = 'Refund';
       badgeLabel = 'Refund';
       badgeClass = 'bg-rose-50 text-rose-700 border-rose-200/70';
       amountText = act.amount !== undefined ? `-${formatCurrency(act.amount)}` : '—';
@@ -2563,19 +2563,19 @@ export function StaffPage() {
                 </p>
               </div>
               <div>
-                <p className="text-[11px] font-medium text-slate-500">Money Loaded</p>
+                <p className="text-[11px] font-medium text-slate-500">Recharges</p>
                 <p className="text-lg font-bold font-mono text-emerald-600 mt-1">
                   {formatCurrency(auditMetrics.cardRechargeVolume)}
                 </p>
               </div>
               <div>
-                <p className="text-[11px] font-medium text-slate-500">Orders Sold</p>
+                <p className="text-[11px] font-medium text-slate-500">Food Sales</p>
                 <p className="text-lg font-bold font-mono text-indigo-600 mt-1">
                   {formatCurrency(auditMetrics.purchaseVolume)}
                 </p>
               </div>
               <div>
-                <p className="text-[11px] font-medium text-slate-500">Money Refunded</p>
+                <p className="text-[11px] font-medium text-slate-500">Refunds</p>
                 <p className="text-lg font-bold font-mono text-rose-600 mt-1">
                   {formatCurrency(auditMetrics.refundVolume)}
                 </p>
@@ -2593,9 +2593,9 @@ export function StaffPage() {
                   <option value="ALL">All Activities</option>
                   <option value="CARD_ACTIVATION">New Wallets Issued</option>
                   <option value="CARD_SETTLEMENT">Wallets Closed</option>
-                  <option value="RECHARGE">Money Loaded</option>
-                  <option value="PURCHASE">Orders Sold</option>
-                  <option value="REFUND">Money Refunded</option>
+                  <option value="RECHARGE">Recharges</option>
+                  <option value="PURCHASE">Food Sales</option>
+                  <option value="REFUND">Refunds</option>
                 </select>
                 <div className="relative flex-1 max-w-xs">
                   <div className="absolute left-2.5 top-2.5 text-slate-400">
