@@ -379,6 +379,8 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     upiRechargeVolume: number;
     refundCount: number;
     refundVolume: number;
+    salesVolume: number;
+    salesCount: number;
     cancelledTopUpsCount: number;
     cancelledTopUpsVolume: number;
     cancelledCashTopUpsVolume: number;
@@ -432,6 +434,8 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       upiRechargeVolume: 0,
       refundCount: 0,
       refundVolume: 0,
+      salesVolume: 0,
+      salesCount: 0,
       cancelledTopUpsCount: 0,
       cancelledTopUpsVolume: 0,
       cancelledCashTopUpsVolume: 0,
@@ -683,6 +687,8 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     bm.purchaseVolume = Number(bm.purchaseVolume.toFixed(2));
     bm.rechargeVolume = Number(bm.rechargeVolume.toFixed(2));
     bm.cardRechargeVolume = Number((bm.cardRechargeVolume || 0).toFixed(2));
+    bm.salesVolume = Number(bm.purchaseVolume.toFixed(2));
+    bm.salesCount = bm.purchaseCount;
     bm.cashRechargeVolume = Number((bm.cashRechargeVolume || 0).toFixed(2));
     bm.upiRechargeVolume = Number((bm.upiRechargeVolume || 0).toFixed(2));
     bm.refundVolume = Number(bm.refundVolume.toFixed(2));
@@ -1011,6 +1017,14 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     cancelledOrdersVolume: Number(cancelledOrdersVolume.toFixed(2)),
     rechargeCount: totalRechargeCount,
     refundCount: totalRefundCount,
+    rechargeVolume: Number(totalRechargeVolume.toFixed(2)),
+    salesVolume: Number(totalPurchaseVolume.toFixed(2)),
+    salesCount: foodOrdersCount,
+    purchaseVolume: Number(totalPurchaseVolume.toFixed(2)),
+    purchaseCount: foodOrdersCount,
+    refundVolume: Number(totalRefundVolume.toFixed(2)),
+    totalFloatBalance,
+    blockedCardsCount,
 
     // Menu Analytics & Food Order Metrics
     foodOrdersCount,

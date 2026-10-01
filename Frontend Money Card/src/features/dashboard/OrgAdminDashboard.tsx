@@ -36,6 +36,8 @@ import {
   CheckCircle2,
   Sparkles,
   X,
+  ShieldAlert,
+  DollarSign,
 } from 'lucide-react';
 
 export type DatePreset = 'thisMonth' | 'today' | 'yesterday' | 'last7' | 'last30' | 'all' | 'custom';
@@ -179,17 +181,22 @@ export function OrgAdminDashboard() {
 
 
 
-  // Filter Cards by Date Range
-  const filteredCardsIssuedCount = useMemo(() => {
-    if (!startDate && !endDate) return cardsList.length;
-    const start = startDate ? new Date(startDate).getTime() : 0;
-    const end = endDate ? new Date(endDate + 'T23:59:59.999Z').getTime() : Infinity;
 
-    return cardsList.filter((c) => {
-      const cardDate = new Date(c.createdAt || (c as any).issuedAt || 0).getTime();
-      return cardDate >= start && cardDate <= end;
-    }).length;
-  }, [cardsList, startDate, endDate]);
+
+  // Active wallets count
+  const activeWalletsCount = useMemo(() => {
+    return cardsList.filter((c) => c.status === 'ACTIVE').length;
+  }, [cardsList]);
+
+  // Blocked wallets count (Security locked)
+  const blockedWalletsCount = useMemo(() => {
+    return cardsList.filter((c) => c.status === 'BLOCKED').length;
+  }, [cardsList]);
+
+  // Remaining balance across active wallets
+  const remainingWalletsBalance = useMemo(() => {
+    return cardsList.reduce((acc, c) => acc + (c.activeSession?.balance || 0), 0);
+  }, [cardsList]);
 
   // Getting Started Checklist Calculations
   const hasBranches = branches.length > 0 || !!currentBranch;
@@ -541,30 +548,57 @@ export function OrgAdminDashboard() {
                 </div>
               </div>
 
-              {/* 4 Filtered Stat Cards inside the box */}
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {/* Filtered Stat Cards inside the box (6 Operational Stat Cards matching Wallet Analytics) */}
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <StatCard
                   label="Total sales"
-                  value={formatCurrency(analytics?.totalPurchaseVolume || 0)}
+                  value={formatCurrency(analytics?.totalPurchaseVolume ?? analytics?.salesVolume ?? 0)}
+                  description={`${analytics?.foodOrdersCount || analytics?.purchaseCount || 0} orders`}
                   icon={<ShoppingBag className="h-5 w-5 text-emerald-600" />}
                 />
 
                 <StatCard
                   label="Wallet Recharges"
-                  value={formatCurrency(analytics?.totalRechargeVolume || 0)}
+                  value={formatCurrency(analytics?.totalRechargeVolume ?? analytics?.moneyAdded ?? analytics?.rechargeVolume ?? 0)}
+                  description={`${analytics?.rechargeCount || 0} recharges`}
                   icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
                 />
 
                 <StatCard
                   label="Wallet In use"
-                  value={filteredCardsIssuedCount}
+                  value={activeWalletsCount}
+                  description="Active wallets"
                   icon={<CreditCard className="h-5 w-5 text-sky-600" />}
                 />
 
+                {isCounterAdmin ? (
+                  <StatCard
+                    label="Remaining Balance"
+                    value={formatCurrency(remainingWalletsBalance)}
+                    description="Money in wallets"
+                    icon={<DollarSign className="h-5 w-5 text-amber-600" />}
+                  />
+                ) : (
+                  <StatCard
+                    label="Active Staff Members"
+                    value={staffList.filter((s) => s.status === 'ACTIVE').length}
+                    description="Assigned staff"
+                    icon={<Users className="h-5 w-5 text-indigo-600" />}
+                  />
+                )}
+
                 <StatCard
-                  label="Active Staff Members"
-                  value={staffList.filter((s) => s.status === 'ACTIVE').length}
-                  icon={<Users className="h-5 w-5 text-indigo-600" />}
+                  label="Blocked Wallets"
+                  value={blockedWalletsCount}
+                  description="Security locked"
+                  icon={<ShieldAlert className="h-5 w-5 text-rose-600" />}
+                />
+
+                <StatCard
+                  label="Refunds"
+                  value={formatCurrency(analytics?.totalRefundVolume ?? analytics?.moneyRefunded ?? analytics?.refundVolume ?? 0)}
+                  description={`${analytics?.refundCount ?? 0} refunds`}
+                  icon={<RefreshCw className="h-5 w-5 text-slate-600" />}
                 />
               </div>
             </CardContent>

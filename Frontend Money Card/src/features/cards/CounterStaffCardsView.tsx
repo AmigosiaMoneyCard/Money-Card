@@ -29,6 +29,9 @@ import {
   History,
   User,
   Phone,
+  Wallet,
+  DollarSign,
+  ShieldAlert,
 } from 'lucide-react';
 
 function getTransactionTitle(tx: Transaction): string {
@@ -74,6 +77,7 @@ export function CounterStaffCardsView() {
   // ─── Modal Selection States ──────────────────────────────────────
   const [selectedCardForDetails, setSelectedCardForDetails] = useState<CardEntity | null>(null);
   const [selectedCardForAnalytics, setSelectedCardForAnalytics] = useState<CardEntity | null>(null);
+  const [isCounterAnalyticsOpen, setIsCounterAnalyticsOpen] = useState(false);
 
   // Detail transactions for selected card
   const [sessionTxns, setSessionTxns] = useState<Transaction[]>([]);
@@ -200,11 +204,21 @@ export function CounterStaffCardsView() {
 
   const handleOpenAnalytics = useCallback((card: CardEntity) => {
     setSelectedCardForAnalytics(card);
-    const branchId = card.activeSession?.branchId || card.currentBranchId || branches[0]?.id;
+    setIsCounterAnalyticsOpen(false);
+    const branchId = card.activeSession?.branchId || card.currentBranchId || staffBranchId || branches[0]?.id;
     if (branchId) {
       fetchCounterAnalytics(branchId, appliedStartDate, appliedEndDate);
     }
-  }, [fetchCounterAnalytics, appliedStartDate, appliedEndDate, branches]);
+  }, [fetchCounterAnalytics, appliedStartDate, appliedEndDate, branches, staffBranchId]);
+
+  const handleOpenCounterAnalytics = useCallback(() => {
+    setIsCounterAnalyticsOpen(true);
+    setSelectedCardForAnalytics(null);
+    const branchId = staffBranchId || branches[0]?.id;
+    if (branchId) {
+      fetchCounterAnalytics(branchId, appliedStartDate, appliedEndDate);
+    }
+  }, [staffBranchId, branches, appliedStartDate, appliedEndDate, fetchCounterAnalytics]);
 
   const handleStartDateChange = useCallback((newStart: string) => {
     setCustomStartDate(newStart);
@@ -215,13 +229,13 @@ export function CounterStaffCardsView() {
       setCustomEndDate(newStart);
       setAppliedEndDate(newStart);
     }
-    if (selectedCardForAnalytics) {
-      const branchId = selectedCardForAnalytics.activeSession?.branchId || selectedCardForAnalytics.currentBranchId || branches[0]?.id;
-      if (branchId) {
-        fetchCounterAnalytics(branchId, newStart, effectiveEnd);
-      }
+    const branchId = selectedCardForAnalytics
+      ? (selectedCardForAnalytics.activeSession?.branchId || selectedCardForAnalytics.currentBranchId || staffBranchId || branches[0]?.id)
+      : (staffBranchId || branches[0]?.id);
+    if (branchId) {
+      fetchCounterAnalytics(branchId, newStart, effectiveEnd);
     }
-  }, [selectedCardForAnalytics, customEndDate, branches, fetchCounterAnalytics]);
+  }, [selectedCardForAnalytics, staffBranchId, customEndDate, branches, fetchCounterAnalytics]);
 
   const handleEndDateChange = useCallback((newEnd: string) => {
     setCustomEndDate(newEnd);
@@ -232,13 +246,13 @@ export function CounterStaffCardsView() {
       setCustomStartDate(newEnd);
       setAppliedStartDate(newEnd);
     }
-    if (selectedCardForAnalytics) {
-      const branchId = selectedCardForAnalytics.activeSession?.branchId || selectedCardForAnalytics.currentBranchId || branches[0]?.id;
-      if (branchId) {
-        fetchCounterAnalytics(branchId, effectiveStart, newEnd);
-      }
+    const branchId = selectedCardForAnalytics
+      ? (selectedCardForAnalytics.activeSession?.branchId || selectedCardForAnalytics.currentBranchId || staffBranchId || branches[0]?.id)
+      : (staffBranchId || branches[0]?.id);
+    if (branchId) {
+      fetchCounterAnalytics(branchId, effectiveStart, newEnd);
     }
-  }, [selectedCardForAnalytics, customStartDate, branches, fetchCounterAnalytics]);
+  }, [selectedCardForAnalytics, staffBranchId, customStartDate, branches, fetchCounterAnalytics]);
 
   const handleResetToToday = useCallback(() => {
     const today = formatLocalDate(new Date());
@@ -246,13 +260,13 @@ export function CounterStaffCardsView() {
     setCustomEndDate(today);
     setAppliedStartDate(today);
     setAppliedEndDate(today);
-    if (selectedCardForAnalytics) {
-      const branchId = selectedCardForAnalytics.activeSession?.branchId || selectedCardForAnalytics.currentBranchId || branches[0]?.id;
-      if (branchId) {
-        fetchCounterAnalytics(branchId, today, today);
-      }
+    const branchId = selectedCardForAnalytics
+      ? (selectedCardForAnalytics.activeSession?.branchId || selectedCardForAnalytics.currentBranchId || staffBranchId || branches[0]?.id)
+      : (staffBranchId || branches[0]?.id);
+    if (branchId) {
+      fetchCounterAnalytics(branchId, today, today);
     }
-  }, [selectedCardForAnalytics, fetchCounterAnalytics, branches]);
+  }, [selectedCardForAnalytics, staffBranchId, fetchCounterAnalytics, branches]);
 
   // ─── Open Card Details Modal (with Counter & Active Since) ──────
   const handleOpenCardDetails = useCallback(async (card: CardEntity) => {
@@ -356,6 +370,16 @@ export function CounterStaffCardsView() {
             leftIcon={<History className="h-3.5 w-3.5 text-emerald-600" />}
           >
             Customer History
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs h-8 px-3 rounded-xl border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-semibold cursor-pointer"
+            onClick={handleOpenCounterAnalytics}
+            leftIcon={<BarChart2 className="h-3.5 w-3.5 text-emerald-600" />}
+          >
+            Wallet Analytics
           </Button>
 
           <Button
@@ -649,11 +673,18 @@ export function CounterStaffCardsView() {
       )}
 
       {/* ─── MODAL 2: Wallet Analytics Modal (Simplified Metrics) ─────── */}
-      {selectedCardForAnalytics && (
+      {(isCounterAnalyticsOpen || selectedCardForAnalytics) && (
         <Modal
-          isOpen={!!selectedCardForAnalytics}
-          onClose={() => setSelectedCardForAnalytics(null)}
-          title={`Wallet Analytics — Wallet ${selectedCardForAnalytics.physicalCardNumber || selectedCardForAnalytics.qrToken || ''} (${getBranchName(selectedCardForAnalytics.activeSession?.branchId || selectedCardForAnalytics.currentBranchId)})`}
+          isOpen={isCounterAnalyticsOpen || !!selectedCardForAnalytics}
+          onClose={() => {
+            setIsCounterAnalyticsOpen(false);
+            setSelectedCardForAnalytics(null);
+          }}
+          title={
+            selectedCardForAnalytics
+              ? `Wallet Analytics — Wallet ${selectedCardForAnalytics.physicalCardNumber || selectedCardForAnalytics.qrToken || ''} (${getBranchName(selectedCardForAnalytics.activeSession?.branchId || selectedCardForAnalytics.currentBranchId)})`
+              : `Wallet Analytics — ${getBranchName(staffBranchId)}`
+          }
           size="2xl"
         >
           <div className="space-y-5">
@@ -698,43 +729,156 @@ export function CounterStaffCardsView() {
               </div>
             ) : (
               (() => {
-                const moneyAdded = counterAnalyticsData?.rechargeVolume ?? 0;
-                const rechargeOrders = counterAnalyticsData?.rechargeCount ?? 0;
-                const foodSales = counterAnalyticsData?.salesVolume ?? 0;
-                const salesOrders = counterAnalyticsData?.salesCount ?? 0;
-                const totalRefunds = counterAnalyticsData?.refundVolume ?? 0;
-                const refundOrders = counterAnalyticsData?.refundCount ?? 0;
+                const targetBranchId = selectedCardForAnalytics
+                  ? (selectedCardForAnalytics.activeSession?.branchId || selectedCardForAnalytics.currentBranchId || staffBranchId)
+                  : staffBranchId;
+
+                const bp = counterAnalyticsData?.branchPerformance?.find(
+                  (b: any) => b.branchId === targetBranchId,
+                );
+
+                const branchCards = allCards.filter((c) => {
+                  if (targetBranchId) {
+                    return c.activeSession?.branchId === targetBranchId || c.currentBranchId === targetBranchId;
+                  }
+                  return true;
+                });
+
+                const activeCards =
+                  bp?.activeSessionsCount ??
+                  counterAnalyticsData?.activeSessionsCount ??
+                  branchCards.filter((c) => c.status === 'ACTIVE').length;
+
+                const blockedCards =
+                  counterAnalyticsData?.blockedCardsCount ??
+                  counterAnalyticsData?.cardFleetAnalytics?.blockedCardsCount ??
+                  branchCards.filter((c) => c.status === 'BLOCKED').length;
+
+                const totalBalance = selectedCardForAnalytics
+                  ? (selectedCardForAnalytics.activeSession?.balance || 0)
+                  : branchCards.reduce((acc, c) => acc + (c.activeSession?.balance || 0), 0);
+
+                const moneyAdded =
+                  bp?.rechargeVolume ??
+                  bp?.moneyAdded ??
+                  counterAnalyticsData?.moneyAdded ??
+                  counterAnalyticsData?.rechargeVolume ??
+                  counterAnalyticsData?.totalRechargeVolume ??
+                  0;
+
+                const rechargeOrders =
+                  bp?.rechargeCount ??
+                  counterAnalyticsData?.rechargeCount ??
+                  counterAnalyticsData?.totalRechargeCount ??
+                  0;
+
+                const foodSales =
+                  bp?.purchaseVolume ??
+                  bp?.salesVolume ??
+                  counterAnalyticsData?.salesVolume ??
+                  counterAnalyticsData?.purchaseVolume ??
+                  counterAnalyticsData?.totalPurchaseVolume ??
+                  0;
+
+                const salesOrders =
+                  bp?.purchaseCount ??
+                  bp?.salesCount ??
+                  counterAnalyticsData?.salesCount ??
+                  counterAnalyticsData?.purchaseCount ??
+                  counterAnalyticsData?.foodOrdersCount ??
+                  0;
+
+                const totalRefunds =
+                  bp?.refundVolume ??
+                  bp?.moneyRefunded ??
+                  counterAnalyticsData?.refundVolume ??
+                  counterAnalyticsData?.moneyRefunded ??
+                  counterAnalyticsData?.totalRefundVolume ??
+                  0;
+
+                const refundOrders =
+                  bp?.refundCount ??
+                  counterAnalyticsData?.refundCount ??
+                  counterAnalyticsData?.totalRefundCount ??
+                  0;
 
                 return (
                   <div className="space-y-4">
-                    {/* Financial Summary with Simplified Cafeteria Metrics */}
+                    {/* Row 1: 4 Financial Metrics */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-                      <div className="rounded-xl border border-slate-200 bg-white p-3.5">
-                        <span className="text-[11px] font-semibold text-slate-500 uppercase">Live Wallet Balance</span>
-                        <p className="text-lg font-bold font-mono text-emerald-600 mt-1">
-                          {formatCurrency(selectedCardForAnalytics.activeSession?.balance || 0)}
-                        </p>
+                      {/* 1. Wallets in Use */}
+                      <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-slate-500">Wallets in Use</span>
+                          <div className="h-7 w-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+                            <CreditCard className="h-3.5 w-3.5" />
+                          </div>
+                        </div>
+                        <p className="mt-2 text-2xl font-bold text-slate-900">{activeCards}</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Active wallets</p>
                       </div>
-                      <div className="rounded-xl border border-slate-200 bg-white p-3.5">
-                        <span className="text-[11px] font-semibold text-slate-500 uppercase">Money Added</span>
-                        <p className="text-lg font-bold font-mono text-emerald-600 mt-1">
-                          {formatCurrency(moneyAdded)}
-                        </p>
-                        <span className="text-[10px] text-slate-400">{rechargeOrders} Recharges</span>
+
+                      {/* 2. Money Added */}
+                      <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-slate-500">Money Added</span>
+                          <div className="h-7 w-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+                            <Wallet className="h-3.5 w-3.5" />
+                          </div>
+                        </div>
+                        <p className="mt-2 text-2xl font-bold text-slate-900">{formatCurrency(moneyAdded)}</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">{rechargeOrders} recharges</p>
                       </div>
-                      <div className="rounded-xl border border-slate-200 bg-white p-3.5">
-                        <span className="text-[11px] font-semibold text-slate-500 uppercase">Food Sales</span>
-                        <p className="text-lg font-bold font-mono text-slate-900 mt-1">
-                          {formatCurrency(foodSales)}
-                        </p>
-                        <span className="text-[10px] text-slate-400">{salesOrders} Purchases</span>
+
+                      {/* 3. Food Sales */}
+                      <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-slate-500">Food Sales</span>
+                          <div className="h-7 w-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+                            <ShoppingBag className="h-3.5 w-3.5" />
+                          </div>
+                        </div>
+                        <p className="mt-2 text-2xl font-bold text-slate-900">{formatCurrency(foodSales)}</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">{salesOrders} orders</p>
                       </div>
-                      <div className="rounded-xl border border-slate-200 bg-white p-3.5">
-                        <span className="text-[11px] font-semibold text-slate-500 uppercase">Refunds</span>
-                        <p className="text-lg font-bold font-mono text-amber-600 mt-1">
-                          {formatCurrency(totalRefunds)}
-                        </p>
-                        <span className="text-[10px] text-slate-400">{refundOrders} Refunds</span>
+
+                      {/* 4. Remaining Balance */}
+                      <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-slate-500">Remaining Balance</span>
+                          <div className="h-7 w-7 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
+                            <DollarSign className="h-3.5 w-3.5" />
+                          </div>
+                        </div>
+                        <p className="mt-2 text-2xl font-bold text-slate-900">{formatCurrency(totalBalance)}</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Money in wallets</p>
+                      </div>
+                    </div>
+
+                    {/* Row 2: 2 Operational Metrics */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      {/* Blocked Wallets */}
+                      <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-slate-500">Blocked Wallets</span>
+                          <div className="h-7 w-7 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600">
+                            <ShieldAlert className="h-3.5 w-3.5" />
+                          </div>
+                        </div>
+                        <p className="mt-2 text-2xl font-bold text-slate-900">{blockedCards}</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Security locked</p>
+                      </div>
+
+                      {/* Refunds */}
+                      <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-slate-500">Refunds</span>
+                          <div className="h-7 w-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
+                            <RefreshCw className="h-3.5 w-3.5" />
+                          </div>
+                        </div>
+                        <p className="mt-2 text-2xl font-bold text-slate-900">{formatCurrency(totalRefunds)}</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">{refundOrders} refunds</p>
                       </div>
                     </div>
                   </div>
@@ -747,7 +891,10 @@ export function CounterStaffCardsView() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setSelectedCardForAnalytics(null)}
+              onClick={() => {
+                setIsCounterAnalyticsOpen(false);
+                setSelectedCardForAnalytics(null);
+              }}
               className="text-xs px-4 cursor-pointer"
             >
               Close

@@ -57,8 +57,8 @@ export function OrgAdminFinancialSection({
   totalRefund = 0,
   leadingCard,
 }: FinancialSectionProps) {
-  const moneyAdded = analytics.moneyAdded ?? (cashRecharge + upiRecharge);
-  const moneyRefunded = analytics.moneyRefunded ?? totalRefund;
+  const moneyAdded = analytics.moneyAdded ?? analytics.totalRechargeVolume ?? (cashRecharge + upiRecharge);
+  const moneyRefunded = analytics.moneyRefunded ?? analytics.totalRefundVolume ?? totalRefund;
   const cancelledTopUps = analytics.cancelledTopUps ?? 0;
 
   const netMoneyCollected = analytics.netMoneyCollected ?? (moneyAdded - moneyRefunded);

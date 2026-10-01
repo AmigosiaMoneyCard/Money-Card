@@ -15,6 +15,8 @@ export interface BranchPerformanceMetric {
   upiRechargeVolume?: number;
   refundCount: number;
   refundVolume: number;
+  salesVolume?: number;
+  salesCount?: number;
   totalRevenue: number;
   sessionCount: number;
   activeSessionsCount: number;
@@ -132,6 +134,15 @@ export interface AnalyticsOverview {
   productsSoldCount?: number;
   dishesOrderedCount?: number;
   allProductDemand?: ProductDemandItem[];
+  rechargeVolume?: number;
+  salesVolume?: number;
+  salesCount?: number;
+  purchaseVolume?: number;
+  refundVolume?: number;
+  rechargeCount?: number;
+  refundCount?: number;
+  totalFloatBalance?: number;
+  blockedCardsCount?: number;
 }
 
 export interface ProductDemandItem {

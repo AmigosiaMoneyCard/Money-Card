@@ -844,21 +844,64 @@ export function OrgAdminCardsView() {
             ) : (
               /* 7 Simplified Metrics Grid (NO Avg. Balance) */
               (() => {
+                const bp = counterAnalyticsData?.branchPerformance?.find(
+                  (b: any) => b.branchId === selectedBranchForAnalytics.id,
+                );
+
                 const branchCards = getBranchCards(selectedBranchForAnalytics.id);
-                const activeCards = branchCards.filter((c) => c.status === 'ACTIVE').length;
+                const activeCards =
+                  bp?.activeSessionsCount ??
+                  branchCards.filter((c) => c.status === 'ACTIVE').length;
                 const blockedCards = branchCards.filter((c) => c.status === 'BLOCKED').length;
 
                 const totalBalance = branchCards.reduce(
                   (acc, c) => acc + (c.activeSession?.balance || 0),
-                  0
+                  0,
                 );
 
-                const moneyAdded = counterAnalyticsData?.rechargeVolume ?? 0;
-                const rechargeOrders = counterAnalyticsData?.rechargeCount ?? 0;
-                const foodSales = counterAnalyticsData?.salesVolume ?? 0;
-                const salesOrders = counterAnalyticsData?.salesCount ?? 0;
-                const totalRefunds = counterAnalyticsData?.refundVolume ?? 0;
-                const refundOrders = counterAnalyticsData?.refundCount ?? 0;
+                const moneyAdded =
+                  bp?.rechargeVolume ??
+                  bp?.moneyAdded ??
+                  counterAnalyticsData?.moneyAdded ??
+                  counterAnalyticsData?.rechargeVolume ??
+                  counterAnalyticsData?.totalRechargeVolume ??
+                  0;
+
+                const rechargeOrders =
+                  bp?.rechargeCount ??
+                  counterAnalyticsData?.rechargeCount ??
+                  counterAnalyticsData?.totalRechargeCount ??
+                  0;
+
+                const foodSales =
+                  bp?.purchaseVolume ??
+                  bp?.salesVolume ??
+                  counterAnalyticsData?.salesVolume ??
+                  counterAnalyticsData?.purchaseVolume ??
+                  counterAnalyticsData?.totalPurchaseVolume ??
+                  0;
+
+                const salesOrders =
+                  bp?.purchaseCount ??
+                  bp?.salesCount ??
+                  counterAnalyticsData?.salesCount ??
+                  counterAnalyticsData?.purchaseCount ??
+                  counterAnalyticsData?.foodOrdersCount ??
+                  0;
+
+                const totalRefunds =
+                  bp?.refundVolume ??
+                  bp?.moneyRefunded ??
+                  counterAnalyticsData?.refundVolume ??
+                  counterAnalyticsData?.moneyRefunded ??
+                  counterAnalyticsData?.totalRefundVolume ??
+                  0;
+
+                const refundOrders =
+                  bp?.refundCount ??
+                  counterAnalyticsData?.refundCount ??
+                  counterAnalyticsData?.totalRefundCount ??
+                  0;
 
                 return (
                   <div className="space-y-4">
