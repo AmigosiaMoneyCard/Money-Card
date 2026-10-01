@@ -293,8 +293,14 @@ export async function createBranch(req: Request, res: Response) {
 
     // Provision or update counter manager account if phone is provided
     if (cleanPhone) {
-      let counterUser = await tx.user.findUnique({
-        where: { phone: cleanPhone },
+      let counterUser = await tx.user.findFirst({
+        where: {
+          OR: [
+            { phone: cleanPhone },
+            { phone: `91${cleanPhone}` },
+            { phone: `+91${cleanPhone}` },
+          ],
+        },
       });
 
       if (!counterUser) {
@@ -312,6 +318,7 @@ export async function createBranch(req: Request, res: Response) {
         await tx.user.update({
           where: { id: counterUser.id },
           data: {
+            phone: cleanPhone,
             passwordHash,
             status: UserStatus.ACTIVE,
           },
@@ -621,15 +628,108 @@ export async function updateBranch(req: Request, res: Response) {
           (p) => p.permission === PermissionCode.STAFF_MANAGE || p.permission === PermissionCode.BRANCH_MANAGE,
         ),
       ) || branch.staffAssignments?.[0];
-    const existingManager = managerAssignment?.user;
-    if (existingManager && (cleanPhone || passwordHash)) {
-      await tx.user.update({
-        where: { id: existingManager.id },
-        data: {
-          ...(cleanPhone ? { phone: cleanPhone } : {}),
-          ...(passwordHash ? { passwordHash } : {}),
+    let existingManager = managerAssignment?.user;
+
+    if (existingManager) {
+      if (cleanPhone || passwordHash) {
+        await tx.user.update({
+          where: { id: existingManager.id },
+          data: {
+            ...(cleanPhone ? { phone: cleanPhone } : {}),
+            ...(passwordHash ? { passwordHash } : {}),
+            status: UserStatus.ACTIVE,
+          },
+        });
+      }
+    } else if (cleanPhone) {
+      // Find or provision counter manager user if none was assigned to this branch
+      let user = await tx.user.findFirst({
+        where: {
+          OR: [
+            { phone: cleanPhone },
+            { phone: `91${cleanPhone}` },
+            { phone: `+91${cleanPhone}` },
+          ],
         },
       });
+
+      const effectivePasswordHash = passwordHash || (await hashPassword('12345678'));
+
+      if (!user) {
+        user = await tx.user.create({
+          data: {
+            name: `Staff - ${updated.name}`,
+            phone: cleanPhone,
+            passwordHash: effectivePasswordHash,
+            role: Role.STAFF,
+            organizationId: orgId,
+            status: UserStatus.ACTIVE,
+          },
+        });
+      } else {
+        await tx.user.update({
+          where: { id: user.id },
+          data: {
+            phone: cleanPhone,
+            passwordHash: effectivePasswordHash,
+            status: UserStatus.ACTIVE,
+          },
+        });
+      }
+
+      // Assign default counter manager permissions
+      const defaultPermissions: PermissionCode[] = [
+        PermissionCode.CARD_VIEW,
+        PermissionCode.CARD_ISSUE,
+        PermissionCode.CARD_RETURN,
+        PermissionCode.CARD_BLOCK,
+        PermissionCode.CARD_UNBLOCK,
+        PermissionCode.SESSION_VIEW,
+        PermissionCode.RECHARGE,
+        PermissionCode.PURCHASE,
+        PermissionCode.REFUND,
+        PermissionCode.PRODUCT_VIEW,
+        PermissionCode.PRODUCT_MANAGE,
+        PermissionCode.INVENTORY_VIEW,
+        PermissionCode.INVENTORY_MANAGE,
+        PermissionCode.VIEW_ANALYTICS,
+        PermissionCode.VIEW_REPORTS,
+        PermissionCode.STAFF_VIEW,
+        PermissionCode.STAFF_MANAGE,
+      ];
+
+      for (const perm of defaultPermissions) {
+        await tx.userPermission.upsert({
+          where: {
+            userId_permission: {
+              userId: user.id,
+              permission: perm,
+            },
+          },
+          create: {
+            userId: user.id,
+            permission: perm,
+          },
+          update: {},
+        }).catch(() => {});
+      }
+
+      // Link counter user with this branch
+      await tx.userBranch.upsert({
+        where: {
+          userId_branchId: {
+            userId: user.id,
+            branchId: id,
+          },
+        },
+        create: {
+          userId: user.id,
+          branchId: id,
+        },
+        update: {},
+      }).catch(() => {});
+
+      existingManager = user as any;
     }
 
     return updated;

@@ -496,7 +496,7 @@ export function BranchesPage() {
     if (!selectedBranch) return;
     const cleanPhone = editPhoneInput.replace(/\D/g, '').slice(-10);
     const loginUrl = `${window.location.origin}/login`;
-    const passwordText = editPasswordInput.trim() || currentBranchPassword || '123456';
+    const passwordText = editPasswordInput.trim() || currentBranchPassword || '12345678';
     const textToCopy =
       `Counter Name: ${editNameInput.trim() || selectedBranch.name}\n` +
       `Mobile Number: ${cleanPhone || 'Not set'}\n` +
@@ -515,7 +515,7 @@ export function BranchesPage() {
     }
 
     const loginUrl = `${window.location.origin}/login`;
-    const passwordText = editPasswordInput.trim() || currentBranchPassword || '123456';
+    const passwordText = editPasswordInput.trim() || currentBranchPassword || '12345678';
     const message =
       `*Money Card Counter Credentials*\n\n` +
       `Here are your counter login details:\n\n` +
@@ -902,7 +902,7 @@ export function BranchesPage() {
             id="create-branch-password"
             label="Login Password"
             type={showCreatePassword ? 'text' : 'password'}
-            placeholder="Minimum 6 characters"
+            placeholder="Minimum 8 characters (default: 12345678)"
             value={branchPasswordInput}
             onChange={(e) => {
               setBranchPasswordInput(e.target.value);
@@ -1094,7 +1094,7 @@ export function BranchesPage() {
               <Input
                 id="edit-branch-password"
                 type={showEditPassword ? 'text' : 'password'}
-                placeholder="Enter new password (min 6 chars)"
+                placeholder="Enter new password (min 8 chars)"
                 maxLength={30}
                 value={editPasswordInput}
                 onChange={(e) => {

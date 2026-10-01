@@ -43,6 +43,20 @@ jobs:
   backend:
     name: Backend Tests and Typecheck
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: money_card
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     defaults:
       run:
         working-directory: './Backend Money Card'
@@ -70,6 +84,9 @@ jobs:
 
       - name: Generate Prisma client
         run: npx prisma generate
+
+      - name: Push Prisma schema to test database
+        run: npx prisma db push --skip-generate --accept-data-loss
 
       - name: TypeScript typecheck
         run: npx tsc --noEmit

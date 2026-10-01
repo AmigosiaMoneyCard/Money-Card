@@ -143,7 +143,7 @@ export const mockBranchesHandlers = {
 
   async updateBranch(
     id: string,
-    data: { name?: string; status?: 'ACTIVE' | 'INACTIVE' },
+    data: { name?: string; status?: 'ACTIVE' | 'INACTIVE'; phone?: string; password?: string },
   ): Promise<ApiResult<Branch>> {
     await mockDelay();
     const branchIndex = mockStore.branches.findIndex((b) => b.id === id);
@@ -152,11 +152,18 @@ export const mockBranchesHandlers = {
     }
 
     const existing = mockStore.branches[branchIndex];
+    const newPhone = data.phone !== undefined ? data.phone : existing.credentials?.phone;
+    const newPassword = data.password !== undefined ? data.password : existing.credentials?.password;
 
     const updated: Branch = {
       ...existing,
       ...(data.name ? { name: data.name } : {}),
       ...(data.status ? { status: data.status } : {}),
+      credentials: (newPhone || newPassword) ? {
+        name: data.name || existing.name,
+        phone: newPhone || '',
+        password: newPassword || '12345678',
+      } : existing.credentials,
       updatedAt: mockStore.getTimestamp(),
     };
 
