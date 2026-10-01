@@ -476,9 +476,11 @@ export function OrgAdminCardsView() {
                                   : <User className="h-3.5 w-3.5" />}
                               </div>
                               <div>
-                                <span className="font-bold text-slate-900 block text-xs">
-                                  {session.customerName || 'Walk-in Customer'}
-                                </span>
+                                {session.customerName ? (
+                                  <span className="font-bold text-slate-900 block text-xs">
+                                    {session.customerName}
+                                  </span>
+                                ) : null}
                                 {session.customerPhone && (
                                   <p className="text-[11px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
                                     <Phone className="h-2.5 w-2.5 text-slate-400" />
@@ -543,9 +545,11 @@ export function OrgAdminCardsView() {
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                     Customer Profile
                   </span>
-                  <h3 className="text-base font-bold text-slate-900 leading-tight">
-                    {selectedSessionForDetail.customerName || 'Walk-in Customer'}
-                  </h3>
+                  {selectedSessionForDetail.customerName ? (
+                    <h3 className="text-base font-bold text-slate-900 leading-tight">
+                      {selectedSessionForDetail.customerName}
+                    </h3>
+                  ) : null}
                   {selectedSessionForDetail.customerPhone && (
                     <p className="text-xs text-slate-500">{selectedSessionForDetail.customerPhone}</p>
                   )}
@@ -732,12 +736,16 @@ export function OrgAdminCardsView() {
                             {card.activeSession ? (
                               <div className="flex items-center gap-2">
                                 <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 shrink-0">
-                                  {(card.activeSession.customerName || 'W').charAt(0).toUpperCase()}
+                                  {card.activeSession.customerName
+                                    ? card.activeSession.customerName.charAt(0).toUpperCase()
+                                    : <User className="h-3 w-3 text-slate-400" />}
                                 </div>
                                 <div className="min-w-0">
-                                  <p className="font-semibold text-slate-800 truncate leading-tight">
-                                    {card.activeSession.customerName || 'Walk-in Customer'}
-                                  </p>
+                                  {card.activeSession.customerName ? (
+                                    <p className="font-semibold text-slate-800 truncate leading-tight">
+                                      {card.activeSession.customerName}
+                                    </p>
+                                  ) : null}
                                   {card.activeSession.customerPhone && (
                                     <p className="text-[10px] text-slate-400 font-mono leading-tight">
                                       {card.activeSession.customerPhone}

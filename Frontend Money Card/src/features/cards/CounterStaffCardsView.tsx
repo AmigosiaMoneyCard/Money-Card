@@ -26,6 +26,9 @@ import {
   BarChart2,
   ArrowDownLeft,
   ShoppingBag,
+  History,
+  User,
+  Phone,
 } from 'lucide-react';
 
 function getTransactionTitle(tx: Transaction): string {
@@ -83,6 +86,17 @@ export function CounterStaffCardsView() {
   const [appliedEndDate, setAppliedEndDate] = useState(() => formatLocalDate(new Date()));
   const [counterAnalyticsData, setCounterAnalyticsData] = useState<any>(null);
   const [isLoadingCounterAnalytics, setIsLoadingCounterAnalytics] = useState(false);
+
+  // ─── Customer History Modal States (Counter Scoped) ──────────────
+  const [isCustomerHistoryOpen, setIsCustomerHistoryOpen] = useState(false);
+  const [historySearchQuery, setHistorySearchQuery] = useState('');
+  const [counterSessions, setCounterSessions] = useState<any[]>([]);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+
+  // Detail modal for a single customer session (from History modal)
+  const [selectedSessionForDetail, setSelectedSessionForDetail] = useState<any | null>(null);
+  const [sessionDetailTxns, setSessionDetailTxns] = useState<Transaction[]>([]);
+  const [isLoadingSessionDetailTxns, setIsLoadingSessionDetailTxns] = useState(false);
 
   // ─── Search Input Handler with Validation ────────────────────────
   const handleSearchChange = (val: string) => {
@@ -263,6 +277,60 @@ export function CounterStaffCardsView() {
     }
   }, []);
 
+  // ─── Open Customer History (Counter Scoped) ──────────────────────
+  const handleOpenCustomerHistory = useCallback(async (card?: CardEntity) => {
+    setIsCustomerHistoryOpen(true);
+    if (card) {
+      setHistorySearchQuery(card.physicalCardNumber || card.qrToken || '');
+    } else {
+      setHistorySearchQuery('');
+    }
+    setIsLoadingSessions(true);
+    const branchId = staffBranchId || currentBranch?.id || branches[0]?.id;
+    try {
+      const res = await apiService.sessions.getSessions(branchId ? { branchId, limit: 100 } : { limit: 100 });
+      if (res.success) {
+        const items = Array.isArray(res.data) ? res.data : ((res.data as any)?.items || []);
+        setCounterSessions(items);
+      } else {
+        setCounterSessions([]);
+      }
+    } catch {
+      setCounterSessions([]);
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  }, [staffBranchId, currentBranch, branches]);
+
+  // ─── Open Session Transactions Detail Inspection ──────────────────
+  const handleOpenSessionDetail = useCallback(async (session: any) => {
+    setSelectedSessionForDetail(session);
+    setIsLoadingSessionDetailTxns(true);
+    setSessionDetailTxns([]);
+    try {
+      const res = await apiService.sessions.getSessionTransactions(session.id);
+      if (res.success) {
+        const txns = Array.isArray(res.data) ? res.data : ((res.data as any)?.items || []);
+        setSessionDetailTxns(txns);
+      }
+    } catch {
+      setSessionDetailTxns([]);
+    } finally {
+      setIsLoadingSessionDetailTxns(false);
+    }
+  }, []);
+
+  const filteredCounterSessions = useMemo(() => {
+    if (!historySearchQuery.trim()) return counterSessions;
+    const q = historySearchQuery.toLowerCase().trim();
+    return counterSessions.filter((s) => {
+      const name = (s.customerName || '').toLowerCase();
+      const phone = (s.customerPhone || '').toLowerCase();
+      const coupon = (s.sessionCardNumber || s.card?.physicalCardNumber || s.card?.qrToken || '').toLowerCase();
+      return name.includes(q) || phone.includes(q) || coupon.includes(q);
+    });
+  }, [counterSessions, historySearchQuery]);
+
   if (!canView) {
     return <UnauthorizedPage />;
   }
@@ -280,6 +348,16 @@ export function CounterStaffCardsView() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs h-8 px-3 rounded-xl border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
+            onClick={() => handleOpenCustomerHistory()}
+            leftIcon={<History className="h-3.5 w-3.5 text-emerald-600" />}
+          >
+            Customer History
+          </Button>
+
           <Button
             variant="outline"
             size="sm"
@@ -321,7 +399,7 @@ export function CounterStaffCardsView() {
         </div>
         {searchError && (
           <p className="text-[11px] text-rose-500 font-medium pl-1 flex items-center gap-1">
-            <span>⚠️</span> {searchError}
+            {searchError}
           </p>
         )}
       </div>
@@ -397,9 +475,19 @@ export function CounterStaffCardsView() {
                         </span>
                       </td>
 
-                      {/* 3. Actions: Wallet Analytics | Wallet Details */}
+                      {/* 3. Actions: Customer History | Wallet Analytics | Wallet Details */}
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
                         <div className="inline-flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenCustomerHistory(card)}
+                            className="text-xs h-8 px-3 rounded-lg border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
+                            leftIcon={<History className="h-3.5 w-3.5 text-emerald-600" />}
+                          >
+                            Customer History
+                          </Button>
+
                           <Button
                             variant="outline"
                             size="sm"
@@ -446,9 +534,11 @@ export function CounterStaffCardsView() {
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                     Customer Profile
                   </span>
-                  <h3 className="text-base font-bold text-slate-900 leading-tight">
-                    {selectedCardForDetails.activeSession?.customerName || 'Walk-in Customer'}
-                  </h3>
+                  {selectedCardForDetails.activeSession?.customerName ? (
+                    <h3 className="text-base font-bold text-slate-900 leading-tight">
+                      {selectedCardForDetails.activeSession.customerName}
+                    </h3>
+                  ) : null}
                   {selectedCardForDetails.activeSession?.customerPhone && (
                     <p className="text-xs text-slate-500">{selectedCardForDetails.activeSession.customerPhone}</p>
                   )}
@@ -658,6 +748,242 @@ export function CounterStaffCardsView() {
               variant="outline"
               size="sm"
               onClick={() => setSelectedCardForAnalytics(null)}
+              className="text-xs px-4 cursor-pointer"
+            >
+              Close
+            </Button>
+          </ModalFooter>
+        </Modal>
+      )}
+
+      {/* ─── MODAL 3: Customer History Modal (Counter Scoped) ─────────── */}
+      {isCustomerHistoryOpen && (
+        <Modal
+          isOpen={isCustomerHistoryOpen}
+          onClose={() => setIsCustomerHistoryOpen(false)}
+          title={`Customer History — ${getBranchName(staffBranchId)}`}
+          size="xl"
+        >
+          <div className="space-y-4">
+            {/* Search Bar inside Customer History Modal */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search by customer, phone, or wallet ID..."
+                  value={historySearchQuery}
+                  onChange={(e) => setHistorySearchQuery(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:outline-none"
+                />
+                {historySearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setHistorySearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                    title="Clear search"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+              <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold text-xs px-2.5 py-0.5">
+                {filteredCounterSessions.length} Sessions
+              </Badge>
+            </div>
+
+            {isLoadingSessions ? (
+              <div className="py-10">
+                <LoadingState message="Loading customer history..." />
+              </div>
+            ) : filteredCounterSessions.length === 0 ? (
+              <div className="py-8 text-center text-xs text-slate-500 border border-slate-200 rounded-xl bg-slate-50/50">
+                <p className="font-semibold text-slate-700">No customer history found</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  {historySearchQuery
+                    ? 'No sessions match your search criteria.'
+                    : 'No customer sessions recorded for this counter yet.'}
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-slate-200 overflow-hidden shadow-2xs max-h-[60vh] overflow-y-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500 sticky top-0">
+                    <tr>
+                      <th className="py-2.5 px-4">Customer</th>
+                      <th className="py-2.5 px-4 text-right">Wallet ID</th>
+                      <th className="py-2.5 px-4 text-right w-24">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredCounterSessions.map((session) => {
+                      const couponId =
+                        session.sessionCardNumber ||
+                        session.card?.physicalCardNumber ||
+                        session.card?.qrToken ||
+                        '—';
+
+                      return (
+                        <tr key={session.id} className="hover:bg-slate-50/70 transition-colors">
+                          {/* 1. Customer (Name & Phone, Blank if not entered) */}
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2.5">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 font-bold text-xs shrink-0">
+                                {session.customerName
+                                  ? session.customerName.charAt(0).toUpperCase()
+                                  : <User className="h-3.5 w-3.5" />}
+                              </div>
+                              <div>
+                                {session.customerName ? (
+                                  <span className="font-bold text-slate-900 block text-xs">
+                                    {session.customerName}
+                                  </span>
+                                ) : null}
+                                {session.customerPhone && (
+                                  <p className="text-[11px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
+                                    <Phone className="h-2.5 w-2.5 text-slate-400" />
+                                    {session.customerPhone}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* 2. Wallet ID */}
+                          <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 text-xs">
+                            {couponId}
+                          </td>
+
+                          {/* 3. Action (View button) */}
+                          <td className="py-3 px-4 text-right whitespace-nowrap">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenSessionDetail(session)}
+                              className="text-xs h-7 px-3 rounded-lg border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
+                            >
+                              View
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <ModalFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCustomerHistoryOpen(false)}
+              className="text-xs px-4 cursor-pointer"
+            >
+              Close
+            </Button>
+          </ModalFooter>
+        </Modal>
+      )}
+
+      {/* ─── MODAL 4: Session Transaction Detail Modal ─────────────── */}
+      {selectedSessionForDetail && (
+        <Modal
+          isOpen={!!selectedSessionForDetail}
+          onClose={() => setSelectedSessionForDetail(null)}
+          title={`Session Details — Wallet ${selectedSessionForDetail.sessionCardNumber || selectedSessionForDetail.card?.physicalCardNumber || selectedSessionForDetail.card?.qrToken || ''}`}
+          size="lg"
+        >
+          <div className="space-y-4">
+            {/* Unified Session Summary Header */}
+            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    Customer Profile
+                  </span>
+                  {selectedSessionForDetail.customerName ? (
+                    <h3 className="text-base font-bold text-slate-900 leading-tight">
+                      {selectedSessionForDetail.customerName}
+                    </h3>
+                  ) : null}
+                  {selectedSessionForDetail.customerPhone && (
+                    <p className="text-xs text-slate-500">{selectedSessionForDetail.customerPhone}</p>
+                  )}
+                  <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-slate-600">
+                    <span className="text-[11px] text-slate-500">
+                      Started {formatDate(selectedSessionForDetail.issuedAt || selectedSessionForDetail.startedAt || selectedSessionForDetail.createdAt)}
+                    </span>
+                    {selectedSessionForDetail.settledAt && (
+                      <>
+                        <span className="text-slate-300">•</span>
+                        <span className="text-[11px] text-slate-500">
+                          Settled {formatDate(selectedSessionForDetail.settledAt)}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block mb-0.5">
+                    Session Balance
+                  </span>
+                  <div className="text-2xl font-bold font-mono text-emerald-600">
+                    {formatCurrency(selectedSessionForDetail.balance ?? 0)}
+                  </div>
+                  <div className="mt-1">
+                    <Badge variant={selectedSessionForDetail.status === 'ACTIVE' ? 'success' : 'outline'} className="text-[10px]">
+                      {selectedSessionForDetail.status || 'SETTLED'}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Activity Breakdown */}
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between px-0.5">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Breakdown
+                </h4>
+                <span className="text-[11px] text-slate-400">
+                  {sessionDetailTxns.length} {sessionDetailTxns.length === 1 ? 'item' : 'items'}
+                </span>
+              </div>
+
+              {isLoadingSessionDetailTxns ? (
+                <div className="py-8">
+                  <LoadingState message="Loading order items..." />
+                </div>
+              ) : sessionDetailTxns.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl bg-slate-50/40">
+                  No transaction items recorded for this session.
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 overflow-hidden max-h-56 overflow-y-auto">
+                  {sessionDetailTxns.map((tx) => (
+                    <div key={tx.id} className="p-3 flex items-center justify-between text-xs bg-white hover:bg-slate-50/60">
+                      <div className="space-y-0.5">
+                        <p className="font-semibold text-slate-900">{getTransactionTitle(tx)}</p>
+                        <p className="text-[11px] text-slate-400">{formatDate(tx.createdAt)}</p>
+                      </div>
+                      <span className={`font-mono font-bold text-xs ${tx.type === 'PURCHASE' ? 'text-slate-900' : 'text-emerald-600'}`}>
+                        {tx.type === 'PURCHASE' ? '-' : '+'}{formatCurrency(tx.amount)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <ModalFooter>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedSessionForDetail(null)}
               className="text-xs px-4 cursor-pointer"
             >
               Close

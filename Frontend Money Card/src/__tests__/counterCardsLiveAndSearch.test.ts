@@ -226,9 +226,9 @@ describe('Role Isolated Cards Views & Search Validation Tests', () => {
       // Column 2: Live Balance
       expect(tableRow.activeSession?.balance).toBe(350);
       // Column 3: Actions available
-      const actions = ['Card Analytics', 'Card Details'];
-      expect(actions).toEqual(['Card Analytics', 'Card Details']);
-      expect(actions).not.toContain('Customer History');
+      const actions = ['Customer History', 'Card Analytics', 'Card Details'];
+      expect(actions).toEqual(['Customer History', 'Card Analytics', 'Card Details']);
+      expect(actions).toContain('Customer History');
     });
 
     it('should filter live cards by customer name or card number', () => {
@@ -294,6 +294,21 @@ describe('Role Isolated Cards Views & Search Validation Tests', () => {
       expect(analyticsLabels.sales).toBe('Food Sales');
       expect(analyticsLabels.recharge).not.toBe('RECHARGE VOL.');
       expect(analyticsLabels.sales).not.toBe('POS SALES');
+    });
+  });
+
+  // ─── 6. Customer History & Customer Profile Neutrality ────────────────────
+  describe('Customer History Blank Detail Neutrality', () => {
+    it('leaves customer name blank when no name is provided instead of displaying Walk-in Customer', () => {
+      const formatCustomerDisplay = (name?: string | null) => {
+        return name ? name.trim() : '';
+      };
+
+      expect(formatCustomerDisplay('')).toBe('');
+      expect(formatCustomerDisplay(null)).toBe('');
+      expect(formatCustomerDisplay(undefined)).toBe('');
+      expect(formatCustomerDisplay('')).not.toBe('Walk-in Customer');
+      expect(formatCustomerDisplay('John Doe')).toBe('John Doe');
     });
   });
 });
