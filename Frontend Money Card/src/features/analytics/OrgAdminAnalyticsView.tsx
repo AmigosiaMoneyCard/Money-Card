@@ -1,4 +1,4 @@
-import { Eye, RefreshCw, BarChart3, CreditCard, Store, UtensilsCrossed, Calendar } from 'lucide-react';
+import { Eye, RefreshCw, BarChart3, CreditCard, Store, UtensilsCrossed, Calendar, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/hooks';
 import { Button, Select, LoadingState, ErrorState } from '@/components/ui';
 import {
@@ -7,6 +7,7 @@ import {
   OrgAdminMenuAnalyticsSection,
 } from './OrgAdminAnalyticsComponents';
 import { OrgAdminCardTracker } from './OrgAdminCardTracker';
+import { OrgAdminBlockedCardsSection } from './OrgAdminBlockedCardsSection';
 import type { SortMetric } from './OrgAdminAnalyticsComponents';
 import {
   useOrgAdminAnalytics,
@@ -197,6 +198,19 @@ export function OrgAdminAnalyticsView() {
           <UtensilsCrossed className="h-4 w-4 text-emerald-600" />
           <span>Menu Analytics</span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => handleTabChange('blocked')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+            activeTab === 'blocked'
+              ? 'border-emerald-600 text-emerald-700 bg-emerald-50/50 rounded-t-lg'
+              : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+          }`}
+        >
+          <ShieldAlert className="h-4 w-4 text-rose-600" />
+          <span>Blocked Cards</span>
+        </button>
       </div>
 
       {/* ─── Main Content ─── */}
@@ -221,11 +235,17 @@ export function OrgAdminAnalyticsView() {
           activeCardsRechargeCount={analytics?.activeCardsRechargeCount}
           reRechargedCardsCount={analytics?.reRechargedCardsCount}
         />
-      ) : (
+      ) : activeTab === 'menu' ? (
         analytics ? (
           <OrgAdminMenuAnalyticsSection analytics={analytics} />
         ) : null
-      )}
+      ) : activeTab === 'blocked' ? (
+        <OrgAdminBlockedCardsSection
+          branchFilter={branchFilter}
+          startDate={startDate}
+          endDate={endDate}
+        />
+      ) : null}
 
       {/* PDF Viewer Modal */}
       <OrgAdminPdfModal

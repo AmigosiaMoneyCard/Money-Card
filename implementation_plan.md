@@ -1,122 +1,102 @@
-# Implementation Plan: CI Pipeline Fix, Counter Credentials Resolution & Wallets Header Layout
+# Implementation Plan: CI Pipeline Fix, Counter Credentials, Wallets Header & Blocked Cards Analytics
 
 ## Overview
-This cumulative implementation plan retains all pending CI pipeline and counter authentication work, and incorporates the new UI layout instruction for the Counter Dashboard Wallets page (`CounterStaffCardsView.tsx`).
-
-![Counter Wallets Header Layout](file:///C:/Users/damie/.gemini/antigravity-ide/brain/999581c9-5c30-4195-933d-3667425ed95a/counter_wallets_header_layout_1790852173690.jpg)
+This cumulative implementation plan incorporates all recent platform enhancements: CI pipeline database service container, counter credentials multi-format phone lookup, Counter Dashboard Wallets header alignment, and the new **"Blocked Cards"** tab on the Analytics page for both Organization Admin and Counter Admin.
 
 ---
 
-## Part 1: GitHub Actions CI Pipeline Fix (Pending)
-
-### Problem Summary
-- In GitHub Actions run 36848485625, Frontend (285 tests) and Mobile POS (171 tests and analysis) succeeded completely.
-- Backend Tests and Typecheck failed during step 8 (Run backend tests) because integration tests `activation.test.ts` and `card_deletion.test.ts` require a live PostgreSQL database instance on port 5432.
-- Because one job failed, GitHub marked the entire workflow run as failed.
-
-### Proposed Workflow Changes in `.github/workflows/ci.yml`
-- Add PostgreSQL 16 service container mapped to port 5432:5432.
-- Add `npx prisma db push --skip-generate --accept-data-loss` step before `npm test`.
+## Part 1: GitHub Actions CI Pipeline Fix
+- Attached `services: postgres:16` to `backend` job in `.github/workflows/ci.yml`.
+- Added `npx prisma db push --skip-generate --accept-data-loss` step before `npm test`.
 
 ---
 
-## Part 2: Counter Credentials Login Resolution (Pending)
-
-### Root Cause Analysis
-1. In `createBranch` (`organization.controller.ts`), user lookup queries `where: { phone: cleanPhone }`, which misses existing users with international prefixes (`+91` or `91`).
-2. In `updateBranch`, if a branch has no staff members assigned, setting a phone and password silently skips user creation because it only updates `existingManager` if one already exists.
-3. In `auth.controller.ts` (`login`), default fallback passwords allow `'password'`, `'Staff@123'`, and `'123456'`, but omit `'12345678'`, which is the actual default password assigned when a counter is created without a custom password.
-4. In `BranchesPage.tsx`, input placeholders display "min 6 chars", but validation requires 8 characters, and the displayed fallback password shows `'123456'` instead of the backend default `'12345678'`.
-
-### Proposed Solutions
+## Part 2: Counter Credentials Login Resolution
 - `Backend Money Card/src/controllers/organization.controller.ts`:
-  - `createBranch`: Multi-format phone lookup (`cleanPhone`, `91${cleanPhone}`, `+91${cleanPhone}`).
-  - `updateBranch`: Auto-provision manager user when no staff assignment exists.
+  - Multi-format phone lookup (`cleanPhone`, `91${cleanPhone}`, `+91${cleanPhone}`) in `createBranch`.
+  - Auto-provision manager user when no staff assignment exists in `updateBranch`.
 - `Backend Money Card/src/controllers/auth.controller.ts`:
-  - Include `'12345678'` in login fallback list.
+  - Included `'12345678'` in login fallback list.
 - `Frontend Money Card/src/features/branches/BranchesPage.tsx`:
-  - Standardize placeholders and copy fallbacks to `'12345678'`.
+  - Standardized placeholders and copy fallbacks to `'12345678'`.
 - `Frontend Money Card/src/services/mock/handlers/branches.ts`:
-  - Add phone and password update support to mock `updateBranch`.
+  - Added phone and password update support to mock `updateBranch`.
 
 ---
 
-## Part 3: Counter Dashboard Wallets Page Layout Update (New)
+## Part 3: Counter Dashboard Wallets Page Layout Update
+- In `Frontend Money Card/src/features/cards/CounterStaffCardsView.tsx`:
+  - Grouped `[CreditCard]`, `<h1>Wallets & Customer History</h1>`, `[Badge Live Active]`, and `[Wallet Analytics Button]` together inside the left horizontal container.
+  - Removed `[Customer History]` button from header and table rows.
+  - Retained `[Refresh]` on the right.
 
-### Requirements
-- On Counter Dashboard Wallets page (`CounterStaffCardsView.tsx`):
-  - Remove the "Customer History" button from the header.
-  - Remove the "Customer History" button from each row in the live active cards table.
-  - Position the "Wallet Analytics" button directly horizontal to the "Wallets & Customer History" title and live active badge in the header.
-  - Keep the "Refresh" button on the far right.
+---
 
-### Wireframe: Updated Counter Wallets Header & Row Actions
+## Part 4: Blocked Cards Tab in Analytics (Org Admin & Counter Admin)
+
+### Overview
+Add a dedicated **"Blocked Cards"** tab to the Analytics dashboard across both the **Organization Admin** and **Counter Admin / Staff** portals (right next to the existing *Menu Analytics* tab). This allows administrators and cafeteria counter managers to track, audit, search, and manage cards that were blocked (e.g. reported lost, damaged, or suspended) along with locked wallet balances and unblock actions.
+
+### UI Layout & ASCII Wireframe
 
 ```
-=============================================================================================================
-Counter Dashboard: Wallets Page Header Layout
-=============================================================================================================
-+-----------------------------------------------------------------------------------------------------------+
-| [CreditCard Icon] Wallets & Customer History  [ 12 Live Active ]  [ Wallet Analytics ]        [ Refresh ] |
-+-----------------------------------------------------------------------------------------------------------+
-
-[ Search by wallet ID or customer...                                                                      ]
-
-+-----------------------------------------------------------------------------------------------------------+
-| WALLET ID          | CUSTOMER          | COUNTER           | BALANCE    | ACTIONS                         |
-+-----------------------------------------------------------------------------------------------------------+
-| MC-101             | Rahul Sharma      | South Express     | Rs 450.00  | [ Wallet Analytics ] [ Details ]|
-| MC-102             | Priya Patel       | Juice Bar         | Rs 120.00  | [ Wallet Analytics ] [ Details ]|
-+-----------------------------------------------------------------------------------------------------------+
++--------------------------------------------------------------------------------------------------------------------+
+|  Money Card Admin Portal            Back > Analytics           Cafeteria: mes kalladi collage   [S] swathi (Counter)|
++--------------------------------------------------------------------------------------------------------------------+
+|  Counter Analytics                                  [iti block v]   [ 02-10-2026 - 02-10-2026 ] [Today] (R) [View PDF] |
+|                                                                                                                    |
+|  [|| Financial Overview]  [[] Card Analytics]  [X Menu Analytics]  [* Blocked Cards *] <--- NEW TAB                |
+|  ------------------------------------------------------------------=================                              |
+|                                                                                                                    |
+|  +--------------------------------------------+    +--------------------------------------------+                  |
+|  |  TOTAL BLOCKED CARDS                       |    |  LOCKED BALANCE                            |                  |
+|  |  3 Cards                                   |    |  ₹450.00                                   |                  |
+|  +--------------------------------------------+    +--------------------------------------------+                  |
+|                                                                                                                    |
+|  +--------------------------------------------------------------------------------------------------------------+  |
+|  |  [Q Search blocked cards by card ID, customer, phone, or reason...                         ]                 |  |
+|  |                                                                                                              |  |
+|  |  CARD / WALLET ID   CUSTOMER           LOCKED BAL   BLOCKED REASON          BLOCKED BY      DATE         ACTION  |  |
+|  |  -----------------  -----------------  -----------  ----------------------  --------------  -----------  ------  |  |
+|  |  [=] MC-0012        Rahul Sharma       ₹150.00      [Blocked] Lost card     Swathi (Staff)  02-10-2026   [Unblock|  |
+|  |                     +91 9876543210                  at campus lawn                                               |  |
+|  |                                                                                                                  |  |
+|  |  [=] MC-0045        Ananya Sen         ₹200.00      [Blocked] Misplaced     Admin (Org)     01-10-2026   [Unblock|  |
+|  |                     +91 9876543211                  in canteen                                                   |  |
+|  |                                                                                                                  |  |
+|  |  [=] MC-0078        Mohammed Riyas     ₹100.00      [Blocked] Card Damaged  Swathi (Staff)  28-09-2026   [Unblock|  |
+|  |                     +91 9876543212                  magnetic chip error                                          |  |
+|  +--------------------------------------------------------------------------------------------------------------+  |
++--------------------------------------------------------------------------------------------------------------------+
 ```
 
-### Proposed Code Changes in `Frontend Money Card/src/features/cards/CounterStaffCardsView.tsx`
-- In header (lines 355-395):
-  - Group `[CreditCard]`, `<h1>Wallets & Customer History</h1>`, `[Badge Live Active]`, and `[Wallet Analytics Button]` together inside the left horizontal container.
-  - Remove the `[Customer History]` button from the actions group.
-  - Retain `[Refresh]` on the right.
-- In table rows (lines 503-535):
-  - Remove the `[Customer History]` button from the row actions column.
-  - Retain `[ Wallet Analytics ]` and `[ Wallet Details ]`.
-- Update test suite `counterCardsLiveAndSearch.test.ts` to reflect the updated button layout and presence.
+### Technical Architecture & Component Breakdown
+
+1. **Tab Navigation Extension ([`OrgAdminAnalyticsView.tsx`](file:///d:/money%20card/Money-Card-web-app/Frontend%20Money%20Card/src/features/analytics/OrgAdminAnalyticsView.tsx))**:
+   - Added fourth tab button `Blocked Cards` with `ShieldAlert` icon.
+   - Maintained active tab underline styling (`border-emerald-600 text-emerald-700 bg-emerald-50/50`).
+   - Renders `<OrgAdminBlockedCardsSection />` when `activeTab === 'blocked'`.
+
+2. **Tab State Management ([`useOrgAdminAnalytics.ts`](file:///d:/money%20card/Money-Card-web-app/Frontend%20Money%20Card/src/features/analytics/useOrgAdminAnalytics.ts))**:
+   - Updated `activeTab` union type: `'overview' | 'cards' | 'menu' | 'blocked'`.
+   - Reads/writes URL search param `?tab=blocked`.
+
+3. **New Component: [`OrgAdminBlockedCardsSection.tsx`](file:///d:/money%20card/Money-Card-web-app/Frontend%20Money%20Card/src/features/analytics/OrgAdminBlockedCardsSection.tsx)**:
+   - **Data Fetching**: Calls `apiService.cards.getCards({ status: 'BLOCKED', branchId })`.
+   - **KPI Cards**: Total Blocked Cards and Locked Balance.
+   - **Instant Search**: By Card ID, Customer Name, Phone, or Reason.
+   - **Unblock Flow**: Modal confirmation with immediate live status refresh.
 
 ---
 
-## Worktree Changes Summary
+## Credentials for Testing
 
-1. `.github/workflows/ci.yml`:
-   - Attach `services: postgres:16` to `backend` job.
-   - Add `npx prisma db push --skip-generate --accept-data-loss`.
+### 🏢 Organization Admin
+* **Portal URL**: `/login` (or staging URL)
+* **Email**: `admin@maincafe.com` *(or `admin@acme.com`)*
+* **Password**: `password` *(or `Password123!`)*
 
-2. `Backend Money Card/src/controllers/organization.controller.ts`:
-   - Resilient user lookup in `createBranch`.
-   - Auto-provisioning manager in `updateBranch` when no staff assignment exists.
-
-3. `Backend Money Card/src/controllers/auth.controller.ts`:
-   - Support `'12345678'` in login fallback list.
-
-4. `Frontend Money Card/src/features/branches/BranchesPage.tsx`:
-   - Consistent 8-character password labels, placeholders, and `'12345678'` fallback.
-
-5. `Frontend Money Card/src/services/mock/handlers/branches.ts`:
-   - Support `phone` and `password` updates in mock `updateBranch`.
-
-6. `Frontend Money Card/src/features/cards/CounterStaffCardsView.tsx`:
-   - Move `Wallet Analytics` horizontal to `Wallets & Customer History` title.
-   - Remove `Customer History` buttons from header and card rows.
-
-7. `Frontend Money Card/src/__tests__/counterCardsLiveAndSearch.test.ts`:
-   - Align test assertions with new layout.
-
----
-
-## Verification Plan
-
-### Automated Verification
-- Run backend tests: `npm test` (all 104 tests pass).
-- Run frontend tests: `npm test -- --run` (all 285 tests pass).
-- Run mobile tests: `flutter test` (all 171 tests pass).
-- Proactively run TypeScript checks: `npx tsc --noEmit` across subprojects.
-- Local Git: Commit all changes to `staging`.
-- Remote Git: Prompt for confirmation before `git push origin staging`.
-- Monitor GitHub Actions CI until all 3 jobs (`frontend`, `backend`, `mobile`) turn green.
+### 🏪 Counter Admin / Staff
+* **Portal URL**: `/login`
+* **Mobile / Identifier**: `7736919053` *(or `9876543212`)*
+* **Password**: `password` *(or `Password123!`)*
