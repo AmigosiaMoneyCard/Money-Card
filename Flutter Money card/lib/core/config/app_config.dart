@@ -24,7 +24,7 @@ class AppConfig {
   static String? _overrideEnvironment;
   static String? get overrideEnvironment => _overrideEnvironment;
 
-  static const String appVersion = '1.0.1';
+  static const String appVersion = '1.0.4';
 
   /// Environment: 'production', 'staging', or 'development'
   static String get environment {
