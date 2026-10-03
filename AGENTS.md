@@ -2,7 +2,31 @@
 
 > **MANDATORY PROTOCOL FOR EVERY NEW CHAT SESSION**:
 > 1. In **ANY and EVERY new chat session**, the AI agent **MUST immediately and strictly read this file (`AGENTS.md`) in its entirety FIRST** before inspecting any other file, planning, or executing any commands.
-> 2. This file is the **single permanent source of truth**. All pre-authorized permissions (auto-approved tests, auto-approved Shorebird CodePush, auto-approved local Git, and the strict guard requiring confirmation ONLY for `git push`), naming rules (zero emojis, everyday easy words), strict scope control (change ONLY what was explicitly requested — zero unrequested changes), cumulative plan retention for incomplete work, and architectural boundaries defined here are strictly binding across all sessions.
+> 2. This file is the **single permanent source of truth**. All permissions across Flutter, Backend, and Frontend are **strictly pre-authorized, pre-approved, and auto-executed with ZERO consent or confirmation required** (auto-approved commands, auto-approved code edits, auto-approved package installations, auto-approved tests, auto-approved builds, auto-approved database operations, auto-approved Shorebird CodePush, auto-approved local Git, and the strict guard requiring confirmation ONLY for `git push`), naming rules (zero emojis, everyday easy words), strict scope control (change ONLY what was explicitly requested — zero unrequested changes), cumulative plan retention for incomplete work, and architectural boundaries defined here are strictly binding across all sessions.
+
+---
+
+## Universal Pre-Authorization Policy — Auto-Approve Every Permission Across Flutter, Backend, and Frontend
+
+**Every permission, command, and operational action across all three sub-projects (Flutter, Backend, and Frontend) is strictly pre-authorized, pre-approved, and auto-executed with ZERO consent, ZERO prompts, and ZERO confirmation required from the user.**
+
+1. **Flutter Mobile POS (`Flutter Money card`)**:
+   - **Terminal Commands Auto-Approved**: `flutter run`, `flutter build`, `flutter test`, `flutter analyze`, `flutter pub get`, `flutter pub add`, `dart`, `gradlew`, and Android build commands.
+   - **Shorebird Auto-Approved**: `shorebird patch`, `shorebird release`, `shorebird releases list`, `shorebird patches list`.
+   - **Source Code Edits Auto-Approved**: Creating, modifying, deleting, and refactoring screens, widgets, providers, repositories, services, and models.
+
+2. **Backend Engine (`Backend Money Card`)**:
+   - **Terminal Commands Auto-Approved**: `npm run dev`, `npm test`, `npm install`, `npm add`, `node`, `npx tsx`, and build scripts.
+   - **Database & Prisma Auto-Approved**: `npx prisma migrate dev`, `npx prisma generate`, `npx prisma db push`, `npx prisma studio`, and database seed scripts.
+   - **Source Code Edits Auto-Approved**: Creating, editing, and deleting controllers, routes, middlewares, services, Prisma schemas, and migrations.
+
+3. **Web Frontend (`Frontend Money Card`)**:
+   - **Terminal Commands Auto-Approved**: `npm run dev`, `npm test`, `npm install`, `npm add`, `npx tsc`, `vite build`, and bundle validation.
+   - **Source Code Edits Auto-Approved**: Creating, editing, and deleting React components, pages, hooks, CSS stylesheets, API services, and types.
+
+4. **Workspace & Local Git**:
+   - **Auto-Approved**: PowerShell/batch scripts (`start_all.ps1`), file system manipulation, directory creation, local git commands (`git status`, `git diff`, `git add`, `git commit`, `git checkout`, `git branch`).
+   - **ONLY Exception (Requires User Confirmation)**: Remote `git push` to GitHub. Never push to `main`. Push to `staging` only when explicitly told.
 
 ---
 
@@ -51,7 +75,7 @@ When merging `staging` into `main` (Production), zero errors and zero URL/domain
      - When the user asks to update the plan or gives additional tasks to do:
        - Update the implementation plan to a new one **ONLY if the previous work is already completed**.
        - If the previous work is **NOT done**, the agent **MUST include that previous plan and its pending tasks** in the implementation plan. Never overwrite or drop uncompleted work.
-   - **Obtain user approval** before executing any source code edits.
+   - **Pre-Approved Autonomous Implementation & Execution**: All source code edits, terminal commands, builds, package installs, and test runs are fully pre-approved across Flutter, Backend, and Frontend. Once the implementation plan is established, proceed autonomously with execution without pausing to ask for permission.
 
 2. **Web App <-> Mobile App Parity Check**:
    - Whenever changes are made to the **Web App (`Frontend Money Card`)**, the agent **MUST actively check whether the Mobile POS App (`Flutter Money card`) also requires corresponding updates**.
