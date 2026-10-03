@@ -2,14 +2,19 @@
 
 > **MANDATORY PROTOCOL FOR EVERY NEW CHAT SESSION**:
 > 1. In **ANY and EVERY new chat session**, the AI agent **MUST immediately and strictly read this file (`AGENTS.md`) in its entirety FIRST** before inspecting any other file, planning, or executing any commands.
-> 2. This file is the **single permanent source of truth**. All permissions across Flutter, Backend, and Frontend are **strictly pre-authorized, pre-approved, and auto-executed with ZERO consent or confirmation required** (auto-approved commands, auto-approved code edits, auto-approved package installations, auto-approved tests, auto-approved builds, auto-approved database operations, auto-approved Shorebird CodePush, auto-approved local Git, and the strict guard requiring confirmation ONLY for `git push`), naming rules (zero emojis, everyday easy words), strict scope control (change ONLY what was explicitly requested — zero unrequested changes), cumulative plan retention for incomplete work, and architectural boundaries defined here are strictly binding across all sessions.
+> 2. This file is the **single permanent source of truth**. All operational actions across Flutter, Backend, and Frontend are pre-authorized and execute autonomously **once the implementation plan is explicitly approved by the user** (auto-approved commands, auto-approved code edits, auto-approved package installations, auto-approved tests, auto-approved builds, auto-approved database operations, auto-approved Shorebird CodePush, auto-approved local Git, with explicit user confirmation strictly required for ONLY two actions: **1) Implementation Plan Approval: the user MUST approve the implementation plan before code execution begins**, and **2) Remote Push: confirmation is strictly required for `git push`**), naming rules (zero emojis, everyday easy words), strict scope control (change ONLY what was explicitly requested — zero unrequested changes), cumulative plan retention for incomplete work, and architectural boundaries defined here are strictly binding across all sessions.
 
 ---
 
-## Universal Pre-Authorization Policy — Auto-Approve Every Permission Across Flutter, Backend, and Frontend
+## Universal Pre-Authorization Policy — Auto-Approve Every Permission Post-Plan Approval
 
-**Every permission, command, and operational action across all three sub-projects (Flutter, Backend, and Frontend) is strictly pre-authorized, pre-approved, and auto-executed with ZERO consent, ZERO prompts, and ZERO confirmation required from the user.**
+**Once the user reviews and approves the implementation plan, every operational action, command, build, test, and code edit across all three sub-projects (Flutter, Backend, and Frontend) is strictly pre-authorized, pre-approved, and auto-executed with ZERO additional prompts or confirmation required from the user.**
 
+**The Two Mandatory User Approval Checkpoints**:
+1. **Implementation Plan Approval Gate**: The agent creates the implementation plan, visual UI sketch, and ASCII wireframes, mirrors to `D:\Money Card Project\implementation_plan.md`, and **MUST pause and wait for the user to explicitly approve the plan before touching any code or executing tasks**.
+2. **Remote Git Push Guard**: Remote `git push` to GitHub strictly requires explicit user confirmation / instruction.
+
+**Auto-Approved Operational Actions During Plan Execution (Zero Prompts Required Once Plan is Approved)**:
 1. **Flutter Mobile POS (`Flutter Money card`)**:
    - **Terminal Commands Auto-Approved**: `flutter run`, `flutter build`, `flutter test`, `flutter analyze`, `flutter pub get`, `flutter pub add`, `dart`, `gradlew`, and Android build commands.
    - **Shorebird Auto-Approved**: `shorebird patch`, `shorebird release`, `shorebird releases list`, `shorebird patches list`.
@@ -26,7 +31,7 @@
 
 4. **Workspace & Local Git**:
    - **Auto-Approved**: PowerShell/batch scripts (`start_all.ps1`), file system manipulation, directory creation, local git commands (`git status`, `git diff`, `git add`, `git commit`, `git checkout`, `git branch`).
-   - **ONLY Exception (Requires User Confirmation)**: Remote `git push` to GitHub. Never push to `main`. Push to `staging` only when explicitly told.
+   - **Remote Push Exception**: Remote `git push` to GitHub requires user confirmation. Never push to `main`. Push to `staging` only when explicitly told.
 
 ---
 
@@ -63,11 +68,14 @@ When merging `staging` into `main` (Production), zero errors and zero URL/domain
 
 ## Mandatory Agent Workflow Rules
 
-1. **Automatic Implementation Plan & Visual Image Sketch**:
+1. **Automatic Implementation Plan, Visual Image Sketch & Mandatory User Approval Gate**:
    - Whenever the user requests **ANY changes in the project**, the agent **MUST automatically create an implementation plan** containing:
      - Clear technical design, component breakdown, exact file paths, function names, and step-by-step changes across the worktree.
      - **Visual Image Sketch** generated via `generate_image` tool (high-fidelity, realistic SaaS UI design).
      - Clean, detailed **ASCII wireframes** of the UI layout, tables, modals, and buttons.
+   - **Mandatory User Approval Gate (STOP and Wait for User Approval)**:
+     - When an implementation plan is created or updated, the agent **MUST present the plan to the user and STOP to wait for explicit user approval**.
+     - The agent **MUST NOT execute any code edits, modify any files, run any build commands, or start implementation until the user explicitly reviews and approves the plan** (e.g. user says "proceed", "approved", "looks good", "continue", or provides modifications).
    - **Workspace Root File Sync (`D:\Money Card Project\implementation_plan.md`)**:
      - The implementation plan **MUST always be saved/mirrored directly to `D:\Money Card Project\implementation_plan.md`** in the workspace root in addition to the artifact directory.
      - This ensures external coding agents (such as Cline or Kilo Code) can immediately read the full specification and worktree changes without missing any requirements.
@@ -75,7 +83,8 @@ When merging `staging` into `main` (Production), zero errors and zero URL/domain
      - When the user asks to update the plan or gives additional tasks to do:
        - Update the implementation plan to a new one **ONLY if the previous work is already completed**.
        - If the previous work is **NOT done**, the agent **MUST include that previous plan and its pending tasks** in the implementation plan. Never overwrite or drop uncompleted work.
-   - **Pre-Approved Autonomous Implementation & Execution**: All source code edits, terminal commands, builds, package installs, and test runs are fully pre-approved across Flutter, Backend, and Frontend. Once the implementation plan is established, proceed autonomously with execution without pausing to ask for permission.
+   - **Autonomous Execution Once Approved**:
+     - Once the user explicitly approves the implementation plan, the universal pre-authorization policy activates: all source code edits, terminal commands, builds, package installs, and test runs within the approved plan proceed autonomously without pausing for further permission.
 
 2. **Web App <-> Mobile App Parity Check**:
    - Whenever changes are made to the **Web App (`Frontend Money Card`)**, the agent **MUST actively check whether the Mobile POS App (`Flutter Money card`) also requires corresponding updates**.
