@@ -136,49 +136,53 @@ describe('Staff Role Toggle and Blocked Wallets Segmentation Tests', () => {
     const sampleCards: Card[] = [
       {
         id: 'card-1',
-        cardNumber: 'MC001',
-        qrCode: 'QR001',
+        physicalCardNumber: 'MC001',
+        qrToken: 'QR001',
         status: 'ACTIVE',
-        balance: 250,
+        activeSession: {
+          id: 'sess-1',
+          balance: 250,
+          branchId: 'branch-1',
+        },
         organizationId: 'org-1',
-        branchId: 'branch-1',
-        assignedBranchId: 'branch-1',
         createdAt: '2026-10-01T10:00:00Z',
         updatedAt: '2026-10-01T10:00:00Z',
       },
       {
         id: 'card-2',
-        cardNumber: 'MC002',
-        qrCode: 'QR002',
+        physicalCardNumber: 'MC002',
+        qrToken: 'QR002',
         status: 'BLOCKED',
-        balance: 100,
+        activeSession: {
+          id: 'sess-2',
+          balance: 100,
+          branchId: 'branch-1',
+        },
         organizationId: 'org-1',
-        branchId: 'branch-1',
-        assignedBranchId: 'branch-1',
         createdAt: '2026-10-01T10:00:00Z',
         updatedAt: '2026-10-01T10:00:00Z',
       },
       {
         id: 'card-3',
-        cardNumber: 'MC003',
-        qrCode: 'QR003',
+        physicalCardNumber: 'MC003',
+        qrToken: 'QR003',
         status: 'ACTIVE',
-        balance: 50,
+        activeSession: {
+          id: 'sess-3',
+          balance: 50,
+          branchId: 'branch-1',
+        },
         organizationId: 'org-1',
-        branchId: 'branch-1',
-        assignedBranchId: 'branch-1',
         createdAt: '2026-10-01T10:00:00Z',
         updatedAt: '2026-10-01T10:00:00Z',
       },
       {
         id: 'card-4',
-        cardNumber: 'MC004',
-        qrCode: 'QR004',
+        physicalCardNumber: 'MC004',
+        qrToken: 'QR004',
         status: 'BLOCKED',
-        balance: 0,
+        activeSession: null,
         organizationId: 'org-1',
-        branchId: 'branch-1',
-        assignedBranchId: 'branch-1',
         createdAt: '2026-10-01T10:00:00Z',
         updatedAt: '2026-10-01T10:00:00Z',
       },
@@ -188,12 +192,12 @@ describe('Staff Role Toggle and Blocked Wallets Segmentation Tests', () => {
     const blockedCards = sampleCards.filter((c) => c.status === 'BLOCKED');
 
     expect(activeCards.length).toBe(2);
-    expect(activeCards.map((c) => c.cardNumber)).toEqual(['MC001', 'MC003']);
+    expect(activeCards.map((c) => c.physicalCardNumber)).toEqual(['MC001', 'MC003']);
 
     expect(blockedCards.length).toBe(2);
-    expect(blockedCards.map((c) => c.cardNumber)).toEqual(['MC002', 'MC004']);
+    expect(blockedCards.map((c) => c.physicalCardNumber)).toEqual(['MC002', 'MC004']);
 
-    const totalBlockedBalance = blockedCards.reduce((sum, c) => sum + (c.balance || 0), 0);
+    const totalBlockedBalance = blockedCards.reduce((sum, c) => sum + (c.activeSession?.balance || 0), 0);
     expect(totalBlockedBalance).toBe(100);
   });
 
@@ -224,4 +228,55 @@ describe('Staff Role Toggle and Blocked Wallets Segmentation Tests', () => {
 
     expect(resolvedMoneyAdded).toBe(2200);
   });
+
+  it('correctly handles checkbox toggling with prerequisite auto-selection and cascading revocation', () => {
+    const dependencies: Record<string, string[]> = {
+      CARD_ISSUE: ['CARD_VIEW'],
+      CARD_RETURN: ['CARD_VIEW'],
+      CARD_BLOCK: ['CARD_VIEW'],
+      CARD_UNBLOCK: ['CARD_VIEW'],
+      PRODUCT_MANAGE: ['PRODUCT_VIEW'],
+      REFUND: ['SESSION_VIEW'],
+    };
+
+    const children: Record<string, string[]> = {
+      CARD_VIEW: ['CARD_ISSUE', 'CARD_RETURN', 'CARD_BLOCK', 'CARD_UNBLOCK'],
+      PRODUCT_VIEW: ['PRODUCT_MANAGE'],
+      SESSION_VIEW: ['REFUND'],
+    };
+
+    let selected = new Set<string>();
+
+    // 1. Checking CARD_ISSUE should automatically check CARD_VIEW prerequisite
+    const checkPermission = (perm: string) => {
+      selected.add(perm);
+      const prereqs = dependencies[perm];
+      if (prereqs) {
+        prereqs.forEach((p) => selected.add(p));
+      }
+    };
+
+    checkPermission('CARD_ISSUE');
+    expect(selected.has('CARD_ISSUE')).toBe(true);
+    expect(selected.has('CARD_VIEW')).toBe(true);
+
+    // 2. Unchecking CARD_VIEW should cascade and remove CARD_ISSUE
+    const uncheckPermission = (perm: string) => {
+      selected.delete(perm);
+      const dependent = children[perm];
+      if (dependent) {
+        dependent.forEach((d) => selected.delete(d));
+      }
+    };
+
+    uncheckPermission('CARD_VIEW');
+    expect(selected.has('CARD_VIEW')).toBe(false);
+    expect(selected.has('CARD_ISSUE')).toBe(false);
+
+    // 3. Checking REFUND automatically adds SESSION_VIEW
+    checkPermission('REFUND');
+    expect(selected.has('REFUND')).toBe(true);
+    expect(selected.has('SESSION_VIEW')).toBe(true);
+  });
 });
+

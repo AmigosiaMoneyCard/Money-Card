@@ -1,159 +1,90 @@
-# Implementation Plan — Staff Roles, Wallet Analytics, and Blocked Wallets
+# Implementation Plan: Checkbox-Based Staff Permissions
 
-Manage staff permissions between Manager and Kitchen Staff, restrict Daily Activity Summary to Counter Managers, clean up Counter Wallet Analytics modal, fix Money Added metric across dashboards, and design Blocked Cards view in Wallets & Customer History.
+## Executive Summary
+This plan details the transition of staff permissions in Staff Settings from locked preset cards to an interactive, granular Checkbox-based architecture. Administrators can select role presets (Counter Manager or Kitchen Staff) to populate default permission sets, while retaining full capability to check or uncheck individual permission checkboxes for any staff member.
 
-![Staff Roles and Wallet Analytics Architecture](C:/Users/damie/.gemini/antigravity-ide/brain/999581c9-5c30-4195-933d-3667425ed95a/staff_roles_and_wallet_analytics_1791064663842.jpg)
+![Staff Permissions Checkboxes Layout](file:///C:/Users/damie/.gemini/antigravity-ide/brain/999581c9-5c30-4195-933d-3667425ed95a/staff_permissions_checkboxes_modal_1791066054614.jpg)
 
----
+## User Requirements & Problem Statement
+- Requirement: Staff permissions in Staff Settings must be interactive Checkboxes (`[x]`).
+- Current State: Role selection was limited to two broad cards with radio circles, lacking granular visibility and individual checkbox controls for specific permissions.
+- Desired State: In Staff Settings (Edit Staff modal and Add Staff modal), administrators have a dedicated Permissions tab featuring:
+  - Role Quick Presets (Counter Manager / Kitchen Staff) that batch check/uncheck permissions with one click.
+  - Interactive square Checkboxes for all M0 permissions grouped into 4 distinct operational categories.
+  - Granular toggle ability so administrators can grant or revoke specific permissions (e.g. enabling Menu Edit for a Cashier, or revoking Refund permissions from a Manager).
+  - Dependency-aware checking (e.g. unchecking `CARD_VIEW` automatically unchecks dependent card actions; checking a dependent action checks its prerequisite).
 
-## 1. Requirements Breakdown
+## ASCII Wireframes
 
-1. **Staff Settings Permission & Role Switcher (`StaffPage.tsx`)**:
-   - In Staff Settings / Edit Staff modal (e.g. for Akhil or any staff member), provide a segmented role selector between **Counter Manager** (Full POS Billing & Management) and **Kitchen Staff** (KDS & Menu Control).
-   - Switching roles updates `formPermissions` (`MANAGER_PERMISSIONS` vs `KITCHEN_PERMISSIONS`) and saves `staffType` + `permissions` to the backend.
+### Staff Settings Modal with Checkbox Permissions Tab
 
-2. **Daily Activity Summary Role Restriction (`StaffPage.tsx`)**:
-   - In the staff management table and counter staff card view, hide the "Summary" action button for Kitchen Staff.
-   - Kitchen staff handle food preparation and have no cash drawer, recharge, or POS customer billing activity. Only Counter Managers have Daily Activity Summaries.
-
-3. **Counter Dashboard Wallet Analytics Cleanup (`CounterStaffCardsView.tsx`)**:
-   - In Counter Dashboard -> Wallets & Customer History -> Wallet Analytics modal:
-     - Change title to `Wallet Analytics` (remove dynamic single wallet suffix `— Wallet KD1DG3Z8J (iti block)`).
-     - Remove the `Blocked Wallets 0 Security locked` box from the modal, keeping the financial metrics clean.
-
-4. **Money Added Box Operational Across Dashboards**:
-   - In SuperAdmin, OrgAdmin, and Counter Dashboards, ensure the `Money Added` box is functional and displays live recharge volume and recharge count.
-   - Fix backend `analytics.controller.ts` where object key spread overwrote `OR` clauses, and add missing `bm.moneyAdded` increment in the transaction aggregation loop.
-   - Ensure frontend stat cards read `moneyAdded ?? totalRechargeVolume ?? rechargeVolume` and `${rechargeCount ?? totalRechargeCount} recharges`.
-
-5. **Blocked Cards Integration in Wallets & Customer History**:
-   - Design and apply a clean segmented filter tab in `CounterStaffCardsView.tsx` (`[ Live Active Wallets (N) ]` | `[ Blocked Wallets (N) ]`).
-   - When "Blocked Wallets" is selected, display locked cards with coupon/card number, customer name & phone, locked balance, block reason, and direct "Unblock Wallet" action.
-
----
-
-## 2. ASCII Wireframes
-
-### Staff Settings: Role Switcher (Edit Modal)
-
-```
-+------------------------------------------------------------------------+
-| Staff Settings: Akhil                                              [X] |
-+------------------------------------------------------------------------+
-| [ Overview ]  [ Counters (1) ]                                         |
-|                                                                        |
-| Staff Role & Mobile App Mode                                           |
-| +----------------------------------+ +-------------------------------+ |
-| | (*) Counter Manager              | | ( ) Kitchen Staff             | |
-| | Full POS billing, card top-up,   | | KDS interface, orders queue,  | |
-| | returns, and queue tracking.     | | and menu view / edit.         | |
-| | [ Full POS Access ]              | | [ KDS & Menu Control ]        | |
-| +----------------------------------+ +-------------------------------+ |
-|                                                                        |
-| Full Name                     Phone Number                             |
-| [ Akhil                     ] [ 9876543210                  ]          |
-|                                                                        |
-| Account Access Status: [ Active  (o) ]                                 |
-|                                                                        |
-| Current Password: [ •••••••• ] (eye)   [ Copy ] [ WhatsApp ]           |
-|                                                                        |
-| [ Delete Staff ]                     [ Close ] [ Save Staff Info ]     |
-+------------------------------------------------------------------------+
+```text
++-------------------------------------------------------------------------------+
+| Staff Settings: Akhil (Counter Manager)                                   [X] |
++-------------------------------------------------------------------------------+
+|  [ Overview ]     [ Permissions (16) ]     [ Counters (1) ]                   |
++-------------------------------------------------------------------------------+
+|                                                                               |
+|  Quick Role Presets                                                           |
+|  +--------------------------------+   +------------------------------------+  |
+|  | [*] Counter Manager (All POS)  |   | [ ] Kitchen Staff (KDS & Menu)     |  |
+|  +--------------------------------+   +------------------------------------+  |
+|                                                                               |
+|  +--------------------------------+   +------------------------------------+  |
+|  | Cards & Wallets                |   | Billing & Recharges                |  |
+|  | [x] View Wallets (CARD_VIEW)   |   | [x] Add Money / Top-Up (RECHARGE)  |  |
+|  | [x] Issue Wallets (CARD_ISSUE) |   | [x] Food Purchase (PURCHASE)       |  |
+|  | [x] Return & Settle (CARD_RET) |   | [x] View Sessions (SESSION_VIEW)   |  |
+|  | [x] Block/Unblock (CARD_BLOCK) |   | [x] Refund Orders (REFUND)         |  |
+|  +--------------------------------+   +------------------------------------+  |
+|                                                                               |
+|  +--------------------------------+   +------------------------------------+  |
+|  | Menu & Food Catalog            |   | Operations & Analytics             |  |
+|  | [x] View Menu (PRODUCT_VIEW)   |   | [x] View Team (STAFF_VIEW)         |  |
+|  | [x] Edit Menu (PRODUCT_MANAGE) |   | [x] Manage Team (STAFF_MANAGE)     |  |
+|  |                                |   | [x] View Analytics & Reports       |  |
+|  +--------------------------------+   +------------------------------------+  |
+|                                                                               |
+|  [ Select All ]  [ Clear All ]                    16 of 16 Permissions Active|
++-------------------------------------------------------------------------------+
+|                                                    [ Cancel ]  [ Save Changes ]|
++-------------------------------------------------------------------------------+
 ```
 
-### Staff Management Table: Role-Guarded Actions
+## Technical Architecture & File Changes
 
-```
-+------------------------------------------------------------------------------------------------+
-| Staff Management                                                             [ + Add Staff ]   |
-+------------------------------------------------------------------------------------------------+
-| Name            Role              Counter         Status     Actions                           |
-|------------------------------------------------------------------------------------------------|
-| Akhil           Counter Manager   Main Cafeteria  Active     [ View Details ] [ Edit ] [Summary|
-| Liam Chen       Kitchen Staff     Kitchen Counter Active     [ View Details ] [ Edit ]         |
-+------------------------------------------------------------------------------------------------+
-                                                               (Summary button hidden for Kitchen)
-```
+### 1. `Frontend Money Card/src/features/staff/PermissionMatrix.tsx`
+- Replace static check icons with interactive `<input type="checkbox">` elements.
+- Accept `selectedPermissions: Permission[]`, `onChange: (perms: Permission[]) => void`, `readOnly?: boolean`, and `rolePreset?: 'MANAGER' | 'KITCHEN'`.
+- Implement preset buttons (`Counter Manager` and `Kitchen Staff`) at the top of the matrix.
+- Group checkboxes into 4 clear category panels:
+  - Cards & Wallets (`CARD_VIEW`, `CARD_ISSUE`, `CARD_RETURN`, `CARD_BLOCK`, `CARD_UNBLOCK`)
+  - Billing & Recharges (`RECHARGE`, `PURCHASE`, `SESSION_VIEW`, `REFUND`)
+  - Menu & Food Catalog (`PRODUCT_VIEW`, `PRODUCT_MANAGE`)
+  - Operations & Analytics (`STAFF_VIEW`, `STAFF_MANAGE`, `BRANCH_VIEW`, `BRANCH_MANAGE`, `VIEW_ANALYTICS`, `VIEW_REPORTS`)
+- Implement dependency resolution:
+  - When a permission is checked, its prerequisite is automatically checked (e.g. checking `CARD_ISSUE` checks `CARD_VIEW`).
+  - When a permission is unchecked, all subordinate permissions requiring it are automatically unchecked.
 
-### Counter Dashboard: Clean Wallet Analytics Modal
+### 2. `Frontend Money Card/src/features/staff/StaffPage.tsx`
+- Expand `staffTab` state from `'overview' | 'branches'` to `'overview' | 'permissions' | 'branches'`.
+- Add `Permissions` tab button in the modal header with count badge: `Permissions (${formPermissions.length})`.
+- In the `permissions` tab pane, embed `PermissionMatrix` bound directly to `formPermissions` and `setFormPermissions`.
+- When role preset buttons are clicked, update `formRoleType` and sync permissions accordingly.
+- When individual checkboxes are modified, recalculate `formRoleType` (if permissions match manager, set to `MANAGER`; if match kitchen, set to `KITCHEN`; otherwise maintain active role context).
+- Include `permissions: formPermissions` in both `updateStaff` and `createStaff` API payloads.
 
-```
-+------------------------------------------------------------------------+
-| Wallet Analytics                                                   [X] |
-+------------------------------------------------------------------------+
-| Date Range: From [ 2026-10-04 ] to [ 2026-10-04 ]   [ Reset to Today ] |
-|                                                                        |
-| +------------------+ +------------------+ +------------------+         |
-| | Wallets in Use   | | Money Added      | | Food Sales       |         |
-| | 3,874            | | ₹12,450          | | ₹19,830          |         |
-| | Active wallets   | | 18 recharges     | | 254 orders       |         |
-| +------------------+ +------------------+ +------------------+         |
-|                                                                        |
-| +------------------+ +------------------+                              |
-| | Remaining Bal.   | | Refunds          |                              |
-| | ₹7,620           | | ₹1,940           |                              |
-| | Money in wallets | | 11 refunds       |                              |
-| +------------------+ +------------------+                              |
-| (Blocked Wallets box removed from modal)                               |
-|                                                                        |
-|                                                              [ Close ] |
-+------------------------------------------------------------------------+
-```
+### 3. `Frontend Money Card/src/__tests__/staffRoleAndBlockedWallets.test.ts`
+- Add unit tests verifying:
+  - Checking and unchecking individual permission checkboxes updates the permission array accurately.
+  - Dependency cascading: unchecking `CARD_VIEW` revokes all card actions.
+  - Role preset button clicks toggle all respective checkboxes simultaneously.
+  - Custom checkbox selections persist properly to save payload.
 
-### Wallets & Customer History: Segmented Blocked Cards View
-
-```
-+------------------------------------------------------------------------------------------------+
-| Wallets & Customer History                                                           [Refresh] |
-+------------------------------------------------------------------------------------------------+
-| [ Live Active Wallets (12) ]  [ Blocked Wallets (3) ]                                          |
-|                                                                                                |
-| [ Search by wallet ID or customer...                                         ]                 |
-|                                                                                                |
-| Card ID      Customer Name      Phone        Locked Balance   Reason            Actions        |
-|------------------------------------------------------------------------------------------------|
-| KD1DG3Z8J    Rohit Singh        9876543210   ₹570.00          Lost card         [ Unblock ]    |
-| MC-78921     Anita Roy          9812345678   ₹320.00          Damaged chip      [ Unblock ]    |
-| QR-44102     Vikram Patel       9898989898   ₹1,050.00        Security review   [ Unblock ]    |
-+------------------------------------------------------------------------------------------------+
-```
-
----
-
-## 3. Step-by-Step Implementation
-
-### Step 1: Backend Fixes in `analytics.controller.ts`
-- Fix Prisma `txWhere` object spread collision by using `{ AND: andClauses }` so `effectiveBranchId` and `orgId` clauses do not overwrite each other.
-- Add `bm.moneyAdded += tx.amount` in the transaction aggregation loop so counter-specific performance records retain accurate `moneyAdded`.
-- Ensure date parsing handles local day boundaries reliably without dropping records.
-
-### Step 2: Staff Settings Role Switcher & Audit Guard in `StaffPage.tsx`
-- Add role toggle cards (`Counter Manager` vs `Kitchen Staff`) in `showStaffModal` Overview tab.
-- Selecting a role automatically syncs `formPermissions` (`MANAGER_PERMISSIONS` vs `KITCHEN_PERMISSIONS`).
-- Update `handleSaveProfile` to send `permissions: formPermissions` and `staffType: formRoleType` via `apiService.staff.updateStaff`.
-- In the staff table (`counterStaffColumns`) and mobile counter staff cards, wrap the `Summary` button in `{getStaffRoleLabel(staff) === 'Counter Manager' && ...}`.
-
-### Step 3: Counter Dashboard Wallet Analytics Cleanup in `CounterStaffCardsView.tsx`
-- Set modal title to clean `Wallet Analytics`.
-- Remove the `Blocked Wallets` card from the modal metrics layout.
-- Organize Row 2 cleanly with `Refunds`.
-
-### Step 4: Fix Money Added Box Across Dashboards
-- In `CounterStaffCardsView.tsx`, ensure `moneyAdded` and `rechargeOrders` use correct fallbacks.
-- In `OrgAdminDashboard.tsx`, change `label="Wallet Recharges"` to `label="Money Added"` and verify fallback to `analytics?.moneyAdded ?? analytics?.totalRechargeVolume`.
-- In `SuperAdminDashboard.tsx`, load analytics overview and display live `Money Added` and recharge count.
-
-### Step 5: Implement Blocked Cards Tab in `CounterStaffCardsView.tsx`
-- Add state `activeWalletTab: 'active' | 'blocked'`.
-- Compute `blockedCards = allCards.filter(c => c.status === 'BLOCKED')`.
-- Render a dedicated blocked cards table showing Wallet ID, Customer, Phone, Locked Balance, Block Reason, and Unblock action button.
-- Integrate unblock handler calling `apiService.cards.unblockCard(card.id)` with refresh.
-
----
-
-## 4. Verification & Testing
-
-- Proactively execute `npx tsc --noEmit` and `npm test -- --run` in `Frontend Money Card`.
-- Proactively execute `npm test` in `Backend Money Card`.
-- Verify 0 TypeScript errors and 100% test pass rate across all suites.
-- Maintain strict zero emojis policy and no markdown subheadings in responses.
+## Verification & Execution Protocol
+1. Implementation of `PermissionMatrix.tsx` with full checkbox support.
+2. Integration into `StaffPage.tsx` modal tabs.
+3. Proactive execution of `npx tsc --noEmit` in Frontend Money Card (0 errors).
+4. Proactive execution of `npm test -- --run` in Frontend Money Card (all 290+ tests pass).
+5. Proactive execution of `npm test` in Backend Money Card (all 121 tests pass).
+6. Local git commit on staging branch.

@@ -50,7 +50,9 @@ import {
   Copy,
   ExternalLink,
   Trash2,
+  ShieldCheck,
 } from 'lucide-react';
+import { PermissionMatrix } from './PermissionMatrix';
 
 const getTodayDateStr = (): string => {
   const now = new Date();
@@ -95,10 +97,10 @@ export function StaffPage() {
     return branches;
   }, [branches, isCounterView, currentBranch, user]);
 
-  // ── Unified Staff Details/Edit Modal State ─────────────────
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [showStaffDetailsModal, setShowStaffDetailsModal] = useState(false);
-  const [staffTab, setStaffTab] = useState<'overview' | 'branches'>('overview');
+  const [staffTab, setStaffTab] = useState<'overview' | 'permissions' | 'branches'>('overview');
+  const [showAddPermissionsSection, setShowAddPermissionsSection] = useState(false);
 
   // ── Counter Staff Grouping State ───────────────────────────
   const [selectedCounterGroup, setSelectedCounterGroup] = useState<CounterStaffGroup | null>(null);
@@ -457,6 +459,7 @@ export function StaffPage() {
     setFormPermissions([...MANAGER_PERMISSIONS]);
     setFormErrors({});
     setModalApiError(null);
+    setShowAddPermissionsSection(false);
     setAddTab('basic');
     setShowAddModal(true);
   };
@@ -510,14 +513,12 @@ export function StaffPage() {
 
     try {
       const clean10Phone = formPhone.trim().replace(/\D/g, '').slice(-10);
-      const finalPermissions = new Set(formPermissions);
-      if (formRoleType === 'MANAGER') {
-        MANAGER_PERMISSIONS.forEach((p) => finalPermissions.add(p));
-      } else {
-        if (finalPermissions.size === 0) {
-          KITCHEN_PERMISSIONS.forEach((p) => finalPermissions.add(p));
-        }
-      }
+      const finalPermissions =
+        formPermissions.length > 0
+          ? formPermissions
+          : formRoleType === 'MANAGER'
+          ? [...MANAGER_PERMISSIONS]
+          : [...KITCHEN_PERMISSIONS];
 
       const res = await apiService.staff.createStaff({
         name: formName.trim(),
@@ -561,10 +562,9 @@ export function StaffPage() {
     }
   };
 
-  // ── Open Unified Staff Details/Edit Modal ─────────────────
   const handleOpenStaffModal = (
     staff: Staff,
-    initialTab: 'overview' | 'branches' = 'overview',
+    initialTab: 'overview' | 'permissions' | 'branches' = 'overview',
   ) => {
     setSelectedStaff(staff);
     setFormName(formatStaffDisplayName(staff.name, staff.assignedBranchIds));
@@ -1455,7 +1455,7 @@ export function StaffPage() {
             <button
               type="button"
               onClick={() => setStaffTab('overview')}
-              className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
+              className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap cursor-pointer ${
                 staffTab === 'overview'
                   ? 'border-emerald-600 text-emerald-700 font-semibold'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -1467,8 +1467,24 @@ export function StaffPage() {
 
             <button
               type="button"
+              onClick={() => setStaffTab('permissions')}
+              className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap cursor-pointer ${
+                staffTab === 'permissions'
+                  ? 'border-emerald-600 text-emerald-700 font-semibold'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <ShieldCheck className="h-4 w-4" />
+              <span>Permissions</span>
+              <Badge variant="outline" className="text-[10px] ml-1">
+                {formPermissions.length}
+              </Badge>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setStaffTab('branches')}
-              className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
+              className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap cursor-pointer ${
                 staffTab === 'branches'
                   ? 'border-emerald-600 text-emerald-700 font-semibold'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -1551,6 +1567,18 @@ export function StaffPage() {
                       <span className="mt-2 inline-flex items-center text-[10px] font-medium text-blue-700 bg-blue-100/70 px-1.5 py-0.5 rounded">
                         KDS & Menu Control
                       </span>
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-[11px] text-slate-500">
+                      <strong className="text-emerald-700 font-semibold">{formPermissions.length}</strong> permissions active
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setStaffTab('permissions')}
+                      className="text-xs text-emerald-700 font-semibold hover:underline cursor-pointer flex items-center gap-1"
+                    >
+                      Configure Checkboxes <ArrowRight className="h-3 w-3" />
                     </button>
                   </div>
                 </div>
@@ -1783,7 +1811,24 @@ export function StaffPage() {
               </div>
             )}
 
-            {/* ── TAB 2: COUNTERS ── */}
+            {/* ── TAB 2: PERMISSIONS (CHECKBOX MATRIX) ── */}
+            {staffTab === 'permissions' && (
+              <div className="space-y-4 py-1">
+                <PermissionMatrix
+                  selectedPermissions={formPermissions}
+                  onChange={(newPerms) => {
+                    setFormPermissions(newPerms);
+                  }}
+                  readOnly={!canManage || isSubmitting}
+                  rolePreset={formRoleType}
+                  onRolePresetChange={(preset) => {
+                    setFormRoleType(preset);
+                  }}
+                />
+              </div>
+            )}
+
+            {/* ── TAB 3: COUNTERS ── */}
             {staffTab === 'branches' && (
               <div className="space-y-4">
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
@@ -2428,6 +2473,33 @@ export function StaffPage() {
                     </button>
                   }
                 />
+
+                {/* Expandable Custom Permissions Checkboxes */}
+                <div className="pt-2 border-t border-slate-200/80">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddPermissionsSection(!showAddPermissionsSection)}
+                    className="flex items-center justify-between w-full text-xs font-semibold text-slate-700 hover:text-emerald-700 py-1 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                      <span>Custom Permissions ({formPermissions.length} active)</span>
+                    </div>
+                    <span className="text-[11px] text-emerald-600 underline">
+                      {showAddPermissionsSection ? 'Hide Checkboxes' : 'Customize Checkboxes'}
+                    </span>
+                  </button>
+                  {showAddPermissionsSection && (
+                    <div className="mt-3 pt-3 border-t border-slate-100">
+                      <PermissionMatrix
+                        selectedPermissions={formPermissions}
+                        onChange={(newPerms) => setFormPermissions(newPerms)}
+                        rolePreset={formRoleType}
+                        onRolePresetChange={(preset) => setFormRoleType(preset)}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
