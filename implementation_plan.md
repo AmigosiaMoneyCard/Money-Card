@@ -1,130 +1,251 @@
-# Cross-Counter Wallet Usage and Food Purchase Analytics — Implementation Plan
+# Mobile Staff Roles (Manager vs Kitchen) & Kitchen Display System — Implementation Plan
 
-![Food Purchases by Counter Analytics](file:///C:/Users/damie/.gemini/antigravity-ide/brain/999581c9-5c30-4195-933d-3667425ed95a/analytics_counter_and_food_purchased_1791054776238.jpg)
+![Staff Creation Role Selector Modal](file:///C:/Users/damie/.gemini/antigravity-ide/brain/999581c9-5c30-4195-933d-3667425ed95a/staff_role_manager_and_kitchen_plan_1791057619665.jpg)
 
-## Current State (What Already Exists)
+![Kitchen Order Display and Manager Tracking UI](file:///C:/Users/damie/.gemini/antigravity-ide/brain/999581c9-5c30-4195-933d-3667425ed95a/kitchen_orders_and_manager_tracking_1791057379506.jpg)
 
-The system has a multi-tenant, multi-counter foundation:
-- Super Admin creates Org Admin.
-- Org Admin creates Branches (Counters).
-- Staff members are assigned to Branches via UserBranch.
-- Card Sessions are tied to an issuing Branch (`CardSession.branchId`).
-- Transactions have a `branchId` field and store items in a JSON column.
-- Wallet recharge already supports cross-counter operation and attributes the transaction to the recharging counter via `effectiveBranchId`.
+## 1. Overview & Architecture
 
----
+When cafeteria organizations provision staff for their counters, staff members operate in two fundamentally different capacities:
+1. **Counter Manager (POS Cashier)**: Handles financial transactions, customer wallet cards (issue, top-up/recharge, return, refund), menu item billing, operational reports, and live order tracking.
+2. **Kitchen Staff (Line Cook / Chef)**: Operates the Kitchen Display System (KDS). Views incoming food tickets, prepares dishes according to items and quantities, and marks orders as ready for pickup. They must not have access to wallet recharges, card issuance, cash drawers, or refunds.
 
-## What Needs to Be Implemented
-
-### 1. Cross-Counter Purchases
-- In `Backend Money Card/src/controllers/sessions.controller.ts` (`purchaseSession`):
-  - Remove the restriction blocking staff from other branches of the same organization.
-  - Set `Transaction.branchId` to the purchasing counter (`effectiveBranchId`), NOT `session.branchId`.
-  - Validate that purchased products belong to the organization and are accessible at the purchasing counter.
-
-### 2. Issuing Counter Enforcement for Returns and Refunds
-- In `Backend Money Card/src/controllers/sessions.controller.ts`:
-  - In `returnSession`, add a guard ensuring STAFF can only settle sessions where `session.branchId` matches their assigned counter (`RETURN_COUNTER_MISMATCH`).
-  - In `refundSessionBalance`, verify consistent error handling with `RETURN_COUNTER_MISMATCH`.
-- In `Flutter Money card`:
-  - `pos_scan_purchase_screen.dart`: Display issuing counter badge; disable settlement button if scanned at a foreign counter with message: "Issued at Counter A. Return must be processed at Counter A".
-  - `return_card_screen.dart`: Check `session.branchId != currentBranch.id`, display banner, and disable return/refund buttons.
-  - `recharge_screen.dart`: Guard refund button for foreign counter sessions; handle 403 `RETURN_COUNTER_MISMATCH`.
-
-### 3. Analytics: Counter Name and Food Purchased Tracking
-In the analytics section, provide a detailed activity log and aggregation showing:
-- Counter Name: Both the Issuing Counter (where wallet originated) and Purchased At Counter (where food was ordered).
-- Food Purchased: Exact items bought (item name, quantity, unit price, subtotal).
-- Total amount, card number, and timestamp.
+Currently, creating a staff member defaults to assigning full manager permissions to everyone. This plan introduces explicit role selection (`Manager` vs `Kitchen`) during staff creation for both Org Admins and Counter Admins, auto-configures role-specific permission presets, and tailors the mobile application experience based on the assigned role.
 
 ---
 
-## ASCII Wireframe — Food Purchases by Counter
+## 2. Role Specifications & Permission Matrix
+
+| Attribute | Counter Manager | Kitchen Staff |
+|---|---|---|
+| **Primary Responsibility** | POS Billing, Card Wallets, Cash Register, Oversight | Order Preparation, Ticket Dispatch, Menu Awareness |
+| **Mobile App Boot Destination** | POS Home / Scanner Screen (`/app/home`) | Kitchen Display System (`/app/kitchen`) |
+| **Wallet & Card Operations** | Full (`CARD_VIEW`, `CARD_ISSUE`, `CARD_RETURN`, `CARD_BLOCK`, `CARD_UNBLOCK`) | None (Disabled & Hidden) |
+| **Balance Top-Up (Recharge)** | Allowed (`RECHARGE`) | Blocked |
+| **POS Menu Billing** | Allowed (`PURCHASE`) | Blocked (Read-only menu access) |
+| **Card Returns & Refunds** | Allowed (`REFUND`, `CARD_RETURN`) | Blocked |
+| **Kitchen Order Actions** | View Live Queue, Monitor Ready Status, Dispatch | View Tickets, Accept (`PREPARING`), Mark Done (`READY`) |
+| **Menu & Catalog Access** | Full Management (`PRODUCT_VIEW`, `PRODUCT_MANAGE`) | View Only (`PRODUCT_VIEW`) |
+| **Staff & Counter Oversight** | View & Manage Counter Staff (`STAFF_VIEW`, `STAFF_MANAGE`) | None |
+| **Default Permissions** | All 16 M0 Permissions | `PRODUCT_VIEW`, `SESSION_VIEW` |
+
+---
+
+## 3. Order Lifecycle State Machine
 
 ```
-╔═════════════════════════════════════════════════════════════════════════════════════════════════════╗
-║  ANALYTICS — Food Purchases by Counter                               [Date Range Picker] [Cafeteria]║
-╠═════════════════════════════════════════════════════════════════════════════════════════════════════╣
-║  [Total Sales]        [Total Orders]        [Cross-Counter Revenue]        [Top Dish]               ║
-║    ₹12,450.00             1,890                   ₹4,115.50               Veg Biryani (210)         ║
-╠═════════════════════════════════════════════════════════════════════════════════════════════════════╣
-║  Food Purchases Table                                                                               ║
-║  Date & Time      | Card ID  | Issuing Counter | Purchased At Counter | Food Items Purchased | Total║
-║  Today, 01:15 PM  | MC-101   | Counter A       | Counter B            | 2x Veg Biryani,      | ₹280 ║
-║                   |          | (Main)          | (North Cafeteria)    | 1x Lime Soda         |      ║
-║  Today, 01:10 PM  | MC-104   | Counter B       | Counter B            | 1x Paneer Butter,    | ₹210 ║
-║                   |          | (North)         | (North Cafeteria)    | 2x Butter Naan       |      ║
-║  Today, 12:45 PM  | MC-102   | Counter A       | Counter C            | 1x Masala Dosa,      | ₹130 ║
-║                   |          | (Main)          | (South Food Court)   | 1x Filter Coffee     |      ║
-╠═════════════════════════════════════════════════════════════════════════════════════════════════════╣
-║  Menu Demand by Counter Summary                                                                     ║
-║  Item Name           | Counter A Sold | Counter B Sold | Counter C Sold | Total Revenue             ║
-║  Veg Biryani         | 120 units      | 65 units       | 25 units       | ₹21,000.00                ║
-║  Paneer Butter Naan  | 80 units       | 70 units       | 40 units       | ₹22,800.00                ║
-╚═════════════════════════════════════════════════════════════════════════════════════════════════════╝
+  [Customer Bills at POS]
+             |
+             v
+      +--------------+
+      |   PENDING    |  (Ticket created, order queued in kitchen)
+      +--------------+
+             |
+             | [Kitchen Staff taps "Accept / Start Preparing"]
+             v
+      +--------------+
+      |  PREPARING   |  (Food being cooked/plated in kitchen)
+      +--------------+
+             |
+             | [Kitchen Staff taps "Mark as Ready / Done"]
+             v
+      +--------------+
+      |    READY     |  (Food ready on counter, manager & customer notified)
+      +--------------+
+             |
+             | [Customer collects food / Manager confirms dispatch]
+             v
+      +--------------+
+      |  COMPLETED   |  (Order fulfilled and archived)
+      +--------------+
 ```
 
 ---
 
-## Step-by-Step Changes Across the Worktree
+## 4. ASCII Wireframes
 
-### Step 1 — Backend: Session Purchase and Return Controller Updates
-- File: `Backend Money Card/src/controllers/sessions.controller.ts`
-  - In `purchaseSession`:
-    - Check staff branch belongs to same organization (remove strict `session.branchId` check).
-    - Set `Transaction.branchId` to `effectiveBranchId` (the purchasing counter).
-  - In `returnSession`:
-    - Add guard: `if (req.user?.role === 'STAFF' && !req.user.assignedBranchIds.includes(session.branchId)) return sendError(res, 403, 'RETURN_COUNTER_MISMATCH', 'This card must be returned at the counter where it was issued')`.
-  - In `refundSessionBalance`:
-    - Ensure matching error code `RETURN_COUNTER_MISMATCH`.
+### Wireframe 1: Web Admin Staff Creation Modal (Org Admin & Counter Admin)
 
-### Step 2 — Backend: Analytics Endpoint for Purchases and Counter Breakdown
-- File: `Backend Money Card/src/controllers/analytics.controller.ts`
-  - In `getOrgAnalytics` / new `getCrossCounterAnalytics`:
-    - Include detailed purchase records with:
-      - `transactionId`, `createdAt`
-      - `cardNumber` (`sessionCardNumber` or `physicalCardNumber`)
-      - `issuingBranchId`, `issuingBranchName`
-      - `purchasingBranchId`, `purchasingBranchName`
-      - `items` array with `productName`, `quantity`, `unitPrice`, `subtotal`
-      - `totalAmount`
-    - Include `menuDemandByCounter`: item sales broken down per counter.
-- File: `Backend Money Card/src/routes/analytics.routes.ts`
-  - Register `/api/analytics/purchases-by-counter` or include in existing analytics endpoint.
+```
++--------------------------------------------------------------------------+
+| Add New Mobile Staff                                                 [X] |
++--------------------------------------------------------------------------+
+| SELECT STAFF ROLE                                                        |
+| +----------------------------------+ +---------------------------------+ |
+| | [*] Manager                      | | [ ] Kitchen Staff               | |
+| | Full POS billing, wallet top-up, | | Kitchen Display System (KDS),   | |
+| | card issuance, and returns.      | | order tickets, and preparation. | |
+| +----------------------------------+ +---------------------------------+ |
+|                                                                          |
+| Full Name                                                                |
+| [ John Doe                                                             ] |
+|                                                                          |
+| Mobile Number (10 digits)                                                |
+| [ 9876543210                                                           ] |
+|                                                                          |
+| Counter Assignment                                                       |
+| [ Main Cafeteria Counter                                             v ] |
+|                                                                          |
+| Login Password                                                           |
+| [ ........                                                             ] |
+|                                                                          |
+| Assigned Role Preset: [ Manager: Full POS Access ]                       |
+|                                                                          |
+| [ Cancel ]                                         [ Create Mobile Staff ]|
++--------------------------------------------------------------------------+
+```
 
-### Step 3 — Frontend Web: Analytics UI with Counter Name and Food Purchased
-- File: `Frontend Money Card/src/features/analytics/OrgAdminAnalyticsComponents.tsx`
-  - Create `FoodPurchasesByCounterTable`:
-    - Displays Date & Time, Card ID, Issuing Counter, Purchased At Counter, Food Items (using `extractTransactionItems`), and Total Amount.
-    - Responsive mobile wrapper (`overflow-x-auto`, badge styling).
-  - Update `OrgAdminMenuAnalyticsSection`:
-    - Display per-counter breakdown tags on ordered menu items.
-- File: `Frontend Money Card/src/features/analytics/OrgAdminAnalyticsView.tsx`
-  - Integrate `FoodPurchasesByCounterTable` into the Analytics view.
-- File: `Frontend Money Card/src/features/analytics/analyticsPdfExport.ts`
-  - Add "Food Purchases by Counter" section in generated PDF including counter name and items list.
+### Wireframe 2: Mobile App — Kitchen Display System (Kitchen Staff View)
 
-### Step 4 — Mobile POS Flutter: Multi-Screen Parity
-- File: `Flutter Money card/lib/features/pos/pos_scan_purchase_screen.dart`
-  - When card is resolved, display issuing counter badge if different from active counter.
-  - In `_handleSettleReturn`: Check `session.branchId == currentBranch.id`; if mismatched, show warning dialog and block action.
-- File: `Flutter Money card/lib/features/payments/return_card_screen.dart`
-  - If `session.branchId != currentBranch.id`, display persistent banner: "Card issued at [Counter Name]. Returns must be completed at the issuing counter." Disable Confirm & Settle and Refund buttons.
-- File: `Flutter Money card/lib/features/payments/recharge_screen.dart`
-  - Guard settlement action and handle `RETURN_COUNTER_MISMATCH` with descriptive toast/dialog.
-- File: `Flutter Money card/lib/services/analytics_pdf_service.dart`
-  - Add counter name and food purchase breakdown to Mobile Analytics PDF export.
+```
++--------------------------------------------------------------------------+
+| KITCHEN DISPLAY -- Main Cafeteria Counter                   [Status: Live] |
++--------------------------------------------------------------------------+
+| [ Active Orders (3) ]             |             [ Ready for Pickup (2) ]  |
++--------------------------------------------------------------------------+
+| Ticket #102                 Card: MC-402                    Elapsed: 02m |
+| Status: PENDING                                                          |
+| ------------------------------------------------------------------------ |
+|   * 2x Veg Burger                                                        |
+|   * 1x Fresh Lime Soda                                                   |
+| ------------------------------------------------------------------------ |
+| [ START PREPARING ]                                                      |
++--------------------------------------------------------------------------+
+| Ticket #101                 Card: MC-109                    Elapsed: 06m |
+| Status: PREPARING                                                        |
+| ------------------------------------------------------------------------ |
+|   * 1x Paneer Butter Masala Combo                                        |
+|   * 2x Butter Naan                                                       |
+| ------------------------------------------------------------------------ |
+| [ MARK AS READY / DONE ]                                                 |
++--------------------------------------------------------------------------+
+```
 
-### Step 5 — Automated Test Suites
-- Backend Tests:
-  - `Backend Money Card/test/unit/cross_counter_purchase.test.ts`:
-    - Test purchase by Counter B staff on Counter A wallet (succeeds, sets `Transaction.branchId = Counter B`).
-    - Test return by Counter B staff on Counter A wallet (fails with 403 `RETURN_COUNTER_MISMATCH`).
-    - Test return by Counter A staff on Counter A wallet (succeeds).
-    - Test analytics endpoint returns counter names and food item details.
-- Frontend Tests:
-  - `Frontend Money Card/src/__tests__/foodPurchasesAnalytics.test.ts`:
-    - Test table rendering with issuing counter, purchasing counter, and food items.
-- Mobile Flutter Tests:
-  - `Flutter Money card/test/features/sessions/return_routing_test.dart`:
-    - Test return button disabled or blocked when branch does not match issuing counter.
+### Wireframe 3: Mobile App — Counter Manager POS Tracking View
+
+```
++--------------------------------------------------------------------------+
+| HOME -- Main Cafeteria Counter                       [Manager: Sarah L.] |
++--------------------------------------------------------------------------+
+| [ SCAN QR WALLET / BILL ORDER ]                                          |
++--------------------------------------------------------------------------+
+| KITCHEN QUEUE TRACKER                                                    |
+| +----------------------------------------------------------------------+ |
+| | 2 Preparing        1 Ready for Pickup        1 Pending Kitchen Queue | |
+| | [ View Live Orders Queue -> ]                                        | |
+| +----------------------------------------------------------------------+ |
+|                                                                          |
+| Quick Actions:                                                           |
+| [ Issue Card ]  [ Recharge Balance ]  [ Settle & Return ]  [ Analytics ]  |
+|                                                                          |
+| Recent Orders:                                                           |
+| * Ticket #102: 2x Veg Burger, 1x Lime Soda -> [PENDING] (02m ago)        |
+| * Ticket #101: 1x Paneer Combo, 2x Naan    -> [PREPARING] (06m ago)      |
+| * Ticket #100: 1x Cold Coffee              -> [READY TO SERVE]           |
++--------------------------------------------------------------------------+
+```
+
+---
+
+## 5. Worktree Implementation Plan
+
+### Phase 1 — Web Admin Staff Creation with Role Selector
+- **File**: `Frontend Money Card/src/features/staff/constants.ts`
+  - Define `KITCHEN_PERMISSIONS`:
+    ```typescript
+    export const KITCHEN_PERMISSIONS = [
+      'PRODUCT_VIEW',
+      'SESSION_VIEW',
+    ];
+    ```
+- **File**: `Frontend Money Card/src/features/staff/StaffPage.tsx`
+  - In `Add Staff Modal`:
+    - Add segmented role toggle: `roleType: 'MANAGER' | 'KITCHEN'` (defaulting to `'MANAGER'`).
+    - When switched to `'KITCHEN'`, auto-populate `formPermissions` with `KITCHEN_PERMISSIONS` and lock financial checkboxes.
+    - When switched to `'MANAGER'`, auto-populate `formPermissions` with `MANAGER_PERMISSIONS`.
+  - In Staff Table:
+    - Add Role column or badge: `Counter Manager` (emerald badge) vs `Kitchen Staff` (blue/slate badge).
+    - Add Role filter dropdown alongside Counter filter: `All Roles`, `Manager`, `Kitchen Staff`.
+  - In Staff Edit Modal:
+    - Allow changing role type between Manager and Kitchen with automatic permission bundle update.
+- **File**: `Frontend Money Card/src/features/branches/BranchesPage.tsx`
+  - In Counter Details modal, display assigned Counter Managers and Kitchen Staff.
+  - Provide a direct action button: `Add Staff` with pre-selected Counter.
+
+### Phase 2 — Backend API: Staff Type & Kitchen Order Management
+- **File**: `Backend Money Card/src/validation/user.schema.ts`
+  - Add optional `staffType: z.enum(['MANAGER', 'KITCHEN']).optional()` to `createStaffMember` and `updateStaffMember`.
+- **File**: `Backend Money Card/src/controllers/staff.controller.ts`
+  - Accept `staffType` in payload.
+  - If `staffType === 'KITCHEN'`, default permissions to `[PRODUCT_VIEW, SESSION_VIEW]`.
+  - If `staffType === 'MANAGER'`, default permissions to full M0 manager permissions.
+  - For Counter Admins (`STAFF` role with `STAFF_MANAGE`), strictly enforce that created staff members are assigned exclusively to their own counter branch.
+  - Include computed `staffType` (derived from permissions or user metadata) in response payloads.
+- **File**: `Backend Money Card/src/controllers/sessions.controller.ts`
+  - In `purchaseSession`, assign sequential daily `orderNumber` (e.g. `#101`) to purchase transactions.
+  - Include order metadata in `Transaction.items`:
+    ```typescript
+    {
+      orderNumber: sequenceNumber,
+      orderStatus: 'PENDING',
+      orderedAt: new Date().toISOString(),
+      items: itemSummary,
+      cardDisplayNumber: session.sessionCardNumber || card.physicalCardNumber,
+      counterName: branch.name,
+      counterId: branch.id
+    }
+    ```
+- **New File**: `Backend Money Card/src/controllers/kitchen.controller.ts`
+  - `getKitchenOrders`: Returns active orders for the caller's assigned counter (`PENDING`, `PREPARING`, `READY`).
+  - `updateOrderStatus`: `PATCH /api/kitchen/orders/:transactionId/status`
+    - Validates state transitions (`PENDING` -> `PREPARING` -> `READY` -> `COMPLETED`).
+    - Enforces counter branch scoping.
+- **File**: `Backend Money Card/src/routes/kitchen.routes.ts` & `src/routes/index.ts`
+  - Mount `/api/kitchen` routes with `requireAuth` and permission validation.
+
+### Phase 3 — Flutter Mobile App: Dynamic Routing & KDS Interface
+- **File**: `Flutter Money card/lib/models/auth_user.dart`
+  - Add helper getters:
+    ```dart
+    bool get isKitchenStaff =>
+        !hasPermission(AppPermission.recharge) &&
+        hasPermission(AppPermission.productView);
+
+    bool get isManager =>
+        hasPermission(AppPermission.recharge) ||
+        role == 'ORG_ADMIN' ||
+        role == 'SUPER_ADMIN';
+    ```
+- **File**: `Flutter Money card/lib/routing/app_router.dart`
+  - Dynamic initial route based on staff role:
+    - If `isKitchenStaff`: Navigate directly to `/app/kitchen`.
+    - If `isManager`: Navigate to `/app/home`.
+- **File**: `Flutter Money card/lib/widgets/shell/staff_app_shell.dart`
+  - Tailor navigation destinations:
+    - For `Kitchen Staff`: Show `Orders` (KDS) and `Menu` (dishes). Hide Wallets, Recharge, and Analytics.
+    - For `Manager`: Show full POS navigation tabs (`Home`, `Wallets/Cards`, `Menu`, `Analytics`).
+- **New File**: `Flutter Money card/lib/features/kitchen/kitchen_orders_screen.dart`
+  - Dedicated Kitchen Display System:
+    - Active order queue cards with item breakdown, elapsed time counter, and status buttons.
+    - Action "Start Preparing" (`PREPARING`) and "Mark Done" (`READY`).
+    - Tab for "Ready for Pickup" orders.
+    - Sound or haptic notification on new incoming ticket.
+- **File**: `Flutter Money card/lib/features/home/home_screen.dart`
+  - For Managers, embed the **Kitchen Queue Tracker** widget below the QR Scan button, showing live counts for Pending, Preparing, and Ready orders.
+
+---
+
+## 6. Verification & Automated Test Plan
+
+1. **Backend Tests (`Backend Money Card`)**:
+   - `test/unit/staff_creation_roles.test.ts`: Verify creating staff with `staffType: 'KITCHEN'` assigns only kitchen permissions, while `staffType: 'MANAGER'` assigns full manager permissions.
+   - `test/unit/kitchen_orders.test.ts`: Verify daily order number generation, status lifecycle transitions, and counter scoping.
+   - Run: `npm test`.
+2. **Frontend Tests (`Frontend Money Card`)**:
+   - Verify Staff modal role selection properly updates form permissions and submits valid payload.
+   - Verify role filter in Staff table.
+   - Run: `npx tsc --noEmit` and `npm test -- --run`.
+3. **Flutter Tests (`Flutter Money card`)**:
+   - Verify `isKitchenStaff` and `isManager` role resolution in `auth_user_test.dart`.
+   - Widget tests for `KitchenOrdersScreen`: card display, accept order tap, mark done tap.
+   - Run: `flutter test` and `flutter analyze --no-pub`.
