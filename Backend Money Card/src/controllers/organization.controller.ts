@@ -746,7 +746,7 @@ export async function updateBranch(req: Request, res: Response) {
     credentials: {
       name: updatedBranch.name,
       phone: finalManagerPhone || '',
-      password: effectivePassword,
+      password: effectivePassword || '12345678',
     },
   });
 }

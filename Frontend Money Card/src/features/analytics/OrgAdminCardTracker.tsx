@@ -5,12 +5,14 @@ import {
   CheckCircle2,
   Clock,
   Lock,
+  ShieldAlert,
   AlertCircle,
 } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatters';
 
 interface OrgAdminCardTrackerProps {
   cardFleet?: CardFleetAnalytics;
+  blockedCardsCount?: number;
   blockedBalance?: number;
   closedCardsCount?: number;
   zeroBalanceActiveCardsCount?: number;
@@ -20,16 +22,18 @@ interface OrgAdminCardTrackerProps {
 
 export function OrgAdminCardTracker({
   cardFleet,
+  blockedCardsCount,
   blockedBalance,
   closedCardsCount = 0,
   zeroBalanceActiveCardsCount = 0,
 }: OrgAdminCardTrackerProps) {
   const totalInCirculation = cardFleet?.totalCardsInCirculation ?? 0;
+  const blockedCount = blockedCardsCount ?? cardFleet?.blockedCardsCount ?? 0;
   const effectiveBlockedBalance = blockedBalance ?? cardFleet?.blockedBalance ?? 0;
   const inactiveCount = cardFleet?.dormantCardsCount ?? 0;
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+    <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
       {/* Card 1: Active Cards */}
       <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
         <div className="flex items-center justify-between">
@@ -64,7 +68,24 @@ export function OrgAdminCardTracker({
         </div>
       </Card>
 
-      {/* Card 3: Blocked Balance */}
+      {/* Card 3: Blocked Cards */}
+      <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Blocked Cards
+          </span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+            <ShieldAlert className="h-4 w-4" />
+          </div>
+        </div>
+        <div className="mt-2">
+          <p className="font-mono text-2xl font-bold text-rose-600">
+            {blockedCount.toLocaleString()}
+          </p>
+        </div>
+      </Card>
+
+      {/* Card 4: Blocked Balance */}
       <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -81,7 +102,7 @@ export function OrgAdminCardTracker({
         </div>
       </Card>
 
-      {/* Card 4: Zero Balance Cards */}
+      {/* Card 5: Zero Balance Cards */}
       <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -98,7 +119,7 @@ export function OrgAdminCardTracker({
         </div>
       </Card>
 
-      {/* Card 5: Inactive Cards */}
+      {/* Card 6: Inactive Cards */}
       <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">

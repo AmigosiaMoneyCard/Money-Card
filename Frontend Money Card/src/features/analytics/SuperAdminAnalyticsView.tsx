@@ -419,6 +419,7 @@ export function SuperAdminAnalyticsView() {
       ) : activeTab === 'cards' ? (
         <OrgAdminCardTracker
           cardFleet={analytics?.cardFleetAnalytics}
+          blockedCardsCount={analytics?.blockedCardsCount ?? analytics?.cardFleetAnalytics?.blockedCardsCount ?? 0}
           blockedBalance={analytics?.blockedBalance ?? analytics?.cardFleetAnalytics?.blockedBalance ?? 0}
           closedCardsCount={analytics?.closedCardsCount}
           zeroBalanceActiveCardsCount={analytics?.zeroBalanceActiveCardsCount}

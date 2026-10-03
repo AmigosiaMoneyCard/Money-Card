@@ -252,6 +252,11 @@ export function buildOrgAnalyticsJsPdf({
         sub: 'Completed wallet sessions',
       },
       {
+        label: 'Blocked Wallets',
+        val: `${fleet?.blockedCardsCount ?? analytics.blockedCardsCount ?? 0} Wallets`,
+        sub: 'Locked due to security',
+      },
+      {
         label: 'Blocked Balance',
         val: formatPdfCurrency(fleet?.blockedBalance ?? analytics.blockedBalance ?? 0),
         sub: 'Locked in blocked cards',
@@ -268,12 +273,12 @@ export function buildOrgAnalyticsJsPdf({
       },
     ];
 
-    const cardW5 = (contentWidth - 12) / 5;
+    const cardW6 = (contentWidth - 15) / 6;
     lifecycleKpis.forEach((card, idx) => {
-      const x = margin + idx * (cardW5 + 3);
+      const x = margin + idx * (cardW6 + 3);
       doc.setFillColor(248, 250, 252);
       doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(x, curY + 3, cardW5, 16, 2, 2, 'FD');
+      doc.roundedRect(x, curY + 3, cardW6, 16, 2, 2, 'FD');
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(6.5);

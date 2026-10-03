@@ -176,7 +176,7 @@ export function BranchesPage() {
   const [editPhoneInput, setEditPhoneInput] = useState('');
   const [editPasswordInput, setEditPasswordInput] = useState('');
   const [showEditPassword, setShowEditPassword] = useState(false);
-  const [currentBranchPassword, setCurrentBranchPassword] = useState('123456');
+  const [currentBranchPassword, setCurrentBranchPassword] = useState('12345678');
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [editNameError, setEditNameError] = useState<string | null>(null);
   const [editPhoneError, setEditPhoneError] = useState<string | null>(null);
@@ -357,13 +357,15 @@ export function BranchesPage() {
       fetchBranches();
 
       // Persist password in localStorage for this branch
-      storePassword(result.data.id, branchPasswordInput, cleanPhone);
+      const effectivePassword =
+        branchPasswordInput.trim() || result.data.credentials?.password || '12345678';
+      storePassword(result.data.id, effectivePassword, cleanPhone);
 
       // Open WhatsApp Dispatch Modal
       setCreatedBranchCredentials({
         name: result.data.name,
         phone: result.data.credentials?.phone || cleanPhone,
-        password: result.data.credentials?.password || branchPasswordInput,
+        password: effectivePassword,
         branchId: result.data.id,
       });
       setCopied(false);
@@ -427,7 +429,7 @@ export function BranchesPage() {
       (initialPhone && staffPasswords[initialPhone]) ||
       staffPasswords[branch.id] ||
       branch.credentials?.password ||
-      '';
+      '12345678';
     setCurrentBranchPassword(storedPassword);
     setShowCurrentPassword(false);
     setEditPasswordInput('');
@@ -476,17 +478,16 @@ export function BranchesPage() {
         return;
       }
 
-      if (editPasswordInput.trim()) {
-        const pass = editPasswordInput.trim();
-        setCurrentBranchPassword(pass);
-        storePassword(selectedBranch.id, pass, editPhoneInput, selectedBranch.manager?.id);
-      }
+      const pass = editPasswordInput.trim() || currentBranchPassword || '12345678';
+      setCurrentBranchPassword(pass);
+      storePassword(selectedBranch.id, pass, editPhoneInput.trim(), selectedBranch.manager?.id);
+
       notify.success('Counter details updated successfully');
       setShowViewEditModal(false);
       fetchBranches();
     } catch {
-      notify.error('Bulk import failed');
-      return { success: false, message: 'Bulk import failed' };
+      notify.error('Failed to update counter details');
+      return { success: false, message: 'Failed to update counter details' };
     } finally {
       setIsSubmitting(false);
     }
