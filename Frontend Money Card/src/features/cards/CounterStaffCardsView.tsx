@@ -356,16 +356,6 @@ export function CounterStaffCardsView() {
           <Button
             variant="outline"
             size="sm"
-            className="text-xs h-8 px-3 rounded-xl border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
-            onClick={() => handleOpenCustomerHistory()}
-            leftIcon={<History className="h-3.5 w-3.5 text-emerald-600" />}
-          >
-            Customer History
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
             className="text-xs h-8 px-3 rounded-xl border-slate-200 text-slate-700 hover:border-emerald-500 font-medium cursor-pointer"
             onClick={fetchCardsData}
             leftIcon={<RefreshCw className="h-3.5 w-3.5 text-slate-500" />}
