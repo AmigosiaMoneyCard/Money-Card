@@ -1,4 +1,4 @@
-import { Eye, RefreshCw, BarChart3, CreditCard, Store, UtensilsCrossed, Calendar } from 'lucide-react';
+import { Eye, RefreshCw, BarChart3, CreditCard, UtensilsCrossed, Calendar } from 'lucide-react';
 import { useAuth } from '@/hooks';
 import { Button, Select, LoadingState, ErrorState } from '@/components/ui';
 import {
@@ -58,10 +58,6 @@ export function OrgAdminAnalyticsView() {
     upiRechargeAmount,
   } = useOrgAdminAnalytics();
 
-  const assignedBranchName =
-    branches.find((b) => b.id === branchFilter)?.name ||
-    (branches.length > 0 ? branches[0].name : 'Assigned Counter');
-
   return (
     <div className="space-y-6">
       {/* ─── Header Bar: Title on Left, Filter Options & Actions on Right ─── */}
@@ -74,8 +70,8 @@ export function OrgAdminAnalyticsView() {
 
         {/* Filter Controls: Cafeteria Filter + Custom Date Range + Actions */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Cafeteria Filter */}
-          {!isCounterStaff ? (
+          {/* Cafeteria Filter (Org Admin only) */}
+          {!isCounterStaff && (
             <div className="w-44 sm:w-52">
               <Select
                 id="analytics-cafeteria-filter"
@@ -87,11 +83,6 @@ export function OrgAdminAnalyticsView() {
                 ]}
                 className="h-9 py-1.5 pl-3 pr-8 text-xs leading-normal font-medium"
               />
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800 shadow-2xs">
-              <Store className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-              <span className="truncate max-w-[160px]">{assignedBranchName}</span>
             </div>
           )}
 

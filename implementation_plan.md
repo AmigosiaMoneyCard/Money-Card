@@ -58,6 +58,11 @@
   - In `counterStaffColumns`: Removed `(You)` badge and phone number subtitle from under the staff name.
   - Retained minimalist display: User avatar icon and staff name (`formatStaffDisplayName`).
 
+### 5. Counter Dashboard Analytics Cleanup
+- File: `Frontend Money Card/src/features/analytics/OrgAdminAnalyticsView.tsx`
+  - Removed "Assigned Counter" box and `<Store />` icon next to date controls in the header for counter staff (`isCounterStaff`).
+  - Cafeteria selection remains visible only for Org Admin (`!isCounterStaff`), keeping the counter analytics header clean and focused.
+
 ## Worktree Changes Summary
 
 | Subsystem | File Path | Nature of Change |
@@ -66,6 +71,7 @@
 | Frontend Mocks | `Frontend Money Card/src/services/mock/handlers/auth.ts` | Bypass password check for `STAFF` role |
 | Frontend Tests | `Frontend Money Card/src/__tests__/authErrorMessages.test.ts` | Verify counter accounts authenticate with any password |
 | Frontend Staff | `Frontend Money Card/src/features/staff/StaffPage.tsx` | Remove (You) badge and phone number subtitle under staff name |
+| Frontend Analytics | `Frontend Money Card/src/features/analytics/OrgAdminAnalyticsView.tsx` | Remove Assigned Counter box and Store icon in counter analytics header |
 
 ## Verification Plan
 
@@ -87,4 +93,6 @@
 3. Enter any random password (e.g. `anything`, `test1234`, `abc`).
 4. Click Log in -> Verify successful authentication and redirection to Counter Dashboard.
 5. In Counter Dashboard -> Navigate to Staff Management -> Verify Staff Name displays cleanly without `(You)` badge or phone number below it.
+6. In Counter Dashboard -> Navigate to Analytics -> Verify the "Assigned Counter" box is removed from the top header bar, displaying only the date controls, preset, refresh, and View PDF button.
+
 
