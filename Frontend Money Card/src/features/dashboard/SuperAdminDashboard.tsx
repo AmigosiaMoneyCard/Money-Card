@@ -5,9 +5,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '@/services/api';
+import { formatCurrency } from '@/utils';
 import type {
   OrganizationOverview,
   PlanChangeRequest,
+  AnalyticsOverview,
 } from '@/types';
 import {
   Button,
@@ -30,6 +32,9 @@ import {
   Bell,
   Layers,
   BarChart3,
+  TrendingUp,
+  ShoppingBag,
+  CreditCard,
 } from 'lucide-react';
 
 export function SuperAdminDashboard() {
@@ -37,6 +42,7 @@ export function SuperAdminDashboard() {
 
   const [orgs, setOrgs] = useState<OrganizationOverview[]>([]);
   const [planRequests, setPlanRequests] = useState<PlanChangeRequest[]>([]);
+  const [analytics, setAnalytics] = useState<AnalyticsOverview | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -47,9 +53,10 @@ export function SuperAdminDashboard() {
     setIsRefreshing(true);
     setError(null);
     try {
-      const [orgsRes, reqsRes] = await Promise.all([
+      const [orgsRes, reqsRes, analyticsRes] = await Promise.all([
         apiService.organizations.getOrganizations(),
         apiService.subscriptions.getPlanRequests(),
+        apiService.analytics.getOverview(),
       ]);
 
       if (!orgsRes.success) {
@@ -59,6 +66,7 @@ export function SuperAdminDashboard() {
 
       setOrgs(orgsRes.data.items);
       if (reqsRes.success) setPlanRequests(reqsRes.data || []);
+      if (analyticsRes.success) setAnalytics(analyticsRes.data);
     } catch {
       setError('Unable to load platform data. Please try again.');
     } finally {
@@ -265,6 +273,44 @@ export function SuperAdminDashboard() {
               value={activeStaffCount}
               icon={<UserCheck className="h-5 w-5 text-amber-600" />}
             />
+          </div>
+
+          {/* ── 5. Platform Financial & Operational Metrics (Wallet Analytics) ── */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Wallet Analytics
+              </h2>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <StatCard
+                label="Total Sales"
+                value={formatCurrency(analytics?.totalPurchaseVolume ?? analytics?.salesVolume ?? 0)}
+                description={`${analytics?.foodOrdersCount || analytics?.purchaseCount || 0} orders`}
+                icon={<ShoppingBag className="h-5 w-5 text-emerald-600" />}
+              />
+
+              <StatCard
+                label="Money Added"
+                value={formatCurrency(analytics?.moneyAdded ?? analytics?.totalRechargeVolume ?? analytics?.rechargeVolume ?? 0)}
+                description={`${analytics?.rechargeCount ?? 0} recharges`}
+                icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
+              />
+
+              <StatCard
+                label="Active Wallets"
+                value={analytics?.activeCardsCount ?? activeCardholdersCount}
+                description="In use"
+                icon={<CreditCard className="h-5 w-5 text-sky-600" />}
+              />
+
+              <StatCard
+                label="Refunds"
+                value={formatCurrency(analytics?.totalRefundVolume ?? analytics?.moneyRefunded ?? 0)}
+                description={`${analytics?.refundCount ?? 0} refunds`}
+                icon={<RefreshCw className="h-5 w-5 text-slate-600" />}
+              />
+            </div>
           </div>
         </div>
       )}

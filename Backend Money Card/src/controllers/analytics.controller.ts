@@ -167,30 +167,37 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     ? { branch: { organizationId: orgId } }
     : { branch: { organization: { status: OrgStatus.ACTIVE } } };
 
-  const txWhere: any = {
-    ...(orgId
-      ? {
-          OR: [
-            { session: { organizationId: orgId } },
-            { branch: { organizationId: orgId } },
-          ],
-        }
-      : {
-          OR: [
-            { session: { organization: { status: OrgStatus.ACTIVE } } },
-            { branch: { organization: { status: OrgStatus.ACTIVE } } },
-          ],
-        }),
-    ...(effectiveBranchId
-      ? {
-          OR: [
-            { branchId: effectiveBranchId },
-            { session: { branchId: effectiveBranchId } },
-          ],
-        }
-      : {}),
-    ...(fromDate || toDate ? { createdAt: dateFilter } : {}),
-  };
+  const andClauses: any[] = [];
+  if (orgId) {
+    andClauses.push({
+      OR: [
+        { session: { organizationId: orgId } },
+        { branch: { organizationId: orgId } },
+      ],
+    });
+  } else {
+    andClauses.push({
+      OR: [
+        { session: { organization: { status: OrgStatus.ACTIVE } } },
+        { branch: { organization: { status: OrgStatus.ACTIVE } } },
+      ],
+    });
+  }
+
+  if (effectiveBranchId) {
+    andClauses.push({
+      OR: [
+        { branchId: effectiveBranchId },
+        { session: { branchId: effectiveBranchId } },
+      ],
+    });
+  }
+
+  if (fromDate || toDate) {
+    andClauses.push({ createdAt: dateFilter });
+  }
+
+  const txWhere: any = andClauses.length > 0 ? { AND: andClauses } : {};
 
   const [
     transactions,
@@ -695,6 +702,9 @@ export async function getOrgAnalytics(req: Request, res: Response) {
         bm.cardRechargeVolume += tx.amount;
         bm.cashRechargeCount++;
         bm.cashRechargeVolume += tx.amount;
+        bm.moneyAdded += tx.amount;
+        bm.cashMoney += tx.amount;
+        bm.cashCount++;
       }
     } else if (txType === 'RECHARGE_UPI' || paymentMethod === 'UPI' || txType === 'UPI') {
       totalRechargeVolume += tx.amount;
@@ -707,6 +717,9 @@ export async function getOrgAnalytics(req: Request, res: Response) {
         bm.rechargeVolume += tx.amount;
         bm.upiRechargeCount++;
         bm.upiRechargeVolume += tx.amount;
+        bm.moneyAdded += tx.amount;
+        bm.upiMoney += tx.amount;
+        bm.upiCount++;
       }
     } else if (txType.includes('RECHARGE') || txType === 'ISSUANCE') {
       totalRechargeVolume += tx.amount;
@@ -720,6 +733,9 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           bm.rechargeVolume += tx.amount;
           bm.upiRechargeCount++;
           bm.upiRechargeVolume += tx.amount;
+          bm.moneyAdded += tx.amount;
+          bm.upiMoney += tx.amount;
+          bm.upiCount++;
         }
       } else {
         cashRechargeVolume += tx.amount;
@@ -732,6 +748,9 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           bm.cardRechargeVolume += tx.amount;
           bm.cashRechargeCount++;
           bm.cashRechargeVolume += tx.amount;
+          bm.moneyAdded += tx.amount;
+          bm.cashMoney += tx.amount;
+          bm.cashCount++;
         }
       }
     } else if (txType.includes('REFUND') || txType.includes('RETURN') || txType.includes('SETTLE')) {

@@ -1,4 +1,4 @@
-import { formatCurrency, formatDate, extractTransactionItems, formatLocalDate } from '@/utils';
+import { formatCurrency, formatDate, extractTransactionItems, formatLocalDate, notify } from '@/utils';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiService } from '@/services/api';
 import { usePermissions, useAuth, useBranch } from '@/hooks';
@@ -32,6 +32,7 @@ import {
   Wallet,
   DollarSign,
   ShieldAlert,
+  CheckCircle2,
 } from 'lucide-react';
 
 function getTransactionTitle(tx: Transaction): string {
@@ -73,6 +74,8 @@ export function CounterStaffCardsView() {
   // ─── Search & Validation States ──────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('');
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [walletTab, setWalletTab] = useState<'ACTIVE' | 'BLOCKED'>('ACTIVE');
+  const [unblockingCardId, setUnblockingCardId] = useState<string | null>(null);
 
   // ─── Modal Selection States ──────────────────────────────────────
   const [selectedCardForDetails, setSelectedCardForDetails] = useState<CardEntity | null>(null);
@@ -184,6 +187,47 @@ export function CounterStaffCardsView() {
       return couponId.includes(sanitized) || customer.includes(sanitized) || phone.includes(sanitized);
     });
   }, [liveCards, searchQuery]);
+
+  // ─── Blocked Cards Filtering (Scoped to Counter Staff Branch) ─────
+  const blockedCardsList = useMemo(() => {
+    return allCards.filter((c) => {
+      if (c.status !== 'BLOCKED') return false;
+      if (staffBranchId) {
+        return c.activeSession?.branchId === staffBranchId || c.currentBranchId === staffBranchId;
+      }
+      return true;
+    });
+  }, [allCards, staffBranchId]);
+
+  const filteredBlockedCards = useMemo(() => {
+    if (!searchQuery.trim()) return blockedCardsList;
+    const sanitized = searchQuery.replace(/[^a-zA-Z0-9\s\-_]/g, '').toLowerCase().trim();
+    if (!sanitized) return blockedCardsList;
+
+    return blockedCardsList.filter((c) => {
+      const cardNum = (c.physicalCardNumber || c.qrToken || '').toLowerCase();
+      const customer = (c.activeSession?.customerName || '').toLowerCase();
+      const phone = (c.activeSession?.customerPhone || '').toLowerCase();
+      return cardNum.includes(sanitized) || customer.includes(sanitized) || phone.includes(sanitized);
+    });
+  }, [blockedCardsList, searchQuery]);
+
+  const handleUnblockCard = async (card: CardEntity) => {
+    setUnblockingCardId(card.id);
+    try {
+      const res = await apiService.cards.unblockCard(card.id);
+      if (res.success) {
+        notify.success(`Card ${card.physicalCardNumber || card.qrToken} unblocked successfully.`);
+        fetchCardsData();
+      } else {
+        notify.error(res.error?.message || 'Failed to unblock card');
+      }
+    } catch {
+      notify.error('Failed to unblock card');
+    } finally {
+      setUnblockingCardId(null);
+    }
+  };
 
   // ─── Fetch Analytics ─────────────────────────────────────────────
   const fetchCounterAnalytics = useCallback(async (branchId: string, start: string, end: string) => {
@@ -347,9 +391,6 @@ export function CounterStaffCardsView() {
         <div className="flex items-center gap-2.5">
           <CreditCard className="h-6 w-6 text-emerald-600" />
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">Wallets & Customer History</h1>
-          <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold text-xs px-2.5 py-0.5">
-            {liveCards.length} Live Active
-          </Badge>
         </div>
 
         <div className="flex items-center gap-2">
@@ -363,6 +404,43 @@ export function CounterStaffCardsView() {
             Refresh
           </Button>
         </div>
+      </div>
+
+      {/* ─── Segmented Filter Tabs: Live Active vs Blocked ─── */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
+        <button
+          type="button"
+          onClick={() => setWalletTab('ACTIVE')}
+          className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+            walletTab === 'ACTIVE'
+              ? 'bg-emerald-600 text-white shadow-2xs'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <span>Live Active Wallets</span>
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+            walletTab === 'ACTIVE' ? 'bg-emerald-700 text-white' : 'bg-slate-200 text-slate-700'
+          }`}>
+            {liveCards.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setWalletTab('BLOCKED')}
+          className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+            walletTab === 'BLOCKED'
+              ? 'bg-rose-600 text-white shadow-2xs'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <span>Blocked Wallets</span>
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+            walletTab === 'BLOCKED' ? 'bg-rose-700 text-white' : 'bg-slate-200 text-slate-700'
+          }`}>
+            {blockedCardsList.length}
+          </span>
+        </button>
       </div>
 
       {/* ─── Search Bar with Validation ─────────────────── */}
@@ -399,6 +477,114 @@ export function CounterStaffCardsView() {
         )}
       </div>
 
+      {/* ─── Cards Content (Active vs Blocked) ───────── */}
+      {walletTab === 'BLOCKED' ? (
+        error ? (
+          <div className="py-12 bg-white rounded-2xl border border-rose-200">
+            <ErrorState message={error} onRetry={fetchCardsData} />
+          </div>
+        ) : isLoading ? (
+          <div className="py-12 bg-white rounded-2xl border border-slate-200/80">
+            <LoadingState message="Loading blocked wallets..." />
+          </div>
+        ) : filteredBlockedCards.length === 0 ? (
+          <div className="py-12 bg-white rounded-2xl border border-slate-200/80">
+            <EmptyState
+              title={searchQuery ? 'No matching blocked wallets' : 'No Blocked Wallets'}
+              description={
+                searchQuery
+                  ? `No blocked wallets found matching "${searchQuery}".`
+                  : 'There are currently no security-locked or administratively blocked wallets at this counter.'
+              }
+            />
+            {searchQuery && (
+              <div className="text-center mt-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClearSearch}
+                  className="text-xs px-3"
+                >
+                  Clear Search
+                </Button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                    <th className="py-3 px-4">Wallet ID</th>
+                    <th className="py-3 px-4">Customer</th>
+                    <th className="py-3 px-4">Locked Balance</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs">
+                  {filteredBlockedCards.map((card) => {
+                    const cardIdentifier = card.physicalCardNumber || card.qrToken || 'Card';
+                    const customerName = card.activeSession?.customerName || 'Anonymous Customer';
+                    const customerPhone = card.activeSession?.customerPhone || '—';
+                    const lockedBal = card.activeSession?.balance || 0;
+
+                    return (
+                      <tr key={card.id} className="hover:bg-slate-50/60 transition-colors">
+                        <td className="py-3.5 px-4 font-mono font-semibold text-slate-900">
+                          <div className="flex items-center gap-2">
+                            <ShieldAlert className="h-4 w-4 text-rose-500 shrink-0" />
+                            <span>{cardIdentifier}</span>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="font-medium text-slate-800">{customerName}</div>
+                          <div className="text-[11px] text-slate-400 font-mono">{customerPhone}</div>
+                        </td>
+                        <td className="py-3.5 px-4 font-mono font-bold text-slate-900">
+                          {formatCurrency(lockedBal)}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <Badge variant="danger" className="text-[10px] font-semibold">
+                            Blocked
+                          </Badge>
+                        </td>
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                          <div className="inline-flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenCustomerHistory(card)}
+                              className="text-xs h-8 px-3 rounded-lg border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
+                              leftIcon={<History className="h-3.5 w-3.5 text-emerald-600" />}
+                            >
+                              Customer History
+                            </Button>
+
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => handleUnblockCard(card)}
+                              isLoading={unblockingCardId === card.id}
+                              disabled={unblockingCardId === card.id}
+                              className="text-xs h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold cursor-pointer shadow-2xs"
+                              leftIcon={<CheckCircle2 className="h-3.5 w-3.5" />}
+                            >
+                              Unblock
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
+      ) : (
+        <>
       {/* ─── Streamlined Live Active Cards Table (3 Columns) ───────── */}
       {error ? (
         <div className="py-12 bg-white rounded-2xl border border-rose-200">
@@ -511,6 +697,8 @@ export function CounterStaffCardsView() {
             </table>
           </div>
         </div>
+      )}
+      </>
       )}
 
       {/* ─── MODAL 1: Wallet Details Modal (Contains Customer, Counter & Active Since) ─ */}
@@ -650,11 +838,7 @@ export function CounterStaffCardsView() {
           onClose={() => {
             setSelectedCardForAnalytics(null);
           }}
-          title={
-            selectedCardForAnalytics
-              ? `Wallet Analytics — Wallet ${selectedCardForAnalytics.physicalCardNumber || selectedCardForAnalytics.qrToken || ''} (${getBranchName(selectedCardForAnalytics.activeSession?.branchId || selectedCardForAnalytics.currentBranchId)})`
-              : `Wallet Analytics — ${getBranchName(staffBranchId)}`
-          }
+          title="Wallet Analytics"
           size="2xl"
         >
           <div className="space-y-5">
@@ -719,28 +903,23 @@ export function CounterStaffCardsView() {
                   counterAnalyticsData?.activeSessionsCount ??
                   branchCards.filter((c) => c.status === 'ACTIVE').length;
 
-                const blockedCards =
-                  counterAnalyticsData?.blockedCardsCount ??
-                  counterAnalyticsData?.cardFleetAnalytics?.blockedCardsCount ??
-                  branchCards.filter((c) => c.status === 'BLOCKED').length;
-
                 const totalBalance = selectedCardForAnalytics
                   ? (selectedCardForAnalytics.activeSession?.balance || 0)
                   : branchCards.reduce((acc, c) => acc + (c.activeSession?.balance || 0), 0);
 
                 const moneyAdded =
-                  bp?.rechargeVolume ??
-                  bp?.moneyAdded ??
-                  counterAnalyticsData?.moneyAdded ??
-                  counterAnalyticsData?.rechargeVolume ??
-                  counterAnalyticsData?.totalRechargeVolume ??
-                  0;
+                  (bp?.rechargeVolume ?? 0) > 0
+                    ? bp.rechargeVolume
+                    : (bp?.moneyAdded ?? 0) > 0
+                    ? bp.moneyAdded
+                    : (counterAnalyticsData?.moneyAdded ?? 0) > 0
+                    ? counterAnalyticsData.moneyAdded
+                    : (counterAnalyticsData?.totalRechargeVolume ?? counterAnalyticsData?.rechargeVolume ?? 0);
 
                 const rechargeOrders =
-                  bp?.rechargeCount ??
-                  counterAnalyticsData?.rechargeCount ??
-                  counterAnalyticsData?.totalRechargeCount ??
-                  0;
+                  (bp?.rechargeCount ?? 0) > 0
+                    ? bp.rechargeCount
+                    : (counterAnalyticsData?.rechargeCount ?? counterAnalyticsData?.totalRechargeCount ?? 0);
 
                 const foodSales =
                   bp?.purchaseVolume ??
@@ -774,8 +953,8 @@ export function CounterStaffCardsView() {
 
                 return (
                   <div className="space-y-4">
-                    {/* Row 1: 4 Financial Metrics */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+                    {/* Row 1: 3 Primary Financial Metrics */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                       {/* 1. Wallets in Use */}
                       <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs">
                         <div className="flex items-center justify-between">
@@ -811,7 +990,10 @@ export function CounterStaffCardsView() {
                         <p className="mt-2 text-2xl font-bold text-slate-900">{formatCurrency(foodSales)}</p>
                         <p className="text-[11px] text-slate-400 mt-0.5">{salesOrders} orders</p>
                       </div>
+                    </div>
 
+                    {/* Row 2: 2 Balance & Settlement Metrics (Blocked Wallets removed) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                       {/* 4. Remaining Balance */}
                       <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs">
                         <div className="flex items-center justify-between">
@@ -823,23 +1005,8 @@ export function CounterStaffCardsView() {
                         <p className="mt-2 text-2xl font-bold text-slate-900">{formatCurrency(totalBalance)}</p>
                         <p className="text-[11px] text-slate-400 mt-0.5">Money in wallets</p>
                       </div>
-                    </div>
 
-                    {/* Row 2: 2 Operational Metrics */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                      {/* Blocked Wallets */}
-                      <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-slate-500">Blocked Wallets</span>
-                          <div className="h-7 w-7 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600">
-                            <ShieldAlert className="h-3.5 w-3.5" />
-                          </div>
-                        </div>
-                        <p className="mt-2 text-2xl font-bold text-slate-900">{blockedCards}</p>
-                        <p className="text-[11px] text-slate-400 mt-0.5">Security locked</p>
-                      </div>
-
-                      {/* Refunds */}
+                      {/* 5. Refunds */}
                       <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-semibold text-slate-500">Refunds</span>

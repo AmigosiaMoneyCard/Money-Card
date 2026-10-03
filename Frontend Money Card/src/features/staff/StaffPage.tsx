@@ -572,6 +572,8 @@ export function StaffPage() {
     setFormEmail(staff.email || '');
     setFormBranchIds(staff.assignedBranchIds);
     setFormPermissions(staff.permissions);
+    const isKitchen = getStaffRoleLabel(staff) === 'Kitchen Staff';
+    setFormRoleType(isKitchen ? 'KITCHEN' : 'MANAGER');
     setStaffTab(initialTab);
     setFormErrors({});
     setModalApiError(null);
@@ -774,6 +776,8 @@ export function StaffPage() {
       const res = await apiService.staff.updateStaff(selectedStaff.id, {
         name: formName.trim(),
         phone: cleanPhone || undefined,
+        permissions: formPermissions,
+        staffType: formRoleType,
       });
 
       if (!res.success) {
@@ -874,6 +878,7 @@ export function StaffPage() {
         email: formEmail.trim() || undefined,
         assignedBranchIds: formBranchIds,
         permissions: formPermissions,
+        staffType: formRoleType,
       });
 
       if (!res.success) {
@@ -1242,15 +1247,17 @@ export function StaffPage() {
               Edit
             </Button>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleOpenStaffAudit(staff)}
-            className="text-xs h-7 px-2.5 rounded-lg border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 transition-all shadow-2xs cursor-pointer"
-            leftIcon={<FileSpreadsheet className="h-3 w-3 text-emerald-600" />}
-          >
-            Summary
-          </Button>
+          {getStaffRoleLabel(staff) === 'Counter Manager' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleOpenStaffAudit(staff)}
+              className="text-xs h-7 px-2.5 rounded-lg border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 transition-all shadow-2xs cursor-pointer"
+              leftIcon={<FileSpreadsheet className="h-3 w-3 text-emerald-600" />}
+            >
+              Summary
+            </Button>
+          )}
         </div>
       ),
     },
@@ -1480,6 +1487,74 @@ export function StaffPage() {
             {/* ── TAB 1: OVERVIEW (PROFILE & INTEGRATED SECURITY) ── */}
             {staffTab === 'overview' && (
               <div className="space-y-4 py-1">
+                {/* Role Switcher: Manager vs Kitchen Staff */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-700">Staff Role & Permissions</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      disabled={!canManage || isSubmitting}
+                      onClick={() => {
+                        setFormRoleType('MANAGER');
+                        setFormPermissions([...MANAGER_PERMISSIONS]);
+                      }}
+                      className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                        formRoleType === 'MANAGER'
+                          ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20'
+                          : 'border-slate-200 hover:border-slate-300 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full mb-1">
+                        <span className="text-xs font-bold text-slate-900">Counter Manager</span>
+                        <div
+                          className={`h-4 w-4 rounded-full border flex items-center justify-center ${
+                            formRoleType === 'MANAGER' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300'
+                          }`}
+                        >
+                          {formRoleType === 'MANAGER' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-snug">
+                        Full POS billing, card top-up, returns, and queue tracking.
+                      </p>
+                      <span className="mt-2 inline-flex items-center text-[10px] font-medium text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded">
+                        Full POS Access
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={!canManage || isSubmitting}
+                      onClick={() => {
+                        setFormRoleType('KITCHEN');
+                        setFormPermissions([...KITCHEN_PERMISSIONS]);
+                      }}
+                      className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                        formRoleType === 'KITCHEN'
+                          ? 'border-blue-600 bg-blue-50/50 ring-2 ring-blue-500/20'
+                          : 'border-slate-200 hover:border-slate-300 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full mb-1">
+                        <span className="text-xs font-bold text-slate-900">Kitchen Staff</span>
+                        <div
+                          className={`h-4 w-4 rounded-full border flex items-center justify-center ${
+                            formRoleType === 'KITCHEN' ? 'border-blue-600 bg-blue-600' : 'border-slate-300'
+                          }`}
+                        >
+                          {formRoleType === 'KITCHEN' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-snug">
+                        Kitchen Display System (KDS), orders queue & menu view/edit.
+                      </p>
+                      <span className="mt-2 inline-flex items-center text-[10px] font-medium text-blue-700 bg-blue-100/70 px-1.5 py-0.5 rounded">
+                        KDS & Menu Control
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
                 {/* Profile Fields: Name & Phone */}
                 <div className="space-y-3">
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -2068,18 +2143,20 @@ export function StaffPage() {
                           Edit
                         </Button>
                       )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setShowCounterStaffModal(false);
-                          handleOpenStaffAudit(st);
-                        }}
-                        leftIcon={<FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />}
-                        className="text-xs h-7.5 px-2.5 font-medium border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 cursor-pointer"
-                      >
-                        Summary
-                      </Button>
+                      {getStaffRoleLabel(st) === 'Counter Manager' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setShowCounterStaffModal(false);
+                            handleOpenStaffAudit(st);
+                          }}
+                          leftIcon={<FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />}
+                          className="text-xs h-7.5 px-2.5 font-medium border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 cursor-pointer"
+                        >
+                          Summary
+                        </Button>
+                      )}
 
                       {/* Active / Inactive Slide Switch */}
                       <div className="flex items-center gap-2 pl-2.5 border-l border-slate-200">

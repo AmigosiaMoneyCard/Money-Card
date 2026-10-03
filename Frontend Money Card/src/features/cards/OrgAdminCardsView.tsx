@@ -841,18 +841,18 @@ export function OrgAdminCardsView() {
                 );
 
                 const moneyAdded =
-                  bp?.rechargeVolume ??
-                  bp?.moneyAdded ??
-                  counterAnalyticsData?.moneyAdded ??
-                  counterAnalyticsData?.rechargeVolume ??
-                  counterAnalyticsData?.totalRechargeVolume ??
-                  0;
+                  (bp?.rechargeVolume ?? 0) > 0
+                    ? bp.rechargeVolume
+                    : (bp?.moneyAdded ?? 0) > 0
+                    ? bp.moneyAdded
+                    : (counterAnalyticsData?.moneyAdded ?? 0) > 0
+                    ? counterAnalyticsData.moneyAdded
+                    : (counterAnalyticsData?.totalRechargeVolume ?? counterAnalyticsData?.rechargeVolume ?? 0);
 
                 const rechargeOrders =
-                  bp?.rechargeCount ??
-                  counterAnalyticsData?.rechargeCount ??
-                  counterAnalyticsData?.totalRechargeCount ??
-                  0;
+                  (bp?.rechargeCount ?? 0) > 0
+                    ? bp.rechargeCount
+                    : (counterAnalyticsData?.rechargeCount ?? counterAnalyticsData?.totalRechargeCount ?? 0);
 
                 const foodSales =
                   bp?.purchaseVolume ??

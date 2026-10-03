@@ -558,9 +558,9 @@ export function OrgAdminDashboard() {
                 />
 
                 <StatCard
-                  label="Wallet Recharges"
-                  value={formatCurrency(analytics?.totalRechargeVolume ?? analytics?.moneyAdded ?? analytics?.rechargeVolume ?? 0)}
-                  description={`${analytics?.rechargeCount || 0} recharges`}
+                  label="Money Added"
+                  value={formatCurrency(analytics?.moneyAdded ?? analytics?.totalRechargeVolume ?? analytics?.rechargeVolume ?? 0)}
+                  description={`${analytics?.rechargeCount ?? 0} recharges`}
                   icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
                 />
 
