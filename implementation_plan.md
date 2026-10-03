@@ -1,4 +1,6 @@
-# Mobile Staff Roles, Separated Mobile Login & Kitchen Display System — Implementation Plan
+# Mobile Staff Roles, Separated Mobile Login, Kitchen Menu View/Edit & KDS — Implementation Plan
+
+![Kitchen Menu View/Edit and KDS](file:///C:/Users/damie/.gemini/antigravity-ide/brain/999581c9-5c30-4195-933d-3667425ed95a/kitchen_role_menu_edit_and_kds_1791057836219.jpg)
 
 ![Mobile Separated Login Flow](file:///C:/Users/damie/.gemini/antigravity-ide/brain/999581c9-5c30-4195-933d-3667425ed95a/mobile_manager_and_kitchen_login_boxes_1791057753070.jpg)
 
@@ -10,25 +12,44 @@
 
 When cafeteria staff use the Money Card mobile application, they operate in two distinct capacities:
 1. **Counter Manager (POS Cashier)**: Handles financial transactions, customer wallet cards (issue, top-up/recharge, return, refund), menu item billing, operational reports, and live order tracking.
-2. **Kitchen Staff (Line Cook / Chef)**: Operates the Kitchen Display System (KDS). Views incoming food tickets, prepares dishes according to items and quantities, and marks orders as ready for pickup. They must not have access to wallet recharges, card issuance, cash drawers, or refunds.
+2. **Kitchen Staff (Line Cook / Chef)**: Operates the Kitchen Display System (KDS) and manages menu availability. Views incoming food tickets, prepares dishes according to items and quantities, marks orders as ready, and **views/edits the menu** (toggling dishes in/out of stock, updating prices, dish names, or preparation notes). They must not have access to wallet recharges, card issuance, cash drawers, or refunds.
 
-To make the mobile experience seamless and unambiguous:
+To make the system seamless and role-tailored:
 - The **Mobile App Login Screen** is separated into two explicit role buttons: **Counter Manager** and **Kitchen Staff**.
 - Selecting either role button redirects the user to that dedicated **Login Box** (styled and titled specifically for that role, with an easy switch link to change roles).
-- The **Web Admin Dashboard** (for both Org Admins and Counter Admins) provides explicit role selection (`Manager` vs `Kitchen`) when provisioning staff, auto-configuring permission presets.
+- The **Web Admin Dashboard** provides explicit role selection (`Manager` vs `Kitchen`) when provisioning staff, auto-configuring permission presets.
+- The **Kitchen Role Permissions** include `PRODUCT_VIEW`, `PRODUCT_MANAGE`, and `SESSION_VIEW`, granting full menu view/edit capabilities without financial exposure.
 - Upon successful authentication, the mobile app dynamically boots into the appropriate interface:
   - Manager -> POS Billing Home Screen (`/app/home`) with live kitchen queue monitoring.
-  - Kitchen Staff -> Kitchen Display System (`/app/kitchen`) with active order tickets.
+  - Kitchen Staff -> Kitchen Display System (`/app/kitchen`) with direct access to Menu View & Edit (`/app/products`).
 
 ---
 
-## 2. Mobile App Separated Login Experience
+## 2. Role Specifications & Permission Matrix
+
+| Attribute | Counter Manager | Kitchen Staff |
+|---|---|---|
+| **Primary Responsibility** | POS Billing, Card Wallets, Cash Register, Oversight | Order Preparation, Ticket Dispatch, Menu Management |
+| **Mobile Login Button** | "Counter Manager" | "Kitchen Staff" |
+| **Mobile App Boot Destination** | POS Home / Scanner Screen (`/app/home`) | Kitchen Display System (`/app/kitchen`) |
+| **Menu View & Edit** | Full (`PRODUCT_VIEW`, `PRODUCT_MANAGE`) | Full (`PRODUCT_VIEW`, `PRODUCT_MANAGE`) — Toggle In-Stock, Edit Dish |
+| **Wallet & Card Operations** | Full (`CARD_VIEW`, `CARD_ISSUE`, `CARD_RETURN`, `CARD_BLOCK`, `CARD_UNBLOCK`) | None (Disabled & Hidden) |
+| **Balance Top-Up (Recharge)** | Allowed (`RECHARGE`) | Blocked |
+| **POS Menu Billing** | Allowed (`PURCHASE`) | Blocked (Read-only for cashier) |
+| **Card Returns & Refunds** | Allowed (`REFUND`, `CARD_RETURN`) | Blocked |
+| **Kitchen Order Actions** | View Live Queue, Monitor Ready Status, Dispatch | View Tickets, Accept (`PREPARING`), Mark Done (`READY`) |
+| **Staff & Counter Oversight** | View & Manage Counter Staff (`STAFF_VIEW`, `STAFF_MANAGE`) | None |
+| **Default Permissions** | All 16 M0 Permissions | `PRODUCT_VIEW`, `PRODUCT_MANAGE`, `SESSION_VIEW` |
+
+---
+
+## 3. Mobile App Separated Login Experience
 
 ### Two-Step Role Selection & Login Flow
 1. **Role Selection Entry**:
    - The initial login view presents the brand header `MONEY CARD` and two large, high-contrast action buttons:
      - **Counter Manager**: Styled with an emerald POS icon and descriptive subtitle ("POS Billing, Wallets & Reports").
-     - **Kitchen Staff**: Styled with a blue KDS/Chef icon and descriptive subtitle ("Kitchen Display & Order Preparation").
+     - **Kitchen Staff**: Styled with a blue KDS/Chef icon and descriptive subtitle ("Kitchen Display, Orders & Menu").
 2. **Redirected Login Box**:
    - Tapping **Counter Manager** displays the **Manager Login Box**:
      - Header: "Counter Manager Login"
@@ -38,32 +59,14 @@ To make the mobile experience seamless and unambiguous:
      - Footer: "Switch to Kitchen Staff" (instant transition back or toggle)
    - Tapping **Kitchen Staff** displays the **Kitchen Staff Login Box**:
      - Header: "Kitchen Display Login"
-     - Subtitle: "Enter credentials to access the kitchen order queue"
+     - Subtitle: "Enter credentials to access the kitchen queue and menu"
      - Fields: 10-digit mobile number and password
      - Primary Button: "Login to Kitchen" (blue theme)
      - Footer: "Switch to Counter Manager"
 3. **Role Enforcement & Intelligent Routing**:
    - On successful login, the system verifies the user's role and permission bundle:
-     - If logging in via Manager box: Verifies manager capabilities (`RECHARGE` / `PURCHASE`). Boots directly into POS Home. If a kitchen-only staff user attempts to login here, shows friendly notice: "This account is registered for Kitchen Display. Redirecting to Kitchen..." and boots into KDS.
+     - If logging in via Manager box: Verifies manager capabilities (`RECHARGE` / `PURCHASE`). Boots directly into POS Home. If a kitchen-only staff user attempts to login here, shows friendly notice: "This account is registered for Kitchen Staff. Redirecting to Kitchen..." and boots into KDS.
      - If logging in via Kitchen box: Verifies kitchen capabilities. Boots directly into Kitchen Display System (`/app/kitchen`).
-
----
-
-## 3. Role Specifications & Permission Matrix
-
-| Attribute | Counter Manager | Kitchen Staff |
-|---|---|---|
-| **Primary Responsibility** | POS Billing, Card Wallets, Cash Register, Oversight | Order Preparation, Ticket Dispatch, Menu Awareness |
-| **Mobile Login Button** | "Counter Manager" | "Kitchen Staff" |
-| **Mobile App Boot Destination** | POS Home / Scanner Screen (`/app/home`) | Kitchen Display System (`/app/kitchen`) |
-| **Wallet & Card Operations** | Full (`CARD_VIEW`, `CARD_ISSUE`, `CARD_RETURN`, `CARD_BLOCK`, `CARD_UNBLOCK`) | None (Disabled & Hidden) |
-| **Balance Top-Up (Recharge)** | Allowed (`RECHARGE`) | Blocked |
-| **POS Menu Billing** | Allowed (`PURCHASE`) | Blocked (Read-only menu access) |
-| **Card Returns & Refunds** | Allowed (`REFUND`, `CARD_RETURN`) | Blocked |
-| **Kitchen Order Actions** | View Live Queue, Monitor Ready Status, Dispatch | View Tickets, Accept (`PREPARING`), Mark Done (`READY`) |
-| **Menu & Catalog Access** | Full Management (`PRODUCT_VIEW`, `PRODUCT_MANAGE`) | View Only (`PRODUCT_VIEW`) |
-| **Staff & Counter Oversight** | View & Manage Counter Staff (`STAFF_VIEW`, `STAFF_MANAGE`) | None |
-| **Default Permissions** | All 16 M0 Permissions | `PRODUCT_VIEW`, `SESSION_VIEW` |
 
 ---
 
@@ -116,9 +119,9 @@ To make the mobile experience seamless and unambiguous:
 |       +----------------------------------------------------------+       |
 |                                                                          |
 |       +----------------------------------------------------------+       |
-|       |  [ Kitchen Ticket Icon ]                                 |       |
+|       |  [ Kitchen Chef Icon ]                                   |       |
 |       |  KITCHEN STAFF                                           |       |
-|       |  Kitchen display system, tickets, and order preparation  |       |
+|       |  Kitchen display system, orders queue, and menu control  |       |
 |       +----------------------------------------------------------+       |
 |                                                                          |
 |                              v2.1.0 (Staging)                            |
@@ -133,7 +136,7 @@ To make the mobile experience seamless and unambiguous:
 |                                    |   |                                    |
 | +--------------------------------+ |   | +--------------------------------+ |
 | | Counter Manager Login          | |   | | Kitchen Display Login          | |
-| | POS Billing & Cash Management  | |   | | KDS Ticket Preparation         | |
+| | POS Billing & Cash Management  | |   | | KDS Orders & Menu Control      | |
 | |                                | |   | |                                | |
 | | Phone Number                   | |   | | Phone Number                   | |
 | | [ 9876543210                 ] | |   | | [ 9876543210                 ] | |
@@ -148,7 +151,36 @@ To make the mobile experience seamless and unambiguous:
 +------------------------------------+   +------------------------------------+
 ```
 
-### Wireframe 3: Web Admin Staff Creation Modal (Org Admin & Counter Admin)
+### Wireframe 3: Mobile App — Kitchen Menu View & Edit Screen
+
+```
++--------------------------------------------------------------------------+
+| MENU CATALOG -- Main Cafeteria Counter                  [+ Add Dish]     |
++--------------------------------------------------------------------------+
+| [ Search Menu Items...                                                 ] |
+| [ All ]  [ Starters ]  [*] Main Course  [ Beverages ]  [ Desserts ]       |
++--------------------------------------------------------------------------+
+| +----------------------------------------------------------------------+ |
+| | Veg Biryani Combo                                           Rs 180   | |
+| | Status: [ AVAILABLE / IN STOCK [O] ]                                 | |
+| | [ Quick Edit ]  [ Edit Dish Details ]                                | |
+| +----------------------------------------------------------------------+ |
+| +----------------------------------------------------------------------+ |
+| | Paneer Butter Masala                                        Rs 160   | |
+| | Status: [ SOLD OUT / 86 [X] ]  <- (Tapped by kitchen to stop orders) | |
+| | [ Quick Edit ]  [ Edit Dish Details ]                                | |
+| +----------------------------------------------------------------------+ |
+| +----------------------------------------------------------------------+ |
+| | Cold Coffee with Ice Cream                                  Rs 90    | |
+| | Status: [ AVAILABLE / IN STOCK [O] ]                                 | |
+| | [ Quick Edit ]  [ Edit Dish Details ]                                | |
+| +----------------------------------------------------------------------+ |
++--------------------------------------------------------------------------+
+| Navigation:  [ Orders (KDS) ]       [*] [ Menu ]        [ Profile ]      |
++--------------------------------------------------------------------------+
+```
+
+### Wireframe 4: Web Admin Staff Creation Modal (Org Admin & Counter Admin)
 
 ```
 +--------------------------------------------------------------------------+
@@ -158,7 +190,7 @@ To make the mobile experience seamless and unambiguous:
 | +----------------------------------+ +---------------------------------+ |
 | | [*] Manager                      | | [ ] Kitchen Staff               | |
 | | Full POS billing, wallet top-up, | | Kitchen Display System (KDS),   | |
-| | card issuance, and returns.      | | order tickets, and preparation. | |
+| | card issuance, and returns.      | | order queue, and menu edit.     | |
 | +----------------------------------+ +---------------------------------+ |
 |                                                                          |
 | Full Name                                                                |
@@ -173,13 +205,13 @@ To make the mobile experience seamless and unambiguous:
 | Login Password                                                           |
 | [ ........                                                             ] |
 |                                                                          |
-| Assigned Role Preset: [ Manager: Full POS Access ]                       |
+| Assigned Role Preset: [ Kitchen: Orders Queue + Menu View & Edit ]       |
 |                                                                          |
 | [ Cancel ]                                         [ Create Mobile Staff ]|
 +--------------------------------------------------------------------------+
 ```
 
-### Wireframe 4: Mobile App — Kitchen Display System (Kitchen Staff View)
+### Wireframe 5: Mobile App — Kitchen Display System (Kitchen Staff View)
 
 ```
 +--------------------------------------------------------------------------+
@@ -202,30 +234,6 @@ To make the mobile experience seamless and unambiguous:
 |   * 2x Butter Naan                                                       |
 | ------------------------------------------------------------------------ |
 | [ MARK AS READY / DONE ]                                                 |
-+--------------------------------------------------------------------------+
-```
-
-### Wireframe 5: Mobile App — Counter Manager POS Tracking View
-
-```
-+--------------------------------------------------------------------------+
-| HOME -- Main Cafeteria Counter                       [Manager: Sarah L.] |
-+--------------------------------------------------------------------------+
-| [ SCAN QR WALLET / BILL ORDER ]                                          |
-+--------------------------------------------------------------------------+
-| KITCHEN QUEUE TRACKER                                                    |
-| +----------------------------------------------------------------------+ |
-| | 2 Preparing        1 Ready for Pickup        1 Pending Kitchen Queue | |
-| | [ View Live Orders Queue -> ]                                        | |
-| +----------------------------------------------------------------------+ |
-|                                                                          |
-| Quick Actions:                                                           |
-| [ Issue Card ]  [ Recharge Balance ]  [ Settle & Return ]  [ Analytics ]  |
-|                                                                          |
-| Recent Orders:                                                           |
-| * Ticket #102: 2x Veg Burger, 1x Lime Soda -> [PENDING] (02m ago)        |
-| * Ticket #101: 1x Paneer Combo, 2x Naan    -> [PREPARING] (06m ago)      |
-| * Ticket #100: 1x Cold Coffee              -> [READY TO SERVE]           |
 +--------------------------------------------------------------------------+
 ```
 
@@ -260,19 +268,20 @@ To make the mobile experience seamless and unambiguous:
         - If `_loginMode == MobileLoginMode.kitchen` or user is Kitchen staff: Route to `/app/kitchen`.
         - If `_loginMode == MobileLoginMode.manager`: Route to `/app/home`.
 
-### Phase 2 — Web Admin Staff Creation with Role Selector
+### Phase 2 — Web Admin Staff Creation with Role Selector & Kitchen Permissions
 - **File**: `Frontend Money Card/src/features/staff/constants.ts`
   - Define `KITCHEN_PERMISSIONS`:
     ```typescript
     export const KITCHEN_PERMISSIONS = [
       'PRODUCT_VIEW',
+      'PRODUCT_MANAGE',
       'SESSION_VIEW',
     ];
     ```
 - **File**: `Frontend Money Card/src/features/staff/StaffPage.tsx`
   - In `Add Staff Modal`:
     - Add segmented role toggle: `roleType: 'MANAGER' | 'KITCHEN'` (defaulting to `'MANAGER'`).
-    - When switched to `'KITCHEN'`, auto-populate `formPermissions` with `KITCHEN_PERMISSIONS` and lock financial checkboxes.
+    - When switched to `'KITCHEN'`, auto-populate `formPermissions` with `KITCHEN_PERMISSIONS` (`PRODUCT_VIEW`, `PRODUCT_MANAGE`, `SESSION_VIEW`) and lock financial checkboxes.
     - When switched to `'MANAGER'`, auto-populate `formPermissions` with `MANAGER_PERMISSIONS`.
   - In Staff Table:
     - Add Role column or badge: `Counter Manager` (emerald badge) vs `Kitchen Staff` (blue/slate badge).
@@ -283,12 +292,13 @@ To make the mobile experience seamless and unambiguous:
   - In Counter Details modal, display assigned Counter Managers and Kitchen Staff.
   - Provide a direct action button: `Add Staff` with pre-selected Counter.
 
-### Phase 3 — Backend API: Staff Type & Kitchen Order Management
+### Phase 3 — Backend API: Staff Type, Permissions & Kitchen Order Management
 - **File**: `Backend Money Card/src/validation/user.schema.ts`
   - Add optional `staffType: z.enum(['MANAGER', 'KITCHEN']).optional()` to `createStaffMember` and `updateStaffMember`.
 - **File**: `Backend Money Card/src/controllers/staff.controller.ts`
   - Accept `staffType` in payload.
-  - If `staffType === 'KITCHEN'`, default permissions to `[PRODUCT_VIEW, SESSION_VIEW]`.
+  - If `staffType === 'KITCHEN'`, default permissions to:
+    `[PermissionCode.PRODUCT_VIEW, PermissionCode.PRODUCT_MANAGE, PermissionCode.SESSION_VIEW]`.
   - If `staffType === 'MANAGER'`, default permissions to full M0 manager permissions.
   - For Counter Admins (`STAFF` role with `STAFF_MANAGE`), strictly enforce that created staff members are assigned exclusively to their own counter branch.
   - Include computed `staffType` (derived from permissions or user metadata) in response payloads.
@@ -314,13 +324,13 @@ To make the mobile experience seamless and unambiguous:
 - **File**: `Backend Money Card/src/routes/kitchen.routes.ts` & `src/routes/index.ts`
   - Mount `/api/kitchen` routes with `requireAuth` and permission validation.
 
-### Phase 4 — Flutter Mobile App: Dynamic Routing & KDS Interface
+### Phase 4 — Flutter Mobile App: Dynamic Routing, Menu Management & KDS Interface
 - **File**: `Flutter Money card/lib/models/auth_user.dart`
   - Add helper getters:
     ```dart
     bool get isKitchenStaff =>
         !hasPermission(AppPermission.recharge) &&
-        hasPermission(AppPermission.productView);
+        (hasPermission(AppPermission.productView) || hasPermission(AppPermission.productManage));
 
     bool get isManager =>
         hasPermission(AppPermission.recharge) ||
@@ -333,8 +343,16 @@ To make the mobile experience seamless and unambiguous:
     - If `isManager`: Navigate to `/app/home`.
 - **File**: `Flutter Money card/lib/widgets/shell/staff_app_shell.dart`
   - Tailor navigation destinations:
-    - For `Kitchen Staff`: Show `Orders` (KDS) and `Menu` (dishes). Hide Wallets, Recharge, and Analytics.
+    - For `Kitchen Staff`: Show:
+      1. `Orders` (`/app/kitchen` — KDS active tickets)
+      2. `Menu` (`/app/products` — view menu, toggle in-stock / sold out, edit price and dish details)
+      3. `Profile` (account details, counter information, logout)
+      - Completely hide Wallets, Recharge, Return/Refund, and Analytics tabs.
     - For `Manager`: Show full POS navigation tabs (`Home`, `Wallets/Cards`, `Menu`, `Analytics`).
+- **File**: `Flutter Money card/lib/features/products/products_screen.dart`
+  - Ensure Kitchen Staff can comfortably:
+    - Tap on stock status toggle to mark dishes as "Available / In Stock" or "Sold Out / 86".
+    - Edit dish name, price, and category.
 - **New File**: `Flutter Money card/lib/features/kitchen/kitchen_orders_screen.dart`
   - Dedicated Kitchen Display System:
     - Active order queue cards with item breakdown, elapsed time counter, and status buttons.
@@ -355,9 +373,12 @@ To make the mobile experience seamless and unambiguous:
      - Verify tapping "Kitchen Staff" redirects to Kitchen Login Box with "Login to Kitchen" button.
      - Verify "Switch to..." link toggles between boxes.
      - Verify back button returns to the 2 role buttons.
+   - `test/features/products/kitchen_menu_edit_test.dart`:
+     - Verify kitchen staff user can view products list and toggle availability.
+     - Verify kitchen staff cannot access recharge or return screens.
    - Run: `flutter test` and `flutter analyze --no-pub`.
 2. **Backend Tests (`Backend Money Card`)**:
-   - `test/unit/staff_creation_roles.test.ts`: Verify creating staff with `staffType: 'KITCHEN'` assigns only kitchen permissions, while `staffType: 'MANAGER'` assigns full manager permissions.
+   - `test/unit/staff_creation_roles.test.ts`: Verify creating staff with `staffType: 'KITCHEN'` assigns `PRODUCT_VIEW`, `PRODUCT_MANAGE`, and `SESSION_VIEW`, and excludes recharge/return permissions.
    - `test/unit/kitchen_orders.test.ts`: Verify daily order number generation, status lifecycle transitions, and counter scoping.
    - Run: `npm test`.
 3. **Frontend Tests (`Frontend Money Card`)**:
