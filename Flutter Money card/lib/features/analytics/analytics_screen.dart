@@ -416,7 +416,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 12),
       children: [
-        // Row 1: Recharge Amount & Refund Amount
+        // Row 1: Recharge Amount & Total Sales
         IntrinsicHeight(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -429,37 +429,6 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   line2Text: 'UPI: ₹${_formatCompactSubAmount(data.upiMoney)}',
                   icon: Icons.account_balance_wallet_outlined,
                   accentColor: AppColors.primaryDark,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildCompactMetricCard(
-                  title: 'Refund Amount',
-                  totalText: '₹${data.refundVolume.toStringAsFixed(2)}',
-                  line1Text: 'Cash: ₹${_formatCompactSubAmount(data.refundVolume)}',
-                  line2Text: 'UPI: ₹0',
-                  icon: Icons.assignment_return_outlined,
-                  accentColor: AppColors.error,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-
-        // Row 2: Canceled Recharge Amount & Total Sales
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: _buildCompactMetricCard(
-                  title: 'Canceled Recharge Amount',
-                  totalText: '₹${data.cancelledTopUps.toStringAsFixed(2)}',
-                  line1Text: 'Void: ₹${_formatCompactSubAmount(data.cancelledTopUps)}',
-                  line2Text: 'UPI: ₹0',
-                  icon: Icons.cancel_outlined,
-                  accentColor: Colors.deepOrange,
                 ),
               ),
               const SizedBox(width: 10),
@@ -478,7 +447,69 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         ),
         const SizedBox(height: 10),
 
-        // Row 3: Wallet Activation & Recharge Count
+        // Row 2: Wallet Refund & Wallet Refund Count (Refunds Together)
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _buildCompactMetricCard(
+                  title: 'Wallet Refund',
+                  totalText: '₹${data.refundVolume.toStringAsFixed(2)}',
+                  line1Text: 'Cash: ₹${_formatCompactSubAmount(data.refundVolume)}',
+                  line2Text: 'UPI: ₹0',
+                  icon: Icons.assignment_return_outlined,
+                  accentColor: AppColors.error,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildCompactMetricCard(
+                  title: 'Wallet Refund Count',
+                  totalText: '${data.refundCount} Refunds',
+                  line1Text: 'Cards: ${data.refundCount}',
+                  line2Text: 'Ret: ₹${_formatCompactSubAmount(data.refundVolume)}',
+                  icon: Icons.keyboard_return,
+                  accentColor: AppColors.warning,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // Row 3: Cancelled Amount & Cancelled Count (Cancelled Together)
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _buildCompactMetricCard(
+                  title: 'Cancelled Amount',
+                  totalText: '₹${data.cancelledTopUps.toStringAsFixed(2)}',
+                  line1Text: 'Cancelled: ₹${_formatCompactSubAmount(data.cancelledTopUps)}',
+                  line2Text: 'UPI: ₹0',
+                  icon: Icons.cancel_outlined,
+                  accentColor: Colors.deepOrange,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildCompactMetricCard(
+                  title: 'Cancelled Count',
+                  totalText: '${data.cancelledTopUpsCount} Recharges',
+                  line1Text: 'Cancelled: ${data.cancelledTopUpsCount}',
+                  line2Text: 'Ded: ₹${_formatCompactSubAmount(data.cancelledTopUps)}',
+                  icon: Icons.money_off,
+                  accentColor: Colors.brown,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // Row 4: Wallet Activation
         IntrinsicHeight(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -491,48 +522,6 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   line2Text: 'Settled: ${data.settledSessionsCount}',
                   icon: Icons.credit_card,
                   accentColor: AppColors.primary,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildCompactMetricCard(
-                  title: 'Recharge Count',
-                  totalText: '${data.rechargeCount} Recharges',
-                  line1Text: 'Cash: ${data.cashCount}',
-                  line2Text: 'UPI: ${data.upiCount}',
-                  icon: Icons.sync,
-                  accentColor: AppColors.info,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-
-        // Row 4: Refund Count & Canceled Recharges
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: _buildCompactMetricCard(
-                  title: 'Refund Count',
-                  totalText: '${data.refundCount} Refunds',
-                  line1Text: 'Cards: ${data.refundCount}',
-                  line2Text: 'Ret: ₹${_formatCompactSubAmount(data.refundVolume)}',
-                  icon: Icons.keyboard_return,
-                  accentColor: AppColors.warning,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildCompactMetricCard(
-                  title: 'Canceled Recharges',
-                  totalText: '${data.cancelledTopUpsCount} Recharges',
-                  line1Text: 'Void: ${data.cancelledTopUpsCount}',
-                  line2Text: 'Ded: ₹${_formatCompactSubAmount(data.cancelledTopUps)}',
-                  icon: Icons.money_off,
-                  accentColor: Colors.brown,
                 ),
               ),
             ],
@@ -577,7 +566,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     letterSpacing: 0.3,
                     color: AppColors.textSecondaryLight,
                   ),
-                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
+                  softWrap: true,
                 ),
               ),
             ],
@@ -711,23 +701,15 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: _buildMenuSummaryCard(
-                  title: 'Food Quantity',
-                  value: '${data.productsSoldCount} Items',
-                  subtitle: 'Total items sold',
-                  icon: Icons.fastfood_outlined,
-                  color: AppColors.success,
+                  title: 'Cancelled Orders',
+                  value: '${data.cancelledOrdersCount} Orders',
+                  subtitle: '₹${data.cancelledOrdersVolume.toStringAsFixed(2)} cancelled',
+                  icon: Icons.remove_shopping_cart_outlined,
+                  color: AppColors.error,
                 ),
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 10),
-        _buildMenuSummaryCard(
-          title: 'Cancelled Orders',
-          value: '${data.cancelledOrdersCount} Orders',
-          subtitle: '₹${data.cancelledOrdersVolume.toStringAsFixed(2)} voided',
-          icon: Icons.remove_shopping_cart_outlined,
-          color: AppColors.error,
         ),
         const SizedBox(height: 16),
 

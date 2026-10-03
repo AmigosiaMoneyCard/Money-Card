@@ -267,14 +267,17 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Food Sales'), findsOneWidget);
-      expect(find.text('Food Quantity'), findsOneWidget);
+      expect(find.text('Cancelled Orders'), findsOneWidget);
 
       // Tap Recharge Tab
       await tester.tap(find.text('Recharge'));
       await tester.pumpAndSettle();
 
       expect(find.text('RECHARGE AMOUNT'), findsOneWidget);
-      expect(find.text('REFUND AMOUNT'), findsOneWidget);
+      expect(find.text('WALLET REFUND'), findsOneWidget);
+      expect(find.text('WALLET REFUND COUNT'), findsOneWidget);
+      expect(find.text('CANCELLED AMOUNT'), findsOneWidget);
+      expect(find.text('CANCELLED COUNT'), findsOneWidget);
     });
   });
 }

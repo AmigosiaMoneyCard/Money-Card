@@ -240,8 +240,8 @@ class AnalyticsPdfService {
                   ),
                   pw.TableRow(
                     children: [
-                      _buildCell('Cancelled Top-ups (Voided)'),
-                      _buildCell('${analytics.cancelledTopUpsCount} voided', alignRight: true),
+                      _buildCell('Cancelled Top-ups'),
+                      _buildCell('${analytics.cancelledTopUpsCount} cancelled', alignRight: true),
                       _buildCell(currencyFmt.format(analytics.cancelledTopUps), alignRight: true),
                     ],
                   ),

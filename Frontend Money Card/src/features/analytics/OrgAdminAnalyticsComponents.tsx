@@ -17,7 +17,6 @@ import {
   ArrowRight,
   Download,
   Wallet,
-  ShoppingBag,
   UtensilsCrossed,
   Ban,
   Search,
@@ -881,7 +880,6 @@ export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSection
   const [searchTerm, setSearchTerm] = useState('');
   const [isTableOpen, setIsTableOpen] = useState(true);
 
-  const itemsSold = analytics.productsSoldCount ?? 0;
   const cancelledOrders = analytics.cancelledOrdersCount ?? 0;
 
   const rawDemandList = useMemo(() => {
@@ -905,24 +903,8 @@ export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSection
 
   return (
     <div className="space-y-6">
-      {/* 2 Summary KPI Cards */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Food Quantity
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
-              <ShoppingBag className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-slate-900">
-              {itemsSold} Items
-            </p>
-          </div>
-        </Card>
-
+      {/* Summary KPI Card */}
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
         <Card padding="md" className="border-slate-200 bg-white shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
