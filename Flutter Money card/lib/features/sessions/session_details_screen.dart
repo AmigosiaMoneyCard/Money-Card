@@ -401,6 +401,29 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
   }
 
   Future<void> _handleCancelRecharge(String txId, double amount, CardSession session) async {
+    final allRecharges = (session.transactions ?? [])
+        .where((t) => t.type == TransactionType.recharge)
+        .toList()
+      ..sort((a, b) {
+        final aDate = a.createdAt != null ? DateTime.tryParse(a.createdAt!) : null;
+        final bDate = b.createdAt != null ? DateTime.tryParse(b.createdAt!) : null;
+        if (aDate == null || bDate == null) return 0;
+        return aDate.compareTo(bDate);
+      });
+
+    if (allRecharges.length > 1 && allRecharges.first.id == txId) {
+      final hasCancelledNext = allRecharges.skip(1).any((t) => t.isCancelled);
+      if (hasCancelledNext) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cannot cancel earliest recharge when a subsequent recharge was cancelled.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        return;
+      }
+    }
+
     final currentBal = session.balance;
     if (currentBal < amount) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -546,6 +569,21 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
       typeLabel = 'Settlement Refund';
     }
 
+    final allRecharges = (session.transactions ?? [])
+        .where((t) => t.type == TransactionType.recharge)
+        .toList()
+      ..sort((a, b) {
+        final aDate = a.createdAt != null ? DateTime.tryParse(a.createdAt!) : null;
+        final bDate = b.createdAt != null ? DateTime.tryParse(b.createdAt!) : null;
+        if (aDate == null || bDate == null) return 0;
+        return aDate.compareTo(bDate);
+      });
+
+    final bool isEarliestBlockedByCancelledNext = allRecharges.isNotEmpty &&
+        allRecharges.first.id == txn.id &&
+        allRecharges.length > 1 &&
+        allRecharges.skip(1).any((t) => t.isCancelled);
+
     final hasItems = isPurchase && txn.items != null && txn.items!.isNotEmpty;
 
     return Container(
@@ -670,7 +708,7 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                     ),
                   ),
                   if (isRecharge && !txn.isCancelled && session.isActive) ...[
-                    if (!txn.canCancel || session.balance < txn.amount)
+                    if (!txn.canCancel || session.balance < txn.amount || isEarliestBlockedByCancelledNext)
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.textTertiaryLight,
@@ -705,6 +743,14 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                       child: const Text('CANCELLED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
                     ),
                 ],
+              ),
+            ),
+          if (isEarliestBlockedByCancelledNext)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.xs),
+              child: const Text(
+                'Cannot cancel: subsequent recharge was cancelled',
+                style: TextStyle(fontSize: 11, color: AppColors.textTertiaryLight, fontStyle: FontStyle.italic),
               ),
             ),
         ],

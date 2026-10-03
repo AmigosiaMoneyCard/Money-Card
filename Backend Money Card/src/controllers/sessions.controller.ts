@@ -706,6 +706,32 @@ export async function cancelRecharge(req: Request, res: Response) {
     return sendError(res, 400, 'SESSION_INACTIVE', 'Cannot cancel top-up on an inactive or settled session');
   }
 
+  const sessionTxs = await prisma.transaction.findMany({
+    where: { sessionId: session.id },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  const allRecharges = sessionTxs.filter((t) => {
+    const tType = String(t.type || '');
+    return tType.includes('RECHARGE') || tType === 'CASH' || tType === 'UPI';
+  });
+
+  if (allRecharges.length > 1 && allRecharges[0].id === txRecord.id) {
+    const hasCancelledNext = allRecharges.slice(1).some((t) => {
+      const items = (t.items as any) || {};
+      return items.isCancelled === true;
+    });
+
+    if (hasCancelledNext) {
+      return sendError(
+        res,
+        400,
+        'CANNOT_CANCEL_EARLIEST_RECHARGE',
+        'Cannot cancel earliest recharge when a subsequent recharge was cancelled',
+      );
+    }
+  }
+
   if (session.balance < txRecord.amount) {
     const spentAmount = (txRecord.amount - session.balance).toFixed(2);
     return sendError(

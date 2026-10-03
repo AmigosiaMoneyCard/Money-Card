@@ -1533,10 +1533,38 @@ class MockApiInterceptor extends Interceptor {
         return _reject(handler, options, 400, 'ALREADY_CANCELLED', 'Transaction has already been cancelled');
       }
 
+      final sessionId = tx['sessionId'];
+
+      // Check if this is the earliest recharge and any subsequent recharge is cancelled
+      final sessionRecharges = mockTransactions.where((t) {
+        final isMatchSession = t['sessionId'] == sessionId;
+        final type = (t['type'] as String? ?? '').toUpperCase();
+        final isRecharge = type.contains('RECHARGE') || type == 'CASH' || type == 'UPI';
+        return isMatchSession && isRecharge;
+      }).toList();
+
+      sessionRecharges.sort((a, b) {
+        final aDate = DateTime.tryParse(a['createdAt'] as String? ?? '') ?? DateTime(1970);
+        final bDate = DateTime.tryParse(b['createdAt'] as String? ?? '') ?? DateTime(1970);
+        return aDate.compareTo(bDate);
+      });
+
+      if (sessionRecharges.length > 1 && sessionRecharges.first['id'] == txId) {
+        final hasCancelledNext = sessionRecharges.skip(1).any((t) => t['isCancelled'] == true);
+        if (hasCancelledNext) {
+          return _reject(
+            handler,
+            options,
+            400,
+            'CANNOT_CANCEL_EARLIEST_RECHARGE',
+            'Cannot cancel earliest recharge when a subsequent recharge was cancelled',
+          );
+        }
+      }
+
       final data = options.data is String ? jsonDecode(options.data) : options.data;
       final reason = data?['reason'] as String? ?? 'Cancelled by staff';
 
-      final sessionId = tx['sessionId'];
       final sessionIndex = mockSessions.indexWhere((s) => s['id'] == sessionId);
       final amount = (tx['amount'] as num?)?.toDouble() ?? 0.0;
 

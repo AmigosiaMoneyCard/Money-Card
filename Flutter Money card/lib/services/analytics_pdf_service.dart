@@ -226,21 +226,28 @@ class AnalyticsPdfService {
                   ),
                   pw.TableRow(
                     children: [
-                      _buildCell('Recharges (Top-ups)'),
+                      _buildCell('Recharge Amount'),
                       _buildCell('${analytics.rechargeCount} top-ups', alignRight: true),
-                      _buildCell(currencyFmt.format(analytics.moneyAdded), alignRight: true, isBold: true),
+                      _buildCell(currencyFmt.format(analytics.rechargeVolume), alignRight: true, isBold: true),
                     ],
                   ),
                   pw.TableRow(
                     children: [
-                      _buildCell('Refunds (Wallets Returned)'),
+                      _buildCell('Total Sales'),
+                      _buildCell('${analytics.transactionCount} transactions', alignRight: true),
+                      _buildCell(currencyFmt.format(analytics.netMoneyCollected), alignRight: true, isBold: true),
+                    ],
+                  ),
+                  pw.TableRow(
+                    children: [
+                      _buildCell('Wallet Refund'),
                       _buildCell('${analytics.refundCount} refunds', alignRight: true),
-                      _buildCell('- ${currencyFmt.format(analytics.moneyRefunded)}', alignRight: true),
+                      _buildCell('- ${currencyFmt.format(analytics.refundVolume)}', alignRight: true),
                     ],
                   ),
                   pw.TableRow(
                     children: [
-                      _buildCell('Cancelled Top-ups'),
+                      _buildCell('Cancelled Amount'),
                       _buildCell('${analytics.cancelledTopUpsCount} cancelled', alignRight: true),
                       _buildCell(currencyFmt.format(analytics.cancelledTopUps), alignRight: true),
                     ],
@@ -255,9 +262,9 @@ class AnalyticsPdfService {
                   pw.TableRow(
                     decoration: pw.BoxDecoration(color: primaryLight),
                     children: [
-                      _buildCell('Net Money Collected', isBold: true),
-                      _buildCell('${analytics.transactionCount} total txns', alignRight: true, isBold: true),
-                      _buildCell(currencyFmt.format(analytics.netMoneyCollected), alignRight: true, isBold: true),
+                      _buildCell('Wallet Activation', isBold: true),
+                      _buildCell('${analytics.cardsGivenOut} cards issued', alignRight: true, isBold: true),
+                      _buildCell('${analytics.activeSessionsCount} active | ${analytics.settledSessionsCount} settled', alignRight: true, isBold: true),
                     ],
                   ),
                 ],
@@ -312,9 +319,9 @@ class AnalyticsPdfService {
                   ),
                   pw.TableRow(
                     children: [
-                      _buildCell('Food Quantity'),
-                      _buildCell('${analytics.productsSoldCount} Items', alignRight: true, isBold: true),
-                      _buildCell('Billed via POS', alignRight: true),
+                      _buildCell('Cancelled Orders'),
+                      _buildCell('${analytics.cancelledOrdersCount} orders', alignRight: true, isBold: true),
+                      _buildCell('${currencyFmt.format(analytics.cancelledOrdersVolume)} cancelled', alignRight: true),
                     ],
                   ),
                   pw.TableRow(

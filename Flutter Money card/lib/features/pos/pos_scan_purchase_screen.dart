@@ -884,6 +884,19 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     final allTx = session.transactions ?? [];
     final topUps = allTx.where((t) => t.type == TransactionType.recharge).toList();
 
+    // Chronologically sort all recharges (earliest first)
+    final sortedTopUps = List<Transaction>.from(topUps)
+      ..sort((a, b) {
+        final aDate = a.createdAt != null ? DateTime.tryParse(a.createdAt!) : null;
+        final bDate = b.createdAt != null ? DateTime.tryParse(b.createdAt!) : null;
+        if (aDate == null || bDate == null) return 0;
+        return aDate.compareTo(bDate);
+      });
+
+    final String? earliestRechargeId = sortedTopUps.isNotEmpty ? sortedTopUps.first.id : null;
+    final bool hasCancelledSubsequentRecharge = sortedTopUps.length > 1 &&
+        sortedTopUps.skip(1).any((t) => t.isCancelled);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -981,6 +994,12 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                       itemBuilder: (ctx, idx) {
                         final t = topUps[idx];
                         final isCash = t.paymentMethod == PaymentMethod.cash;
+                        final bool isEarliestBlockedByCancelledNext =
+                            (t.id == earliestRechargeId) && hasCancelledSubsequentRecharge;
+                        final bool canCancelRecharge = t.canCancel &&
+                            session.balance >= t.amount &&
+                            session.isActive &&
+                            !isEarliestBlockedByCancelledNext;
 
                         return Container(
                           padding: const EdgeInsets.all(12),
@@ -1033,7 +1052,19 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                                         color: Colors.grey.shade200,
                                         borderRadius: BorderRadius.circular(4),
                                       ),
-                                      child: const Text('VOIDED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                                      child: const Text('CANCELLED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                                    )
+                                  else if (!canCancelRecharge)
+                                    OutlinedButton.icon(
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppColors.textTertiaryLight,
+                                        side: BorderSide(color: Colors.grey.shade300, width: 1),
+                                        visualDensity: VisualDensity.compact,
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                      ),
+                                      icon: const Icon(Icons.cancel_outlined, size: 14, color: AppColors.textTertiaryLight),
+                                      label: const Text('Cancel', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                      onPressed: null,
                                     )
                                   else
                                     OutlinedButton.icon(
@@ -1052,6 +1083,13 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                                     ),
                                 ],
                               ),
+                              if (isEarliestBlockedByCancelledNext) ...[
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'Cannot cancel: subsequent recharge was cancelled',
+                                  style: TextStyle(fontSize: 11, color: AppColors.textTertiaryLight, fontStyle: FontStyle.italic),
+                                ),
+                              ],
                               const SizedBox(height: 4),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1676,6 +1714,29 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
   // ==========================================
 
   Future<void> _handleCancelRecharge(String txId, double amount, CardSession session) async {
+    final allRecharges = (session.transactions ?? [])
+        .where((t) => t.type == TransactionType.recharge)
+        .toList()
+      ..sort((a, b) {
+        final aDate = a.createdAt != null ? DateTime.tryParse(a.createdAt!) : null;
+        final bDate = b.createdAt != null ? DateTime.tryParse(b.createdAt!) : null;
+        if (aDate == null || bDate == null) return 0;
+        return aDate.compareTo(bDate);
+      });
+
+    if (allRecharges.length > 1 && allRecharges.first.id == txId) {
+      final hasCancelledNext = allRecharges.skip(1).any((t) => t.isCancelled);
+      if (hasCancelledNext) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cannot cancel earliest recharge when a subsequent recharge was cancelled.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        return;
+      }
+    }
+
     final currentBal = _activeSession?.balance ?? session.balance;
     if (currentBal < amount) {
       ScaffoldMessenger.of(context).showSnackBar(
