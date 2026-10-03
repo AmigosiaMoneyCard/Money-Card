@@ -24,10 +24,11 @@ This cumulative implementation plan incorporates all recent platform enhancement
 
 ---
 
-## Part 3: Counter Dashboard Wallets Page Layout Update
+## Part 3: Counter Dashboard Wallets Page & Customer History Section
 - In `Frontend Money Card/src/features/cards/CounterStaffCardsView.tsx`:
-  - Grouped `[CreditCard]`, `<h1>Wallets & Customer History</h1>`, `[Badge Live Active]`, and `[Wallet Analytics Button]` together inside the left horizontal container.
-  - Removed `[Customer History]` button from header and table rows.
+  - Retained `[CreditCard]`, `<h1>Wallets & Customer History</h1>`, `[Badge Live Active]`, and `[Wallet Analytics Button]` grouped together on the left.
+  - Restored `[Customer History]` button in the top header and in each row of the table directly next to `[Wallet Analytics]` and `[Wallet Details]`.
+  - Restored Modal 3 (Counter-scoped Customer History Modal with search and session list) and Modal 4 (Session Details Modal with breakdown).
   - Retained `[Refresh]` on the right.
 
 ---
