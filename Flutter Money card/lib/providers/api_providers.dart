@@ -19,6 +19,7 @@ import '../services/card_service.dart';
 import '../services/inventory_service.dart';
 import '../services/product_service.dart';
 import '../services/session_service.dart';
+import '../services/kitchen_service.dart';
 
 /// Provider for secure token storage
 final Provider<TokenStorage> tokenStorageProvider = Provider<TokenStorage>((ref) {
@@ -144,4 +145,9 @@ final Provider<AnalyticsRepository> analyticsRepositoryProvider = Provider<Analy
 final Provider<BranchRepository> branchRepositoryProvider = Provider<BranchRepository>((ref) {
   final branchService = ref.watch(branchServiceProvider);
   return BranchRepository(branchService);
+});
+
+final Provider<KitchenService> kitchenServiceProvider = Provider<KitchenService>((ref) {
+  final apiService = ref.watch(apiServiceProvider);
+  return KitchenService(apiService);
 });

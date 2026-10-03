@@ -79,6 +79,15 @@ class AuthUser {
     return permissions.contains(permission);
   }
 
+  bool get isKitchenStaff =>
+      !hasPermission(AppPermission.recharge) &&
+      (hasPermission(AppPermission.productView) || hasPermission(AppPermission.productManage));
+
+  bool get isManager =>
+      hasPermission(AppPermission.recharge) ||
+      role == 'ORG_ADMIN' ||
+      role == 'SUPER_ADMIN';
+
   bool isAssignedToBranch(String branchId) {
     return assignedBranchIds.contains(branchId);
   }

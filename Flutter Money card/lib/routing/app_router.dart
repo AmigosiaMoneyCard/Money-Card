@@ -9,6 +9,8 @@ import '../features/cards/card_details_screen.dart';
 import '../features/cards/cards_screen.dart';
 import '../features/cards/issue_card_screen.dart';
 import '../features/home/home_screen.dart';
+import '../features/kitchen/kitchen_orders_screen.dart';
+import '../features/orders/live_order_tracker_screen.dart';
 import '../features/more/mock_qr_codes_screen.dart';
 import '../features/more/more_screen.dart';
 import '../features/payments/recharge_screen.dart';
@@ -60,8 +62,12 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         return isLoggingIn ? null : '/login';
       }
 
-      // 3. Authenticated Staff attempting to view Login -> redirect to Home
+      // 3. Authenticated Staff attempting to view Login -> redirect to appropriate home
       if (isLoggingIn) {
+        final user = authState.user;
+        if (user != null && user.isKitchenStaff) {
+          return '/app/kitchen';
+        }
         return '/app/home';
       }
 
@@ -210,10 +216,23 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
 
-      // Redirect /app root to /app/home
+      // Live Order Tracker Screen (Manager view of Kitchen KDS progress)
+      GoRoute(
+        path: '/app/orders-tracker',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const LiveOrderTrackerScreen(),
+      ),
+
+      // Redirect /app root based on role
       GoRoute(
         path: '/app',
-        redirect: (context, state) => '/app/home',
+        redirect: (context, state) {
+          final user = ref.read(currentUserProvider);
+          if (user != null && user.isKitchenStaff) {
+            return '/app/kitchen';
+          }
+          return '/app/home';
+        },
       ),
 
       // Four-Section Protected Shell Routes (Home - Cards - Menu - Analytics)
@@ -248,6 +267,12 @@ final Provider<GoRouter> appRouterProvider = Provider<GoRouter>((ref) {
             path: '/app/analytics',
             pageBuilder: (context, state) => const NoTransitionPage(
               child: AnalyticsScreen(),
+            ),
+          ),
+          GoRoute(
+            path: '/app/kitchen',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: KitchenOrdersScreen(),
             ),
           ),
           GoRoute(

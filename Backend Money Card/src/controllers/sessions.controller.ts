@@ -519,6 +519,28 @@ export async function purchaseSession(req: Request, res: Response) {
         data: { balance: balanceAfter },
       });
 
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const todayOrderCount = await tx.transaction.count({
+        where: {
+          branchId: effectiveBranchId,
+          type: TransactionType.PURCHASE,
+          createdAt: { gte: startOfDay },
+        },
+      });
+      const orderNumber = todayOrderCount + 101;
+
+      const orderPayload = {
+        orderNumber,
+        orderStatus: 'PENDING',
+        orderedAt: new Date().toISOString(),
+        items: detailedItems,
+        cardDisplayNumber: session.card?.physicalCardNumber || session.sessionToken?.slice(-4) || 'CARD',
+        customerName: (session as any).customerName || null,
+        counterName: purchasingBranch.name,
+        counterId: purchasingBranch.id,
+      };
+
       const txRecord = await tx.transaction.create({
         data: {
           sessionId: session.id,
@@ -529,7 +551,7 @@ export async function purchaseSession(req: Request, res: Response) {
           balanceBefore,
           balanceAfter,
           paymentMethod: 'CARD_BALANCE',
-          items: detailedItems,
+          items: orderPayload,
         },
       });
 

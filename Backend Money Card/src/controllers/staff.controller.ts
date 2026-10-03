@@ -31,6 +31,21 @@ export async function getPermissionsList(_req: Request, res: Response) {
   return sendSuccess(res, FROZEN_M0_PERMISSIONS);
 }
 
+export const KITCHEN_DEFAULT_PERMISSIONS: PermissionCode[] = [
+  PermissionCode.PRODUCT_VIEW,
+  PermissionCode.PRODUCT_MANAGE,
+  PermissionCode.SESSION_VIEW,
+];
+
+export function computeStaffType(permissions: string[]): 'MANAGER' | 'KITCHEN' {
+  const hasRecharge = permissions.includes(PermissionCode.RECHARGE);
+  const hasMenu = permissions.includes(PermissionCode.PRODUCT_VIEW) || permissions.includes(PermissionCode.PRODUCT_MANAGE);
+  if (!hasRecharge && hasMenu) {
+    return 'KITCHEN';
+  }
+  return 'MANAGER';
+}
+
 export async function getStaffList(req: Request, res: Response) {
   const orgId = req.user?.organizationId;
   if (!orgId) {
@@ -88,27 +103,31 @@ export async function getStaffList(req: Request, res: Response) {
     orderBy: { createdAt: 'desc' },
   });
 
-  const formatted = staffMembers.map((s) => ({
-    id: s.id,
-    name: s.name,
-    phone: s.phone,
-    email: s.email,
-    role: s.role,
-    status: s.status,
-    assignedBranchIds: s.assignedBranches.map((b) => b.branchId),
-    assignedBranches: s.assignedBranches.map((b) => ({
-      id: b.branch.id,
-      name: b.branch.name,
-    })),
-    permissions: s.permissions.map((p) => p.permission),
-    credentials: {
+  const formatted = staffMembers.map((s) => {
+    const permissions = s.permissions.map((p) => p.permission);
+    return {
+      id: s.id,
       name: s.name,
-      phone: s.phone || '',
-      password: '123456',
-    },
-    createdAt: s.createdAt,
-    updatedAt: s.updatedAt,
-  }));
+      phone: s.phone,
+      email: s.email,
+      role: s.role,
+      status: s.status,
+      staffType: computeStaffType(permissions),
+      assignedBranchIds: s.assignedBranches.map((b) => b.branchId),
+      assignedBranches: s.assignedBranches.map((b) => ({
+        id: b.branch.id,
+        name: b.branch.name,
+      })),
+      permissions,
+      credentials: {
+        name: s.name,
+        phone: s.phone || '',
+        password: '123456',
+      },
+      createdAt: s.createdAt,
+      updatedAt: s.updatedAt,
+    };
+  });
 
   return sendSuccess(res, formatted);
 }
@@ -119,7 +138,7 @@ export async function createStaffMember(req: Request, res: Response) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'User has no associated organization');
   }
 
-  const { name, phone, email, password, assignedBranchIds, branchIds, permissions, permissionCodes } = req.body;
+  const { name, phone, email, password, assignedBranchIds, branchIds, permissions, permissionCodes, staffType } = req.body;
   let resolvedBranchIds = assignedBranchIds ?? branchIds;
   const resolvedPermissions = permissions ?? permissionCodes;
 
@@ -223,25 +242,27 @@ export async function createStaffMember(req: Request, res: Response) {
 
   const targetPermissions: PermissionCode[] = Array.isArray(resolvedPermissions) && resolvedPermissions.length > 0
     ? resolvedPermissions
-    : [
-        PermissionCode.CARD_VIEW,
-        PermissionCode.CARD_ISSUE,
-        PermissionCode.CARD_RETURN,
-        PermissionCode.CARD_BLOCK,
-        PermissionCode.CARD_UNBLOCK,
-        PermissionCode.SESSION_VIEW,
-        PermissionCode.RECHARGE,
-        PermissionCode.PURCHASE,
-        PermissionCode.REFUND,
-        PermissionCode.PRODUCT_VIEW,
-        PermissionCode.PRODUCT_MANAGE,
-        PermissionCode.INVENTORY_VIEW,
-        PermissionCode.INVENTORY_MANAGE,
-        PermissionCode.VIEW_ANALYTICS,
-        PermissionCode.VIEW_REPORTS,
-        PermissionCode.STAFF_VIEW,
-        PermissionCode.STAFF_MANAGE,
-      ];
+    : (staffType === 'KITCHEN'
+        ? KITCHEN_DEFAULT_PERMISSIONS
+        : [
+            PermissionCode.CARD_VIEW,
+            PermissionCode.CARD_ISSUE,
+            PermissionCode.CARD_RETURN,
+            PermissionCode.CARD_BLOCK,
+            PermissionCode.CARD_UNBLOCK,
+            PermissionCode.SESSION_VIEW,
+            PermissionCode.RECHARGE,
+            PermissionCode.PURCHASE,
+            PermissionCode.REFUND,
+            PermissionCode.PRODUCT_VIEW,
+            PermissionCode.PRODUCT_MANAGE,
+            PermissionCode.INVENTORY_VIEW,
+            PermissionCode.INVENTORY_MANAGE,
+            PermissionCode.VIEW_ANALYTICS,
+            PermissionCode.VIEW_REPORTS,
+            PermissionCode.STAFF_VIEW,
+            PermissionCode.STAFF_MANAGE,
+          ]);
 
   const result = await prisma.$transaction(async (tx) => {
     const countInTx = await tx.user.count({
@@ -302,6 +323,7 @@ export async function createStaffMember(req: Request, res: Response) {
       status: result.status,
       assignedBranchIds: resolvedBranchIds || [],
       permissions: targetPermissions,
+      staffType: computeStaffType(targetPermissions),
       password: password,
       plaintextPassword: password,
       createdAt: result.createdAt,
@@ -349,6 +371,7 @@ export async function getStaffById(req: Request, res: Response) {
     assignedBranchIds: staff.assignedBranches.map((b) => b.branchId),
     assignedBranches: staff.assignedBranches.map((b) => ({ id: b.branch.id, name: b.branch.name })),
     permissions: staff.permissions.map((p) => p.permission),
+    staffType: computeStaffType(staff.permissions.map((p) => p.permission)),
     credentials: {
       name: staff.name,
       phone: staff.phone || '',
@@ -362,7 +385,7 @@ export async function getStaffById(req: Request, res: Response) {
 export async function updateStaffMember(req: Request, res: Response) {
   const { id } = req.params;
   const orgId = req.user?.organizationId;
-  const { name, phone, email, status, permissions, assignedBranchIds, branchIds } = req.body;
+  const { name, phone, email, status, permissions, assignedBranchIds, branchIds, staffType } = req.body;
 
   const staff = await prisma.user.findFirst({
     where: { id, organizationId: orgId || undefined },
@@ -448,6 +471,7 @@ export async function updateStaffMember(req: Request, res: Response) {
     },
   });
 
+  const perms = fullStaff!.permissions.map((p) => p.permission);
   return sendSuccess(res, {
     id: fullStaff!.id,
     name: fullStaff!.name,
@@ -455,9 +479,10 @@ export async function updateStaffMember(req: Request, res: Response) {
     email: fullStaff!.email,
     role: fullStaff!.role,
     status: fullStaff!.status,
+    staffType: computeStaffType(perms),
     assignedBranchIds: fullStaff!.assignedBranches.map((b) => b.branchId),
     assignedBranches: fullStaff!.assignedBranches.map((b) => ({ id: b.branch.id, name: b.branch.name })),
-    permissions: fullStaff!.permissions.map((p) => p.permission),
+    permissions: perms,
     createdAt: fullStaff!.createdAt,
     updatedAt: fullStaff!.updatedAt,
     message: 'Staff member updated successfully.',

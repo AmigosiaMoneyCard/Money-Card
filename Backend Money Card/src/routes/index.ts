@@ -11,6 +11,7 @@ import analyticsRoutes from './analytics.routes.js';
 import publicRoutes from './public.routes.js';
 import subscriptionRoutes from './subscription.routes.js';
 import reportsRoutes from './reports.routes.js';
+import { kitchenRouter } from './kitchen.routes.js';
 import { getPublicPlans } from '../controllers/subscription.controller.js';
 import { requireAuth } from '../middlewares/auth.middleware.js';
 import { prisma } from '../config/database.js';
@@ -57,5 +58,6 @@ apiRouter.use('/inventory', inventoryRouter);
 apiRouter.use('/analytics', analyticsRoutes);
 apiRouter.use('/subscription', subscriptionRoutes);
 apiRouter.use('/reports', reportsRoutes);
+apiRouter.use('/kitchen', kitchenRouter);
 
 export default apiRouter;

@@ -26,7 +26,7 @@ import {
 import { DataTable } from '@/components/tables';
 import { notify, formatCurrency } from '@/utils';
 import { filterStaffActivities, calculateScopedStaffMetrics } from '@/features/analytics/staffActivityFilter';
-import { MANAGER_PERMISSIONS } from './constants';
+import { MANAGER_PERMISSIONS, KITCHEN_PERMISSIONS } from './constants';
 import { UnauthorizedPage } from '@/features/auth';
 import {
   Users,
@@ -253,9 +253,11 @@ export function StaffPage() {
   // Status & Counter Filters matching Menu design pattern
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
   const [staffBranchFilter, setStaffBranchFilter] = useState<string>('ALL');
+  const [roleFilter, setRoleFilter] = useState<'ALL' | 'MANAGER' | 'KITCHEN'>('ALL');
 
   // ── Form & Selection State ────────────────────────────────
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
+  const [formRoleType, setFormRoleType] = useState<'MANAGER' | 'KITCHEN'>('MANAGER');
   const [formName, setFormName] = useState('');
   const [formPhone, setFormPhone] = useState('');
   const [formEmail, setFormEmail] = useState('');
@@ -371,6 +373,12 @@ export function StaffPage() {
     if (statusFilter !== 'ALL') {
       result = result.filter((s) => s.status === statusFilter);
     }
+    if (roleFilter !== 'ALL') {
+      result = result.filter((s) => {
+        const isKitchen = s.staffType === 'KITCHEN' || (!s.permissions.includes('RECHARGE') && (s.permissions.includes('PRODUCT_VIEW') || s.permissions.includes('PRODUCT_MANAGE')));
+        return roleFilter === 'KITCHEN' ? isKitchen : !isKitchen;
+      });
+    }
     if (!searchQuery.trim()) return result;
     const q = searchQuery.toLowerCase().trim();
     return result.filter(
@@ -379,7 +387,7 @@ export function StaffPage() {
         (s.phone && s.phone.includes(q)) ||
         (s.email && s.email.toLowerCase().includes(q)),
     );
-  }, [staffList, currentBranch, staffBranchFilter, statusFilter, searchQuery, isCounterView, user]);
+  }, [staffList, currentBranch, staffBranchFilter, statusFilter, roleFilter, searchQuery, isCounterView, user]);
 
   // ── Group Filtered Staff by Counter (Minimal & Clean) ─────
   const counterStaffGroups = useMemo<CounterStaffGroup[]>(() => {
@@ -445,6 +453,7 @@ export function StaffPage() {
       ? scopedBranches.map((b) => b.id)
       : branches.map((b) => b.id);
     setFormBranchIds(defaultBranchIds);
+    setFormRoleType('MANAGER');
     setFormPermissions([...MANAGER_PERMISSIONS]);
     setFormErrors({});
     setModalApiError(null);
@@ -502,8 +511,13 @@ export function StaffPage() {
     try {
       const clean10Phone = formPhone.trim().replace(/\D/g, '').slice(-10);
       const finalPermissions = new Set(formPermissions);
-      // Ensure all manager permissions are assigned
-      MANAGER_PERMISSIONS.forEach((p) => finalPermissions.add(p));
+      if (formRoleType === 'MANAGER') {
+        MANAGER_PERMISSIONS.forEach((p) => finalPermissions.add(p));
+      } else {
+        if (finalPermissions.size === 0) {
+          KITCHEN_PERMISSIONS.forEach((p) => finalPermissions.add(p));
+        }
+      }
 
       const res = await apiService.staff.createStaff({
         name: formName.trim(),
@@ -512,6 +526,7 @@ export function StaffPage() {
         email: formEmail.trim() ? formEmail.trim().toLowerCase() : undefined,
         assignedBranchIds: formBranchIds,
         permissions: Array.from(finalPermissions),
+        staffType: formRoleType,
       });
 
       if (!res.success) {
@@ -889,10 +904,17 @@ export function StaffPage() {
   };
 
   const getStaffRoleLabel = (staff: Staff): string => {
-    if (staff.permissions.includes('RECHARGE') || staff.permissions.includes('STAFF_MANAGE')) {
-      return 'Manager';
+    if (staff.staffType === 'KITCHEN') {
+      return 'Kitchen Staff';
     }
-    return 'Staff';
+    if (staff.permissions.includes('RECHARGE') || staff.permissions.includes('STAFF_MANAGE')) {
+      return 'Counter Manager';
+    }
+    const hasMenu = staff.permissions.includes('PRODUCT_VIEW') || staff.permissions.includes('PRODUCT_MANAGE');
+    if (hasMenu && !staff.permissions.includes('RECHARGE')) {
+      return 'Kitchen Staff';
+    }
+    return 'Counter Manager';
   };
 
   const handleOpenStaffAudit = async (staff: Staff) => {
@@ -1177,19 +1199,22 @@ export function StaffPage() {
     {
       key: 'role',
       header: 'Role',
-      className: 'w-32',
-      render: (staff: Staff) => (
-        <Badge
-          variant="outline"
-          className={
-            getStaffRoleLabel(staff) === 'Manager'
-              ? 'border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold text-xs'
-              : 'border-slate-200 bg-slate-50 text-slate-700 text-xs'
-          }
-        >
-          {getStaffRoleLabel(staff)}
-        </Badge>
-      ),
+      className: 'w-36',
+      render: (staff: Staff) => {
+        const label = getStaffRoleLabel(staff);
+        return (
+          <Badge
+            variant="outline"
+            className={
+              label === 'Counter Manager'
+                ? 'border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold text-xs'
+                : 'border-blue-300 bg-blue-50 text-blue-700 font-semibold text-xs'
+            }
+          >
+            {label}
+          </Badge>
+        );
+      },
     },
     {
       key: 'actions',
@@ -1285,6 +1310,15 @@ export function StaffPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value as any)}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
+          >
+            <option value="ALL">All Roles</option>
+            <option value="MANAGER">Counter Managers</option>
+            <option value="KITCHEN">Kitchen Staff</option>
+          </select>
           <Button
             variant="outline"
             size="sm"
@@ -2195,6 +2229,72 @@ export function StaffPage() {
             {/* ── STEP 1: BASIC INFO ── */}
             {addTab === 'basic' && (
               <div className="space-y-4">
+                {/* Role Type Selection: Manager vs Kitchen Staff */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-700">Staff Role & Mobile App Mode</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormRoleType('MANAGER');
+                        setFormPermissions([...MANAGER_PERMISSIONS]);
+                      }}
+                      className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                        formRoleType === 'MANAGER'
+                          ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20'
+                          : 'border-slate-200 hover:border-slate-300 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full mb-1">
+                        <span className="text-xs font-bold text-slate-900">Counter Manager</span>
+                        <div
+                          className={`h-4 w-4 rounded-full border flex items-center justify-center ${
+                            formRoleType === 'MANAGER' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300'
+                          }`}
+                        >
+                          {formRoleType === 'MANAGER' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-snug">
+                        Full POS billing, card top-up, returns, and live queue tracking.
+                      </p>
+                      <span className="mt-2 inline-flex items-center text-[10px] font-medium text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded">
+                        Full POS Access
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormRoleType('KITCHEN');
+                        setFormPermissions([...KITCHEN_PERMISSIONS]);
+                      }}
+                      className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                        formRoleType === 'KITCHEN'
+                          ? 'border-blue-600 bg-blue-50/50 ring-2 ring-blue-500/20'
+                          : 'border-slate-200 hover:border-slate-300 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full mb-1">
+                        <span className="text-xs font-bold text-slate-900">Kitchen Staff</span>
+                        <div
+                          className={`h-4 w-4 rounded-full border flex items-center justify-center ${
+                            formRoleType === 'KITCHEN' ? 'border-blue-600 bg-blue-600' : 'border-slate-300'
+                          }`}
+                        >
+                          {formRoleType === 'KITCHEN' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-snug">
+                        Kitchen Display System (KDS), orders queue & menu view/edit.
+                      </p>
+                      <span className="mt-2 inline-flex items-center text-[10px] font-medium text-blue-700 bg-blue-100/70 px-1.5 py-0.5 rounded">
+                        KDS & Menu Control
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Input
                     id="add-staff-name"

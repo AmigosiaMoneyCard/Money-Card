@@ -88,6 +88,7 @@ export interface Staff {
   email?: string;
   status: 'ACTIVE' | 'INACTIVE' | 'PENDING_ACTIVATION' | 'DEACTIVATED';
   permissions: Permission[];
+  staffType?: 'MANAGER' | 'KITCHEN';
   assignedBranchIds: string[];
   credentials?: {
     name: string;
@@ -119,6 +120,7 @@ export interface CreateStaffRequest {
   email?: string;
   assignedBranchIds: string[];
   permissions: Permission[];
+  staffType?: 'MANAGER' | 'KITCHEN';
 }
 
 export interface UpdateStaffRequest {
@@ -128,4 +130,5 @@ export interface UpdateStaffRequest {
   status?: 'ACTIVE' | 'INACTIVE' | 'DEACTIVATED';
   assignedBranchIds?: string[];
   permissions?: Permission[];
+  staffType?: 'MANAGER' | 'KITCHEN';
 }

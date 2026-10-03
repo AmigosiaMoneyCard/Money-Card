@@ -12,6 +12,7 @@ import '../../providers/permission_provider.dart';
 import '../../providers/pos_cart_provider.dart';
 import '../../providers/session_operations_provider.dart';
 import '../../widgets/common/app_card.dart';
+import 'food_progress_widget.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -188,6 +189,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: AppSpacing.md),
+
+              // Food Preparation Progress Widget (Live Kitchen KDS status)
+              const FoodPreparationProgressWidget(),
               const SizedBox(height: AppSpacing.md),
 
               // 2b. Today at a Glance Summary Card (Clickable to Analytics)

@@ -146,4 +146,10 @@ export const STAFF_PERMISSIONS: Permission[] = [
   'SESSION_VIEW',
 ];
 
+export const KITCHEN_PERMISSIONS: Permission[] = [
+  'PRODUCT_VIEW',
+  'PRODUCT_MANAGE',
+  'SESSION_VIEW',
+];
+
 

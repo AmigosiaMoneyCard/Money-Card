@@ -76,7 +76,7 @@ class TestAuthNotifier extends AuthNotifier {
 void main() {
   AppConfig.apiMode = ApiMode.mock;
   group('LoginScreen Widget Tests', () {
-    testWidgets('renders all login UI elements (Brand, Title, Phone Number, Password, Button)', (tester) async {
+    testWidgets('renders role selection UI elements (Brand, Title, Counter Manager, Kitchen Staff)', (tester) async {
       final fakeRepo = FakeAuthRepository();
 
       await tester.pumpWidget(
@@ -92,11 +92,58 @@ void main() {
 
       expect(find.text('MONEY CARD'), findsOneWidget);
       expect(find.text('Staff Login'), findsOneWidget);
+      expect(find.text('Select your operational role to proceed'), findsOneWidget);
+      expect(find.text('Counter Manager'), findsOneWidget);
+      expect(find.text('Kitchen Staff'), findsOneWidget);
+      expect(find.textContaining('Server:'), findsNothing);
+    });
+
+    testWidgets('navigates to Counter Manager login box and renders form elements', (tester) async {
+      final fakeRepo = FakeAuthRepository();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authNotifierProvider.overrideWith((ref) => TestAuthNotifier(fakeRepo)),
+          ],
+          child: const MaterialApp(
+            home: LoginScreen(),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Counter Manager'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Counter Manager Login'), findsOneWidget);
       expect(find.text('Phone Number'), findsOneWidget);
       expect(find.text('Password'), findsOneWidget);
       expect(find.text('Login'), findsOneWidget);
       expect(find.byType(TextFormField), findsNWidgets(2));
-      expect(find.textContaining('Server:'), findsNothing);
+    });
+
+    testWidgets('navigates to Kitchen Staff login box and renders form elements', (tester) async {
+      final fakeRepo = FakeAuthRepository();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authNotifierProvider.overrideWith((ref) => TestAuthNotifier(fakeRepo)),
+          ],
+          child: const MaterialApp(
+            home: LoginScreen(),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Kitchen Staff'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Kitchen Staff Login'), findsOneWidget);
+      expect(find.text('Phone Number'), findsOneWidget);
+      expect(find.text('Password'), findsOneWidget);
+      expect(find.text('Login'), findsOneWidget);
+      expect(find.byType(TextFormField), findsNWidgets(2));
     });
 
     testWidgets('shows validation errors when fields are empty or phone is invalid', (tester) async {
@@ -108,7 +155,7 @@ void main() {
             authNotifierProvider.overrideWith((ref) => TestAuthNotifier(fakeRepo)),
           ],
           child: const MaterialApp(
-            home: LoginScreen(),
+            home: LoginScreen(initialRole: LoginRoleMode.manager),
           ),
         ),
       );
@@ -139,7 +186,7 @@ void main() {
             authNotifierProvider.overrideWith((ref) => TestAuthNotifier(fakeRepo)),
           ],
           child: const MaterialApp(
-            home: LoginScreen(),
+            home: LoginScreen(initialRole: LoginRoleMode.manager),
           ),
         ),
       );
