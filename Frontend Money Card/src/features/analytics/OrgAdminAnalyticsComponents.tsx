@@ -23,8 +23,8 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { Card, StatCard, Badge, Button, Select, Modal, ModalFooter } from '@/components/ui';
-import { formatCurrency } from '@/utils/formatters';
-import type { AnalyticsOverview, BranchPerformanceMetric } from '@/types';
+import { formatCurrency, formatDateTime } from '@/utils/formatters';
+import type { AnalyticsOverview, BranchPerformanceMetric, FoodPurchaseRecord } from '@/types';
 import type { OrgPdfSectionOptions } from './analyticsPdfExport';
 
 export type SortMetric =
@@ -991,7 +991,19 @@ export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSection
                   filteredItems.map((item, idx) => (
                     <tr key={item.productId || idx} className="hover:bg-slate-50/80 transition-colors">
                       <td className="px-4 py-3 font-semibold text-slate-900">
-                        {item.productName}
+                        <div>{item.productName}</div>
+                        {item.branchBreakdown && Object.keys(item.branchBreakdown).length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {Object.entries(item.branchBreakdown).map(([bId, bData]) => (
+                              <span
+                                key={bId}
+                                className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200/50"
+                              >
+                                {bData.branchName}: {bData.quantitySold} sold
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-slate-700">
                         {formatCurrency(item.unitPrice)}
@@ -1020,6 +1032,174 @@ export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSection
           </div>
         )}
       </div>
+
+      {/* Food Purchases by Counter Table */}
+      <FoodPurchasesByCounterTable purchases={analytics.foodPurchasesByCounter || []} />
+    </div>
+  );
+}
+
+export interface FoodPurchasesByCounterTableProps {
+  purchases: FoodPurchaseRecord[];
+}
+
+export function FoodPurchasesByCounterTable({ purchases }: FoodPurchasesByCounterTableProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'cross'>('all');
+  const [isTableOpen, setIsTableOpen] = useState(true);
+
+  const filteredPurchases = useMemo(() => {
+    return purchases.filter((p) => {
+      if (filterType === 'cross' && !p.isCrossCounter) return false;
+      if (!searchTerm.trim()) return true;
+      const lower = searchTerm.toLowerCase();
+      const matchCard = p.sessionCardNumber.toLowerCase().includes(lower);
+      const matchIssuing = p.issuingBranchName.toLowerCase().includes(lower);
+      const matchPurchasing = p.purchasingBranchName.toLowerCase().includes(lower);
+      const matchItems = (p.items || []).some((it: { productName?: string }) => (it.productName || '').toLowerCase().includes(lower));
+      return matchCard || matchIssuing || matchPurchasing || matchItems;
+    });
+  }, [purchases, filterType, searchTerm]);
+
+  const crossCount = useMemo(() => purchases.filter((p) => p.isCrossCounter).length, [purchases]);
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => setIsTableOpen(!isTableOpen)}
+          className="flex items-center gap-2 text-left cursor-pointer group select-none"
+          aria-expanded={isTableOpen}
+        >
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100 transition-colors">
+            <Building2 className="h-4 w-4" />
+          </div>
+          <h2 className="text-base font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
+            Food Purchases by Counter
+          </h2>
+          <Badge variant="default" className="text-xs font-semibold">
+            {filteredPurchases.length} Orders
+          </Badge>
+          {crossCount > 0 && (
+            <Badge variant="success" className="text-xs font-semibold">
+              {crossCount} Cross-Counter
+            </Badge>
+          )}
+          <div className={`p-1 rounded text-slate-400 group-hover:text-slate-600 transition-transform duration-200 ${isTableOpen ? 'rotate-180' : 'rotate-0'}`}>
+            <ChevronDown className="h-4 w-4" />
+          </div>
+        </button>
+
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          {/* Filter segment */}
+          <div className="flex items-center bg-slate-100 p-0.5 rounded-lg text-xs font-medium">
+            <button
+              type="button"
+              onClick={() => setFilterType('all')}
+              className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+                filterType === 'all' ? 'bg-white text-slate-900 shadow-2xs font-semibold' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              All Purchases
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterType('cross')}
+              className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+                filterType === 'cross' ? 'bg-white text-emerald-700 shadow-2xs font-semibold' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Cross-Counter ({crossCount})
+            </button>
+          </div>
+
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search counter, card, or food..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium"
+            />
+          </div>
+        </div>
+      </div>
+
+      {isTableOpen ? (
+        <div className="overflow-x-auto rounded-xl border border-slate-100">
+          <table className="w-full text-left text-xs min-w-[720px]">
+            <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-100">
+              <tr>
+                <th scope="col" className="px-4 py-3">Date & Time</th>
+                <th scope="col" className="px-4 py-3">Card / Wallet</th>
+                <th scope="col" className="px-4 py-3">Issuing Counter</th>
+                <th scope="col" className="px-4 py-3">Purchased At</th>
+                <th scope="col" className="px-4 py-3">Food Items Purchased</th>
+                <th scope="col" className="px-4 py-3 text-right">Total Amount</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredPurchases.length > 0 ? (
+                filteredPurchases.map((purchase) => (
+                  <tr key={purchase.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="px-4 py-3 text-slate-500 font-medium whitespace-nowrap">
+                      {formatDateTime(purchase.createdAt)}
+                    </td>
+                    <td className="px-4 py-3 font-mono font-bold text-slate-900 whitespace-nowrap">
+                      {purchase.sessionCardNumber}
+                    </td>
+                    <td className="px-4 py-3 text-slate-700 whitespace-nowrap">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800">
+                        {purchase.issuingBranchName}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700">
+                          {purchase.purchasingBranchName}
+                        </span>
+                        {purchase.isCrossCounter && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                            Cross-Counter
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-slate-800">
+                      <div className="flex flex-wrap gap-1">
+                        {(purchase.items || []).map((it: { quantity?: number; productName?: string; subtotal?: number }, idx: number) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200/60"
+                          >
+                            {it.quantity || 1}x {it.productName || 'Food Item'}
+                            {it.subtotal ? ` (${formatCurrency(it.subtotal)})` : ''}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono font-bold text-emerald-600 whitespace-nowrap">
+                      {formatCurrency(purchase.totalAmount)}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                    No food purchases found matching the filter criteria.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="text-xs text-slate-400 py-1">
+          Table collapsed. Tap Show or the header to view food purchases.
+        </div>
+      )}
     </div>
   );
 }

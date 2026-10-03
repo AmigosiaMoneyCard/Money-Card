@@ -1,189 +1,130 @@
-# Implementation Plan — Mobile Analytics Checkbox PDF Download & Cancel Recharge Guard
+# Cross-Counter Wallet Usage and Food Purchase Analytics — Implementation Plan
 
-## Overview
-This plan implements two major features across the mobile POS app and backend:
-1. Mobile Analytics PDF Checkbox Download:
-   - Update the mobile PDF report to strictly include ONLY the metrics and data present on the Analytics screen tabs:
-     - Financial Overview (Recharge tab): Recharge Amount, Total Sales, Wallet Refund, Cancelled Amount, and Wallet Activation.
-     - Menu Analytics tab: Food Sales, Cancelled Orders, and the Ordered Menu Items table.
-     - Remove unrelated operational/inventory metrics (e.g. low stock alerts, inventory counts).
-   - In the export modal/sheet, provide clickable checkboxes for:
-     - `[x] Financial Overview` (Recharge, sales, refunds, cancellations & wallet activations)
-     - `[x] Menu Analytics` (Food sales, cancelled orders & ordered menu items table)
-   - Allow selecting either one or both:
-     - If Financial Overview only is checked -> downloads the single-section Financial Overview PDF.
-     - If Menu Analytics only is checked -> downloads the single-section Menu Analytics PDF.
-     - If both are checked -> downloads a unified PDF containing both sections.
-     - If neither is checked -> "Download Selected PDF" button is disabled.
-2. Top-up History Cancel Recharge Guard (Retained from previous plan):
-   - When a wallet is recharged, the cashier has the option to cancel that recharge.
-   - If the cashier does not cancel that recharge and recharges the wallet again, any previous recharge in the top-up history can no longer be cancelled.
-   - Only the latest (most recent) uncancelled recharge can ever be cancelled. Any recharge followed by a subsequent recharge is permanently locked from cancellation with the message "Cannot cancel: wallet was recharged again".
+![Food Purchases by Counter Analytics](file:///C:/Users/damie/.gemini/antigravity-ide/brain/999581c9-5c30-4195-933d-3667425ed95a/analytics_counter_and_food_purchased_1791054776238.jpg)
+
+## Current State (What Already Exists)
+
+The system has a multi-tenant, multi-counter foundation:
+- Super Admin creates Org Admin.
+- Org Admin creates Branches (Counters).
+- Staff members are assigned to Branches via UserBranch.
+- Card Sessions are tied to an issuing Branch (`CardSession.branchId`).
+- Transactions have a `branchId` field and store items in a JSON column.
+- Wallet recharge already supports cross-counter operation and attributes the transaction to the recharging counter via `effectiveBranchId`.
 
 ---
 
-## Visual Design Mockup & ASCII Wireframes
+## What Needs to Be Implemented
 
-### Mobile Analytics Checkbox PDF Export Mockup
-![Checkbox PDF Export Mockup](C:\Users\damie\.gemini\antigravity-ide\brain\999581c9-5c30-4195-933d-3667425ed95a\mobile_pdf_checkboxes_1791022675513.jpg)
+### 1. Cross-Counter Purchases
+- In `Backend Money Card/src/controllers/sessions.controller.ts` (`purchaseSession`):
+  - Remove the restriction blocking staff from other branches of the same organization.
+  - Set `Transaction.branchId` to the purchasing counter (`effectiveBranchId`), NOT `session.branchId`.
+  - Validate that purchased products belong to the organization and are accessible at the purchasing counter.
 
-### Top-up History Cancel Guard Mockup
-![Mobile Top-up Cancel Guard](C:\Users\damie\.gemini\antigravity-ide\brain\999581c9-5c30-4195-933d-3667425ed95a\mobile_topup_cancel_guard_1791022125827.jpg)
+### 2. Issuing Counter Enforcement for Returns and Refunds
+- In `Backend Money Card/src/controllers/sessions.controller.ts`:
+  - In `returnSession`, add a guard ensuring STAFF can only settle sessions where `session.branchId` matches their assigned counter (`RETURN_COUNTER_MISMATCH`).
+  - In `refundSessionBalance`, verify consistent error handling with `RETURN_COUNTER_MISMATCH`.
+- In `Flutter Money card`:
+  - `pos_scan_purchase_screen.dart`: Display issuing counter badge; disable settlement button if scanned at a foreign counter with message: "Issued at Counter A. Return must be processed at Counter A".
+  - `return_card_screen.dart`: Check `session.branchId != currentBranch.id`, display banner, and disable return/refund buttons.
+  - `recharge_screen.dart`: Guard refund button for foreign counter sessions; handle 403 `RETURN_COUNTER_MISMATCH`.
 
-### Mobile Analytics Export PDF Checkbox Bottom Sheet
+### 3. Analytics: Counter Name and Food Purchased Tracking
+In the analytics section, provide a detailed activity log and aggregation showing:
+- Counter Name: Both the Issuing Counter (where wallet originated) and Purchased At Counter (where food was ordered).
+- Food Purchased: Exact items bought (item name, quantity, unit price, subtotal).
+- Total amount, card number, and timestamp.
+
+---
+
+## ASCII Wireframe — Food Purchases by Counter
+
 ```
-+-------------------------------------------------------------+
-|                    Export Analytics PDF                 [X] |
-+-------------------------------------------------------------+
-| Select the reports you want to download:                    |
-|                                                             |
-| +---------------------------------------------------------+ |
-| | [X] Financial Overview                                  | |
-| | Recharge, total sales, refunds, cancellations & wallets | |
-| +---------------------------------------------------------+ |
-|                                                             |
-| +---------------------------------------------------------+ |
-| | [X] Menu Analytics                                      | |
-| | Food sales, cancelled orders & ordered menu items table | |
-| +---------------------------------------------------------+ |
-|                                                             |
-| [ Download Selected PDF (2 selected) ]                    |
-| (Disabled if 0 selected; downloads 1 or both)               |
-+-------------------------------------------------------------+
-```
-
-### Top-up History Bottom Sheet (Cancel Guard Wireframe)
-```
-+-------------------------------------------------------------+
-|                     Top-up History                      [X] |
-| Wallet: MC_1001 • Balance: Rs. 700.00                       |
-+-------------------------------------------------------------+
-|                                                             |
-| Top Card: Latest Recharge (Allowed to Cancel)               |
-| +---------------------------------------------------------+ |
-| | Top-up                               24 May, 11:35 AM   | |
-| | Rs. 200.00                                              | |
-| | via UPI (Ref: UPI837456)            [ Cancel Recharge ] | |
-| +---------------------------------------------------------+ |
-|                                                             |
-| Bottom Card: Previous Recharge (Recharged Again -> Locked)   |
-| +---------------------------------------------------------+ |
-| | Top-up                               20 May, 09:15 AM   | |
-| | Rs. 500.00                                              | |
-| | via CASH (Ref: CASH29481)           [ Cancel (Disabled)]| |
-| | Cannot cancel: wallet was recharged again.              | |
-| +---------------------------------------------------------+ |
-|                                                             |
-+-------------------------------------------------------------+
+╔═════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║  ANALYTICS — Food Purchases by Counter                               [Date Range Picker] [Cafeteria]║
+╠═════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║  [Total Sales]        [Total Orders]        [Cross-Counter Revenue]        [Top Dish]               ║
+║    ₹12,450.00             1,890                   ₹4,115.50               Veg Biryani (210)         ║
+╠═════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║  Food Purchases Table                                                                               ║
+║  Date & Time      | Card ID  | Issuing Counter | Purchased At Counter | Food Items Purchased | Total║
+║  Today, 01:15 PM  | MC-101   | Counter A       | Counter B            | 2x Veg Biryani,      | ₹280 ║
+║                   |          | (Main)          | (North Cafeteria)    | 1x Lime Soda         |      ║
+║  Today, 01:10 PM  | MC-104   | Counter B       | Counter B            | 1x Paneer Butter,    | ₹210 ║
+║                   |          | (North)         | (North Cafeteria)    | 2x Butter Naan       |      ║
+║  Today, 12:45 PM  | MC-102   | Counter A       | Counter C            | 1x Masala Dosa,      | ₹130 ║
+║                   |          | (Main)          | (South Food Court)   | 1x Filter Coffee     |      ║
+╠═════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║  Menu Demand by Counter Summary                                                                     ║
+║  Item Name           | Counter A Sold | Counter B Sold | Counter C Sold | Total Revenue             ║
+║  Veg Biryani         | 120 units      | 65 units       | 25 units       | ₹21,000.00                ║
+║  Paneer Butter Naan  | 80 units       | 70 units       | 40 units       | ₹22,800.00                ║
+╚═════════════════════════════════════════════════════════════════════════════════════════════════════╝
 ```
 
 ---
 
-## Technical Design & Component Breakdown
+## Step-by-Step Changes Across the Worktree
 
-### 1. Mobile Analytics PDF Service (`Flutter Money card`)
-- File: `Flutter Money card/lib/services/analytics_pdf_service.dart`
-  - Update `AnalyticsPdfSectionOptions`:
-    - `includeFinancialOverview` (bool, default true)
-    - `includeMenuAnalytics` (bool, default true)
-    - Remove `includeOperations` (operations/inventory metrics retired from this report).
-  - Method `generateAnalyticsPdf`:
-    - If `includeFinancialOverview`:
-      - Render Section 1: Overview & Financial Revenue Summary:
-        - Recharge Amount: `${analytics.rechargeCount} top-ups`, `INR ${rechargeVolume}`
-        - Total Sales: `${analytics.transactionCount} transactions`, `INR ${netMoneyCollected}`
-        - Wallet Refund: `${analytics.refundCount} refunds`, `- INR ${refundVolume}`
-        - Cancelled Amount: `${analytics.cancelledTopUpsCount} cancelled`, `INR ${cancelledTopUps}`
-        - Wallet Activation: `${analytics.cardsGivenOut} cards issued`, `${analytics.activeSessionsCount} active | ${analytics.settledSessionsCount} settled`
-    - If `includeMenuAnalytics`:
-      - Render Section 2: Menu Analytics:
-        - Food Sales: `${analytics.purchaseCount} orders placed`, `INR ${purchaseVolume}`
-        - Cancelled Orders: `${analytics.cancelledOrdersCount} orders cancelled`, `INR ${cancelledOrdersVolume}`
-        - All Ordered Menu Items Table: Rank `#`, `Product Name`, `Units Sold`, `Revenue Generated (INR)`.
-    - Generate appropriate filename based on selection:
-      - Both: `MoneyCard_Analytics_<branch>_<date>.pdf`
-      - Financial only: `MoneyCard_Financial_Overview_<branch>_<date>.pdf`
-      - Menu only: `MoneyCard_Menu_Analytics_<branch>_<date>.pdf`
-
-### 2. Mobile Analytics Export Bottom Sheet with Checkboxes (`Flutter Money card`)
-- File: `Flutter Money card/lib/features/analytics/analytics_screen.dart` & `Flutter Money card/lib/widgets/analytics/analytics_pdf_preview_dialog.dart`
-  - When the user taps the PDF / Export button:
-    - Display an interactive bottom sheet containing two clickable cards with Flutter `Checkbox` widgets:
-      - Card 1: `Financial Overview` checkbox (with subtitle explaining recharge, sales, refunds, cancellations, and wallet activations).
-      - Card 2: `Menu Analytics` checkbox (with subtitle explaining food sales, cancelled orders, and ordered menu items table).
-    - Clicking anywhere on a card toggles its checkbox state.
-    - At the bottom of the sheet: "Download Selected PDF" button.
-      - If 1 item selected: button displays "Download Selected PDF (1)".
-      - If both selected: button displays "Download Selected PDF (2)".
-      - If 0 selected: button is disabled (`onPressed: null`).
-    - Tapping download invokes `AnalyticsPdfService.generateAnalyticsPdf` with the selected options and triggers download/share.
-
-### 3. Top-up History Cancel Recharge Guard (`Flutter Money card` & `Backend Money Card`)
-- File: `Flutter Money card/lib/features/payments/recharge_screen.dart`
-  - In `_showTopUpHistorySheet`:
-    - Chronologically sort all session recharges (`sortedTopUps` by `createdAt` ascending).
-    - Determine `latestRechargeId = sortedTopUps.isNotEmpty ? sortedTopUps.last.id : null`.
-    - For each recharge `t`:
-      - `hasSubsequentRecharge = sortedTopUps.isNotEmpty && (t.id != latestRechargeId)`.
-      - `canCancelRecharge = t.canCancel && session.balance >= t.amount && session.isActive && !hasSubsequentRecharge`.
-      - If `hasSubsequentRecharge && t.canCancel`, render caption: `Cannot cancel: wallet was recharged again`.
-  - In `_handleCancelRecharge`:
-    - Safety guard: reject cancellation if `hasSubsequentRecharge` is true.
-- File: `Flutter Money card/lib/features/pos/pos_scan_purchase_screen.dart`
-  - Apply identical `hasSubsequentRecharge` check and disable Cancel button on older recharges.
-- File: `Flutter Money card/lib/features/sessions/session_details_screen.dart`
-  - Apply identical guard in transaction timeline.
-- File: `Flutter Money card/lib/core/network/interceptors/mock_api_interceptor.dart`
-  - In `cancel-recharge` mock handler:
-    - Check if target transaction has any subsequent recharge in the session.
-    - If so, return 400 error `CANNOT_CANCEL_PREVIOUS_RECHARGE`.
+### Step 1 — Backend: Session Purchase and Return Controller Updates
 - File: `Backend Money Card/src/controllers/sessions.controller.ts`
-  - In `cancelRecharge` endpoint handler:
-    - Count recharges in session created after target transaction:
-      `prisma.transaction.count({ where: { sessionId: session.id, type: 'RECHARGE', createdAt: { gt: txRecord.createdAt } } })`.
-    - If count > 0, return 400 error `CANNOT_CANCEL_PREVIOUS_RECHARGE` (`Cannot cancel recharge because a subsequent recharge exists on this wallet`).
+  - In `purchaseSession`:
+    - Check staff branch belongs to same organization (remove strict `session.branchId` check).
+    - Set `Transaction.branchId` to `effectiveBranchId` (the purchasing counter).
+  - In `returnSession`:
+    - Add guard: `if (req.user?.role === 'STAFF' && !req.user.assignedBranchIds.includes(session.branchId)) return sendError(res, 403, 'RETURN_COUNTER_MISMATCH', 'This card must be returned at the counter where it was issued')`.
+  - In `refundSessionBalance`:
+    - Ensure matching error code `RETURN_COUNTER_MISMATCH`.
 
----
+### Step 2 — Backend: Analytics Endpoint for Purchases and Counter Breakdown
+- File: `Backend Money Card/src/controllers/analytics.controller.ts`
+  - In `getOrgAnalytics` / new `getCrossCounterAnalytics`:
+    - Include detailed purchase records with:
+      - `transactionId`, `createdAt`
+      - `cardNumber` (`sessionCardNumber` or `physicalCardNumber`)
+      - `issuingBranchId`, `issuingBranchName`
+      - `purchasingBranchId`, `purchasingBranchName`
+      - `items` array with `productName`, `quantity`, `unitPrice`, `subtotal`
+      - `totalAmount`
+    - Include `menuDemandByCounter`: item sales broken down per counter.
+- File: `Backend Money Card/src/routes/analytics.routes.ts`
+  - Register `/api/analytics/purchases-by-counter` or include in existing analytics endpoint.
 
-## Worktree Changes Summary
+### Step 3 — Frontend Web: Analytics UI with Counter Name and Food Purchased
+- File: `Frontend Money Card/src/features/analytics/OrgAdminAnalyticsComponents.tsx`
+  - Create `FoodPurchasesByCounterTable`:
+    - Displays Date & Time, Card ID, Issuing Counter, Purchased At Counter, Food Items (using `extractTransactionItems`), and Total Amount.
+    - Responsive mobile wrapper (`overflow-x-auto`, badge styling).
+  - Update `OrgAdminMenuAnalyticsSection`:
+    - Display per-counter breakdown tags on ordered menu items.
+- File: `Frontend Money Card/src/features/analytics/OrgAdminAnalyticsView.tsx`
+  - Integrate `FoodPurchasesByCounterTable` into the Analytics view.
+- File: `Frontend Money Card/src/features/analytics/analyticsPdfExport.ts`
+  - Add "Food Purchases by Counter" section in generated PDF including counter name and items list.
 
-| Subsystem | File Path | Nature of Change |
-|---|---|---|
-| Mobile PDF Service | `Flutter Money card/lib/services/analytics_pdf_service.dart` | Limit PDF to Financial Overview and Menu Analytics; support generating either one or both |
-| Mobile Analytics UI | `Flutter Money card/lib/features/analytics/analytics_screen.dart` | Export modal with clickable checkboxes for Financial Overview and Menu Analytics |
-| Mobile PDF Dialog | `Flutter Money card/lib/widgets/analytics/analytics_pdf_preview_dialog.dart` | Align preview options with Financial and Menu checkboxes |
-| Mobile Payments | `Flutter Money card/lib/features/payments/recharge_screen.dart` | Disable cancel on previous recharges when wallet recharged again |
-| Mobile POS | `Flutter Money card/lib/features/pos/pos_scan_purchase_screen.dart` | Apply subsequent recharge cancel guard in scan purchase sheet |
-| Mobile Sessions | `Flutter Money card/lib/features/sessions/session_details_screen.dart` | Apply subsequent recharge cancel guard in session details |
-| Mobile Mock API | `Flutter Money card/lib/core/network/interceptors/mock_api_interceptor.dart` | Mock error for cancelling previous recharge |
-| Backend API | `Backend Money Card/src/controllers/sessions.controller.ts` | Reject cancel recharge if newer recharge exists in session |
-| Backend Tests | `Backend Money Card/test/unit/cancel_recharge_guard.test.ts` | Unit tests for subsequent recharge cancel prevention |
-| Mobile Tests | `Flutter Money card/test/features/payments/recharge_test.dart` | Widget tests for disabled cancel button on previous recharge |
-| Mobile PDF Tests | `Flutter Money card/test/features/analytics/analytics_test.dart` | Widget/unit tests for checkbox PDF download options |
+### Step 4 — Mobile POS Flutter: Multi-Screen Parity
+- File: `Flutter Money card/lib/features/pos/pos_scan_purchase_screen.dart`
+  - When card is resolved, display issuing counter badge if different from active counter.
+  - In `_handleSettleReturn`: Check `session.branchId == currentBranch.id`; if mismatched, show warning dialog and block action.
+- File: `Flutter Money card/lib/features/payments/return_card_screen.dart`
+  - If `session.branchId != currentBranch.id`, display persistent banner: "Card issued at [Counter Name]. Returns must be completed at the issuing counter." Disable Confirm & Settle and Refund buttons.
+- File: `Flutter Money card/lib/features/payments/recharge_screen.dart`
+  - Guard settlement action and handle `RETURN_COUNTER_MISMATCH` with descriptive toast/dialog.
+- File: `Flutter Money card/lib/services/analytics_pdf_service.dart`
+  - Add counter name and food purchase breakdown to Mobile Analytics PDF export.
 
----
-
-## Verification Plan
-
-### Automated Tests
-1. Mobile App Tests:
-   `cd "Flutter Money card"; flutter test`
-2. Backend API Tests:
-   `cd "Backend Money Card"; npm test`
-3. Frontend Web Tests:
-   `cd "Frontend Money Card"; npm test -- --run`
-
-### Manual Verification
-1. Checkbox PDF Download:
-   - In Mobile POS App -> Analytics -> tap "View PDF".
-   - Bottom sheet opens with clickable checkboxes:
-     - [X] Financial Overview
-     - [X] Menu Analytics
-   - Uncheck Menu Analytics -> tap "Download Selected PDF (1)" -> only Financial Overview PDF is downloaded.
-   - Uncheck Financial Overview, check Menu Analytics -> tap "Download Selected PDF (1)" -> only Menu Analytics PDF is downloaded.
-   - Check both -> tap "Download Selected PDF (2)" -> unified PDF with both sections is downloaded.
-   - Uncheck both -> button is disabled.
-2. Cancel Recharge Guard:
-   - Recharge card with Rs. 500 -> Cancel button is enabled.
-   - Recharge card again with Rs. 200 without cancelling the first.
-   - Open Top-up History -> Rs. 200 recharge has active Cancel button; Rs. 500 recharge has disabled Cancel button with text "Cannot cancel: wallet was recharged again".
+### Step 5 — Automated Test Suites
+- Backend Tests:
+  - `Backend Money Card/test/unit/cross_counter_purchase.test.ts`:
+    - Test purchase by Counter B staff on Counter A wallet (succeeds, sets `Transaction.branchId = Counter B`).
+    - Test return by Counter B staff on Counter A wallet (fails with 403 `RETURN_COUNTER_MISMATCH`).
+    - Test return by Counter A staff on Counter A wallet (succeeds).
+    - Test analytics endpoint returns counter names and food item details.
+- Frontend Tests:
+  - `Frontend Money Card/src/__tests__/foodPurchasesAnalytics.test.ts`:
+    - Test table rendering with issuing counter, purchasing counter, and food items.
+- Mobile Flutter Tests:
+  - `Flutter Money card/test/features/sessions/return_routing_test.dart`:
+    - Test return button disabled or blocked when branch does not match issuing counter.

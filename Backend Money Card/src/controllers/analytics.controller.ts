@@ -213,6 +213,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
         session: {
           include: {
             card: true,
+            branch: true,
           },
         },
       },
@@ -360,7 +361,30 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     quantitySold: number;
     totalRevenue: number;
     orderCount: number;
+    branchBreakdown?: Record<string, { branchName: string; quantitySold: number; totalRevenue: number }>;
   }>();
+
+  const foodPurchasesByCounter: Array<{
+    id: string;
+    createdAt: string;
+    sessionCardNumber: string;
+    issuingBranchId: string;
+    issuingBranchName: string;
+    purchasingBranchId: string;
+    purchasingBranchName: string;
+    isCrossCounter: boolean;
+    items: Array<{
+      productId: string;
+      productName: string;
+      quantity: number;
+      unitPrice: number;
+      subtotal: number;
+    }>;
+    totalAmount: number;
+  }> = [];
+
+  let crossCounterPurchasesCount = 0;
+  let crossCounterRevenue = 0;
 
   const branchMetricsMap = new Map<string, {
     branchId: string;
@@ -546,18 +570,38 @@ export async function getOrgAnalytics(req: Request, res: Response) {
         : Array.isArray((rawItems as any)?.orderItems)
         ? (rawItems as any).orderItems
         : [];
+      const cardNum = tx.session?.card?.physicalCardNumber || tx.session?.sessionCardNumber || 'MC-Card';
+      const issuingBId = tx.session?.branchId || tx.branchId;
+      const issuingBName = (tx.session as any)?.branch?.name || tx.branch?.name || 'Counter';
+      const purchasingBId = tx.branchId;
+      const purchasingBName = tx.branch?.name || issuingBName;
+      const isCrossCounter = Boolean(tx.session?.branchId && tx.branchId && tx.session.branchId !== tx.branchId);
+
+      if (isCrossCounter) {
+        crossCounterPurchasesCount++;
+        crossCounterRevenue += tx.amount;
+      }
+
       if (orderList.length > 0) {
         let pMap = branchKey ? branchProductDemandMap.get(branchKey) : undefined;
         if (!pMap && branchKey) {
           pMap = new Map();
           branchProductDemandMap.set(branchKey, pMap);
         }
+        const parsedItems: any[] = [];
         orderList.forEach((it) => {
           const pId = String(it.productId || it.id || it.product_id || 'unknown');
           const pName = String(it.itemName || it.productName || it.name || it.item_name || 'Food Item');
           const qty = Math.max(1, Number(it.quantity || it.qty || 1));
           const unitPrice = Number(it.unitPrice || it.price || 0);
           const rev = Number(it.subtotal || it.total || (unitPrice ? unitPrice * qty : 0));
+          parsedItems.push({
+            productId: pId,
+            productName: pName,
+            quantity: qty,
+            unitPrice,
+            subtotal: rev,
+          });
           rootProductsSoldCount += qty;
           if (bm) {
             bm.productsSoldCount += qty;
@@ -575,6 +619,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
             quantitySold: 0,
             totalRevenue: 0,
             orderCount: 0,
+            branchBreakdown: {} as Record<string, { branchName: string; quantitySold: number; totalRevenue: number }>,
           };
           overall.quantitySold += qty;
           overall.totalRevenue = Number((overall.totalRevenue + rev).toFixed(2));
@@ -582,13 +627,60 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           if (!overall.unitPrice && unitPrice > 0) {
             overall.unitPrice = unitPrice;
           }
+          if (purchasingBId) {
+            if (!overall.branchBreakdown) {
+              overall.branchBreakdown = {};
+            }
+            if (!overall.branchBreakdown[purchasingBId]) {
+              overall.branchBreakdown[purchasingBId] = {
+                branchName: purchasingBName,
+                quantitySold: 0,
+                totalRevenue: 0,
+              };
+            }
+            overall.branchBreakdown[purchasingBId].quantitySold += qty;
+            overall.branchBreakdown[purchasingBId].totalRevenue = Number(
+              (overall.branchBreakdown[purchasingBId].totalRevenue + rev).toFixed(2)
+            );
+          }
           allProductDemandMap.set(pId, overall);
+        });
+
+        foodPurchasesByCounter.push({
+          id: tx.id,
+          createdAt: tx.createdAt.toISOString(),
+          sessionCardNumber: cardNum,
+          issuingBranchId: issuingBId,
+          issuingBranchName: issuingBName,
+          purchasingBranchId: purchasingBId,
+          purchasingBranchName: purchasingBName,
+          isCrossCounter,
+          items: parsedItems,
+          totalAmount: Number(tx.amount.toFixed(2)),
         });
       } else {
         rootProductsSoldCount++;
         if (bm) {
           bm.productsSoldCount++;
         }
+        foodPurchasesByCounter.push({
+          id: tx.id,
+          createdAt: tx.createdAt.toISOString(),
+          sessionCardNumber: cardNum,
+          issuingBranchId: issuingBId,
+          issuingBranchName: issuingBName,
+          purchasingBranchId: purchasingBId,
+          purchasingBranchName: purchasingBName,
+          isCrossCounter,
+          items: [{
+            productId: 'custom',
+            productName: 'POS Order',
+            quantity: 1,
+            unitPrice: tx.amount,
+            subtotal: tx.amount,
+          }],
+          totalAmount: Number(tx.amount.toFixed(2)),
+        });
       }
     } else if (txType === 'RECHARGE_CASH' || paymentMethod === 'CASH' || paymentMethod === 'CARD' || txType === 'CASH') {
       totalRechargeVolume += tx.amount;
@@ -1040,6 +1132,13 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     dishesOrderedCount: allProductDemandMap.size,
     allProductDemand: Array.from(allProductDemandMap.values()).sort(
       (a, b) => b.quantitySold - a.quantitySold || b.totalRevenue - a.totalRevenue,
+    ),
+
+    // Cross-Counter and Food Purchases by Counter
+    crossCounterPurchasesCount,
+    crossCounterRevenue: Number(crossCounterRevenue.toFixed(2)),
+    foodPurchasesByCounter: foodPurchasesByCounter.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     ),
   });
 }

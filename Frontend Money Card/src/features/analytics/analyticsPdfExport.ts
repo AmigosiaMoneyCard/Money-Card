@@ -799,6 +799,75 @@ export function buildOrgAnalyticsJsPdf({
     }
   }
 
+  // ── Section: Food Purchases by Counter ──
+  if (effectiveSections.includeFoodDemand && analytics.foodPurchasesByCounter && analytics.foodPurchasesByCounter.length > 0) {
+    if (hasAnySection && curY > 210) {
+      curY = addNewPage();
+    }
+    hasAnySection = true;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${sectionCounter}. Food Purchases by Counter`, margin, curY);
+    sectionCounter++;
+
+    const purchasesTableY = curY + 2;
+    doc.setFillColor(241, 245, 249);
+    doc.setDrawColor(203, 213, 225);
+    doc.rect(margin, purchasesTableY, contentWidth, 7, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(51, 65, 85);
+    doc.text('Card ID', margin + 2, purchasesTableY + 5);
+    doc.text('Issuing Counter', margin + 35, purchasesTableY + 5);
+    doc.text('Purchased At', margin + 75, purchasesTableY + 5);
+    doc.text('Food Items', margin + 115, purchasesTableY + 5);
+    doc.text('Total Amount', margin + 180, purchasesTableY + 5, { align: 'right' });
+
+    curY = purchasesTableY + 7;
+    const purchasesList = analytics.foodPurchasesByCounter.slice(0, 50);
+
+    purchasesList.forEach((p, idx) => {
+      if (curY > 265) {
+        curY = addNewPage();
+        doc.setFillColor(241, 245, 249);
+        doc.setDrawColor(203, 213, 225);
+        doc.rect(margin, curY, contentWidth, 7, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7);
+        doc.setTextColor(51, 65, 85);
+        doc.text('Card ID (Cont.)', margin + 2, curY + 5);
+        doc.text('Issuing Counter', margin + 35, curY + 5);
+        doc.text('Purchased At', margin + 75, curY + 5);
+        doc.text('Food Items', margin + 115, curY + 5);
+        doc.text('Total Amount', margin + 180, curY + 5, { align: 'right' });
+        curY += 7;
+      }
+
+      if (idx % 2 === 1) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(margin, curY, contentWidth, 6, 'F');
+      }
+      doc.setDrawColor(226, 232, 240);
+      doc.line(margin, curY + 6, margin + contentWidth, curY + 6);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(51, 65, 85);
+      doc.text(p.sessionCardNumber.substring(0, 16), margin + 2, curY + 4.5);
+      doc.text(p.issuingBranchName.substring(0, 18), margin + 35, curY + 4.5);
+      doc.text(p.purchasingBranchName.substring(0, 18), margin + 75, curY + 4.5);
+      const itemsSummary = p.items.map((it) => `${it.quantity}x ${it.productName}`).join(', ');
+      doc.text(itemsSummary.substring(0, 36), margin + 115, curY + 4.5);
+      doc.text(formatPdfCurrency(p.totalAmount), margin + 180, curY + 4.5, { align: 'right' });
+
+      curY += 6;
+    });
+    curY += 6;
+  }
+
   // Empty state if no section is selected
   if (!hasAnySection) {
     doc.setFillColor(248, 250, 252);

@@ -354,6 +354,17 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     final card = _resolvedCard;
     if (session == null || card == null) return;
 
+    final currentBranch = ref.read(currentBranchProvider);
+    if (currentBranch != null && session.branchId.isNotEmpty && session.branchId != currentBranch.id) {
+      await AppDialog.show(
+        context,
+        title: 'Return Not Allowed at this Counter',
+        message: 'This wallet was issued at another counter. Wallets can only be returned and settled at the counter where they were issued.',
+        confirmLabel: 'Understood',
+      );
+      return;
+    }
+
     final confirm = await AppDialog.show(
       context,
       title: 'Confirm Wallet Return & Settlement',
@@ -397,9 +408,15 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
         setState(() {
           _isResolving = false;
         });
+        final isMismatch = e.toString().contains('RETURN_COUNTER_MISMATCH') ||
+            e.toString().contains('where it was issued');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Settlement failed: $e'),
+            content: Text(
+              isMismatch
+                  ? 'This wallet must be returned at the counter where it was issued.'
+                  : 'Settlement failed: $e',
+            ),
             backgroundColor: AppColors.error,
           ),
         );
@@ -1482,6 +1499,26 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                             ),
                           ],
                         ),
+                        if (ref.watch(currentBranchProvider) != null &&
+                            session.branchId.isNotEmpty &&
+                            session.branchId != ref.watch(currentBranchProvider)!.id) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppColors.warningLight,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'Issued at another counter. Return/refund only at issuing counter.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.warning,
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 14),
                         Row(
                           children: [
@@ -1490,17 +1527,31 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                                 icon: const Icon(Icons.payments_outlined, size: 16),
                                 label: const Text('Refund', style: TextStyle(fontWeight: FontWeight.bold)),
                                 style: OutlinedButton.styleFrom(
-                                  foregroundColor: session.balance > 0 ? AppColors.warning : Colors.grey,
+                                  foregroundColor: session.balance > 0 &&
+                                          (ref.watch(currentBranchProvider) == null ||
+                                              session.branchId.isEmpty ||
+                                              session.branchId == ref.watch(currentBranchProvider)!.id)
+                                      ? AppColors.warning
+                                      : Colors.grey,
                                   side: BorderSide(
-                                    color: session.balance > 0 ? AppColors.warning : Colors.grey.shade300,
+                                    color: session.balance > 0 &&
+                                            (ref.watch(currentBranchProvider) == null ||
+                                                session.branchId.isEmpty ||
+                                                session.branchId == ref.watch(currentBranchProvider)!.id)
+                                        ? AppColors.warning
+                                        : Colors.grey.shade300,
                                   ),
                                   padding: const EdgeInsets.symmetric(vertical: 10),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                 ),
-                                onPressed: () {
-                                  Navigator.of(sheetCtx).pop();
-                                  _handleRefundOnly(session);
-                                },
+                                onPressed: (ref.watch(currentBranchProvider) != null &&
+                                        session.branchId.isNotEmpty &&
+                                        session.branchId != ref.watch(currentBranchProvider)!.id)
+                                    ? null
+                                    : () {
+                                        Navigator.of(sheetCtx).pop();
+                                        _handleRefundOnly(session);
+                                      },
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -1509,16 +1560,24 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                                 icon: const Icon(Icons.assignment_return_outlined, size: 16),
                                 label: const Text('Return', style: TextStyle(fontWeight: FontWeight.bold)),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.error,
+                                  backgroundColor: (ref.watch(currentBranchProvider) != null &&
+                                          session.branchId.isNotEmpty &&
+                                          session.branchId != ref.watch(currentBranchProvider)!.id)
+                                      ? Colors.grey.shade400
+                                      : AppColors.error,
                                   foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(vertical: 10),
                                   elevation: 0,
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                 ),
-                                onPressed: () {
-                                  Navigator.of(sheetCtx).pop();
-                                  _handleSettleReturn();
-                                },
+                                onPressed: (ref.watch(currentBranchProvider) != null &&
+                                        session.branchId.isNotEmpty &&
+                                        session.branchId != ref.watch(currentBranchProvider)!.id)
+                                    ? null
+                                    : () {
+                                        Navigator.of(sheetCtx).pop();
+                                        _handleSettleReturn();
+                                      },
                               ),
                             ),
                           ],
@@ -1645,6 +1704,17 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
   }
 
   Future<void> _handleRefundOnly(CardSession session) async {
+    final currentBranch = ref.read(currentBranchProvider);
+    if (currentBranch != null && session.branchId.isNotEmpty && session.branchId != currentBranch.id) {
+      await AppDialog.show(
+        context,
+        title: 'Refund Not Allowed at this Counter',
+        message: 'This wallet was issued at another counter. Refunds can only be processed at the counter where the wallet was issued.',
+        confirmLabel: 'Understood',
+      );
+      return;
+    }
+
     if (session.balance <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -1696,9 +1766,15 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
         setState(() {
           _isResolving = false;
         });
+        final isMismatch = e.toString().contains('RETURN_COUNTER_MISMATCH') ||
+            e.toString().contains('where it was issued');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Refund failed: $e'),
+            content: Text(
+              isMismatch
+                  ? 'This wallet must be returned at the counter where it was issued.'
+                  : 'Refund failed: $e',
+            ),
             backgroundColor: AppColors.error,
           ),
         );

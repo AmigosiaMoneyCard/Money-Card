@@ -112,6 +112,8 @@ export type {
   CardFleetAnalytics,
   CardFleetTrackItem,
   ProductDemandItem,
+  FoodPurchaseItem,
+  FoodPurchaseRecord,
 } from './analytics';
 
 export type {

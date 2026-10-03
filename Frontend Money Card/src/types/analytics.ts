@@ -134,6 +134,9 @@ export interface AnalyticsOverview {
   productsSoldCount?: number;
   dishesOrderedCount?: number;
   allProductDemand?: ProductDemandItem[];
+  crossCounterPurchasesCount?: number;
+  crossCounterRevenue?: number;
+  foodPurchasesByCounter?: FoodPurchaseRecord[];
   rechargeVolume?: number;
   salesVolume?: number;
   salesCount?: number;
@@ -146,6 +149,27 @@ export interface AnalyticsOverview {
   blockedBalance?: number;
 }
 
+export interface FoodPurchaseItem {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+}
+
+export interface FoodPurchaseRecord {
+  id: string;
+  createdAt: string;
+  sessionCardNumber: string;
+  issuingBranchId: string;
+  issuingBranchName: string;
+  purchasingBranchId: string;
+  purchasingBranchName: string;
+  isCrossCounter: boolean;
+  items: FoodPurchaseItem[];
+  totalAmount: number;
+}
+
 export interface ProductDemandItem {
   productId: string;
   productName: string;
@@ -153,6 +177,7 @@ export interface ProductDemandItem {
   quantitySold: number;
   totalRevenue: number;
   orderCount?: number;
+  branchBreakdown?: Record<string, { branchName: string; quantitySold: number; totalRevenue: number }>;
 }
 
 export interface CardFleetTrackItem {

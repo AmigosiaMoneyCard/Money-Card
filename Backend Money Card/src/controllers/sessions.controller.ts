@@ -420,7 +420,7 @@ export async function rechargeSession(req: Request, res: Response) {
 
 export async function purchaseSession(req: Request, res: Response) {
   const { id } = req.params;
-  const { items } = req.body;
+  const { items, branchId: requestedBranchId } = req.body;
   const orgId = req.user?.organizationId;
 
   if (!Array.isArray(items) || items.length === 0) {
@@ -444,8 +444,26 @@ export async function purchaseSession(req: Request, res: Response) {
     return sendError(res, 400, 'CARD_BLOCKED', 'Card is blocked');
   }
 
-  if (req.user?.role === 'STAFF' && !req.user.assignedBranchIds.includes(session.branchId)) {
-    return sendError(res, 403, 'BRANCH_ACCESS_DENIED', 'You are not authorized to make purchases on a session belonging to another branch');
+  // Determine effective purchasing branch (supports cross-counter purchase within same org):
+  let effectiveBranchId = requestedBranchId || (req.headers['x-branch-id'] as string) || session.branchId;
+
+  if (req.user?.role === 'STAFF') {
+    if (requestedBranchId && !req.user.assignedBranchIds.includes(requestedBranchId)) {
+      return sendError(res, 403, 'BRANCH_ACCESS_DENIED', 'You are not authorized to make purchases for another branch');
+    }
+    if (!requestedBranchId && req.user.assignedBranchIds.length > 0) {
+      effectiveBranchId = req.user.assignedBranchIds.includes(effectiveBranchId)
+        ? effectiveBranchId
+        : req.user.assignedBranchIds[0];
+    }
+  }
+
+  const purchasingBranch = await prisma.branch.findFirst({
+    where: { id: effectiveBranchId, organizationId: orgId || session.organizationId },
+  });
+
+  if (!purchasingBranch || purchasingBranch.status !== 'ACTIVE') {
+    return sendError(res, 403, 'BRANCH_INACTIVE', 'This branch location is currently disabled or inactive');
   }
 
   // Calculate total and validate stock inside atomic transaction
@@ -455,8 +473,11 @@ export async function purchaseSession(req: Request, res: Response) {
       const detailedItems: any[] = [];
 
       for (const it of items) {
-        const product = await tx.product.findUnique({
-          where: { id: it.productId },
+        const product = await tx.product.findFirst({
+          where: {
+            id: it.productId,
+            organizationId: session.organizationId,
+          },
         });
 
         if (!product) {
@@ -501,7 +522,7 @@ export async function purchaseSession(req: Request, res: Response) {
       const txRecord = await tx.transaction.create({
         data: {
           sessionId: session.id,
-          branchId: session.branchId,
+          branchId: effectiveBranchId,
           staffUserId: req.user?.id,
           type: TransactionType.PURCHASE,
           amount: totalCost,
@@ -549,6 +570,10 @@ export async function returnSession(req: Request, res: Response) {
 
   if (!session) {
     return sendError(res, 404, 'NOT_FOUND', 'Session not found');
+  }
+
+  if (req.user?.role === 'STAFF' && !req.user.assignedBranchIds.includes(session.branchId)) {
+    return sendError(res, 403, 'RETURN_COUNTER_MISMATCH', 'This card must be returned at the counter where it was issued');
   }
 
   if (session.status === SessionStatus.SETTLED) {
@@ -628,7 +653,7 @@ export async function refundSessionBalance(req: Request, res: Response) {
   }
 
   if (req.user?.role === 'STAFF' && !req.user.assignedBranchIds.includes(session.branchId)) {
-    return sendError(res, 403, 'BRANCH_ACCESS_DENIED', 'You are not authorized to refund a session belonging to another branch');
+    return sendError(res, 403, 'RETURN_COUNTER_MISMATCH', 'This card must be returned at the counter where it was issued');
   }
 
   const refundAmount = session.balance;

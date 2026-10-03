@@ -43,6 +43,17 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
   }
 
   Future<void> _handleConfirmReturn(CardSession session) async {
+    final currentBranch = ref.read(currentBranchProvider);
+    if (currentBranch != null && session.branchId.isNotEmpty && session.branchId != currentBranch.id) {
+      await AppDialog.show(
+        context,
+        title: 'Return Not Allowed at this Counter',
+        message: 'This wallet was issued at another counter. Wallets can only be returned and settled at the counter where they were issued.',
+        confirmLabel: 'Understood',
+      );
+      return;
+    }
+
     final returnNotifier = ref.read(returnCardNotifierProvider.notifier);
 
     final confirm = await AppDialog.show(
@@ -69,6 +80,17 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
   }
 
   Future<void> _handleRefundOnly(CardSession session) async {
+    final currentBranch = ref.read(currentBranchProvider);
+    if (currentBranch != null && session.branchId.isNotEmpty && session.branchId != currentBranch.id) {
+      await AppDialog.show(
+        context,
+        title: 'Refund Not Allowed at this Counter',
+        message: 'This wallet was issued at another counter. Refunds can only be processed at the counter where the wallet was issued.',
+        confirmLabel: 'Understood',
+      );
+      return;
+    }
+
     if (session.balance <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -119,9 +141,15 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
         setState(() {
           _isRefunding = false;
         });
+        final isMismatch = e.toString().contains('RETURN_COUNTER_MISMATCH') ||
+            e.toString().contains('where it was issued');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Refund failed: $e'),
+            content: Text(
+              isMismatch
+                  ? 'This wallet must be returned at the counter where it was issued.'
+                  : 'Refund failed: $e',
+            ),
             backgroundColor: AppColors.error,
           ),
         );
@@ -199,6 +227,8 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
     }
 
     final isSettled = session.status == SessionStatus.settled;
+    final currentBranch = ref.watch(currentBranchProvider);
+    final isCounterMismatch = currentBranch != null && session.branchId.isNotEmpty && session.branchId != currentBranch.id;
 
     return Scaffold(
       appBar: AppBar(
@@ -208,6 +238,33 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
         child: ListView(
           padding: AppSpacing.paddingMd,
           children: [
+            if (isCounterMismatch) ...[
+              Container(
+                padding: AppSpacing.paddingMd,
+                margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.warningLight,
+                  borderRadius: AppSpacing.roundedSm,
+                  border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: AppColors.warning, size: 20),
+                    const SizedBox(width: AppSpacing.xs),
+                    const Expanded(
+                      child: Text(
+                        'This wallet was issued at another counter. Wallets can only be returned and refunded at the counter where they were issued.',
+                        style: TextStyle(
+                          color: AppColors.textPrimaryLight,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             // Session Overview Card
             AppCard(
               padding: AppSpacing.paddingLg,
@@ -259,14 +316,14 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
                           icon: const Icon(Icons.payments_outlined, size: 16),
                           label: const Text('Refund', style: TextStyle(fontWeight: FontWeight.bold)),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: session.balance > 0 ? AppColors.warning : Colors.grey,
+                            foregroundColor: session.balance > 0 && !isCounterMismatch ? AppColors.warning : Colors.grey,
                             side: BorderSide(
-                              color: session.balance > 0 ? AppColors.warning : Colors.grey.shade300,
+                              color: session.balance > 0 && !isCounterMismatch ? AppColors.warning : Colors.grey.shade300,
                             ),
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
-                          onPressed: isSettled || _isRefunding || returnState.isSubmitting
+                          onPressed: isSettled || isCounterMismatch || _isRefunding || returnState.isSubmitting
                               ? null
                               : () => _handleRefundOnly(session),
                         ),
@@ -277,13 +334,13 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
                           icon: const Icon(Icons.assignment_return_outlined, size: 16),
                           label: const Text('Return', style: TextStyle(fontWeight: FontWeight.bold)),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.error,
+                            backgroundColor: isCounterMismatch ? Colors.grey.shade400 : AppColors.error,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             elevation: 0,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
-                          onPressed: isSettled || _isRefunding || returnState.isSubmitting
+                          onPressed: isSettled || isCounterMismatch || _isRefunding || returnState.isSubmitting
                               ? null
                               : () => _handleConfirmReturn(session),
                         ),
