@@ -42,29 +42,39 @@ export async function getStaffList(req: Request, res: Response) {
     role: Role.STAFF,
   };
 
-  // If the user is STAFF (counter manager), restrict to staff sharing their assigned branch(es)
+  const andConditions: any[] = [];
+
+  // If the user is STAFF (counter manager), restrict to staff sharing their assigned branch(es) or unassigned org staff
   if (req.user?.role === Role.STAFF) {
     const counterBranches = await prisma.userBranch.findMany({
       where: { userId: req.user.id },
       select: { branchId: true },
     });
     const branchIds = counterBranches.map((b) => b.branchId);
-    where.assignedBranches = {
-      some: {
-        branchId: { in: branchIds },
-      },
-    };
-    where.id = { not: req.user.id };
+    if (branchIds.length > 0) {
+      andConditions.push({
+        OR: [
+          { assignedBranches: { some: { branchId: { in: branchIds } } } },
+          { assignedBranches: { none: {} } },
+        ],
+      });
+    }
   }
 
   const { search } = req.query;
   if (typeof search === 'string' && search.trim()) {
     const q = search.trim();
-    where.OR = [
-      { name: { contains: q, mode: 'insensitive' } },
-      { phone: { contains: q, mode: 'insensitive' } },
-      { email: { contains: q, mode: 'insensitive' } },
-    ];
+    andConditions.push({
+      OR: [
+        { name: { contains: q, mode: 'insensitive' } },
+        { phone: { contains: q, mode: 'insensitive' } },
+        { email: { contains: q, mode: 'insensitive' } },
+      ],
+    });
+  }
+
+  if (andConditions.length > 0) {
+    where.AND = andConditions;
   }
 
   const staffMembers = await prisma.user.findMany({
