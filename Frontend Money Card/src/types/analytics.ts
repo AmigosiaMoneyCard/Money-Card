@@ -143,6 +143,7 @@ export interface AnalyticsOverview {
   refundCount?: number;
   totalFloatBalance?: number;
   blockedCardsCount?: number;
+  blockedBalance?: number;
 }
 
 export interface ProductDemandItem {
@@ -173,6 +174,7 @@ export interface CardFleetAnalytics {
   totalFloatBalance: number;
   dormantCardsCount: number;
   blockedCardsCount: number;
+  blockedBalance?: number;
   availableCardsCount: number;
   topActiveCards: CardFleetTrackItem[];
   dormantCards: CardFleetTrackItem[];

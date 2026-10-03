@@ -216,6 +216,7 @@ export function OrgAdminAnalyticsView() {
       ) : activeTab === 'cards' ? (
         <OrgAdminCardTracker
           cardFleet={analytics?.cardFleetAnalytics}
+          blockedBalance={analytics?.blockedBalance ?? analytics?.cardFleetAnalytics?.blockedBalance ?? 0}
           closedCardsCount={analytics?.closedCardsCount}
           zeroBalanceActiveCardsCount={analytics?.zeroBalanceActiveCardsCount}
           activeCardsRechargeCount={analytics?.activeCardsRechargeCount}

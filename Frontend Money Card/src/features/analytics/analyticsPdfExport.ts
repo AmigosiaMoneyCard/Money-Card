@@ -252,9 +252,9 @@ export function buildOrgAnalyticsJsPdf({
         sub: 'Completed wallet sessions',
       },
       {
-        label: 'Blocked Wallets',
-        val: `${fleet?.blockedCardsCount ?? 0} Wallets`,
-        sub: 'Locked due to security / loss',
+        label: 'Blocked Balance',
+        val: formatPdfCurrency(fleet?.blockedBalance ?? analytics.blockedBalance ?? 0),
+        sub: 'Locked in blocked cards',
       },
       {
         label: 'Zero Balance',

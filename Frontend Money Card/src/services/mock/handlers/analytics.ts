@@ -530,6 +530,7 @@ export const mockAnalyticsHandlers = {
     });
 
     let totalFloatBalance = 0;
+    let blockedBalance = 0;
     const allFleetItems: CardFleetTrackItem[] = [];
     const now = Date.now();
     const fourteenDaysMs = 14 * 24 * 60 * 60 * 1000;
@@ -542,6 +543,8 @@ export const mockAnalyticsHandlers = {
 
       if (c.status === 'ACTIVE') {
         totalFloatBalance += cardBalance;
+      } else if (c.status === 'BLOCKED') {
+        blockedBalance += cardBalance;
       }
 
       const cardTxns = mockStore.transactions.filter(
@@ -614,6 +617,7 @@ export const mockAnalyticsHandlers = {
       totalFloatBalance: Number(totalFloatBalance.toFixed(2)),
       dormantCardsCount: dormantCards.length,
       blockedCardsCount,
+      blockedBalance: Number(blockedBalance.toFixed(2)),
       availableCardsCount,
       topActiveCards,
       dormantCards: dormantCards.slice(0, 10),
@@ -640,6 +644,7 @@ export const mockAnalyticsHandlers = {
       refundCount: totalRefundCount,
       netMoneyCollected: Number((totalRechargeVolume - totalRefundVolume).toFixed(2)),
       blockedCardsCount,
+      blockedBalance: Number(blockedBalance.toFixed(2)),
       activeSessionsCount,
       activeCardsCount,
       lowStockItemsCount,

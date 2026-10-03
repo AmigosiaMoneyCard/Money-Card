@@ -742,6 +742,12 @@ export async function getOrgAnalytics(req: Request, res: Response) {
   const totalFloatBalance = Number(
     activeSessionsList.reduce((acc, s) => acc + (s.balance || 0), 0).toFixed(2),
   );
+  const blockedBalance = Number(
+    activeSessionsList
+      .filter((s) => s.card?.status === 'BLOCKED')
+      .reduce((acc, s) => acc + (s.balance || 0), 0)
+      .toFixed(2),
+  );
   const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
 
   const cardItems = activeSessionsList.map((s) => {
@@ -793,6 +799,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
   const cardFleetAnalytics = {
     totalCardsInCirculation: activeSessionsCount,
     totalFloatBalance,
+    blockedBalance,
     dormantCardsCount: dormantCardsList.length,
     blockedCardsCount,
     availableCardsCount,
@@ -1025,6 +1032,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     refundVolume: Number(totalRefundVolume.toFixed(2)),
     totalFloatBalance,
     blockedCardsCount,
+    blockedBalance,
 
     // Menu Analytics & Food Order Metrics
     foodOrdersCount,
