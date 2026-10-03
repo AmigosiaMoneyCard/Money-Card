@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Staff, Card } from '@/types';
+import { MANAGER_PERMISSIONS, KITCHEN_PERMISSIONS } from '@/features/staff/constants';
 
 describe('Staff Role Toggle and Blocked Wallets Segmentation Tests', () => {
   // Helper matching StaffPage role detection logic
@@ -229,54 +230,30 @@ describe('Staff Role Toggle and Blocked Wallets Segmentation Tests', () => {
     expect(resolvedMoneyAdded).toBe(2200);
   });
 
-  it('correctly handles checkbox toggling with prerequisite auto-selection and cascading revocation', () => {
-    const dependencies: Record<string, string[]> = {
-      CARD_ISSUE: ['CARD_VIEW'],
-      CARD_RETURN: ['CARD_VIEW'],
-      CARD_BLOCK: ['CARD_VIEW'],
-      CARD_UNBLOCK: ['CARD_VIEW'],
-      PRODUCT_MANAGE: ['PRODUCT_VIEW'],
-      REFUND: ['SESSION_VIEW'],
-    };
+  it('correctly maps roles and permissions between Counter Manager and Kitchen Staff', () => {
+    let roleType: 'MANAGER' | 'KITCHEN' = 'MANAGER';
+    let permissions = [...MANAGER_PERMISSIONS];
 
-    const children: Record<string, string[]> = {
-      CARD_VIEW: ['CARD_ISSUE', 'CARD_RETURN', 'CARD_BLOCK', 'CARD_UNBLOCK'],
-      PRODUCT_VIEW: ['PRODUCT_MANAGE'],
-      SESSION_VIEW: ['REFUND'],
-    };
+    expect(roleType).toBe('MANAGER');
+    expect(permissions).toEqual(MANAGER_PERMISSIONS);
+    expect(permissions.includes('RECHARGE')).toBe(true);
+    expect(permissions.includes('CARD_ISSUE')).toBe(true);
 
-    let selected = new Set<string>();
+    // Switching to Kitchen Staff
+    roleType = 'KITCHEN';
+    permissions = [...KITCHEN_PERMISSIONS];
 
-    // 1. Checking CARD_ISSUE should automatically check CARD_VIEW prerequisite
-    const checkPermission = (perm: string) => {
-      selected.add(perm);
-      const prereqs = dependencies[perm];
-      if (prereqs) {
-        prereqs.forEach((p) => selected.add(p));
-      }
-    };
+    expect(roleType).toBe('KITCHEN');
+    expect(permissions).toEqual(KITCHEN_PERMISSIONS);
+    expect(permissions.includes('RECHARGE')).toBe(false);
+    expect(permissions.includes('PRODUCT_VIEW')).toBe(true);
 
-    checkPermission('CARD_ISSUE');
-    expect(selected.has('CARD_ISSUE')).toBe(true);
-    expect(selected.has('CARD_VIEW')).toBe(true);
+    // Switching back to Counter Manager
+    roleType = 'MANAGER';
+    permissions = [...MANAGER_PERMISSIONS];
 
-    // 2. Unchecking CARD_VIEW should cascade and remove CARD_ISSUE
-    const uncheckPermission = (perm: string) => {
-      selected.delete(perm);
-      const dependent = children[perm];
-      if (dependent) {
-        dependent.forEach((d) => selected.delete(d));
-      }
-    };
-
-    uncheckPermission('CARD_VIEW');
-    expect(selected.has('CARD_VIEW')).toBe(false);
-    expect(selected.has('CARD_ISSUE')).toBe(false);
-
-    // 3. Checking REFUND automatically adds SESSION_VIEW
-    checkPermission('REFUND');
-    expect(selected.has('REFUND')).toBe(true);
-    expect(selected.has('SESSION_VIEW')).toBe(true);
+    expect(roleType).toBe('MANAGER');
+    expect(permissions).toEqual(MANAGER_PERMISSIONS);
   });
 });
 

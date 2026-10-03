@@ -50,9 +50,7 @@ import {
   Copy,
   ExternalLink,
   Trash2,
-  ShieldCheck,
 } from 'lucide-react';
-import { PermissionMatrix } from './PermissionMatrix';
 
 const getTodayDateStr = (): string => {
   const now = new Date();
@@ -99,8 +97,7 @@ export function StaffPage() {
 
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [showStaffDetailsModal, setShowStaffDetailsModal] = useState(false);
-  const [staffTab, setStaffTab] = useState<'overview' | 'permissions' | 'branches'>('overview');
-  const [showAddPermissionsSection, setShowAddPermissionsSection] = useState(false);
+  const [staffTab, setStaffTab] = useState<'overview' | 'branches'>('overview');
 
   // ── Counter Staff Grouping State ───────────────────────────
   const [selectedCounterGroup, setSelectedCounterGroup] = useState<CounterStaffGroup | null>(null);
@@ -459,7 +456,6 @@ export function StaffPage() {
     setFormPermissions([...MANAGER_PERMISSIONS]);
     setFormErrors({});
     setModalApiError(null);
-    setShowAddPermissionsSection(false);
     setAddTab('basic');
     setShowAddModal(true);
   };
@@ -514,9 +510,7 @@ export function StaffPage() {
     try {
       const clean10Phone = formPhone.trim().replace(/\D/g, '').slice(-10);
       const finalPermissions =
-        formPermissions.length > 0
-          ? formPermissions
-          : formRoleType === 'MANAGER'
+        formRoleType === 'MANAGER'
           ? [...MANAGER_PERMISSIONS]
           : [...KITCHEN_PERMISSIONS];
 
@@ -564,7 +558,7 @@ export function StaffPage() {
 
   const handleOpenStaffModal = (
     staff: Staff,
-    initialTab: 'overview' | 'permissions' | 'branches' = 'overview',
+    initialTab: 'overview' | 'branches' = 'overview',
   ) => {
     setSelectedStaff(staff);
     setFormName(formatStaffDisplayName(staff.name, staff.assignedBranchIds));
@@ -1467,22 +1461,6 @@ export function StaffPage() {
 
             <button
               type="button"
-              onClick={() => setStaffTab('permissions')}
-              className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap cursor-pointer ${
-                staffTab === 'permissions'
-                  ? 'border-emerald-600 text-emerald-700 font-semibold'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <ShieldCheck className="h-4 w-4" />
-              <span>Permissions</span>
-              <Badge variant="outline" className="text-[10px] ml-1">
-                {formPermissions.length}
-              </Badge>
-            </button>
-
-            <button
-              type="button"
               onClick={() => setStaffTab('branches')}
               className={`flex items-center gap-2 pb-3 px-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap cursor-pointer ${
                 staffTab === 'branches'
@@ -1503,7 +1481,7 @@ export function StaffPage() {
             {/* ── TAB 1: OVERVIEW (PROFILE & INTEGRATED SECURITY) ── */}
             {staffTab === 'overview' && (
               <div className="space-y-4 py-1">
-                {/* Role Switcher: Manager vs Kitchen Staff */}
+                {/* Role Switcher: Manager vs Kitchen Staff (2 separate boxes with just the name) */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-slate-700">Staff Role & Permissions</label>
                   <div className="grid grid-cols-2 gap-3">
@@ -1514,28 +1492,20 @@ export function StaffPage() {
                         setFormRoleType('MANAGER');
                         setFormPermissions([...MANAGER_PERMISSIONS]);
                       }}
-                      className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
                         formRoleType === 'MANAGER'
-                          ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20'
+                          ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20 shadow-2xs'
                           : 'border-slate-200 hover:border-slate-300 bg-white'
                       }`}
                     >
-                      <div className="flex items-center justify-between w-full mb-1">
-                        <span className="text-xs font-bold text-slate-900">Counter Manager</span>
-                        <div
-                          className={`h-4 w-4 rounded-full border flex items-center justify-center ${
-                            formRoleType === 'MANAGER' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300'
-                          }`}
-                        >
-                          {formRoleType === 'MANAGER' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
-                        </div>
+                      <span className="text-xs font-bold text-slate-900">Counter Manager</span>
+                      <div
+                        className={`h-4.5 w-4.5 rounded-full border flex items-center justify-center shrink-0 ${
+                          formRoleType === 'MANAGER' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300'
+                        }`}
+                      >
+                        {formRoleType === 'MANAGER' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
                       </div>
-                      <p className="text-[11px] text-slate-500 leading-snug">
-                        Full POS billing, card top-up, returns, and queue tracking.
-                      </p>
-                      <span className="mt-2 inline-flex items-center text-[10px] font-medium text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded">
-                        Full POS Access
-                      </span>
                     </button>
 
                     <button
@@ -1545,40 +1515,20 @@ export function StaffPage() {
                         setFormRoleType('KITCHEN');
                         setFormPermissions([...KITCHEN_PERMISSIONS]);
                       }}
-                      className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
                         formRoleType === 'KITCHEN'
-                          ? 'border-blue-600 bg-blue-50/50 ring-2 ring-blue-500/20'
+                          ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20 shadow-2xs'
                           : 'border-slate-200 hover:border-slate-300 bg-white'
                       }`}
                     >
-                      <div className="flex items-center justify-between w-full mb-1">
-                        <span className="text-xs font-bold text-slate-900">Kitchen Staff</span>
-                        <div
-                          className={`h-4 w-4 rounded-full border flex items-center justify-center ${
-                            formRoleType === 'KITCHEN' ? 'border-blue-600 bg-blue-600' : 'border-slate-300'
-                          }`}
-                        >
-                          {formRoleType === 'KITCHEN' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
-                        </div>
+                      <span className="text-xs font-bold text-slate-900">Kitchen Staff</span>
+                      <div
+                        className={`h-4.5 w-4.5 rounded-full border flex items-center justify-center shrink-0 ${
+                          formRoleType === 'KITCHEN' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300'
+                        }`}
+                      >
+                        {formRoleType === 'KITCHEN' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
                       </div>
-                      <p className="text-[11px] text-slate-500 leading-snug">
-                        Kitchen Display System (KDS), orders queue & menu view/edit.
-                      </p>
-                      <span className="mt-2 inline-flex items-center text-[10px] font-medium text-blue-700 bg-blue-100/70 px-1.5 py-0.5 rounded">
-                        KDS & Menu Control
-                      </span>
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between pt-1">
-                    <span className="text-[11px] text-slate-500">
-                      <strong className="text-emerald-700 font-semibold">{formPermissions.length}</strong> permissions active
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setStaffTab('permissions')}
-                      className="text-xs text-emerald-700 font-semibold hover:underline cursor-pointer flex items-center gap-1"
-                    >
-                      Configure Checkboxes <ArrowRight className="h-3 w-3" />
                     </button>
                   </div>
                 </div>
@@ -1811,24 +1761,7 @@ export function StaffPage() {
               </div>
             )}
 
-            {/* ── TAB 2: PERMISSIONS (CHECKBOX MATRIX) ── */}
-            {staffTab === 'permissions' && (
-              <div className="space-y-4 py-1">
-                <PermissionMatrix
-                  selectedPermissions={formPermissions}
-                  onChange={(newPerms) => {
-                    setFormPermissions(newPerms);
-                  }}
-                  readOnly={!canManage || isSubmitting}
-                  rolePreset={formRoleType}
-                  onRolePresetChange={(preset) => {
-                    setFormRoleType(preset);
-                  }}
-                />
-              </div>
-            )}
-
-            {/* ── TAB 3: COUNTERS ── */}
+            {/* ── TAB 2: COUNTERS ── */}
             {staffTab === 'branches' && (
               <div className="space-y-4">
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
@@ -2351,7 +2284,7 @@ export function StaffPage() {
             {/* ── STEP 1: BASIC INFO ── */}
             {addTab === 'basic' && (
               <div className="space-y-4">
-                {/* Role Type Selection: Manager vs Kitchen Staff */}
+                {/* Role Type Selection: Manager vs Kitchen Staff (2 separate boxes with just the name) */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-slate-700">Staff Role & Mobile App Mode</label>
                   <div className="grid grid-cols-2 gap-3">
@@ -2361,28 +2294,20 @@ export function StaffPage() {
                         setFormRoleType('MANAGER');
                         setFormPermissions([...MANAGER_PERMISSIONS]);
                       }}
-                      className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
                         formRoleType === 'MANAGER'
-                          ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20'
+                          ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20 shadow-2xs'
                           : 'border-slate-200 hover:border-slate-300 bg-white'
                       }`}
                     >
-                      <div className="flex items-center justify-between w-full mb-1">
-                        <span className="text-xs font-bold text-slate-900">Counter Manager</span>
-                        <div
-                          className={`h-4 w-4 rounded-full border flex items-center justify-center ${
-                            formRoleType === 'MANAGER' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300'
-                          }`}
-                        >
-                          {formRoleType === 'MANAGER' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
-                        </div>
+                      <span className="text-xs font-bold text-slate-900">Counter Manager</span>
+                      <div
+                        className={`h-4.5 w-4.5 rounded-full border flex items-center justify-center shrink-0 ${
+                          formRoleType === 'MANAGER' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300'
+                        }`}
+                      >
+                        {formRoleType === 'MANAGER' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
                       </div>
-                      <p className="text-[11px] text-slate-500 leading-snug">
-                        Full POS billing, card top-up, returns, and live queue tracking.
-                      </p>
-                      <span className="mt-2 inline-flex items-center text-[10px] font-medium text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded">
-                        Full POS Access
-                      </span>
                     </button>
 
                     <button
@@ -2391,28 +2316,20 @@ export function StaffPage() {
                         setFormRoleType('KITCHEN');
                         setFormPermissions([...KITCHEN_PERMISSIONS]);
                       }}
-                      className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
                         formRoleType === 'KITCHEN'
-                          ? 'border-blue-600 bg-blue-50/50 ring-2 ring-blue-500/20'
+                          ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20 shadow-2xs'
                           : 'border-slate-200 hover:border-slate-300 bg-white'
                       }`}
                     >
-                      <div className="flex items-center justify-between w-full mb-1">
-                        <span className="text-xs font-bold text-slate-900">Kitchen Staff</span>
-                        <div
-                          className={`h-4 w-4 rounded-full border flex items-center justify-center ${
-                            formRoleType === 'KITCHEN' ? 'border-blue-600 bg-blue-600' : 'border-slate-300'
-                          }`}
-                        >
-                          {formRoleType === 'KITCHEN' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
-                        </div>
+                      <span className="text-xs font-bold text-slate-900">Kitchen Staff</span>
+                      <div
+                        className={`h-4.5 w-4.5 rounded-full border flex items-center justify-center shrink-0 ${
+                          formRoleType === 'KITCHEN' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300'
+                        }`}
+                      >
+                        {formRoleType === 'KITCHEN' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
                       </div>
-                      <p className="text-[11px] text-slate-500 leading-snug">
-                        Kitchen Display System (KDS), orders queue & menu view/edit.
-                      </p>
-                      <span className="mt-2 inline-flex items-center text-[10px] font-medium text-blue-700 bg-blue-100/70 px-1.5 py-0.5 rounded">
-                        KDS & Menu Control
-                      </span>
                     </button>
                   </div>
                 </div>
@@ -2473,33 +2390,6 @@ export function StaffPage() {
                     </button>
                   }
                 />
-
-                {/* Expandable Custom Permissions Checkboxes */}
-                <div className="pt-2 border-t border-slate-200/80">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddPermissionsSection(!showAddPermissionsSection)}
-                    className="flex items-center justify-between w-full text-xs font-semibold text-slate-700 hover:text-emerald-700 py-1 cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                      <span>Custom Permissions ({formPermissions.length} active)</span>
-                    </div>
-                    <span className="text-[11px] text-emerald-600 underline">
-                      {showAddPermissionsSection ? 'Hide Checkboxes' : 'Customize Checkboxes'}
-                    </span>
-                  </button>
-                  {showAddPermissionsSection && (
-                    <div className="mt-3 pt-3 border-t border-slate-100">
-                      <PermissionMatrix
-                        selectedPermissions={formPermissions}
-                        onChange={(newPerms) => setFormPermissions(newPerms)}
-                        rolePreset={formRoleType}
-                        onRolePresetChange={(preset) => setFormRoleType(preset)}
-                      />
-                    </div>
-                  )}
-                </div>
               </div>
             )}
 

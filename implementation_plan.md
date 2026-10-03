@@ -1,51 +1,50 @@
-# Implementation Plan: Checkbox-Based Staff Permissions
+# Implementation Plan: Minimal Staff Role Boxes & Permission Page Removal
 
 ## Executive Summary
-This plan details the transition of staff permissions in Staff Settings from locked preset cards to an interactive, granular Checkbox-based architecture. Administrators can select role presets (Counter Manager or Kitchen Staff) to populate default permission sets, while retaining full capability to check or uncheck individual permission checkboxes for any staff member.
+This plan details the simplification of Staff Settings in the Web Admin dashboard. The two role selection boxes under "Staff Role & Permissions" will be stripped of all secondary descriptions, subtext, and badges, leaving two clean, separate boxes displaying only the role name: **Counter Manager** and **Kitchen Staff**. Furthermore, the Permissions page/tab and all "Configure Checkboxes" links/text will be completely removed from the Staff Settings modal and Add Staff modal, leaving a clean, two-tab layout (Overview and Counters).
 
-![Staff Permissions Checkboxes Layout](file:///C:/Users/damie/.gemini/antigravity-ide/brain/999581c9-5c30-4195-933d-3667425ed95a/staff_permissions_checkboxes_modal_1791066054614.jpg)
+![Staff Settings Clean Role Boxes](file:///C:/Users/damie/.gemini/antigravity-ide/brain/999581c9-5c30-4195-933d-3667425ed95a/staff_settings_clean_role_boxes_1791067355676.jpg)
 
 ## User Requirements & Problem Statement
-- Requirement: Staff permissions in Staff Settings must be interactive Checkboxes (`[x]`).
-- Current State: Role selection was limited to two broad cards with radio circles, lacking granular visibility and individual checkbox controls for specific permissions.
-- Desired State: In Staff Settings (Edit Staff modal and Add Staff modal), administrators have a dedicated Permissions tab featuring:
-  - Role Quick Presets (Counter Manager / Kitchen Staff) that batch check/uncheck permissions with one click.
-  - Interactive square Checkboxes for all M0 permissions grouped into 4 distinct operational categories.
-  - Granular toggle ability so administrators can grant or revoke specific permissions (e.g. enabling Menu Edit for a Cashier, or revoking Refund permissions from a Manager).
-  - Dependency-aware checking (e.g. unchecking `CARD_VIEW` automatically unchecks dependent card actions; checking a dependent action checks its prerequisite).
+- Requirement 1: In Staff Settings (e.g. `Staff Settings: Staff - iti block`), simplify the two role boxes under "Staff Role & Permissions" to display ONLY the role name:
+  - Box 1: "Counter Manager"
+  - Box 2: "Kitchen Staff"
+  - Remove all descriptive subtitles ("Full POS billing, card top-up, returns, and queue tracking.") and badges ("Full POS Access", "KDS & Menu Control").
+- Requirement 2: Completely remove the Permissions tab/page from the Staff Settings modal.
+- Requirement 3: Completely remove the "Configure Checkboxes" link, text, and counter beneath the role boxes.
+- Requirement 4: In the Add Staff modal, also streamline the role selection to display only the two clean name-only boxes, and remove the expandable custom permissions section.
 
 ## ASCII Wireframes
 
-### Staff Settings Modal with Checkbox Permissions Tab
+### Streamlined Staff Settings Modal Layout
 
 ```text
 +-------------------------------------------------------------------------------+
-| Staff Settings: Akhil (Counter Manager)                                   [X] |
+| Staff Settings: Staff - iti block                                         [X] |
 +-------------------------------------------------------------------------------+
-|  [ Overview ]     [ Permissions (16) ]     [ Counters (1) ]                   |
+|  [ Overview ]                                             [ Counters (1) ]    |
 +-------------------------------------------------------------------------------+
 |                                                                               |
-|  Quick Role Presets                                                           |
+|  Staff Role & Permissions                                                     |
 |  +--------------------------------+   +------------------------------------+  |
-|  | [*] Counter Manager (All POS)  |   | [ ] Kitchen Staff (KDS & Menu)     |  |
-|  +--------------------------------+   +------------------------------------+  |
-|                                                                               |
-|  +--------------------------------+   +------------------------------------+  |
-|  | Cards & Wallets                |   | Billing & Recharges                |  |
-|  | [x] View Wallets (CARD_VIEW)   |   | [x] Add Money / Top-Up (RECHARGE)  |  |
-|  | [x] Issue Wallets (CARD_ISSUE) |   | [x] Food Purchase (PURCHASE)       |  |
-|  | [x] Return & Settle (CARD_RET) |   | [x] View Sessions (SESSION_VIEW)   |  |
-|  | [x] Block/Unblock (CARD_BLOCK) |   | [x] Refund Orders (REFUND)         |  |
+|  |                                |   |                                    |  |
+|  |  Counter Manager          (o)  |   |  Kitchen Staff                 ( ) |  |
+|  |                                |   |                                    |  |
 |  +--------------------------------+   +------------------------------------+  |
 |                                                                               |
-|  +--------------------------------+   +------------------------------------+  |
-|  | Menu & Food Catalog            |   | Operations & Analytics             |  |
-|  | [x] View Menu (PRODUCT_VIEW)   |   | [x] View Team (STAFF_VIEW)         |  |
-|  | [x] Edit Menu (PRODUCT_MANAGE) |   | [x] Manage Team (STAFF_MANAGE)     |  |
-|  |                                |   | [x] View Analytics & Reports       |  |
-|  +--------------------------------+   +------------------------------------+  |
+|  Full Name                                Phone Number                        |
+|  [ Staff - iti block            ]         [ 9876543210                       ] |
 |                                                                               |
-|  [ Select All ]  [ Clear All ]                    16 of 16 Permissions Active|
+|  Account Access Status                                                        |
+|  +-------------------------------------------------------------------------+  |
+|  |  Account Access Status                             Active [ (x) ]       |  |
+|  +-------------------------------------------------------------------------+  |
+|                                                                               |
+|  Current Password                                                             |
+|  +-------------------------------------------------------------------------+  |
+|  | [Key] •••••••• [Eye]           [Copy Credentials] [WhatsApp] [Change]   |  |
+|  +-------------------------------------------------------------------------+  |
+|                                                                               |
 +-------------------------------------------------------------------------------+
 |                                                    [ Cancel ]  [ Save Changes ]|
 +-------------------------------------------------------------------------------+
@@ -53,38 +52,34 @@ This plan details the transition of staff permissions in Staff Settings from loc
 
 ## Technical Architecture & File Changes
 
-### 1. `Frontend Money Card/src/features/staff/PermissionMatrix.tsx`
-- Replace static check icons with interactive `<input type="checkbox">` elements.
-- Accept `selectedPermissions: Permission[]`, `onChange: (perms: Permission[]) => void`, `readOnly?: boolean`, and `rolePreset?: 'MANAGER' | 'KITCHEN'`.
-- Implement preset buttons (`Counter Manager` and `Kitchen Staff`) at the top of the matrix.
-- Group checkboxes into 4 clear category panels:
-  - Cards & Wallets (`CARD_VIEW`, `CARD_ISSUE`, `CARD_RETURN`, `CARD_BLOCK`, `CARD_UNBLOCK`)
-  - Billing & Recharges (`RECHARGE`, `PURCHASE`, `SESSION_VIEW`, `REFUND`)
-  - Menu & Food Catalog (`PRODUCT_VIEW`, `PRODUCT_MANAGE`)
-  - Operations & Analytics (`STAFF_VIEW`, `STAFF_MANAGE`, `BRANCH_VIEW`, `BRANCH_MANAGE`, `VIEW_ANALYTICS`, `VIEW_REPORTS`)
-- Implement dependency resolution:
-  - When a permission is checked, its prerequisite is automatically checked (e.g. checking `CARD_ISSUE` checks `CARD_VIEW`).
-  - When a permission is unchecked, all subordinate permissions requiring it are automatically unchecked.
+### 1. `Frontend Money Card/src/features/staff/StaffPage.tsx`
+- **Revert `staffTab` State**: Change `staffTab` type back to `'overview' | 'branches'`.
+- **Remove Permissions Tab**:
+  - In `showStaffModal` tab header, remove the `<button onClick={() => setStaffTab('permissions')}>` tab.
+  - Keep only the two tabs: `<User /> Overview` and `<Building2 /> Counters`.
+  - Remove the `staffTab === 'permissions'` pane completely.
+- **Simplify Role Boxes in `showStaffModal`**:
+  - Replace the multi-line card content in `Overview` with a clean, single-line card:
+    - Height: compact and comfortable (~48px).
+    - Label: `Counter Manager` for left box; `Kitchen Staff` for right box.
+    - Radio circle indicator on the right side.
+    - Remove all `<p className="text-[11px] text-slate-500 ...">` descriptions.
+    - Remove all `<span className="mt-2 inline-flex ...">` badge pills.
+  - Remove the `Configure Checkboxes` link and permission count text completely from below the boxes.
+- **Simplify Role Boxes in `showAddModal`**:
+  - In `showAddModal` (`addTab === 'basic'`), simplify the two role boxes to match the same clean name-only style.
+  - Remove the expandable custom permissions section (`showAddPermissionsSection`) and its toggle button.
+- **Remove Unused Imports**: Remove `PermissionMatrix` import and unused `ShieldCheck` icon if not used elsewhere in `StaffPage.tsx`.
 
-### 2. `Frontend Money Card/src/features/staff/StaffPage.tsx`
-- Expand `staffTab` state from `'overview' | 'branches'` to `'overview' | 'permissions' | 'branches'`.
-- Add `Permissions` tab button in the modal header with count badge: `Permissions (${formPermissions.length})`.
-- In the `permissions` tab pane, embed `PermissionMatrix` bound directly to `formPermissions` and `setFormPermissions`.
-- When role preset buttons are clicked, update `formRoleType` and sync permissions accordingly.
-- When individual checkboxes are modified, recalculate `formRoleType` (if permissions match manager, set to `MANAGER`; if match kitchen, set to `KITCHEN`; otherwise maintain active role context).
-- Include `permissions: formPermissions` in both `updateStaff` and `createStaff` API payloads.
+### 2. `Frontend Money Card/src/__tests__/staffRoleAndBlockedWallets.test.ts`
+- Update unit tests to verify:
+  - Role selection between Counter Manager and Kitchen Staff correctly sets respective `MANAGER_PERMISSIONS` and `KITCHEN_PERMISSIONS`.
+  - Daily Activity Summary button remains strictly visible for Counter Manager and hidden for Kitchen Staff.
+  - Clean role switching correctly persists `staffType` and `permissions` in API payloads without needing the permissions tab.
 
-### 3. `Frontend Money Card/src/__tests__/staffRoleAndBlockedWallets.test.ts`
-- Add unit tests verifying:
-  - Checking and unchecking individual permission checkboxes updates the permission array accurately.
-  - Dependency cascading: unchecking `CARD_VIEW` revokes all card actions.
-  - Role preset button clicks toggle all respective checkboxes simultaneously.
-  - Custom checkbox selections persist properly to save payload.
-
-## Verification & Execution Protocol
-1. Implementation of `PermissionMatrix.tsx` with full checkbox support.
-2. Integration into `StaffPage.tsx` modal tabs.
-3. Proactive execution of `npx tsc --noEmit` in Frontend Money Card (0 errors).
-4. Proactive execution of `npm test -- --run` in Frontend Money Card (all 290+ tests pass).
-5. Proactive execution of `npm test` in Backend Money Card (all 121 tests pass).
-6. Local git commit on staging branch.
+## Verification & Execution Steps (Post-Approval)
+1. Apply changes to `StaffPage.tsx`.
+2. Run `npx tsc --noEmit` in Frontend Money Card (verify 0 errors).
+3. Run `npm test -- --run` in Frontend Money Card (verify all 290+ tests pass).
+4. Run `npm test` in Backend Money Card (verify all 121 tests pass).
+5. Review local git diff and commit changes to local staging branch.
