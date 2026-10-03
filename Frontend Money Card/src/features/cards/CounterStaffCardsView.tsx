@@ -77,7 +77,6 @@ export function CounterStaffCardsView() {
   // ─── Modal Selection States ──────────────────────────────────────
   const [selectedCardForDetails, setSelectedCardForDetails] = useState<CardEntity | null>(null);
   const [selectedCardForAnalytics, setSelectedCardForAnalytics] = useState<CardEntity | null>(null);
-  const [isCounterAnalyticsOpen, setIsCounterAnalyticsOpen] = useState(false);
 
   // Detail transactions for selected card
   const [sessionTxns, setSessionTxns] = useState<Transaction[]>([]);
@@ -205,21 +204,11 @@ export function CounterStaffCardsView() {
 
   const handleOpenAnalytics = useCallback((card: CardEntity) => {
     setSelectedCardForAnalytics(card);
-    setIsCounterAnalyticsOpen(false);
     const branchId = card.activeSession?.branchId || card.currentBranchId || staffBranchId || branches[0]?.id;
     if (branchId) {
       fetchCounterAnalytics(branchId, appliedStartDate, appliedEndDate);
     }
   }, [fetchCounterAnalytics, appliedStartDate, appliedEndDate, branches, staffBranchId]);
-
-  const handleOpenCounterAnalytics = useCallback(() => {
-    setIsCounterAnalyticsOpen(true);
-    setSelectedCardForAnalytics(null);
-    const branchId = staffBranchId || branches[0]?.id;
-    if (branchId) {
-      fetchCounterAnalytics(branchId, appliedStartDate, appliedEndDate);
-    }
-  }, [staffBranchId, branches, appliedStartDate, appliedEndDate, fetchCounterAnalytics]);
 
   const handleStartDateChange = useCallback((newStart: string) => {
     setCustomStartDate(newStart);
@@ -355,22 +344,12 @@ export function CounterStaffCardsView() {
     <div className="space-y-5 max-w-6xl mx-auto pb-10">
       {/* ─── Header ─── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-4">
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex items-center gap-2.5">
           <CreditCard className="h-6 w-6 text-emerald-600" />
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">Wallets & Customer History</h1>
           <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold text-xs px-2.5 py-0.5">
             {liveCards.length} Live Active
           </Badge>
-
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-xs h-8 px-3 rounded-xl border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-semibold cursor-pointer"
-            onClick={handleOpenCounterAnalytics}
-            leftIcon={<BarChart2 className="h-3.5 w-3.5 text-emerald-600" />}
-          >
-            Wallet Analytics
-          </Button>
         </div>
 
         <div className="flex items-center gap-2">
@@ -675,11 +654,10 @@ export function CounterStaffCardsView() {
       )}
 
       {/* ─── MODAL 2: Wallet Analytics Modal (Simplified Metrics) ─────── */}
-      {(isCounterAnalyticsOpen || selectedCardForAnalytics) && (
+      {selectedCardForAnalytics && (
         <Modal
-          isOpen={isCounterAnalyticsOpen || !!selectedCardForAnalytics}
+          isOpen={!!selectedCardForAnalytics}
           onClose={() => {
-            setIsCounterAnalyticsOpen(false);
             setSelectedCardForAnalytics(null);
           }}
           title={
@@ -894,7 +872,6 @@ export function CounterStaffCardsView() {
               variant="outline"
               size="sm"
               onClick={() => {
-                setIsCounterAnalyticsOpen(false);
                 setSelectedCardForAnalytics(null);
               }}
               className="text-xs px-4 cursor-pointer"
