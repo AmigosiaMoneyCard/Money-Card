@@ -318,3 +318,25 @@ When the manager looks up any customer's active session or past transaction:
    - Run: `npm test`.
 3. **Frontend Tests (`Frontend Money Card`)**:
    - Run: `npx tsc --noEmit` and `npm test -- --run`.
+
+---
+
+## 9. Implementation & Verification Status
+
+- [x] **Phase 1: Manager Dashboard Food Progress Tracking & Order Tracker (`Flutter Money card`)**:
+  - `FoodPreparationProgressWidget` integrated into `HomeScreen` with live preparation counters (In Progress, Finished / Ready, Queued).
+  - `LiveOrderTrackerScreen` (`/app/orders-tracker`) implemented with In Progress and Finished/Ready tabs and Confirm Handover action.
+- [x] **Phase 2: Mobile Separated Login Screen (`Flutter Money card`)**:
+  - Two distinct role buttons on landing view: `Counter Manager` and `Kitchen Staff`.
+  - Dedicated login boxes with customized branding, accents, back navigation, and role switcher links.
+  - Role-aware boot routing: Kitchen Staff boots to `/app/kitchen`, Manager boots to `/app/home`.
+- [x] **Phase 3: Web Admin Staff Creation Role Selector (`Frontend Money Card`)**:
+  - Role cards (Manager vs Kitchen Staff) in Add Staff Modal with permission presets.
+  - Staff table badges and role filtering.
+- [x] **Phase 4: Backend Staff Type & Kitchen Order Management (`Backend Money Card`)**:
+  - Order sequencing and metadata persistence in `sessions.controller.ts`.
+  - Kitchen Display endpoints mounted at `/api/kitchen` with branch-level scoping.
+- [x] **All Test Suites 100% Passing**:
+  - Flutter Mobile POS: 181 tests passed, Flutter analyze 0 issues.
+  - Web Frontend: 37 test suites passed, 285 tests passed, TypeScript 0 errors.
+  - Backend Engine: 13 test suites passed, 121 unit tests passed.
