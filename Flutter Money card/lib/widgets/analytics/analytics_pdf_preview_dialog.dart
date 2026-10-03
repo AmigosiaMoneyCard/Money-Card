@@ -42,9 +42,8 @@ class AnalyticsPdfPreviewDialog extends StatefulWidget {
 
 class _AnalyticsPdfPreviewDialogState extends State<AnalyticsPdfPreviewDialog> {
   AnalyticsPdfSectionOptions _sections = const AnalyticsPdfSectionOptions(
-    includeOverview: true,
-    includeOperations: true,
-    includeProductsDemand: true,
+    includeFinancialOverview: true,
+    includeMenuAnalytics: true,
   );
 
   Uint8List? _lastGeneratedBytes;
@@ -52,12 +51,10 @@ class _AnalyticsPdfPreviewDialogState extends State<AnalyticsPdfPreviewDialog> {
 
   void _toggleSection(String key) {
     setState(() {
-      if (key == 'overview') {
-        _sections = _sections.copyWith(includeOverview: !_sections.includeOverview);
-      } else if (key == 'operations') {
-        _sections = _sections.copyWith(includeOperations: !_sections.includeOperations);
-      } else if (key == 'products') {
-        _sections = _sections.copyWith(includeProductsDemand: !_sections.includeProductsDemand);
+      if (key == 'financial' || key == 'overview') {
+        _sections = _sections.copyWith(includeFinancialOverview: !_sections.includeFinancialOverview);
+      } else if (key == 'menu' || key == 'products') {
+        _sections = _sections.copyWith(includeMenuAnalytics: !_sections.includeMenuAnalytics);
       }
     });
   }
@@ -65,15 +62,14 @@ class _AnalyticsPdfPreviewDialogState extends State<AnalyticsPdfPreviewDialog> {
   void _setAll(bool enable) {
     setState(() {
       _sections = AnalyticsPdfSectionOptions(
-        includeOverview: enable,
-        includeOperations: enable,
-        includeProductsDemand: enable,
+        includeFinancialOverview: enable,
+        includeMenuAnalytics: enable,
       );
     });
   }
 
   Future<void> _handleDownload() async {
-    if (_isExporting) return;
+    if (_isExporting || _sections.activeCount == 0) return;
     setState(() => _isExporting = true);
 
     try {
@@ -87,7 +83,14 @@ class _AnalyticsPdfPreviewDialogState extends State<AnalyticsPdfPreviewDialog> {
 
       final dateStr = DateTime.now().toIso8601String().split('T').first;
       final safeBranch = widget.branchName.replaceAll(RegExp(r'\s+'), '_');
-      final filename = 'MoneyCard_Analytics_${safeBranch}_$dateStr.pdf';
+      final String filename;
+      if (_sections.includeFinancialOverview && !_sections.includeMenuAnalytics) {
+        filename = 'MoneyCard_Financial_Overview_${safeBranch}_$dateStr.pdf';
+      } else if (_sections.includeMenuAnalytics && !_sections.includeFinancialOverview) {
+        filename = 'MoneyCard_Menu_Analytics_${safeBranch}_$dateStr.pdf';
+      } else {
+        filename = 'MoneyCard_Analytics_${safeBranch}_$dateStr.pdf';
+      }
 
       await AnalyticsPdfService.downloadOrSharePdf(
         pdfBytes: bytes,
@@ -139,13 +142,13 @@ class _AnalyticsPdfPreviewDialogState extends State<AnalyticsPdfPreviewDialog> {
                     child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
                   )
                 : const Icon(Icons.download, color: AppColors.primary),
-            onPressed: _handleDownload,
+            onPressed: activeCount == 0 ? null : _handleDownload,
           ),
         ],
       ),
       body: Column(
         children: [
-          // ── Option-Wise Section Customizer Toolbar ───────────────────
+          // ── Clickable Checkbox Section Selector ──────────────────────
           Container(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
             decoration: BoxDecoration(
@@ -170,7 +173,7 @@ class _AnalyticsPdfPreviewDialogState extends State<AnalyticsPdfPreviewDialog> {
                         Icon(Icons.tune, size: 16, color: AppColors.primary),
                         SizedBox(width: 6),
                         Text(
-                          'Customize Report Sections',
+                          'Select Sections to Include & Download',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -187,7 +190,7 @@ class _AnalyticsPdfPreviewDialogState extends State<AnalyticsPdfPreviewDialog> {
                           child: const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             child: Text(
-                              'Select All',
+                              'Select Both',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -218,33 +221,29 @@ class _AnalyticsPdfPreviewDialogState extends State<AnalyticsPdfPreviewDialog> {
                 ),
                 const SizedBox(height: AppSpacing.xs),
 
-                // 3 Interactive Click Option Pills (like in Org Admin Page)
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _buildOptionPill(
-                        id: 'overview',
-                        label: '1. Overview & Revenue',
-                        icon: Icons.bar_chart,
-                        isSelected: _sections.includeOverview,
+                // 2 Clickable Checkbox Cards
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildCheckboxCard(
+                        id: 'financial',
+                        label: 'Financial Overview',
+                        subtitle: 'Recharge, sales, refunds, cancellations & wallets',
+                        icon: Icons.account_balance_wallet_outlined,
+                        isSelected: _sections.includeFinancialOverview,
                       ),
-                      const SizedBox(width: AppSpacing.xs),
-                      _buildOptionPill(
-                        id: 'operations',
-                        label: '2. Operations & Inventory',
-                        icon: Icons.inventory_2_outlined,
-                        isSelected: _sections.includeOperations,
-                      ),
-                      const SizedBox(width: AppSpacing.xs),
-                      _buildOptionPill(
-                        id: 'products',
-                        label: '3. Products & Demand',
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Expanded(
+                      child: _buildCheckboxCard(
+                        id: 'menu',
+                        label: 'Menu Analytics',
+                        subtitle: 'Food sales, cancelled orders & ordered items',
                         icon: Icons.restaurant_menu,
-                        isSelected: _sections.includeProductsDemand,
+                        isSelected: _sections.includeMenuAnalytics,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -252,28 +251,55 @@ class _AnalyticsPdfPreviewDialogState extends State<AnalyticsPdfPreviewDialog> {
 
           // ── Interactive PDF View ─────────────────────────────────────
           Expanded(
-            child: PdfPreview(
-              key: ValueKey('pdf_${_sections.includeOverview}_${_sections.includeOperations}_${_sections.includeProductsDemand}'),
-              build: (format) async {
-                final bytes = await AnalyticsPdfService.generateAnalyticsPdf(
-                  analytics: widget.analytics,
-                  branchName: widget.branchName,
-                  timeWindow: widget.timeWindow,
-                  sections: _sections,
-                );
-                _lastGeneratedBytes = bytes;
-                return bytes;
-              },
-              canChangeOrientation: false,
-              canChangePageFormat: false,
-              canDebug: false,
-              allowPrinting: true,
-              allowSharing: true,
-              pdfFileName: 'MoneyCard_Analytics_${widget.branchName}.pdf',
-              loadingWidget: const Center(
-                child: CircularProgressIndicator(),
-              ),
-            ),
+            child: activeCount == 0
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.xl),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(Icons.picture_as_pdf_outlined, size: 56, color: AppColors.textTertiaryLight),
+                          SizedBox(height: 12),
+                          Text(
+                            'No Sections Selected',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textSecondaryLight,
+                            ),
+                          ),
+                          SizedBox(height: 6),
+                          Text(
+                            'Select Financial Overview, Menu Analytics, or both to preview and download the report.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 13, color: AppColors.textTertiaryLight),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : PdfPreview(
+                    key: ValueKey('pdf_${_sections.includeFinancialOverview}_${_sections.includeMenuAnalytics}'),
+                    build: (format) async {
+                      final bytes = await AnalyticsPdfService.generateAnalyticsPdf(
+                        analytics: widget.analytics,
+                        branchName: widget.branchName,
+                        timeWindow: widget.timeWindow,
+                        sections: _sections,
+                      );
+                      _lastGeneratedBytes = bytes;
+                      return bytes;
+                    },
+                    canChangeOrientation: false,
+                    canChangePageFormat: false,
+                    canDebug: false,
+                    allowPrinting: true,
+                    allowSharing: true,
+                    pdfFileName: 'MoneyCard_Analytics_${widget.branchName}.pdf',
+                    loadingWidget: const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
           ),
 
           // ── Bottom Action Bar ────────────────────────────────────────
@@ -302,6 +328,7 @@ class _AnalyticsPdfPreviewDialogState extends State<AnalyticsPdfPreviewDialog> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
+                      disabledBackgroundColor: AppColors.borderLight,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                     icon: _isExporting
@@ -313,8 +340,8 @@ class _AnalyticsPdfPreviewDialogState extends State<AnalyticsPdfPreviewDialog> {
                         : const Icon(Icons.download, size: 18),
                     label: Text(
                       activeCount == 0
-                          ? 'Download PDF (Empty)'
-                          : 'Download PDF ($activeCount Section${activeCount > 1 ? "s" : ""})',
+                          ? 'Select at least 1 report'
+                          : 'Download Selected PDF ($activeCount)',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -327,47 +354,60 @@ class _AnalyticsPdfPreviewDialogState extends State<AnalyticsPdfPreviewDialog> {
     );
   }
 
-  Widget _buildOptionPill({
+  Widget _buildCheckboxCard({
     required String id,
     required String label,
+    required String subtitle,
     required IconData icon,
     required bool isSelected,
   }) {
     return InkWell(
       onTap: () => _toggleSection(id),
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(8),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primaryLight : AppColors.surfaceLight,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected ? AppColors.primary : AppColors.borderLight,
             width: isSelected ? 1.5 : 1.0,
           ),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
-              size: 14,
-              color: isSelected ? AppColors.primary : AppColors.textTertiaryLight,
-            ),
-            const SizedBox(width: 5),
-            Icon(
-              icon,
-              size: 14,
-              color: isSelected ? AppColors.primaryDark : AppColors.textSecondaryLight,
+            Checkbox(
+              value: isSelected,
+              activeColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)),
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              onChanged: (_) => _toggleSection(id),
             ),
             const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? AppColors.primaryDark : AppColors.textPrimaryLight,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                      color: isSelected ? AppColors.primaryDark : AppColors.textPrimaryLight,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(fontSize: 9, color: AppColors.textSecondaryLight),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ),
           ],

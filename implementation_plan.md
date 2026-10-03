@@ -1,129 +1,147 @@
-# Implementation Plan — Mobile Analytics, View PDF Update & Earliest Recharge Cancellation Guard
+# Implementation Plan — Mobile Analytics Checkbox PDF Download & Cancel Recharge Guard
 
 ## Overview
-This plan implements the enhancements across the mobile POS app, web app, and backend:
-1. Mobile App View PDF Update:
-   - Synchronize `AnalyticsPdfService` in `Flutter Money card` with the updated Financial Overview and Menu Analytics screens.
-   - Section 1 (Overview & Financial Revenue Summary): Update table rows to match the new screen metrics (`Recharge Amount`, `Total Sales`, `Wallet Refund`, `Cancelled Amount`, `Food Sales`, and `Wallet Activation`).
-   - Section 2 (Operations & Inventory Health): Remove the retired `Food Quantity` row and add `Cancelled Orders` with order count and cancelled monetary volume.
-2. Top-up History Earliest Recharge Cancellation Guard:
-   - Resolve the cancel recharge issue in the Top-up History sheet when a QR code is scanned:
-     - When inspecting top-ups for a card session, if a subsequent top-up has been cancelled, the earliest top-up must not be permitted to be refunded/cancelled.
-     - Enforce this guard at both the UI layer (disabled Cancel button with informative reason) and the API/backend layer (validation error `CANNOT_CANCEL_EARLIEST_RECHARGE`).
-     - Standardize the status badge across all POS views to `CANCELLED` (replacing legacy `VOIDED`).
-3. Mobile Analytics Grouping & Menu Cleanup:
-   - In Financial Overview: Group recharge amount with total sales, group wallet refund with wallet refund count, group cancelled amount with cancelled count, and keep wallet activation clean.
-   - Remove `Food Quantity` box from both mobile app and web app menu analytics.
+This plan implements two major features across the mobile POS app and backend:
+1. Mobile Analytics PDF Checkbox Download:
+   - Update the mobile PDF report to strictly include ONLY the metrics and data present on the Analytics screen tabs:
+     - Financial Overview (Recharge tab): Recharge Amount, Total Sales, Wallet Refund, Cancelled Amount, and Wallet Activation.
+     - Menu Analytics tab: Food Sales, Cancelled Orders, and the Ordered Menu Items table.
+     - Remove unrelated operational/inventory metrics (e.g. low stock alerts, inventory counts).
+   - In the export modal/sheet, provide clickable checkboxes for:
+     - `[x] Financial Overview` (Recharge, sales, refunds, cancellations & wallet activations)
+     - `[x] Menu Analytics` (Food sales, cancelled orders & ordered menu items table)
+   - Allow selecting either one or both:
+     - If Financial Overview only is checked -> downloads the single-section Financial Overview PDF.
+     - If Menu Analytics only is checked -> downloads the single-section Menu Analytics PDF.
+     - If both are checked -> downloads a unified PDF containing both sections.
+     - If neither is checked -> "Download Selected PDF" button is disabled.
+2. Top-up History Cancel Recharge Guard (Retained from previous plan):
+   - When a wallet is recharged, the cashier has the option to cancel that recharge.
+   - If the cashier does not cancel that recharge and recharges the wallet again, any previous recharge in the top-up history can no longer be cancelled.
+   - Only the latest (most recent) uncancelled recharge can ever be cancelled. Any recharge followed by a subsequent recharge is permanently locked from cancellation with the message "Cannot cancel: wallet was recharged again".
 
 ---
 
 ## Visual Design Mockup & ASCII Wireframes
 
-![Mobile PDF Update & Cancel Recharge Guard](C:\Users\damie\.gemini\antigravity-ide\brain\999581c9-5c30-4195-933d-3667425ed95a\mobile_pdf_and_cancel_recharge_guard_1791020158026.jpg)
+### Mobile Analytics Checkbox PDF Export Mockup
+![Checkbox PDF Export Mockup](C:\Users\damie\.gemini\antigravity-ide\brain\999581c9-5c30-4195-933d-3667425ed95a\mobile_pdf_checkboxes_1791022675513.jpg)
 
-### Mobile Top-up History Bottom Sheet (Earliest Recharge Guard)
+### Top-up History Cancel Guard Mockup
+![Mobile Top-up Cancel Guard](C:\Users\damie\.gemini\antigravity-ide\brain\999581c9-5c30-4195-933d-3667425ed95a\mobile_topup_cancel_guard_1791022125827.jpg)
+
+### Mobile Analytics Export PDF Checkbox Bottom Sheet
+```
++-------------------------------------------------------------+
+|                    Export Analytics PDF                 [X] |
++-------------------------------------------------------------+
+| Select the reports you want to download:                    |
+|                                                             |
+| +---------------------------------------------------------+ |
+| | [X] Financial Overview                                  | |
+| | Recharge, total sales, refunds, cancellations & wallets | |
+| +---------------------------------------------------------+ |
+|                                                             |
+| +---------------------------------------------------------+ |
+| | [X] Menu Analytics                                      | |
+| | Food sales, cancelled orders & ordered menu items table | |
+| +---------------------------------------------------------+ |
+|                                                             |
+| [ Download Selected PDF (2 selected) ]                    |
+| (Disabled if 0 selected; downloads 1 or both)               |
++-------------------------------------------------------------+
+```
+
+### Top-up History Bottom Sheet (Cancel Guard Wireframe)
 ```
 +-------------------------------------------------------------+
 |                     Top-up History                      [X] |
-| Wallet: MC_1001 • Balance: Rs. 500.00                       |
+| Wallet: MC_1001 • Balance: Rs. 700.00                       |
 +-------------------------------------------------------------+
 |                                                             |
+| Top Card: Latest Recharge (Allowed to Cancel)               |
 | +---------------------------------------------------------+ |
-| | +Rs. 200.00                              [ CANCELLED ]  | |
-| | UPI (Ref: 98124)                 03 Oct 2026, 11:15 AM  | |
-| | Reason: Wrong Amount Entered                            | |
+| | Top-up                               24 May, 11:35 AM   | |
+| | Rs. 200.00                                              | |
+| | via UPI (Ref: UPI837456)            [ Cancel Recharge ] | |
 | +---------------------------------------------------------+ |
 |                                                             |
+| Bottom Card: Previous Recharge (Recharged Again -> Locked)   |
 | +---------------------------------------------------------+ |
-| | +Rs. 500.00                       [ Cancel (Disabled) ] | |
-| | CASH                             03 Oct 2026, 09:30 AM  | |
-| | Staff: Cashier counter                                  | |
-| | Cannot cancel: subsequent recharge was cancelled        | |
+| | Top-up                               20 May, 09:15 AM   | |
+| | Rs. 500.00                                              | |
+| | via CASH (Ref: CASH29481)           [ Cancel (Disabled)]| |
+| | Cannot cancel: wallet was recharged again.              | |
 | +---------------------------------------------------------+ |
 |                                                             |
 +-------------------------------------------------------------+
-```
-
-### Mobile Analytics Exported PDF Table Structure
-```
-+--------------------------------------------------------------------------+
-| 1. Overview & Financial Revenue Summary                                  |
-+--------------------------------------------------------------------------+
-| Metric Description           | Activity Count    | Financial Volume (INR)|
-+------------------------------+-------------------+-----------------------+
-| Recharge Amount              | 52 top-ups        | Rs. 24,800.00         |
-| Total Sales                  | 148 transactions  | Rs. 43,250.00         |
-| Wallet Refund                | 14 refunds        | - Rs. 1,420.00        |
-| Cancelled Amount             | 3 cancelled       | Rs. 650.00            |
-| Food Sales                   | 96 orders         | Rs. 18,450.00         |
-| Wallet Activation            | 128 cards issued  | 110 active            |
-+--------------------------------------------------------------------------+
-
-+--------------------------------------------------------------------------+
-| 2. Operations & Inventory Health                                         |
-+--------------------------------------------------------------------------+
-| Operational Indicator        | Quantity / Value  | Operational Health    |
-+------------------------------+-------------------+-----------------------+
-| Active Customer Sessions     | 110 cards         | Normal Traffic        |
-| Settled Customer Sessions    | 18 cards          | Completed & Cleared   |
-| Cancelled Orders             | 4 orders          | Rs. 220.00 cancelled  |
-| Low Stock Alert Items        | 2 items           | Restock Advised       |
-| Tracked Inventory Products   | 24 items          | Live Catalog Tracked  |
-+--------------------------------------------------------------------------+
 ```
 
 ---
 
 ## Technical Design & Component Breakdown
 
-### 1. Mobile App Top-up History UI & Logic (`Flutter Money card`)
+### 1. Mobile Analytics PDF Service (`Flutter Money card`)
+- File: `Flutter Money card/lib/services/analytics_pdf_service.dart`
+  - Update `AnalyticsPdfSectionOptions`:
+    - `includeFinancialOverview` (bool, default true)
+    - `includeMenuAnalytics` (bool, default true)
+    - Remove `includeOperations` (operations/inventory metrics retired from this report).
+  - Method `generateAnalyticsPdf`:
+    - If `includeFinancialOverview`:
+      - Render Section 1: Overview & Financial Revenue Summary:
+        - Recharge Amount: `${analytics.rechargeCount} top-ups`, `INR ${rechargeVolume}`
+        - Total Sales: `${analytics.transactionCount} transactions`, `INR ${netMoneyCollected}`
+        - Wallet Refund: `${analytics.refundCount} refunds`, `- INR ${refundVolume}`
+        - Cancelled Amount: `${analytics.cancelledTopUpsCount} cancelled`, `INR ${cancelledTopUps}`
+        - Wallet Activation: `${analytics.cardsGivenOut} cards issued`, `${analytics.activeSessionsCount} active | ${analytics.settledSessionsCount} settled`
+    - If `includeMenuAnalytics`:
+      - Render Section 2: Menu Analytics:
+        - Food Sales: `${analytics.purchaseCount} orders placed`, `INR ${purchaseVolume}`
+        - Cancelled Orders: `${analytics.cancelledOrdersCount} orders cancelled`, `INR ${cancelledOrdersVolume}`
+        - All Ordered Menu Items Table: Rank `#`, `Product Name`, `Units Sold`, `Revenue Generated (INR)`.
+    - Generate appropriate filename based on selection:
+      - Both: `MoneyCard_Analytics_<branch>_<date>.pdf`
+      - Financial only: `MoneyCard_Financial_Overview_<branch>_<date>.pdf`
+      - Menu only: `MoneyCard_Menu_Analytics_<branch>_<date>.pdf`
+
+### 2. Mobile Analytics Export Bottom Sheet with Checkboxes (`Flutter Money card`)
+- File: `Flutter Money card/lib/features/analytics/analytics_screen.dart` & `Flutter Money card/lib/widgets/analytics/analytics_pdf_preview_dialog.dart`
+  - When the user taps the PDF / Export button:
+    - Display an interactive bottom sheet containing two clickable cards with Flutter `Checkbox` widgets:
+      - Card 1: `Financial Overview` checkbox (with subtitle explaining recharge, sales, refunds, cancellations, and wallet activations).
+      - Card 2: `Menu Analytics` checkbox (with subtitle explaining food sales, cancelled orders, and ordered menu items table).
+    - Clicking anywhere on a card toggles its checkbox state.
+    - At the bottom of the sheet: "Download Selected PDF" button.
+      - If 1 item selected: button displays "Download Selected PDF (1)".
+      - If both selected: button displays "Download Selected PDF (2)".
+      - If 0 selected: button is disabled (`onPressed: null`).
+    - Tapping download invokes `AnalyticsPdfService.generateAnalyticsPdf` with the selected options and triggers download/share.
+
+### 3. Top-up History Cancel Recharge Guard (`Flutter Money card` & `Backend Money Card`)
 - File: `Flutter Money card/lib/features/payments/recharge_screen.dart`
   - In `_showTopUpHistorySheet`:
-    - Sort all session recharges chronologically ascending (`createdAt`).
-    - Identify the earliest recharge (`sortedTopUps.first`).
-    - Check if any subsequent recharge is cancelled (`sortedTopUps.skip(1).any((t) => t.isCancelled)`).
-    - If the item is the earliest recharge and a subsequent recharge is cancelled:
-      - Disable the Cancel button (`onPressed: null`).
-      - Display an explanatory text: `Cannot cancel: subsequent recharge was cancelled`.
+    - Chronologically sort all session recharges (`sortedTopUps` by `createdAt` ascending).
+    - Determine `latestRechargeId = sortedTopUps.isNotEmpty ? sortedTopUps.last.id : null`.
+    - For each recharge `t`:
+      - `hasSubsequentRecharge = sortedTopUps.isNotEmpty && (t.id != latestRechargeId)`.
+      - `canCancelRecharge = t.canCancel && session.balance >= t.amount && session.isActive && !hasSubsequentRecharge`.
+      - If `hasSubsequentRecharge && t.canCancel`, render caption: `Cannot cancel: wallet was recharged again`.
   - In `_handleCancelRecharge`:
-    - Add safety check: reject cancellation if `txId` is the earliest recharge and any subsequent recharge is cancelled, displaying an error SnackBar.
+    - Safety guard: reject cancellation if `hasSubsequentRecharge` is true.
 - File: `Flutter Money card/lib/features/pos/pos_scan_purchase_screen.dart`
-  - In `_showTopUpHistorySheet`:
-    - Replace badge `VOIDED` with `CANCELLED`.
-    - Apply identical guard: disable button when `isEarliestBlockedByCancelledNext` is true.
-  - In `_handleCancelRecharge`:
-    - Add identical guard check.
+  - Apply identical `hasSubsequentRecharge` check and disable Cancel button on older recharges.
 - File: `Flutter Money card/lib/features/sessions/session_details_screen.dart`
-  - In `_buildTransactionCard`:
-    - Apply identical guard to disable `Cancel Recharge` on earliest recharge when subsequent recharge is cancelled.
-  - In `_handleCancelRecharge`:
-    - Add safety check.
+  - Apply identical guard in transaction timeline.
 - File: `Flutter Money card/lib/core/network/interceptors/mock_api_interceptor.dart`
   - In `cancel-recharge` mock handler:
-    - Sort session recharges by `createdAt` ascending.
-    - If `txId` is the earliest recharge and `sessionRecharges.skip(1).any((t) => t['isCancelled'] == true)`, return 400 `CANNOT_CANCEL_EARLIEST_RECHARGE`.
-
-### 2. Backend Business Rule Validation (`Backend Money Card`)
+    - Check if target transaction has any subsequent recharge in the session.
+    - If so, return 400 error `CANNOT_CANCEL_PREVIOUS_RECHARGE`.
 - File: `Backend Money Card/src/controllers/sessions.controller.ts`
-  - In `cancelRecharge` handler:
-    - Fetch all recharge transactions for `session.id` ordered by `createdAt: 'asc'`.
-    - If `sessionRecharges.length > 1` and `sessionRecharges[0].id === txRecord.id`:
-      - Check if any subsequent recharge (`sessionRecharges.slice(1)`) has `isCancelled: true`.
-      - If so, return `sendError(res, 400, 'CANNOT_CANCEL_EARLIEST_RECHARGE', 'Cannot cancel earliest recharge when a subsequent recharge was cancelled')`.
-
-### 3. Mobile View PDF Service (`Flutter Money card`)
-- File: `Flutter Money card/lib/services/analytics_pdf_service.dart`
-  - In Section 1 (Overview & Financial Revenue Summary):
-    - Update table rows to match app screen:
-      - `Recharge Amount`: `${analytics.rechargeCount} top-ups`, `currencyFmt.format(analytics.rechargeVolume)`
-      - `Total Sales`: `${analytics.transactionCount} total txns`, `currencyFmt.format(analytics.netMoneyCollected)`
-      - `Wallet Refund`: `${analytics.refundCount} refunds`, `- ${currencyFmt.format(analytics.refundVolume)}`
-      - `Cancelled Amount`: `${analytics.cancelledTopUpsCount} cancelled`, `currencyFmt.format(analytics.cancelledTopUps)`
-      - `Food Sales`: `${analytics.purchaseCount} orders`, `currencyFmt.format(analytics.purchaseVolume)`
-      - `Wallet Activation`: `${analytics.cardsGivenOut} cards issued`, `${analytics.activeSessionsCount} active`
-  - In Section 2 (Operations & Inventory Health):
-    - Remove retired `Food Quantity` row.
-    - Add `Cancelled Orders` row: `${analytics.cancelledOrdersCount} orders`, `currencyFmt.format(analytics.cancelledOrdersVolume) cancelled`.
+  - In `cancelRecharge` endpoint handler:
+    - Count recharges in session created after target transaction:
+      `prisma.transaction.count({ where: { sessionId: session.id, type: 'RECHARGE', createdAt: { gt: txRecord.createdAt } } })`.
+    - If count > 0, return 400 error `CANNOT_CANCEL_PREVIOUS_RECHARGE` (`Cannot cancel recharge because a subsequent recharge exists on this wallet`).
 
 ---
 
@@ -131,38 +149,41 @@ This plan implements the enhancements across the mobile POS app, web app, and ba
 
 | Subsystem | File Path | Nature of Change |
 |---|---|---|
-| Mobile Payments | `Flutter Money card/lib/features/payments/recharge_screen.dart` | Block earliest recharge cancellation if subsequent recharge is cancelled |
-| Mobile POS | `Flutter Money card/lib/features/pos/pos_scan_purchase_screen.dart` | Apply earliest recharge guard and replace VOIDED with CANCELLED |
-| Mobile Sessions | `Flutter Money card/lib/features/sessions/session_details_screen.dart` | Apply earliest recharge guard in session details timeline |
-| Mobile Mock API | `Flutter Money card/lib/core/network/interceptors/mock_api_interceptor.dart` | Reject cancelling earliest recharge if subsequent recharge is cancelled |
-| Mobile PDF | `Flutter Money card/lib/services/analytics_pdf_service.dart` | Update View PDF table metrics, remove Food Quantity, add Cancelled Orders |
-| Backend API | `Backend Money Card/src/controllers/sessions.controller.ts` | Enforce CANNOT_CANCEL_EARLIEST_RECHARGE business validation |
-| Backend Tests | `Backend Money Card/test/unit/cancel_recharge_guard.test.ts` | Unit tests for earliest recharge cancellation restriction |
-| Mobile Tests | `Flutter Money card/test/features/payments/recharge_screen_test.dart` | Unit/widget tests verifying earliest recharge button is disabled |
-| Mobile Analytics | `Flutter Money card/lib/features/analytics/analytics_screen.dart` | Group refunds and cancellations together, remove Recharge Count and Food Quantity, replace void with cancelled |
-| Web Analytics | `Frontend Money Card/src/features/analytics/OrgAdminAnalyticsComponents.tsx` | Remove Food Quantity card from menu analytics |
+| Mobile PDF Service | `Flutter Money card/lib/services/analytics_pdf_service.dart` | Limit PDF to Financial Overview and Menu Analytics; support generating either one or both |
+| Mobile Analytics UI | `Flutter Money card/lib/features/analytics/analytics_screen.dart` | Export modal with clickable checkboxes for Financial Overview and Menu Analytics |
+| Mobile PDF Dialog | `Flutter Money card/lib/widgets/analytics/analytics_pdf_preview_dialog.dart` | Align preview options with Financial and Menu checkboxes |
+| Mobile Payments | `Flutter Money card/lib/features/payments/recharge_screen.dart` | Disable cancel on previous recharges when wallet recharged again |
+| Mobile POS | `Flutter Money card/lib/features/pos/pos_scan_purchase_screen.dart` | Apply subsequent recharge cancel guard in scan purchase sheet |
+| Mobile Sessions | `Flutter Money card/lib/features/sessions/session_details_screen.dart` | Apply subsequent recharge cancel guard in session details |
+| Mobile Mock API | `Flutter Money card/lib/core/network/interceptors/mock_api_interceptor.dart` | Mock error for cancelling previous recharge |
+| Backend API | `Backend Money Card/src/controllers/sessions.controller.ts` | Reject cancel recharge if newer recharge exists in session |
+| Backend Tests | `Backend Money Card/test/unit/cancel_recharge_guard.test.ts` | Unit tests for subsequent recharge cancel prevention |
+| Mobile Tests | `Flutter Money card/test/features/payments/recharge_test.dart` | Widget tests for disabled cancel button on previous recharge |
+| Mobile PDF Tests | `Flutter Money card/test/features/analytics/analytics_test.dart` | Widget/unit tests for checkbox PDF download options |
 
 ---
 
 ## Verification Plan
 
 ### Automated Tests
-1. Backend Typecheck and Tests:
-   `cd "Backend Money Card"; npx tsc --noEmit`
-   `cd "Backend Money Card"; npm test`
-2. Flutter POS Analysis and Tests:
-   `cd "Flutter Money card"; flutter analyze --no-pub`
+1. Mobile App Tests:
    `cd "Flutter Money card"; flutter test`
-3. Frontend Web Typecheck and Tests:
-   `cd "Frontend Money Card"; npx tsc --noEmit`
+2. Backend API Tests:
+   `cd "Backend Money Card"; npm test`
+3. Frontend Web Tests:
    `cd "Frontend Money Card"; npm test -- --run`
 
 ### Manual Verification
-1. Mobile App View PDF:
-   - Go to Analytics -> tap "View PDF".
-   - Verify Overview table displays Recharge Amount, Total Sales, Wallet Refund, Cancelled Amount, Food Sales, and Wallet Activation.
-   - Verify Operations table displays Cancelled Orders and does not contain Food Quantity.
-2. Top-up History Earliest Recharge Guard:
-   - Scan an active card with multiple top-ups.
-   - Cancel the latest top-up.
-   - Observe the Top-up History sheet: the earliest top-up now has its Cancel button disabled with the explanation "Cannot cancel: subsequent recharge was cancelled".
+1. Checkbox PDF Download:
+   - In Mobile POS App -> Analytics -> tap "View PDF".
+   - Bottom sheet opens with clickable checkboxes:
+     - [X] Financial Overview
+     - [X] Menu Analytics
+   - Uncheck Menu Analytics -> tap "Download Selected PDF (1)" -> only Financial Overview PDF is downloaded.
+   - Uncheck Financial Overview, check Menu Analytics -> tap "Download Selected PDF (1)" -> only Menu Analytics PDF is downloaded.
+   - Check both -> tap "Download Selected PDF (2)" -> unified PDF with both sections is downloaded.
+   - Uncheck both -> button is disabled.
+2. Cancel Recharge Guard:
+   - Recharge card with Rs. 500 -> Cancel button is enabled.
+   - Recharge card again with Rs. 200 without cancelling the first.
+   - Open Top-up History -> Rs. 200 recharge has active Cancel button; Rs. 500 recharge has disabled Cancel button with text "Cannot cancel: wallet was recharged again".

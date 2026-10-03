@@ -716,20 +716,13 @@ export async function cancelRecharge(req: Request, res: Response) {
     return tType.includes('RECHARGE') || tType === 'CASH' || tType === 'UPI';
   });
 
-  if (allRecharges.length > 1 && allRecharges[0].id === txRecord.id) {
-    const hasCancelledNext = allRecharges.slice(1).some((t) => {
-      const items = (t.items as any) || {};
-      return items.isCancelled === true;
-    });
-
-    if (hasCancelledNext) {
-      return sendError(
-        res,
-        400,
-        'CANNOT_CANCEL_EARLIEST_RECHARGE',
-        'Cannot cancel earliest recharge when a subsequent recharge was cancelled',
-      );
-    }
+  if (allRecharges.length > 0 && allRecharges[allRecharges.length - 1].id !== txRecord.id) {
+    return sendError(
+      res,
+      400,
+      'CANNOT_CANCEL_PREVIOUS_RECHARGE',
+      'Cannot cancel recharge because a subsequent recharge exists on this wallet',
+    );
   }
 
   if (session.balance < txRecord.amount) {

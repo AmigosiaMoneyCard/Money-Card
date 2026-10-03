@@ -1549,17 +1549,14 @@ class MockApiInterceptor extends Interceptor {
         return aDate.compareTo(bDate);
       });
 
-      if (sessionRecharges.length > 1 && sessionRecharges.first['id'] == txId) {
-        final hasCancelledNext = sessionRecharges.skip(1).any((t) => t['isCancelled'] == true);
-        if (hasCancelledNext) {
-          return _reject(
-            handler,
-            options,
-            400,
-            'CANNOT_CANCEL_EARLIEST_RECHARGE',
-            'Cannot cancel earliest recharge when a subsequent recharge was cancelled',
-          );
-        }
+      if (sessionRecharges.isNotEmpty && sessionRecharges.last['id'] != txId) {
+        return _reject(
+          handler,
+          options,
+          400,
+          'CANNOT_CANCEL_PREVIOUS_RECHARGE',
+          'Cannot cancel recharge because a subsequent recharge exists on this wallet',
+        );
       }
 
       final data = options.data is String ? jsonDecode(options.data) : options.data;

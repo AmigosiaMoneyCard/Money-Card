@@ -893,9 +893,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
         return aDate.compareTo(bDate);
       });
 
-    final String? earliestRechargeId = sortedTopUps.isNotEmpty ? sortedTopUps.first.id : null;
-    final bool hasCancelledSubsequentRecharge = sortedTopUps.length > 1 &&
-        sortedTopUps.skip(1).any((t) => t.isCancelled);
+    final String? latestRechargeId = sortedTopUps.isNotEmpty ? sortedTopUps.last.id : null;
 
     showModalBottomSheet(
       context: context,
@@ -994,12 +992,11 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                       itemBuilder: (ctx, idx) {
                         final t = topUps[idx];
                         final isCash = t.paymentMethod == PaymentMethod.cash;
-                        final bool isEarliestBlockedByCancelledNext =
-                            (t.id == earliestRechargeId) && hasCancelledSubsequentRecharge;
+                        final bool hasSubsequentRecharge = sortedTopUps.isNotEmpty && (t.id != latestRechargeId);
                         final bool canCancelRecharge = t.canCancel &&
                             session.balance >= t.amount &&
                             session.isActive &&
-                            !isEarliestBlockedByCancelledNext;
+                            !hasSubsequentRecharge;
 
                         return Container(
                           padding: const EdgeInsets.all(12),
@@ -1083,10 +1080,10 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                                     ),
                                 ],
                               ),
-                              if (isEarliestBlockedByCancelledNext) ...[
+                              if (hasSubsequentRecharge && !t.isCancelled) ...[
                                 const SizedBox(height: 4),
                                 const Text(
-                                  'Cannot cancel: subsequent recharge was cancelled',
+                                  'Cannot cancel: wallet was recharged again',
                                   style: TextStyle(fontSize: 11, color: AppColors.textTertiaryLight, fontStyle: FontStyle.italic),
                                 ),
                               ],
@@ -1724,17 +1721,15 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
         return aDate.compareTo(bDate);
       });
 
-    if (allRecharges.length > 1 && allRecharges.first.id == txId) {
-      final hasCancelledNext = allRecharges.skip(1).any((t) => t.isCancelled);
-      if (hasCancelledNext) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cannot cancel earliest recharge when a subsequent recharge was cancelled.'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-        return;
-      }
+    final String? latestRechargeId = allRecharges.isNotEmpty ? allRecharges.last.id : null;
+    if (allRecharges.isNotEmpty && txId != latestRechargeId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot cancel recharge because the wallet was recharged again afterwards.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
     }
 
     final currentBal = _activeSession?.balance ?? session.balance;

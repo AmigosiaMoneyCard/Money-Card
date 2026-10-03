@@ -411,17 +411,15 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
         return aDate.compareTo(bDate);
       });
 
-    if (allRecharges.length > 1 && allRecharges.first.id == txId) {
-      final hasCancelledNext = allRecharges.skip(1).any((t) => t.isCancelled);
-      if (hasCancelledNext) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cannot cancel earliest recharge when a subsequent recharge was cancelled.'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-        return;
-      }
+    final String? latestRechargeId = allRecharges.isNotEmpty ? allRecharges.last.id : null;
+    if (allRecharges.isNotEmpty && txId != latestRechargeId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot cancel recharge because the wallet was recharged again afterwards.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
     }
 
     final currentBal = session.balance;
@@ -579,10 +577,8 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
         return aDate.compareTo(bDate);
       });
 
-    final bool isEarliestBlockedByCancelledNext = allRecharges.isNotEmpty &&
-        allRecharges.first.id == txn.id &&
-        allRecharges.length > 1 &&
-        allRecharges.skip(1).any((t) => t.isCancelled);
+    final String? latestRechargeId = allRecharges.isNotEmpty ? allRecharges.last.id : null;
+    final bool hasSubsequentRecharge = allRecharges.isNotEmpty && (txn.id != latestRechargeId);
 
     final hasItems = isPurchase && txn.items != null && txn.items!.isNotEmpty;
 
@@ -708,7 +704,7 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                     ),
                   ),
                   if (isRecharge && !txn.isCancelled && session.isActive) ...[
-                    if (!txn.canCancel || session.balance < txn.amount || isEarliestBlockedByCancelledNext)
+                    if (!txn.canCancel || session.balance < txn.amount || hasSubsequentRecharge)
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.textTertiaryLight,
@@ -745,11 +741,11 @@ class _SessionDetailsScreenState extends ConsumerState<SessionDetailsScreen> {
                 ],
               ),
             ),
-          if (isEarliestBlockedByCancelledNext)
+          if (hasSubsequentRecharge && !txn.isCancelled)
             Padding(
               padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.xs),
               child: const Text(
-                'Cannot cancel: subsequent recharge was cancelled',
+                'Cannot cancel: wallet was recharged again',
                 style: TextStyle(fontSize: 11, color: AppColors.textTertiaryLight, fontStyle: FontStyle.italic),
               ),
             ),

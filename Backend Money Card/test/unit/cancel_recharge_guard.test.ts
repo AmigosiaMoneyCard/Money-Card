@@ -41,15 +41,12 @@ describe('Cancel Recharge Earliest Top-up Guard Logic', () => {
       })
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
-    // Guard: Earliest recharge cannot be cancelled if a subsequent recharge was cancelled
-    if (allRecharges.length > 1 && allRecharges[0].id === targetTxId) {
-      const hasCancelledNext = allRecharges.slice(1).some((t) => (t.items || {}).isCancelled === true);
-      if (hasCancelledNext) {
-        return {
-          canCancel: false,
-          error: 'CANNOT_CANCEL_EARLIEST_RECHARGE',
-        };
-      }
+    // Guard: Any recharge with a subsequent recharge cannot be cancelled
+    if (allRecharges.length > 0 && allRecharges[allRecharges.length - 1].id !== targetTxId) {
+      return {
+        canCancel: false,
+        error: 'CANNOT_CANCEL_PREVIOUS_RECHARGE',
+      };
     }
 
     if (sessionBalance < txRecord.amount) {
@@ -59,10 +56,35 @@ describe('Cancel Recharge Earliest Top-up Guard Logic', () => {
     return { canCancel: true };
   }
 
-  it('blocks cancellation of earliest recharge when the subsequent recharge is cancelled', () => {
+  it('blocks cancellation of previous recharge when subsequent recharge is active (wallet recharged again)', () => {
     const txs: MockTransaction[] = [
       {
-        id: 'tx-1', // Earliest recharge
+        id: 'tx-1', // Earlier recharge
+        sessionId,
+        type: TransactionType.RECHARGE_CASH,
+        amount: 500,
+        createdAt: '2026-10-03T10:00:00Z',
+        items: {},
+      },
+      {
+        id: 'tx-2', // Subsequent active recharge
+        sessionId,
+        type: TransactionType.RECHARGE_UPI,
+        amount: 200,
+        createdAt: '2026-10-03T10:30:00Z',
+        items: {},
+      },
+    ];
+
+    const result = evaluateCanCancelRecharge('tx-1', 700, SessionStatus.ACTIVE, txs);
+    expect(result.canCancel).toBe(false);
+    expect(result.error).toBe('CANNOT_CANCEL_PREVIOUS_RECHARGE');
+  });
+
+  it('blocks cancellation of earlier recharge even if the subsequent recharge was cancelled', () => {
+    const txs: MockTransaction[] = [
+      {
+        id: 'tx-1', // Earlier recharge
         sessionId,
         type: TransactionType.RECHARGE_CASH,
         amount: 500,
@@ -81,7 +103,7 @@ describe('Cancel Recharge Earliest Top-up Guard Logic', () => {
 
     const result = evaluateCanCancelRecharge('tx-1', 500, SessionStatus.ACTIVE, txs);
     expect(result.canCancel).toBe(false);
-    expect(result.error).toBe('CANNOT_CANCEL_EARLIEST_RECHARGE');
+    expect(result.error).toBe('CANNOT_CANCEL_PREVIOUS_RECHARGE');
   });
 
   it('permits cancellation of subsequent recharge when balance is sufficient', () => {

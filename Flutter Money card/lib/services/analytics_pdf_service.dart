@@ -5,35 +5,37 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../models/analytics.dart';
 
-/// Section options for customizable Analytics PDF Report (similar to Org Admin View)
+/// Section options for customizable Analytics PDF Report
 class AnalyticsPdfSectionOptions {
-  final bool includeOverview; // Option 1: Executive Overview & KPIs
-  final bool includeOperations; // Option 2: Operations & Inventory Health
-  final bool includeProductsDemand; // Option 3: Top Products & Peak Demand
+  final bool includeFinancialOverview;
+  final bool includeMenuAnalytics;
 
   const AnalyticsPdfSectionOptions({
-    this.includeOverview = true,
-    this.includeOperations = true,
-    this.includeProductsDemand = true,
+    this.includeFinancialOverview = true,
+    this.includeMenuAnalytics = true,
   });
+
+  bool get includeOverview => includeFinancialOverview;
+  bool get includeProductsDemand => includeMenuAnalytics;
+  bool get includeOperations => false;
 
   int get activeCount {
     int c = 0;
-    if (includeOverview) c++;
-    if (includeOperations) c++;
-    if (includeProductsDemand) c++;
+    if (includeFinancialOverview) c++;
+    if (includeMenuAnalytics) c++;
     return c;
   }
 
   AnalyticsPdfSectionOptions copyWith({
+    bool? includeFinancialOverview,
+    bool? includeMenuAnalytics,
     bool? includeOverview,
-    bool? includeOperations,
     bool? includeProductsDemand,
+    bool? includeOperations,
   }) {
     return AnalyticsPdfSectionOptions(
-      includeOverview: includeOverview ?? this.includeOverview,
-      includeOperations: includeOperations ?? this.includeOperations,
-      includeProductsDemand: includeProductsDemand ?? this.includeProductsDemand,
+      includeFinancialOverview: includeFinancialOverview ?? includeOverview ?? this.includeFinancialOverview,
+      includeMenuAnalytics: includeMenuAnalytics ?? includeProductsDemand ?? this.includeMenuAnalytics,
     );
   }
 }
@@ -49,6 +51,10 @@ class AnalyticsPdfService {
     required AnalyticsPdfSectionOptions sections,
     String organizationName = 'Money Card Cafeteria',
   }) async {
+    if (!sections.includeFinancialOverview && !sections.includeMenuAnalytics) {
+      throw ArgumentError('At least one section must be selected to generate the analytics report.');
+    }
+
     final pdf = pw.Document();
 
     final primaryColor = PdfColor.fromHex('#047857'); // Emerald 700
@@ -60,6 +66,15 @@ class AnalyticsPdfService {
 
     final nowStr = DateFormat('dd MMM yyyy, hh:mm a').format(DateTime.now());
     final currencyFmt = NumberFormat.currency(symbol: 'INR ', decimalDigits: 2);
+
+    final String reportTitle;
+    if (sections.includeFinancialOverview && !sections.includeMenuAnalytics) {
+      reportTitle = 'FINANCIAL OVERVIEW REPORT';
+    } else if (sections.includeMenuAnalytics && !sections.includeFinancialOverview) {
+      reportTitle = 'MENU ANALYTICS REPORT';
+    } else {
+      reportTitle = 'ANALYTICS REPORT';
+    }
 
     pdf.addPage(
       pw.MultiPage(
@@ -117,7 +132,7 @@ class AnalyticsPdfService {
                   crossAxisAlignment: pw.CrossAxisAlignment.end,
                   children: [
                     pw.Text(
-                      'ANALYTICS REPORT',
+                      reportTitle,
                       style: pw.TextStyle(
                         fontSize: 12,
                         fontWeight: pw.FontWeight.bold,
@@ -194,7 +209,7 @@ class AnalyticsPdfService {
             pw.SizedBox(height: 16),
 
             // ── OPTION 1: Executive Overview & Revenue ──────────────────
-            if (sections.includeOverview) ...[
+            if (sections.includeFinancialOverview) ...[
               pw.Container(
                 padding: const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                 decoration: pw.BoxDecoration(
@@ -272,8 +287,8 @@ class AnalyticsPdfService {
               pw.SizedBox(height: 16),
             ],
 
-            // ── OPTION 2: Operations & Inventory Health ─────────────────
-            if (sections.includeOperations) ...[
+            // ── OPTION 2: Menu Analytics ──────────────────────────────
+            if (sections.includeMenuAnalytics) ...[
               pw.Container(
                 padding: const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                 decoration: pw.BoxDecoration(
@@ -282,7 +297,7 @@ class AnalyticsPdfService {
                   border: pw.Border.all(color: borderColor, width: 0.8),
                 ),
                 child: pw.Text(
-                  '2. Operations & Inventory Health',
+                  sections.includeFinancialOverview ? '2. Menu Analytics' : '1. Menu Analytics',
                   style: pw.TextStyle(
                     fontSize: 11,
                     fontWeight: pw.FontWeight.bold,
@@ -298,23 +313,16 @@ class AnalyticsPdfService {
                   pw.TableRow(
                     decoration: pw.BoxDecoration(color: bgLight),
                     children: [
-                      _buildHeaderCell('Operational Indicator'),
-                      _buildHeaderCell('Quantity / Value', alignRight: true),
-                      _buildHeaderCell('Operational Health', alignRight: true),
+                      _buildHeaderCell('Menu Indicator'),
+                      _buildHeaderCell('Activity Count', alignRight: true),
+                      _buildHeaderCell('Financial Volume (INR)', alignRight: true),
                     ],
                   ),
                   pw.TableRow(
                     children: [
-                      _buildCell('Active Customer Sessions'),
-                      _buildCell('${analytics.activeSessionsCount} cards', alignRight: true, isBold: true),
-                      _buildCell('Normal Traffic', alignRight: true),
-                    ],
-                  ),
-                  pw.TableRow(
-                    children: [
-                      _buildCell('Settled Customer Sessions'),
-                      _buildCell('${analytics.settledSessionsCount} cards', alignRight: true),
-                      _buildCell('Completed & Cleared', alignRight: true),
+                      _buildCell('Food Sales'),
+                      _buildCell('${analytics.purchaseCount} orders', alignRight: true),
+                      _buildCell(currencyFmt.format(analytics.purchaseVolume), alignRight: true, isBold: true),
                     ],
                   ),
                   pw.TableRow(
@@ -324,57 +332,13 @@ class AnalyticsPdfService {
                       _buildCell('${currencyFmt.format(analytics.cancelledOrdersVolume)} cancelled', alignRight: true),
                     ],
                   ),
-                  pw.TableRow(
-                    children: [
-                      _buildCell('Low Stock Alert Items'),
-                      _buildCell(
-                        '${analytics.lowStockItemCount} items',
-                        alignRight: true,
-                        isBold: true,
-                        color: analytics.lowStockItemCount > 0 ? PdfColors.amber800 : PdfColors.green800,
-                      ),
-                      _buildCell(
-                        analytics.lowStockItemCount > 0 ? 'Restock Advised' : 'Stock Optimal',
-                        alignRight: true,
-                        color: analytics.lowStockItemCount > 0 ? PdfColors.amber800 : PdfColors.green800,
-                      ),
-                    ],
-                  ),
-                  pw.TableRow(
-                    children: [
-                      _buildCell('Tracked Inventory Products'),
-                      _buildCell('${analytics.inventoryItemCount} items', alignRight: true),
-                      _buildCell('Live Catalog Tracked', alignRight: true),
-                    ],
-                  ),
                 ],
               ),
-              pw.SizedBox(height: 16),
-            ],
-
-            // ── OPTION 3: Top Products & Peak Demand ────────────────────
-            if (sections.includeProductsDemand) ...[
-              pw.Container(
-                padding: const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                decoration: pw.BoxDecoration(
-                  color: bgLight,
-                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-                  border: pw.Border.all(color: borderColor, width: 0.8),
-                ),
-                child: pw.Text(
-                  '3. Top Selling Products',
-                  style: pw.TextStyle(
-                    fontSize: 11,
-                    fontWeight: pw.FontWeight.bold,
-                    color: textDark,
-                  ),
-                ),
-              ),
-              pw.SizedBox(height: 8),
+              pw.SizedBox(height: 12),
 
               if (analytics.productDemand != null && analytics.productDemand!.isNotEmpty) ...[
                 pw.Text(
-                  'Top Product Demand Leaderboard',
+                  'All Ordered Menu Items',
                   style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: textMuted),
                 ),
                 pw.SizedBox(height: 4),
@@ -386,8 +350,8 @@ class AnalyticsPdfService {
                       children: [
                         _buildHeaderCell('#', width: 24),
                         _buildHeaderCell('Product Name'),
-                        _buildHeaderCell('Units Sold', alignRight: true),
-                        _buildHeaderCell('Revenue Generated', alignRight: true),
+                        _buildHeaderCell('Quantity Sold', alignRight: true),
+                        _buildHeaderCell('Total Revenue (INR)', alignRight: true),
                       ],
                     ),
                     for (int i = 0; i < analytics.productDemand!.length; i++)
