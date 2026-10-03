@@ -53,6 +53,11 @@
 - Target Suite: `Counter Dashboard Portal`
 - Update the counter password mismatch test to reflect the requirement that counter accounts accept any password.
 
+### 4. Counter Dashboard Staff Management Cleanup
+- File: `Frontend Money Card/src/features/staff/StaffPage.tsx`
+  - In `counterStaffColumns`: Removed `(You)` badge and phone number subtitle from under the staff name.
+  - Retained minimalist display: User avatar icon and staff name (`formatStaffDisplayName`).
+
 ## Worktree Changes Summary
 
 | Subsystem | File Path | Nature of Change |
@@ -60,6 +65,7 @@
 | Backend Auth | `Backend Money Card/src/controllers/auth.controller.ts` | Accept any password when authenticating `Role.STAFF` |
 | Frontend Mocks | `Frontend Money Card/src/services/mock/handlers/auth.ts` | Bypass password check for `STAFF` role |
 | Frontend Tests | `Frontend Money Card/src/__tests__/authErrorMessages.test.ts` | Verify counter accounts authenticate with any password |
+| Frontend Staff | `Frontend Money Card/src/features/staff/StaffPage.tsx` | Remove (You) badge and phone number subtitle under staff name |
 
 ## Verification Plan
 
@@ -80,3 +86,5 @@
 2. Select Counter tab or enter counter phone number (e.g., `9876543212` or newly created counter phone).
 3. Enter any random password (e.g. `anything`, `test1234`, `abc`).
 4. Click Log in -> Verify successful authentication and redirection to Counter Dashboard.
+5. In Counter Dashboard -> Navigate to Staff Management -> Verify Staff Name displays cleanly without `(You)` badge or phone number below it.
+

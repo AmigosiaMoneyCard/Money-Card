@@ -1168,23 +1168,9 @@ export function StaffPage() {
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
             <User className="h-4 w-4" />
           </div>
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-slate-900 text-sm">
-                {formatStaffDisplayName(staff.name, staff.assignedBranchIds)}
-              </span>
-              {staff.id === user?.id && (
-                <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 text-[10px] px-1.5 py-0.5 font-semibold">
-                  You
-                </Badge>
-              )}
-            </div>
-            {staff.phone && (
-              <span className="text-xs text-slate-400 font-mono">
-                {staff.phone}
-              </span>
-            )}
-          </div>
+          <span className="font-semibold text-slate-900 text-sm">
+            {formatStaffDisplayName(staff.name, staff.assignedBranchIds)}
+          </span>
         </div>
       ),
     },
