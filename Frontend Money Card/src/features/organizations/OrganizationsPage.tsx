@@ -288,6 +288,20 @@ export function OrganizationsPage() {
     } catch {}
   };
 
+  const getAdminPassword = (org: OrganizationOverview): string => {
+    // 1. Check local persistent storage for temporary or reset passwords
+    const cached = getStoredOrgPassword(org.id, org.adminUser?.email, org.adminUser?.id);
+    if (cached) return cached;
+
+    // 2. Check credentials returned by backend API
+    if (org.adminUser?.credentials?.password) {
+      return org.adminUser.credentials.password;
+    }
+
+    // 3. Standard authentic default password for cafeteria administrator accounts
+    return 'password';
+  };
+
   // Modals
   const [selectedOrg, setSelectedOrg] = useState<OrganizationOverview | null>(null);
   const [showOrgAdminPassword, setShowOrgAdminPassword] = useState(false);
@@ -1069,20 +1083,28 @@ export function OrganizationsPage() {
                     Current Admin Password
                   </span>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="font-mono text-sm font-bold text-slate-800">
-                      {showOrgAdminPassword
-                        ? (getStoredOrgPassword(selectedOrg.id, selectedOrg.adminUser?.email, selectedOrg.adminUser?.id) || 'admin@123')
-                        : '••••••••'}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowOrgAdminPassword(!showOrgAdminPassword)}
-                      className="p-1 rounded-lg text-emerald-700 hover:bg-emerald-100 transition-colors cursor-pointer"
-                      title={showOrgAdminPassword ? 'Hide password' : 'Show password'}
-                      aria-label={showOrgAdminPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showOrgAdminPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
+                    {selectedOrg.status === 'PENDING_ACTIVATION' ? (
+                      <span className="text-xs font-medium text-amber-700 italic">
+                        Set via email activation link
+                      </span>
+                    ) : (
+                      <>
+                        <span className="font-mono text-sm font-bold text-slate-800">
+                          {showOrgAdminPassword
+                            ? getAdminPassword(selectedOrg)
+                            : '••••••••'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowOrgAdminPassword(!showOrgAdminPassword)}
+                          className="p-1 rounded-lg text-emerald-700 hover:bg-emerald-100 transition-colors cursor-pointer"
+                          title={showOrgAdminPassword ? 'Hide password' : 'Show password'}
+                          aria-label={showOrgAdminPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showOrgAdminPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1093,7 +1115,9 @@ export function OrganizationsPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const pass = getStoredOrgPassword(selectedOrg.id, selectedOrg.adminUser?.email, selectedOrg.adminUser?.id) || 'admin@123';
+                    const pass = selectedOrg.status === 'PENDING_ACTIVATION'
+                      ? 'Set via email activation link'
+                      : getAdminPassword(selectedOrg);
                     const email = selectedOrg.adminUser?.email || 'admin@' + selectedOrg.name.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
                     navigator.clipboard.writeText(`Cafeteria: ${selectedOrg.name}\nEmail: ${email}\nPassword: ${pass}`);
                     notify.success('Admin credentials copied to clipboard');

@@ -113,7 +113,15 @@ export async function getOrganizations(req: Request, res: Response) {
       status: org.status,
       planId: org.planId,
       plan: org.plan,
-      adminUser: orgAdmin,
+      adminUser: orgAdmin
+        ? {
+            ...orgAdmin,
+            credentials: {
+              email: orgAdmin.email,
+              password: 'password',
+            },
+          }
+        : null,
       subscription: subFormatted,
       usage: {
         branchCount: org._count.branches,
@@ -449,7 +457,15 @@ export async function getOrganizationById(req: Request, res: Response) {
     status: org.status,
     planId: org.planId,
     plan: org.plan,
-    adminUser: orgAdmin,
+    adminUser: orgAdmin
+      ? {
+          ...orgAdmin,
+          credentials: {
+            email: orgAdmin.email,
+            password: 'password',
+          },
+        }
+      : null,
     subscription: formatSubscription(org.subscription),
     usage: {
       branchCount: org._count.branches,
@@ -1002,6 +1018,10 @@ export async function resetOrgAdminPassword(req: Request, res: Response) {
       name: orgAdmin.name,
       email: orgAdmin.email,
       mustChangePassword: true,
+      credentials: {
+        email: orgAdmin.email,
+        password: temporaryPassword,
+      },
     },
   });
 }

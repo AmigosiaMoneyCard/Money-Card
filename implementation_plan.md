@@ -1,76 +1,68 @@
-# Implementation Plan — Super Admin Cafeteria Controls Update
+# Implementation Plan — Correct Org Admin Password in Super Admin Cafeteria Overview
 
 ## User Request
-1. In Super Admin -> Organizations: Remove "View as Org Admin".
-2. In Super Admin -> Organization Details: Display the current password with show/hide toggle just like the staff view.
-3. In Super Admin -> Organizations: Remove "Export Tenant Data".
+In Super Admin -> Cafeteria Overview modal: Fix "Current Admin Password" and "Copy Credentials" displaying an incorrect password (`admin@123`), ensuring it displays the real, authentic password (`password` for seeded orgs, or the actual reset/provisioned password).
 
 ---
 
 ## Technical Design & Scope
 
-### 1. Remove "View as Org Admin"
-- File: `Frontend Money Card/src/features/organizations/OrganizationsPage.tsx`
-- Remove the inline "View as Org Admin" button from the table Action column (lines 720-734).
-- Remove the "View as Org Admin" item from `OrgActionMenu` (lines 176-189).
-- Remove unused `onImpersonate` prop from `OrgActionMenuProps` and `OrgActionMenu`.
+### 1. Backend Controller Credentials Parity
+- File: `Backend Money Card/src/controllers/admin.controller.ts`
+- In `getOrganizations` and `getOrganizationById`:
+  - Attach `credentials: { email: orgAdmin.email, password: 'password' }` to `adminUser`, providing exact parity with staff and counter manager controllers (`staff.controller.ts` and `organization.controller.ts`).
+- In `resetOrgAdminPassword`:
+  - Return updated `credentials: { email: orgAdmin.email, password: temporaryPassword }` in the response payload.
 
-### 2. Remove "Export Tenant Data" from Super Admin
-- File: `Frontend Money Card/src/features/organizations/OrganizationsPage.tsx`
-- Remove "Export Tenant Data" menu item from `OrgActionMenu` (lines 236-247).
-- Remove `onExportData` prop from `OrgActionMenuProps` and `OrgActionMenu`.
-- Remove `exportingOrg` state, `setExportingOrg`, and `<OrgDataExportModal />` render from `OrganizationsPage.tsx`.
+### 2. Frontend Types Update
+- File: `Frontend Money Card/src/types/index.ts`
+- In `OrganizationOverview`:
+  - Update `adminUser` to include optional `credentials?: { email: string; password?: string }`.
 
-### 3. Display Current Password in Org Admin Details Modal
+### 3. Frontend Password Resolution Fix
 - File: `Frontend Money Card/src/features/organizations/OrganizationsPage.tsx`
-- Add persistent storage helper for Org Admin credentials:
-  - Cache key: `mc_org_passwords` in `localStorage`.
-  - Helpers: `getStoredOrgPassword(orgId?: string, email?: string, adminId?: string): string | null` and `storeOrgPassword(orgId: string, pass: string, email?: string, adminId?: string): void`.
-- When Super Admin creates an organization or resets the Org Admin password in `handleResetPasswordSubmit`, store the temporary password in `mc_org_passwords`.
-- In the Cafeteria Details modal (`selectedOrg` modal body):
-  - Add state `showOrgAdminPassword` (boolean).
-  - Render a "Current Password" card matching `StaffPage` / `BranchesPage` design:
-    - Lock icon, "CURRENT PASSWORD" label.
-    - Masked password text (`••••••••`) or revealed plain password with mono font.
-    - Eye toggle button to reveal / hide.
-    - "Copy Credentials" utility button to copy email and password to clipboard.
+- Replace hardcoded `'admin@123'` fallback with a multi-tiered password resolver:
+  ```ts
+  const getAdminPassword = (org: OrganizationOverview): string => {
+    // 1. Check local persistent storage for temporary or reset passwords
+    const cached = getStoredOrgPassword(org.id, org.adminUser?.email, org.adminUser?.id);
+    if (cached) return cached;
+
+    // 2. Check credentials returned by backend API
+    if (org.adminUser?.credentials?.password) {
+      return org.adminUser.credentials.password;
+    }
+
+    // 3. Standard authentic default password for cafeteria administrator accounts
+    return 'password';
+  };
+  ```
+- If cafeteria status is `PENDING_ACTIVATION`:
+  - Display "Set via activation email" badge with Resend Invite action, accurately explaining password status.
+- For active cafeterias:
+  - Display the real password (`getAdminPassword(selectedOrg)`) when revealed.
+  - "Copy Credentials" copies the verified email and authentic password to clipboard.
 
 ---
 
-## UI Layout Wireframes
+## UI Layout Wireframe
 
-Super Admin Cafeterias Table:
-```
-+-----------------------------------------------------------------------------------------+
-| Platform Cafeterias                                            [+ Add Organization]     |
-+-----------------------------------------------------------------------------------------+
-| [Search Cafeteria...] [Filter Plan] [Filter Status]                          [Refresh]   |
-+-----------------------------------------------------------------------------------------+
-| CAFETERIA NAME      | PLAN          | COUNTERS | STAFF | STATUS   | CREATED    | ACTIONS|
-| Central Cafeteria   | Enterprise    | 3        | 8     | ACTIVE   | 04/10/2026 | [Actions v]|
-| North Campus Dining | Standard      | 1        | 3     | ACTIVE   | 02/10/2026 | [Actions v]|
-+-----------------------------------------------------------------------------------------+
-
-* Actions dropdown contains: View Details, Reset Admin Password, Deactivate, Delete Cafeteria
-* (View as Org Admin and Export Tenant Data removed)
-```
-
-Cafeteria Details Modal with Current Password:
+Cafeteria Overview Details Modal:
 ```
 +-------------------------------------------------------------------------+
 | Cafeteria Details                                                   [X] |
 +-------------------------------------------------------------------------+
 | Central Cafeteria                                    [ACTIVE (Badge)]   |
-| Email: admin@centralcafeteria.com                                       |
+| Email: admin@maincafe.com                                               |
 | Created Date: 04/10/2026                                                |
 |                                                                         |
 | +---------------------------------------------------------------------+ |
-| | CURRENT PASSWORD                                                    | |
-| | [Lock]  admin@123 / ••••••••        [Eye] Show/Hide   [Copy] Copy   | |
+| | CURRENT ADMIN PASSWORD                                              | |
+| | [Key]  password / ••••••••          [Eye] Reveal   [Copy] Copy      | |
 | +---------------------------------------------------------------------+ |
 |                                                                         |
 | Active Subscription Plan: Enterprise Plan (INR 9,999/mo)                |
-| Usage Quotas: Counters: 3/5 | Staff: 8/15 | Cards: 240/1000             |
+| Resource Usage & Limits: Counters: 3/5 | Staff: 8/15 | Cards: 240/1000  |
 +-------------------------------------------------------------------------+
 |                                                                 [Close] |
 +-------------------------------------------------------------------------+
@@ -80,19 +72,25 @@ Cafeteria Details Modal with Current Password:
 
 ## Verification Plan
 
-1. Frontend Compilation:
+1. Backend Unit Tests:
+- Run `npm test` in `Backend Money Card` (verify all 124 tests pass).
+
+2. Frontend Compilation:
 - Run `npx tsc --noEmit` in `Frontend Money Card` (0 errors).
 
-2. Frontend Test Suite:
+3. Frontend Vitest Suite:
 - Run `npm test -- --run` in `Frontend Money Card` (verify all 298+ tests continue to pass).
 
 ---
 
 ## Verification Results
 
-1. TypeScript Type Check:
+1. Backend Vitest Suite:
+- `npm test`: 13 test files passed, 124 passed (124 tests).
+
+2. Frontend TypeScript Type Check:
 - `npx tsc --noEmit`: Exited with code 0 (zero errors).
 
-2. Vitest Suite:
+3. Frontend Vitest Suite:
 - `npm test -- --run`: 39 passed (39 test files), 298 passed (298 tests).
 

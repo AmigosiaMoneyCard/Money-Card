@@ -27,6 +27,10 @@ export interface OrganizationOverview extends Organization {
     name: string;
     email: string;
     mustChangePassword?: boolean;
+    credentials?: {
+      email: string;
+      password?: string;
+    };
   } | null;
   usage?: {
     branchCount: number;
