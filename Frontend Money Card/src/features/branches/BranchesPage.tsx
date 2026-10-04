@@ -32,6 +32,7 @@ import {
   Copy,
   Eye,
   EyeOff,
+  Check,
 } from 'lucide-react';
 
 // ─── Slide Switch Component (Far Right End) ─────────────────
@@ -151,8 +152,24 @@ export function BranchesPage() {
 
   // Create modal inputs
   const [branchNameInput, setBranchNameInput] = useState('');
+  const [branchPhoneInput, setBranchPhoneInput] = useState('');
+  const [branchPasswordInput, setBranchPasswordInput] = useState('');
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [modalApiError, setModalApiError] = useState<string | null>(null);
+
+  // WhatsApp Credentials Modal State
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+  const [createdBranchCredentials, setCreatedBranchCredentials] = useState<{
+    name: string;
+    phone: string;
+    password: string;
+    branchId: string;
+  } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [showModalPassword, setShowModalPassword] = useState(false);
 
   // View/Edit modal inputs
   const [editNameInput, setEditNameInput] = useState('');
@@ -289,7 +306,12 @@ export function BranchesPage() {
   // ── Create Counter ─────────────────────────────────────────
   const handleOpenCreate = () => {
     setBranchNameInput('');
+    setBranchPhoneInput('');
+    setBranchPasswordInput('');
+    setShowCreatePassword(false);
     setNameError(null);
+    setPhoneError(null);
+    setPasswordError(null);
     setModalApiError(null);
     setShowCreateModal(true);
   };
@@ -300,13 +322,23 @@ export function BranchesPage() {
     const nameErr = validateCounterName(branchNameInput);
     setNameError(nameErr);
 
-    if (nameErr) return;
+    const cleanPhone = branchPhoneInput.replace(/\D/g, '').slice(-10);
+    const phoneErr = validateMobileNumber(cleanPhone);
+    setPhoneError(phoneErr);
+
+    const effectivePassword = branchPasswordInput.trim() || '12345678';
+    const passwordErr = validatePassword(effectivePassword);
+    setPasswordError(passwordErr);
+
+    if (nameErr || phoneErr || passwordErr) return;
 
     setModalApiError(null);
     setIsSubmitting(true);
     try {
       const result: ApiResult<Branch> = await apiService.branches.createBranch({
         name: branchNameInput.trim(),
+        phone: cleanPhone,
+        password: effectivePassword,
       });
 
       if (!result.success) {
@@ -321,15 +353,59 @@ export function BranchesPage() {
         return;
       }
 
-      notify.success('Counter created successfully. You can assign staff members in Staff Management.');
+      storePassword(result.data.id, effectivePassword, cleanPhone, result.data.manager?.id);
+
+      notify.success('Counter created successfully.');
       setShowCreateModal(false);
       setBranchNameInput('');
+      setBranchPhoneInput('');
+      setBranchPasswordInput('');
       fetchBranches();
+
+      setCreatedBranchCredentials({
+        name: result.data.name,
+        phone: result.data.credentials?.phone || cleanPhone,
+        password: effectivePassword,
+        branchId: result.data.id,
+      });
+      setCopied(false);
+      setShowWhatsAppModal(true);
     } catch {
       setModalApiError('An unexpected error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleCopyCredentials = () => {
+    if (!createdBranchCredentials) return;
+    const loginUrl = `${window.location.origin}/login`;
+    const textToCopy =
+      `Counter Name: ${createdBranchCredentials.name}\n` +
+      `Phone Number: ${createdBranchCredentials.phone}\n` +
+      `Password: ${createdBranchCredentials.password}\n` +
+      `Login URL: ${loginUrl}`;
+    navigator.clipboard.writeText(textToCopy);
+    setCopied(true);
+    notify.success('Credentials copied to clipboard');
+    setTimeout(() => setCopied(false), 2500);
+  };
+
+  const handleSendWhatsApp = () => {
+    if (!createdBranchCredentials) return;
+    const loginUrl = `${window.location.origin}/login`;
+    const message =
+      `*Welcome to Money Card Counter Portal*\n\n` +
+      `Your counter account has been created successfully:\n\n` +
+      `• *Counter Name:* ${createdBranchCredentials.name}\n` +
+      `• *Mobile Number:* ${createdBranchCredentials.phone}\n` +
+      `• *Password:* ${createdBranchCredentials.password}\n\n` +
+      `*Counter Dashboard Link:* ${loginUrl}\n\n` +
+      `_Log in using your Mobile Number and Password to access your Counter Menu, Staff, and Analytics._`;
+
+    const cleanPhone = createdBranchCredentials.phone.replace(/\D/g, '').slice(-10);
+    const waUrl = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(message)}`;
+    window.open(waUrl, '_blank', 'noopener,noreferrer');
   };
 
 
@@ -809,9 +885,46 @@ export function BranchesPage() {
             autoFocus
           />
 
-          <p className="text-xs text-slate-500">
-            Staff members are managed separately in Staff Management. After creating this counter, you can add or assign staff to it.
-          </p>
+          <Input
+            id="create-branch-phone"
+            label="Mobile number"
+            type="tel"
+            maxLength={10}
+            placeholder="e.g. 9876543210 (10-digit mobile)"
+            value={branchPhoneInput}
+            onChange={(e) => {
+              const numericOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
+              setBranchPhoneInput(numericOnly);
+              if (phoneError) setPhoneError(null);
+            }}
+            error={phoneError || undefined}
+            disabled={isSubmitting}
+          />
+
+          <Input
+            id="create-branch-password"
+            label="Login Password"
+            type={showCreatePassword ? 'text' : 'password'}
+            placeholder="Minimum 8 characters (default: 12345678)"
+            value={branchPasswordInput}
+            onChange={(e) => {
+              setBranchPasswordInput(e.target.value);
+              if (passwordError) setPasswordError(null);
+            }}
+            rightElement={
+              <button
+                type="button"
+                onClick={() => setShowCreatePassword(!showCreatePassword)}
+                className="text-slate-400 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer p-1"
+                tabIndex={-1}
+                aria-label={showCreatePassword ? 'Hide password' : 'Show password'}
+              >
+                {showCreatePassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            }
+            error={passwordError || undefined}
+            disabled={isSubmitting}
+          />
 
           <ModalFooter>
             <Button variant="outline" onClick={() => setShowCreateModal(false)} disabled={isSubmitting}>
@@ -822,6 +935,88 @@ export function BranchesPage() {
             </Button>
           </ModalFooter>
         </form>
+      </Modal>
+
+      {/* ── WhatsApp Credentials Modal ────────────────────────────── */}
+      <Modal
+        isOpen={showWhatsAppModal}
+        onClose={() => {
+          setShowWhatsAppModal(false);
+          setShowModalPassword(false);
+        }}
+        title="Counter Created Successfully!"
+        size="md"
+      >
+        <div className="space-y-4 py-1">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 space-y-3">
+            <div className="flex items-center gap-2 text-emerald-800 font-semibold text-sm">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white">
+                <Check className="h-3.5 w-3.5" />
+              </span>
+              <span>Counter Login Credentials</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="bg-white/95 p-2.5 rounded-lg border border-emerald-100 shadow-2xs">
+                <span className="text-slate-500 block text-[11px]">Counter Name</span>
+                <span className="font-semibold text-slate-800 text-sm">{createdBranchCredentials?.name}</span>
+              </div>
+              <div className="bg-white/95 p-2.5 rounded-lg border border-emerald-100 shadow-2xs">
+                <span className="text-slate-500 block text-[11px]">Mobile Number (Login ID)</span>
+                <span className="font-semibold text-slate-800 font-mono text-sm">{createdBranchCredentials?.phone}</span>
+              </div>
+              <div className="bg-white/95 p-2.5 rounded-lg border border-emerald-100 shadow-2xs">
+                <span className="text-slate-500 block text-[11px]">Password</span>
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-slate-800 font-mono text-sm">
+                    {showModalPassword ? createdBranchCredentials?.password : '••••••••'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowModalPassword(!showModalPassword)}
+                    className="text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
+                    aria-label={showModalPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showModalPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
+              </div>
+              <div className="bg-white/95 p-2.5 rounded-lg border border-emerald-100 shadow-2xs">
+                <span className="text-slate-500 block text-[11px]">Web Portal</span>
+                <span className="font-medium text-emerald-700 truncate block">{window.location.origin}/login</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2.5 sm:flex-row pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCopyCredentials}
+              className="flex-1 justify-center gap-2 cursor-pointer"
+              leftIcon={copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+            >
+              {copied ? 'Copied Details' : 'Copy Credentials'}
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSendWhatsApp}
+              className="flex-1 justify-center gap-2 bg-[#25D366] hover:bg-[#20bd5a] text-white border-transparent cursor-pointer"
+              leftIcon={<MessageSquare className="h-4 w-4" />}
+            >
+              Send via WhatsApp
+            </Button>
+          </div>
+
+          <ModalFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setShowWhatsAppModal(false)}
+            >
+              Close
+            </Button>
+          </ModalFooter>
+        </div>
       </Modal>
 
 

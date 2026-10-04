@@ -44,13 +44,16 @@ class KitchenOrdersNotifier extends StateNotifier<KitchenOrdersState> {
 
   KitchenOrdersNotifier(this._kitchenService, this._ref)
       : super(const KitchenOrdersState()) {
-    // Automatically poll every 8 seconds for live tickets
+    // Initial load
+    loadOrders(silent: true);
+    loadSummary(silent: true);
+    // Background polling every 30 seconds to prevent network and server congestion
     _startPolling();
   }
 
   void _startPolling() {
     _pollingTimer?.cancel();
-    _pollingTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       loadOrders(silent: true);
       loadSummary(silent: true);
     });

@@ -59,6 +59,13 @@ export async function getStaffList(req: Request, res: Response) {
 
   const andConditions: any[] = [];
 
+  // Exclude legacy auto-created staff names
+  andConditions.push({
+    NOT: {
+      name: { startsWith: 'Staff - ' },
+    },
+  });
+
   // If the user is STAFF (counter manager), restrict to staff sharing their assigned branch(es) or unassigned org staff
   if (req.user?.role === Role.STAFF) {
     const counterBranches = await prisma.userBranch.findMany({
@@ -73,7 +80,26 @@ export async function getStaffList(req: Request, res: Response) {
           { assignedBranches: { none: {} } },
         ],
       });
+
+      // Exclude the counter's own assigned branch names (counter login identities)
+      const assignedBranches = await prisma.branch.findMany({
+        where: { id: { in: branchIds } },
+        select: { name: true },
+      });
+      const branchNames = assignedBranches.map((b) => b.name);
+      if (branchNames.length > 0) {
+        andConditions.push({
+          NOT: {
+            name: { in: branchNames },
+          },
+        });
+      }
     }
+
+    // Exclude the counter manager themself from appearing in their own staff list
+    andConditions.push({
+      id: { not: req.user.id },
+    });
   }
 
   const { search } = req.query;

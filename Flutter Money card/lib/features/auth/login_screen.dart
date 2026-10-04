@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
-import '../../core/storage/server_config_storage.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/common/app_button.dart';
 
@@ -40,9 +39,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void initState() {
     super.initState();
     _roleMode = widget.initialRole ?? LoginRoleMode.selectRole;
-    ServerConfigStorage().initialize().then((_) {
-      if (mounted) setState(() {});
-    });
   }
 
   @override

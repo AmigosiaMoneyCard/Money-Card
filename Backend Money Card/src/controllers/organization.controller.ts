@@ -228,6 +228,16 @@ export async function createBranch(req: Request, res: Response) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'Counter name can only contain letters, numbers, spaces, hyphens, and ampersands');
   }
 
+  const rawDigits = phone ? String(phone).trim().replace(/\D/g, '') : undefined;
+  const cleanPhone = rawDigits ? rawDigits.slice(-10) : undefined;
+  if (cleanPhone && cleanPhone.length !== 10) {
+    return sendError(res, 400, 'VALIDATION_ERROR', 'Phone number must be a valid 10-digit mobile number');
+  }
+
+  if (password && (password.length < 8 || password.length > 30)) {
+    return sendError(res, 400, 'VALIDATION_ERROR', 'Password must be between 8 and 30 characters');
+  }
+
   // Authoritative Effective Branch Limit Check
   const [effectiveLimits, currentBranchCount] = await Promise.all([
     getEffectiveLimits(orgId),
@@ -243,6 +253,30 @@ export async function createBranch(req: Request, res: Response) {
     );
   }
 
+  // Check if phone number is already registered by another organization
+  if (cleanPhone) {
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { phone: cleanPhone },
+          { phone: `91${cleanPhone}` },
+          { phone: `+91${cleanPhone}` },
+        ],
+      },
+    });
+    if (existingUser && existingUser.organizationId && existingUser.organizationId !== orgId) {
+      return sendError(
+        res,
+        409,
+        'PHONE_IN_USE',
+        'This phone number is already registered with another organization.',
+      );
+    }
+  }
+
+  const effectivePassword = password || '12345678';
+  const passwordHash = await hashPassword(effectivePassword);
+
   const result = await prisma.$transaction(async (tx) => {
     const countInTx = await tx.branch.count({ where: { organizationId: orgId } });
     if (countInTx >= effectiveLimits.branchLimit) {
@@ -257,10 +291,105 @@ export async function createBranch(req: Request, res: Response) {
       },
     });
 
+    // Provision or update counter manager account if phone is provided
+    if (cleanPhone) {
+      let counterUser = await tx.user.findFirst({
+        where: {
+          OR: [
+            { phone: cleanPhone },
+            { phone: `91${cleanPhone}` },
+            { phone: `+91${cleanPhone}` },
+          ],
+        },
+      });
+
+      if (!counterUser) {
+        counterUser = await tx.user.create({
+          data: {
+            name: trimmedName,
+            phone: cleanPhone,
+            passwordHash,
+            role: Role.STAFF,
+            organizationId: orgId,
+            status: UserStatus.ACTIVE,
+          },
+        });
+      } else {
+        await tx.user.update({
+          where: { id: counterUser.id },
+          data: {
+            name: trimmedName,
+            phone: cleanPhone,
+            passwordHash,
+            status: UserStatus.ACTIVE,
+          },
+        });
+      }
+
+      // Assign counter management permissions
+      const defaultPermissions: PermissionCode[] = [
+        PermissionCode.CARD_VIEW,
+        PermissionCode.CARD_ISSUE,
+        PermissionCode.CARD_RETURN,
+        PermissionCode.CARD_BLOCK,
+        PermissionCode.CARD_UNBLOCK,
+        PermissionCode.SESSION_VIEW,
+        PermissionCode.RECHARGE,
+        PermissionCode.PURCHASE,
+        PermissionCode.REFUND,
+        PermissionCode.PRODUCT_VIEW,
+        PermissionCode.PRODUCT_MANAGE,
+        PermissionCode.INVENTORY_VIEW,
+        PermissionCode.INVENTORY_MANAGE,
+        PermissionCode.VIEW_ANALYTICS,
+        PermissionCode.VIEW_REPORTS,
+        PermissionCode.STAFF_VIEW,
+        PermissionCode.STAFF_MANAGE,
+      ];
+
+      for (const perm of defaultPermissions) {
+        await tx.userPermission.upsert({
+          where: {
+            userId_permission: {
+              userId: counterUser.id,
+              permission: perm,
+            },
+          },
+          create: {
+            userId: counterUser.id,
+            permission: perm,
+          },
+          update: {},
+        }).catch(() => {});
+      }
+
+      // Link counter user with this branch
+      await tx.userBranch.upsert({
+        where: {
+          userId_branchId: {
+            userId: counterUser.id,
+            branchId: created.id,
+          },
+        },
+        create: {
+          userId: counterUser.id,
+          branchId: created.id,
+        },
+        update: {},
+      }).catch(() => {});
+    }
+
     return created;
   });
 
-  return sendSuccess(res, result, 201);
+  return sendSuccess(res, {
+    ...result,
+    credentials: cleanPhone ? {
+      name: result.name,
+      phone: cleanPhone,
+      password: effectivePassword,
+    } : undefined,
+  }, 201);
 }
 
 export async function createBranchesBatch(req: Request, res: Response) {
@@ -507,16 +636,70 @@ export async function updateBranch(req: Request, res: Response) {
         await tx.user.update({
           where: { id: existingManager.id },
           data: {
+            name: updated.name,
             ...(cleanPhone ? { phone: cleanPhone } : {}),
             ...(passwordHash ? { passwordHash } : {}),
             status: UserStatus.ACTIVE,
           },
         });
       }
+    } else if (cleanPhone) {
+      let user = await tx.user.findFirst({
+        where: {
+          OR: [
+            { phone: cleanPhone },
+            { phone: `91${cleanPhone}` },
+            { phone: `+91${cleanPhone}` },
+          ],
+        },
+      });
+
+      const effectivePasswordHash = passwordHash || (await hashPassword('12345678'));
+
+      if (!user) {
+        user = await tx.user.create({
+          data: {
+            name: updated.name,
+            phone: cleanPhone,
+            passwordHash: effectivePasswordHash,
+            role: Role.STAFF,
+            organizationId: orgId,
+            status: UserStatus.ACTIVE,
+          },
+        });
+      } else {
+        await tx.user.update({
+          where: { id: user.id },
+          data: {
+            name: updated.name,
+            phone: cleanPhone,
+            passwordHash: effectivePasswordHash,
+            status: UserStatus.ACTIVE,
+          },
+        });
+      }
+
+      await tx.userBranch.upsert({
+        where: {
+          userId_branchId: {
+            userId: user.id,
+            branchId: id,
+          },
+        },
+        create: {
+          userId: user.id,
+          branchId: id,
+        },
+        update: {},
+      }).catch(() => {});
+
+      existingManager = user as any;
     }
 
     return updated;
   });
+
+  const finalPhone = cleanPhone || existingManager?.phone;
 
   return sendSuccess(res, {
     ...updatedBranch,
@@ -526,6 +709,13 @@ export async function updateBranch(req: Request, res: Response) {
           phone: existingManager.phone || '',
         }
       : null,
+    credentials: finalPhone
+      ? {
+          name: updatedBranch.name,
+          phone: finalPhone,
+          password: effectivePassword || '12345678',
+        }
+      : undefined,
   });
 }
 

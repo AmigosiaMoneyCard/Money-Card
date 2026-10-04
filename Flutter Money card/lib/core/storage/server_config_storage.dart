@@ -19,8 +19,11 @@ class ServerConfigStorage {
               ),
             );
 
+  static String? _cachedServerUrl;
+
   Future<void> saveServerUrl(String url) async {
     final normalized = AppConfig.normalizeUrl(url);
+    _cachedServerUrl = normalized;
     try {
       await _storage.write(key: _keyServerUrl, value: normalized);
     } catch (_) {
@@ -30,13 +33,18 @@ class ServerConfigStorage {
   }
 
   Future<String?> getServerUrl() async {
+    if (_cachedServerUrl != null && _cachedServerUrl!.isNotEmpty) {
+      return _cachedServerUrl;
+    }
     try {
       final saved = await _storage.read(key: _keyServerUrl);
       if (saved != null && saved.isNotEmpty) {
+        _cachedServerUrl = saved;
         return saved;
       }
       final legacy = await _storage.read(key: 'mc_custom_server_url');
       if (legacy != null && legacy.isNotEmpty) {
+        _cachedServerUrl = legacy;
         return legacy;
       }
     } catch (_) {
@@ -48,6 +56,7 @@ class ServerConfigStorage {
   }
 
   Future<void> resetToDefault() async {
+    _cachedServerUrl = null;
     try {
       await _storage.delete(key: _keyServerUrl);
       await _storage.delete(key: 'mc_custom_server_url');
