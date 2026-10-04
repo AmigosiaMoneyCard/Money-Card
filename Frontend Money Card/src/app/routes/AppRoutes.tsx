@@ -15,8 +15,9 @@ import {
 } from '@/features/auth';
 import { OrganizationsPage } from '@/features/organizations';
 import { DashboardPage } from '@/features/dashboard';
+import { useAuth } from '@/hooks';
 import { BranchesPage } from '@/features/branches';
-import { StaffPage } from '@/features/staff';
+import { StaffPage, CounterStaffPage } from '@/features/staff';
 import { CardsPage } from '@/features/cards';
 import { ProductsPage } from '@/features/products';
 import { InventoryPage } from '@/features/inventory';
@@ -30,6 +31,14 @@ import {
   PortalTransactionsPage,
   PortalReceiptsPage,
 } from '@/features/portal';
+
+function StaffPageRoute() {
+  const { user } = useAuth();
+  if (user?.role === 'STAFF') {
+    return <CounterStaffPage />;
+  }
+  return <StaffPage />;
+}
 
 // ─── Application Routes ───────────────────────────────────
 // User Portal routes are conceptually separate from Staff/Admin routes.
@@ -87,7 +96,7 @@ export function AppRoutes() {
           path="/staff"
           element={
             <PermissionGuard roles={['ORG_ADMIN', 'STAFF']}>
-              <StaffPage />
+              <StaffPageRoute />
             </PermissionGuard>
           }
         />

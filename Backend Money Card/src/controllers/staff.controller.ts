@@ -55,6 +55,7 @@ export async function getStaffList(req: Request, res: Response) {
   const where: any = {
     organizationId: orgId,
     role: Role.STAFF,
+    isCounterAccount: false,
   };
 
   const andConditions: any[] = [];
@@ -66,7 +67,28 @@ export async function getStaffList(req: Request, res: Response) {
     },
   });
 
-  // If the user is STAFF (counter manager), restrict to staff sharing their assigned branch(es) or unassigned org staff
+  // Exclude all branch counter names across the organization
+  const orgBranches = await prisma.branch.findMany({
+    where: { organizationId: orgId },
+    select: { name: true },
+  });
+  const orgBranchNames = orgBranches.map((b) => b.name);
+  if (orgBranchNames.length > 0) {
+    andConditions.push({
+      NOT: {
+        name: { in: orgBranchNames },
+      },
+    });
+  }
+
+  // Always exclude the requesting user themselves from the staff list
+  if (req.user?.id) {
+    andConditions.push({
+      id: { not: req.user.id },
+    });
+  }
+
+  // If the user is STAFF (counter manager), restrict to staff assigned to their branch(es)
   if (req.user?.role === Role.STAFF) {
     const counterBranches = await prisma.userBranch.findMany({
       where: { userId: req.user.id },
@@ -75,31 +97,13 @@ export async function getStaffList(req: Request, res: Response) {
     const branchIds = counterBranches.map((b) => b.branchId);
     if (branchIds.length > 0) {
       andConditions.push({
-        OR: [
-          { assignedBranches: { some: { branchId: { in: branchIds } } } },
-          { assignedBranches: { none: {} } },
-        ],
+        assignedBranches: { some: { branchId: { in: branchIds } } },
       });
-
-      // Exclude the counter's own assigned branch names (counter login identities)
-      const assignedBranches = await prisma.branch.findMany({
-        where: { id: { in: branchIds } },
-        select: { name: true },
+    } else {
+      andConditions.push({
+        id: 'none',
       });
-      const branchNames = assignedBranches.map((b) => b.name);
-      if (branchNames.length > 0) {
-        andConditions.push({
-          NOT: {
-            name: { in: branchNames },
-          },
-        });
-      }
     }
-
-    // Exclude the counter manager themself from appearing in their own staff list
-    andConditions.push({
-      id: { not: req.user.id },
-    });
   }
 
   const { search } = req.query;
@@ -250,6 +254,7 @@ export async function createStaffMember(req: Request, res: Response) {
       where: {
         organizationId: orgId,
         role: Role.STAFF,
+        isCounterAccount: false,
         status: { not: UserStatus.DEACTIVATED },
       },
     }),
@@ -295,6 +300,7 @@ export async function createStaffMember(req: Request, res: Response) {
       where: {
         organizationId: orgId,
         role: Role.STAFF,
+        isCounterAccount: false,
         status: { not: UserStatus.DEACTIVATED },
       },
     });
@@ -309,6 +315,7 @@ export async function createStaffMember(req: Request, res: Response) {
         email: cleanEmail,
         passwordHash,
         role: Role.STAFF,
+        isCounterAccount: false,
         organizationId: orgId,
         status: UserStatus.ACTIVE,
         mustChangePassword: false,

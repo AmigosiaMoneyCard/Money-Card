@@ -39,6 +39,7 @@ export async function getOrganizationProfile(req: Request, res: Response) {
       where: {
         organizationId: orgId,
         role: Role.STAFF,
+        isCounterAccount: false,
         status: { not: UserStatus.DEACTIVATED },
       },
     }),
@@ -310,6 +311,7 @@ export async function createBranch(req: Request, res: Response) {
             phone: cleanPhone,
             passwordHash,
             role: Role.STAFF,
+            isCounterAccount: true,
             organizationId: orgId,
             status: UserStatus.ACTIVE,
           },
@@ -321,6 +323,7 @@ export async function createBranch(req: Request, res: Response) {
             name: trimmedName,
             phone: cleanPhone,
             passwordHash,
+            isCounterAccount: true,
             status: UserStatus.ACTIVE,
           },
         });
@@ -639,6 +642,7 @@ export async function updateBranch(req: Request, res: Response) {
             name: updated.name,
             ...(cleanPhone ? { phone: cleanPhone } : {}),
             ...(passwordHash ? { passwordHash } : {}),
+            isCounterAccount: true,
             status: UserStatus.ACTIVE,
           },
         });
@@ -663,6 +667,7 @@ export async function updateBranch(req: Request, res: Response) {
             phone: cleanPhone,
             passwordHash: effectivePasswordHash,
             role: Role.STAFF,
+            isCounterAccount: true,
             organizationId: orgId,
             status: UserStatus.ACTIVE,
           },
@@ -674,6 +679,7 @@ export async function updateBranch(req: Request, res: Response) {
             name: updated.name,
             phone: cleanPhone,
             passwordHash: effectivePasswordHash,
+            isCounterAccount: true,
             status: UserStatus.ACTIVE,
           },
         });

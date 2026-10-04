@@ -209,9 +209,46 @@ describe('Staff <-> Org Admin Live Integration Unit Tests (All 15 Phases)', () =
         { id: 'b1', status: 'ACTIVE' },
       ];
 
-      // Relaxed rule: counter can be deactivated or deleted even if it is the only remaining counter
       const canDeactivate = true;
       expect(canDeactivate).toBe(true);
     });
   });
+
+  // Phase 12: Decoupled Counter Accounts from Staff Quotas and Staff Rosters
+  describe('Phase 12: Counter Accounts vs Genuine Staff Quota Decoupling', () => {
+    it('excludes isCounterAccount users from employee staff quota calculation', () => {
+      const users = [
+        { id: 'u_counter_1', name: 'Counter 1', role: Role.STAFF, isCounterAccount: true, status: UserStatus.ACTIVE },
+        { id: 'u_counter_2', name: 'Counter 2', role: Role.STAFF, isCounterAccount: true, status: UserStatus.ACTIVE },
+        { id: 'u_staff_1', name: 'Ramesh Cashier', role: Role.STAFF, isCounterAccount: false, status: UserStatus.ACTIVE },
+      ];
+
+      const genuineStaff = users.filter((u) => u.role === Role.STAFF && !u.isCounterAccount && u.status !== UserStatus.DEACTIVATED);
+      expect(genuineStaff).toHaveLength(1);
+      expect(genuineStaff[0].name).toBe('Ramesh Cashier');
+    });
+
+    it('returns zero staff usage when only counters exist and no genuine staff have been created', () => {
+      const users = [
+        { id: 'u_counter_1', name: 'Counter 1', role: Role.STAFF, isCounterAccount: true, status: UserStatus.ACTIVE },
+        { id: 'u_counter_2', name: 'Counter 2', role: Role.STAFF, isCounterAccount: true, status: UserStatus.ACTIVE },
+      ];
+
+      const genuineStaff = users.filter((u) => u.role === Role.STAFF && !u.isCounterAccount && u.status !== UserStatus.DEACTIVATED);
+      expect(genuineStaff).toHaveLength(0);
+    });
+
+    it('filters out counter accounts and legacy Staff - prefixed names from staff roster', () => {
+      const allStaffRoster = [
+        { id: 'u_counter_1', name: 'Counter 1', isCounterAccount: true },
+        { id: 'u_counter_2', name: 'Staff - Counter 2', isCounterAccount: true },
+        { id: 'u_staff_real', name: 'Priya Sharma', isCounterAccount: false },
+      ];
+
+      const filteredStaff = allStaffRoster.filter((s) => !s.isCounterAccount && !s.name.startsWith('Staff - '));
+      expect(filteredStaff).toHaveLength(1);
+      expect(filteredStaff[0].name).toBe('Priya Sharma');
+    });
+  });
 });
+

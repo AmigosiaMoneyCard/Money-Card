@@ -166,6 +166,7 @@ model User {
   activationToken        String?
   activationTokenExpires DateTime? @db.Timestamptz(3)
   tokenVersion         Int         @default(1)
+  isCounterAccount     Boolean     @default(false)
   createdAt            DateTime    @default(now())
   updatedAt            DateTime    @updatedAt
 
