@@ -4,6 +4,7 @@ export type {
   Permission,
   AuthUser,
   AuthState,
+  ImpersonatedOrg,
   LoginCredentials,
   AuthResponseData,
   ForgotPasswordRequest,

@@ -74,27 +74,18 @@ export async function login(req: Request, res: Response) {
       ipAddress: req.ip,
       details: { reason: 'USER_NOT_FOUND', identifier: email || phone, portal: requestedPortal },
     });
-    if (requestedPortal === 'COUNTER') {
-      return sendError(res, 401, 'INVALID_CREDENTIALS', "Counter doesn't exist.");
-    }
-    if (requestedPortal === 'ORG_ADMIN') {
-      return sendError(res, 401, 'INVALID_CREDENTIALS', "Org Admin doesn't exist.");
-    }
-    if (requestedPortal === 'STAFF') {
-      return sendError(res, 401, 'INVALID_CREDENTIALS', "Staff doesn't exist.");
-    }
-    return sendError(res, 401, 'INVALID_CREDENTIALS', 'Invalid credentials');
+    return sendError(res, 401, 'INVALID_CREDENTIALS', 'Account does not exist.');
   }
 
   // If portal was specified, verify role matches portal
   if (requestedPortal === 'COUNTER' && user.role !== Role.STAFF) {
-    return sendError(res, 401, 'INVALID_CREDENTIALS', "Counter doesn't exist.");
+    return sendError(res, 401, 'INVALID_CREDENTIALS', 'Account does not exist.');
   }
   if (requestedPortal === 'ORG_ADMIN' && user.role !== Role.ORG_ADMIN) {
-    return sendError(res, 401, 'INVALID_CREDENTIALS', "Org Admin doesn't exist.");
+    return sendError(res, 401, 'INVALID_CREDENTIALS', 'Account does not exist.');
   }
   if (requestedPortal === 'STAFF' && user.role !== Role.STAFF) {
-    return sendError(res, 401, 'INVALID_CREDENTIALS', "Staff doesn't exist.");
+    return sendError(res, 401, 'INVALID_CREDENTIALS', 'Account does not exist.');
   }
 
   if (user.status !== UserStatus.ACTIVE) {
@@ -136,27 +127,21 @@ export async function login(req: Request, res: Response) {
 
   const rawPassword = String(password);
   const trimmedPassword = rawPassword.trim();
-  let isPasswordValid = false;
+  let isPasswordValid =
+    (await comparePassword(rawPassword, user.passwordHash)) ||
+    (await comparePassword(trimmedPassword, user.passwordHash));
 
-  // Counter staff accounts accept any password as requested
-  if (user.role === Role.STAFF) {
-    isPasswordValid = true;
-  } else {
-    isPasswordValid =
-      (await comparePassword(rawPassword, user.passwordHash)) ||
-      (await comparePassword(trimmedPassword, user.passwordHash));
-    if (!isPasswordValid) {
-      if (['password', 'SuperAdmin@123', 'OrgAdmin@123', 'Staff@123', '123456', '12345678'].includes(rawPassword) ||
-          ['password', 'SuperAdmin@123', 'OrgAdmin@123', 'Staff@123', '123456', '12345678'].includes(trimmedPassword)) {
-        const isAlt1 = await comparePassword('password', user.passwordHash);
-        const isAlt2 = await comparePassword('SuperAdmin@123', user.passwordHash);
-        const isAlt3 = await comparePassword('OrgAdmin@123', user.passwordHash);
-        const isAlt4 = await comparePassword('Staff@123', user.passwordHash);
-        const isAlt5 = await comparePassword('123456', user.passwordHash);
-        const isAlt6 = await comparePassword('12345678', user.passwordHash);
-        if (isAlt1 || isAlt2 || isAlt3 || isAlt4 || isAlt5 || isAlt6) {
-          isPasswordValid = true;
-        }
+  if (!isPasswordValid) {
+    if (['password', 'SuperAdmin@123', 'OrgAdmin@123', 'Staff@123', '123456', '12345678'].includes(rawPassword) ||
+        ['password', 'SuperAdmin@123', 'OrgAdmin@123', 'Staff@123', '123456', '12345678'].includes(trimmedPassword)) {
+      const isAlt1 = await comparePassword('password', user.passwordHash);
+      const isAlt2 = await comparePassword('SuperAdmin@123', user.passwordHash);
+      const isAlt3 = await comparePassword('OrgAdmin@123', user.passwordHash);
+      const isAlt4 = await comparePassword('Staff@123', user.passwordHash);
+      const isAlt5 = await comparePassword('123456', user.passwordHash);
+      const isAlt6 = await comparePassword('12345678', user.passwordHash);
+      if (isAlt1 || isAlt2 || isAlt3 || isAlt4 || isAlt5 || isAlt6) {
+        isPasswordValid = true;
       }
     }
   }
@@ -171,7 +156,7 @@ export async function login(req: Request, res: Response) {
       ipAddress: req.ip,
       details: { reason: 'INVALID_PASSWORD', portal: requestedPortal },
     });
-    return sendError(res, 401, 'INVALID_CREDENTIALS', 'Credentials are wrong.');
+    return sendError(res, 401, 'INVALID_CREDENTIALS', 'Password is incorrect.');
   }
 
   const tokenPayload = {

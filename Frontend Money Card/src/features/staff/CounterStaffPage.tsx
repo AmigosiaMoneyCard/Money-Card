@@ -617,15 +617,6 @@ export function CounterStaffPage() {
       className: 'text-right min-w-[240px]',
       render: (staff: Staff) => (
         <div className="flex items-center justify-end gap-1.5">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleOpenStaffDetails(staff)}
-            className="text-xs h-7 px-2.5 rounded-lg border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 transition-all shadow-2xs cursor-pointer"
-            leftIcon={<Eye className="h-3 w-3 text-emerald-600" />}
-          >
-            Details
-          </Button>
           {canManage && (
             <Button
               variant="outline"
@@ -646,16 +637,6 @@ export function CounterStaffPage() {
           >
             Summary
           </Button>
-          {canManage && (
-            <button
-              type="button"
-              onClick={() => handleOpenDelete(staff)}
-              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-              title="Remove staff member"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          )}
         </div>
       ),
     },
@@ -667,10 +648,6 @@ export function CounterStaffPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200/80 pb-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">Staff Management</h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Manage cashier and kitchen team members for{' '}
-            <strong className="text-slate-800 font-semibold">{activeBranchName}</strong>
-          </p>
         </div>
         {canManage && (
           <Button
@@ -1135,15 +1112,31 @@ export function CounterStaffPage() {
             </div>
           )}
 
-          <ModalFooter>
-            <Button variant="outline" type="button" onClick={() => setShowStaffDetailsModal(false)}>
-              Close
-            </Button>
-            {canManage && (
-              <Button variant="primary" type="submit" isLoading={isSubmitting}>
-                Save Changes
+          <ModalFooter className="justify-between">
+            {canManage && selectedStaff ? (
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => {
+                  setShowStaffDetailsModal(false);
+                  handleOpenDelete(selectedStaff);
+                }}
+                className="text-xs text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 cursor-pointer"
+                leftIcon={<Trash2 className="h-3.5 w-3.5 text-red-600" />}
+              >
+                Delete Staff
               </Button>
-            )}
+            ) : <div />}
+            <div className="flex items-center gap-2">
+              <Button variant="outline" type="button" onClick={() => setShowStaffDetailsModal(false)}>
+                Close
+              </Button>
+              {canManage && (
+                <Button variant="primary" type="submit" isLoading={isSubmitting}>
+                  Save Changes
+                </Button>
+              )}
+            </div>
           </ModalFooter>
         </form>
       </Modal>

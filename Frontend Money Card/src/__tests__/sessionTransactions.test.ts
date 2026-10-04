@@ -98,4 +98,26 @@ describe('Customer Session Transactions - Bought Items & Details', () => {
     expect(checkType('REFUND_RETURN')).toEqual({ title: 'Settlement Refund', sign: '-' });
     expect(checkType('RECHARGE')).toEqual({ title: 'Wallet Recharge', sign: '+' });
   });
+
+  it('unwraps nested order payloads and extracts item names from dishName or product.name aliases', () => {
+    const backendPayload = {
+      orderNumber: 1042,
+      orderStatus: 'COMPLETED',
+      orderedAt: '2026-10-04T18:30:00Z',
+      items: [
+        { dishName: 'Veg Burger', quantity: 1, unitPrice: 70, subtotal: 70 },
+        { product: { name: 'Cold Coffee' }, quantity: 1, unitPrice: 80, subtotal: 80 },
+      ],
+    };
+
+    const items = extractTransactionItems(backendPayload);
+    expect(items).toHaveLength(2);
+    expect(items[0].name).toBe('Veg Burger');
+    expect(items[0].quantity).toBe(1);
+    expect(items[1].name).toBe('Cold Coffee');
+    expect(items[1].quantity).toBe(1);
+
+    const title = items.map((i) => `${i.quantity}× ${i.name}`).join(', ');
+    expect(title).toBe('1× Veg Burger, 1× Cold Coffee');
+  });
 });

@@ -1,4 +1,4 @@
-import { formatCurrency, formatDate, extractTransactionItems, formatLocalDate } from '@/utils';
+import { formatCurrency, formatDateTime, extractTransactionItems, formatLocalDate } from '@/utils';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiService } from '@/services/api';
 import { usePermissions } from '@/hooks';
@@ -649,11 +649,11 @@ export function OrgAdminCardsView() {
               </div>
             </div>
 
-            {/* Activity Breakdown */}
+            {/* Activity */}
             <div className="space-y-2 pt-1">
               <div className="flex items-center justify-between px-0.5">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Breakdown
+                  Activity
                 </h4>
               </div>
 
@@ -692,7 +692,7 @@ export function OrgAdminCardsView() {
                             <p className="font-semibold text-slate-900 leading-tight">
                               {getTransactionTitle(tx)}
                             </p>
-                            <p className="text-[11px] text-slate-400 mt-0.5">{formatDate(tx.createdAt)}</p>
+                            <p className="text-[11px] text-slate-400 mt-0.5">{formatDateTime(tx.createdAt)}</p>
                           </div>
                         </div>
                         <span

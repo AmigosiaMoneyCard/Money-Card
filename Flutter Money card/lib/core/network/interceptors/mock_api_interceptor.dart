@@ -934,13 +934,13 @@ class MockApiInterceptor extends Interceptor {
       }
 
       if (user == null) {
-        return _reject(handler, options, 401, 'INVALID_CREDENTIALS', "Staff doesn't exist.");
+        return _reject(handler, options, 401, 'INVALID_CREDENTIALS', 'Account does not exist.');
       }
 
       // Verify password
       final userPassword = user['password'] as String? ?? 'password';
       if (password != userPassword && password != 'password' && password != '123456' && password != 'password123') {
-        return _reject(handler, options, 401, 'INVALID_CREDENTIALS', 'Credentials are wrong.');
+        return _reject(handler, options, 401, 'INVALID_CREDENTIALS', 'Password is incorrect.');
       }
 
       currentActiveUser = user;

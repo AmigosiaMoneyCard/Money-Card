@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiService } from '@/services/api';
 import {
   Card,
-  Badge,
   Button,
   Input,
   Select,
@@ -10,15 +9,13 @@ import {
   EmptyState,
   ErrorState,
 } from '@/components/ui';
-import { formatDate } from '@/utils';
+import { formatDateTime } from '@/utils';
 import {
   ShieldAlert,
   Search,
   RefreshCw,
-  Filter,
   AlertTriangle,
   Info,
-  CheckCircle,
 } from 'lucide-react';
 
 interface AuditLogItem {
@@ -254,7 +251,7 @@ export function GlobalAuditLogPage() {
                 {logs.map((log) => (
                   <tr key={log.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 whitespace-nowrap text-gray-600 font-mono text-xs">
-                      {formatDate(log.createdAt, 'MMM dd, yyyy HH:mm:ss')}
+                      {formatDateTime(log.createdAt)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       {getSeverityBadge(log.severity)}

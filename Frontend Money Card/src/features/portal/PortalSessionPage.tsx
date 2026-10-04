@@ -29,7 +29,9 @@ import {
   ChefHat,
   UtensilsCrossed,
   X,
+  Download,
 } from 'lucide-react';
+import { downloadCustomerReceiptPdf } from './portalReceiptPdfExport';
 
 
 function checkIsStandalone(): boolean {
@@ -59,6 +61,29 @@ export function PortalSessionPage() {
   const [error, setError] = useState<string | null>(null);
   const [isStandalone, setIsStandalone] = useState(checkIsStandalone);
   const [bypassInstall, setBypassInstall] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  const handleDownloadReceipt = async () => {
+    if (!sessionDetail || !sessionToken) return;
+    setIsGeneratingPdf(true);
+    try {
+      const res = await apiService.userPortal.getPublicSessionReceipts(sessionToken);
+      const receiptsList = res.success && Array.isArray(res.data) ? res.data : [];
+      downloadCustomerReceiptPdf({
+        sessionDetail,
+        receipts: receiptsList,
+        organizationName: sessionDetail.branchDisplayName || 'Cafeteria Dining',
+      });
+    } catch {
+      // Fallback with session details only
+      downloadCustomerReceiptPdf({
+        sessionDetail,
+        organizationName: sessionDetail.branchDisplayName || 'Cafeteria Dining',
+      });
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
 
   useEffect(() => {
     // Clear any persistent localStorage tokens so every PWA launch prompts to scan QR code
@@ -465,6 +490,20 @@ export function PortalSessionPage() {
             </p>
           </div>
         )}
+
+        {/* Download PDF Receipt Action */}
+        <div className="mt-4 pt-3 border-t border-slate-100">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadReceipt}
+            isLoading={isGeneratingPdf}
+            className="w-full text-xs font-semibold py-2 rounded-xl border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 shadow-2xs cursor-pointer"
+            leftIcon={<Download className="h-4 w-4 text-emerald-600" />}
+          >
+            Download PDF Receipt
+          </Button>
+        </div>
 
         {/* Footer info & Exit action */}
         <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4 text-xs text-slate-500">

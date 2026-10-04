@@ -53,7 +53,7 @@ const ICON_MAP: Record<string, React.ReactNode> = {
 
 export function DashboardLayout() {
   const navigate = useNavigate();
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, impersonatedOrg, exitImpersonation } = useAuth();
   const { hasPermission } = usePermissions();
 
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
@@ -181,6 +181,28 @@ export function DashboardLayout() {
 
       {/* ── Main Workspace Area ── */}
       <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Support Impersonation Read-Only Banner */}
+        {impersonatedOrg && (
+          <div className="bg-amber-500 text-slate-950 px-4 py-2 flex items-center justify-between text-xs font-semibold shadow-sm shrink-0 z-40">
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-slate-950 shrink-0" />
+              <span>
+                Viewing as Org Admin: <strong>{impersonatedOrg.name}</strong> (Read-Only Mode)
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                exitImpersonation();
+                navigate('/dashboard');
+              }}
+              className="bg-slate-950 text-white hover:bg-slate-800 px-3 py-1 rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer"
+            >
+              Exit Impersonation
+            </button>
+          </div>
+        )}
+
         {/* Top Bar */}
         <header className="relative z-30 flex h-16 shrink-0 items-center gap-3 border-b border-slate-200 bg-white/80 px-4 backdrop-blur-md lg:px-6">
           {/* Mobile Drawer Trigger */}

@@ -14,6 +14,8 @@ class KitchenOrdersState {
   final String selectedTab; // 'ALL', 'PREPARING', 'READY', 'COMPLETED'
   final bool isAudioMuted;
   final bool isReconnecting;
+  final bool hasNewOrderPulse;
+  final int? latestNewOrderNumber;
 
   const KitchenOrdersState({
     this.orders = const [],
@@ -23,6 +25,8 @@ class KitchenOrdersState {
     this.selectedTab = 'ALL',
     this.isAudioMuted = false,
     this.isReconnecting = false,
+    this.hasNewOrderPulse = false,
+    this.latestNewOrderNumber,
   });
 
   KitchenOrdersState copyWith({
@@ -33,6 +37,8 @@ class KitchenOrdersState {
     String? selectedTab,
     bool? isAudioMuted,
     bool? isReconnecting,
+    bool? hasNewOrderPulse,
+    int? latestNewOrderNumber,
   }) {
     return KitchenOrdersState(
       orders: orders ?? this.orders,
@@ -42,6 +48,8 @@ class KitchenOrdersState {
       selectedTab: selectedTab ?? this.selectedTab,
       isAudioMuted: isAudioMuted ?? this.isAudioMuted,
       isReconnecting: isReconnecting ?? this.isReconnecting,
+      hasNewOrderPulse: hasNewOrderPulse ?? this.hasNewOrderPulse,
+      latestNewOrderNumber: latestNewOrderNumber ?? this.latestNewOrderNumber,
     );
   }
 }
@@ -50,6 +58,7 @@ class KitchenOrdersNotifier extends StateNotifier<KitchenOrdersState> {
   final KitchenService _kitchenService;
   final Ref _ref;
   Timer? _pollingTimer;
+  Timer? _pulseTimer;
   final Set<String> _knownOrderIds = {};
   final Set<String> _knownReadyOrderIds = {};
   bool _initialLoadDone = false;
@@ -74,6 +83,7 @@ class KitchenOrdersNotifier extends StateNotifier<KitchenOrdersState> {
   @override
   void dispose() {
     _pollingTimer?.cancel();
+    _pulseTimer?.cancel();
     super.dispose();
   }
 
@@ -83,6 +93,10 @@ class KitchenOrdersNotifier extends StateNotifier<KitchenOrdersState> {
 
   void toggleAudioMute() {
     state = state.copyWith(isAudioMuted: !state.isAudioMuted);
+  }
+
+  void dismissPulse() {
+    state = state.copyWith(hasNewOrderPulse: false);
   }
 
   Future<void> loadOrders({bool silent = false}) async {
@@ -95,18 +109,27 @@ class KitchenOrdersNotifier extends StateNotifier<KitchenOrdersState> {
         branchId: currentBranch?.id,
       );
 
+      bool isNewOrderTriggered = false;
+      int? newOrderNum;
+
       // Play audio chime and haptic alert when new active tickets arrive or orders become ready
-      if (_initialLoadDone && !state.isAudioMuted) {
-        final hasNewActiveOrders = orders.any((o) =>
+      if (_initialLoadDone) {
+        final newActiveList = orders.where((o) =>
             (o.isPending || o.isPreparing) &&
-            !_knownOrderIds.contains(o.id.isNotEmpty ? o.id : o.transactionId));
+            !_knownOrderIds.contains(o.id.isNotEmpty ? o.id : o.transactionId)).toList();
         final hasNewlyReadyOrders = orders.any((o) =>
             o.isReady &&
             !_knownReadyOrderIds.contains(o.id.isNotEmpty ? o.id : o.transactionId));
 
-        if (hasNewActiveOrders || hasNewlyReadyOrders) {
-          SystemSound.play(SystemSoundType.alert);
-          HapticFeedback.heavyImpact();
+        if (newActiveList.isNotEmpty || hasNewlyReadyOrders) {
+          if (!state.isAudioMuted) {
+            SystemSound.play(SystemSoundType.alert);
+            HapticFeedback.heavyImpact();
+          }
+          if (newActiveList.isNotEmpty) {
+            isNewOrderTriggered = true;
+            newOrderNum = newActiveList.first.orderNumber;
+          }
         }
       }
 
@@ -122,10 +145,21 @@ class KitchenOrdersNotifier extends StateNotifier<KitchenOrdersState> {
       }
       _initialLoadDone = true;
 
+      if (isNewOrderTriggered) {
+        _pulseTimer?.cancel();
+        _pulseTimer = Timer(const Duration(seconds: 8), () {
+          if (mounted) {
+            state = state.copyWith(hasNewOrderPulse: false);
+          }
+        });
+      }
+
       state = state.copyWith(
         orders: orders,
         isLoading: false,
         isReconnecting: false,
+        hasNewOrderPulse: isNewOrderTriggered ? true : state.hasNewOrderPulse,
+        latestNewOrderNumber: newOrderNum ?? state.latestNewOrderNumber,
         errorMessage: null,
       );
     } catch (e) {

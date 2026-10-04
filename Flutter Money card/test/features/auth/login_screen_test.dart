@@ -225,5 +225,80 @@ void main() {
 
       expect(find.text('Your session has expired. Please log in again.'), findsOneWidget);
     });
+
+    testWidgets('displays Account does not exist banner when login fails with missing account', (tester) async {
+      final fakeRepo = FakeAuthRepository();
+      final notifier = TestAuthNotifier(
+        fakeRepo,
+        initialState: const AuthState(
+          status: AuthStatus.error,
+          errorMessage: 'Account does not exist.',
+        ),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authNotifierProvider.overrideWith((ref) => notifier),
+          ],
+          child: const MaterialApp(
+            home: LoginScreen(),
+          ),
+        ),
+      );
+
+      expect(find.text('Account does not exist.'), findsOneWidget);
+    });
+
+    testWidgets('displays Password is incorrect banner when password check fails', (tester) async {
+      final fakeRepo = FakeAuthRepository();
+      final notifier = TestAuthNotifier(
+        fakeRepo,
+        initialState: const AuthState(
+          status: AuthStatus.error,
+          errorMessage: 'Password is incorrect.',
+        ),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authNotifierProvider.overrideWith((ref) => notifier),
+          ],
+          child: const MaterialApp(
+            home: LoginScreen(),
+          ),
+        ),
+      );
+
+      expect(find.text('Password is incorrect.'), findsOneWidget);
+    });
+
+    testWidgets('does not display any error or session expired banner when status is unauthenticated on logout', (tester) async {
+      final fakeRepo = FakeAuthRepository();
+      final notifier = TestAuthNotifier(
+        fakeRepo,
+        initialState: const AuthState(
+          status: AuthStatus.unauthenticated,
+          errorMessage: null,
+        ),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authNotifierProvider.overrideWith((ref) => notifier),
+          ],
+          child: const MaterialApp(
+            home: LoginScreen(),
+          ),
+        ),
+      );
+
+      expect(find.text('Your session has expired. Please log in again.'), findsNothing);
+      expect(find.text('Account does not exist.'), findsNothing);
+      expect(find.text('Password is incorrect.'), findsNothing);
+    });
   });
 }
+

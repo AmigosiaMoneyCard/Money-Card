@@ -26,7 +26,7 @@ import {
   ErrorState,
 } from '@/components/ui';
 import { DataTable } from '@/components/tables';
-import { formatDate, formatCurrency, extractTransactionItems } from '@/utils';
+import { formatDate, formatDateTime, formatCurrency, extractTransactionItems } from '@/utils';
 import {
   Search,
   RefreshCw,
@@ -106,7 +106,7 @@ function SessionTransactionItem({ tx }: { tx: Transaction }) {
         </div>
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-slate-900 leading-snug break-words">{title}</p>
-          <p className="text-xs text-slate-500 mt-1">{formatDate(tx.createdAt)}</p>
+          <p className="text-xs text-slate-500 mt-1">{formatDateTime(tx.createdAt)}</p>
         </div>
       </div>
       <div className="text-right shrink-0">

@@ -1,4 +1,4 @@
-import { formatCurrency, formatDate, extractTransactionItems, formatLocalDate } from '@/utils';
+import { formatCurrency, formatDate, formatDateTime, extractTransactionItems, formatLocalDate } from '@/utils';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiService } from '@/services/api';
 import { usePermissions, useAuth, useBranch } from '@/hooks';
@@ -580,7 +580,7 @@ export function CounterStaffCardsView() {
         <Modal
           isOpen={!!selectedCardForDetails}
           onClose={() => setSelectedCardForDetails(null)}
-          title={`Wallet Details — Wallet ${selectedCardForDetails.physicalCardNumber || selectedCardForDetails.qrToken || ''}`}
+          title={`Wallet ${selectedCardForDetails.physicalCardNumber || selectedCardForDetails.qrToken || ''}`}
           size="lg"
         >
           <div className="space-y-4">
@@ -628,11 +628,11 @@ export function CounterStaffCardsView() {
               </div>
             </div>
 
-            {/* Activity Breakdown */}
+            {/* Activity */}
             <div className="space-y-2 pt-1">
               <div className="flex items-center justify-between px-0.5">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Breakdown
+                  Activity
                 </h4>
                 <span className="text-[11px] text-slate-400">
                   {sessionTxns.length} {sessionTxns.length === 1 ? 'item' : 'items'}
@@ -674,7 +674,7 @@ export function CounterStaffCardsView() {
                             <p className="font-semibold text-slate-900 leading-tight">
                               {getTransactionTitle(tx)}
                             </p>
-                            <p className="text-[11px] text-slate-400 mt-0.5">{formatDate(tx.createdAt)}</p>
+                            <p className="text-[11px] text-slate-400 mt-0.5">{formatDateTime(tx.createdAt)}</p>
                           </div>
                         </div>
                         <span
@@ -1083,11 +1083,11 @@ export function CounterStaffCardsView() {
               </div>
             </div>
 
-            {/* Activity Breakdown */}
+            {/* Activity */}
             <div className="space-y-2 pt-1">
               <div className="flex items-center justify-between px-0.5">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Breakdown
+                  Activity
                 </h4>
               </div>
 
@@ -1105,7 +1105,7 @@ export function CounterStaffCardsView() {
                     <div key={tx.id} className="p-3 flex items-center justify-between text-xs bg-white hover:bg-slate-50/60">
                       <div className="space-y-0.5">
                         <p className="font-semibold text-slate-900">{getTransactionTitle(tx)}</p>
-                        <p className="text-[11px] text-slate-400">{formatDate(tx.createdAt)}</p>
+                        <p className="text-[11px] text-slate-400">{formatDateTime(tx.createdAt)}</p>
                       </div>
                       <span className={`font-mono font-bold text-xs ${tx.type === 'PURCHASE' ? 'text-slate-900' : 'text-emerald-600'}`}>
                         {tx.type === 'PURCHASE' ? '-' : '+'}{formatCurrency(tx.amount)}

@@ -54,7 +54,7 @@ export function OrgDataExportModal({
       isOpen={isOpen}
       onClose={onClose}
       title="Export Organization Data Archive"
-      maxWidth="md"
+      size="md"
     >
       <div className="space-y-4">
         <p className="text-sm text-gray-600">

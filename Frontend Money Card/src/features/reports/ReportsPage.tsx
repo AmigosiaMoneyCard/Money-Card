@@ -198,13 +198,13 @@ export function ReportsPage() {
       const targetBranch = branchFilter !== 'ALL' ? branchFilter : undefined;
 
       const [analyticsRes, prodsRes] = await Promise.all([
-        apiService.analytics.getAnalytics({ branchId: targetBranch }),
+        apiService.analytics.getOverview({ branchId: targetBranch }),
         apiService.products.getProducts({ branchId: targetBranch, limit: 10 }),
       ]);
 
       const analytics = analyticsRes.success ? analyticsRes.data : {};
       const topProducts = prodsRes.success && prodsRes.data?.items
-        ? prodsRes.data.items.map((p) => ({
+        ? (prodsRes.data.items as any[]).map((p: any) => ({
             name: p.name,
             quantity: p.stockQuantity ?? 15,
             revenue: (p.price ?? 50) * (p.stockQuantity ?? 15),

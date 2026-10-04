@@ -51,6 +51,7 @@ class AuthState {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRepository _authRepository;
+  bool _isLoggingOut = false;
 
   AuthNotifier(this._authRepository) : super(const AuthState.initial()) {
     checkAuthStatus();
@@ -104,10 +105,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         userMessage = 'Your staff account is no longer active. Please contact your Organization Administrator.';
       } else if (e.code.name.toUpperCase().contains('ORGANIZATION_INACTIVE') || e.message.toLowerCase().contains('organization')) {
         userMessage = 'Your organization account is currently inactive or suspended. Please contact platform administration.';
-      } else if (e.message.isNotEmpty && (e.message.contains("doesn't exist") || e.message.contains("Credentials are wrong") || e.message.contains("not exist"))) {
+      } else if (e.message.isNotEmpty && (e.message.contains("doesn't exist") || e.message.contains("Credentials are wrong") || e.message.contains("not exist") || e.message.contains("incorrect") || e.message.contains("Password") || e.message.contains("Account"))) {
         userMessage = e.message;
       } else if (e.code == ApiErrorCode.unauthorized || e.statusCode == 401) {
-        userMessage = e.message.isNotEmpty ? e.message : 'Credentials are wrong.';
+        userMessage = e.message.isNotEmpty ? e.message : 'Invalid credentials.';
       } else if (e.code == ApiErrorCode.networkError || e.code == ApiErrorCode.timeoutError) {
         userMessage = 'Unable to connect. Check your internet connection and try again.';
       } else if (e.code == ApiErrorCode.validationError) {
@@ -176,19 +177,33 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   /// Invalidate session and log out
   Future<void> logout() async {
-    state = state.copyWith(status: AuthStatus.authenticating);
+    _isLoggingOut = true;
+    state = const AuthState(
+      status: AuthStatus.unauthenticated,
+      user: null,
+      errorMessage: null,
+    );
     try {
       await _authRepository.logout();
     } finally {
       state = const AuthState(
         status: AuthStatus.unauthenticated,
         user: null,
+        errorMessage: null,
       );
+      // Retain guard briefly to absorb trailing 401 callbacks from in-flight requests
+      Future.delayed(const Duration(seconds: 2), () {
+        _isLoggingOut = false;
+      });
     }
   }
 
   /// Mark session as expired and wipe credentials
   void setSessionExpired() {
+    if (_isLoggingOut || state.status == AuthStatus.unauthenticated) {
+      // Deliberate logout or already unauthenticated — do not display session expired banner
+      return;
+    }
     state = const AuthState(
       status: AuthStatus.sessionExpired,
       user: null,

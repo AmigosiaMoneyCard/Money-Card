@@ -343,6 +343,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
 
   static String _formatCompactSubAmount(double amount) {
+    if (amount.isNaN || amount.isInfinite) return '0';
+    if (amount < 0) return '0';
     if (amount >= 100000) {
       final val = amount / 100000;
       return '${val.toStringAsFixed(val.truncateToDouble() == val ? 0 : 1)}L';

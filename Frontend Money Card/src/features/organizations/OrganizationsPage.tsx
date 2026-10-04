@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks';
 import { apiService } from '@/services/api';
 import type { OrganizationOverview, Plan } from '@/types';
 import {
@@ -43,6 +45,7 @@ import { OrgDataExportModal } from './OrgDataExportModal';
 interface OrgActionMenuProps {
   org: OrganizationOverview;
   onViewDetails: () => void;
+  onImpersonate: () => void;
   onResetPassword: () => void;
   onResendAdminInvite?: () => void;
   onToggleStatus: () => void;
@@ -53,6 +56,7 @@ interface OrgActionMenuProps {
 function OrgActionMenu({
   org,
   onViewDetails,
+  onImpersonate,
   onResetPassword,
   onResendAdminInvite,
   onToggleStatus,
@@ -169,6 +173,20 @@ function OrgActionMenu({
               <span>View Details</span>
             </button>
 
+            {org.status === 'ACTIVE' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  onImpersonate();
+                }}
+                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer text-left"
+              >
+                <Users className="h-4 w-4 text-emerald-600" />
+                <span>View as Org Admin</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => {
@@ -246,6 +264,8 @@ function OrgActionMenu({
 }
 
 export function OrganizationsPage() {
+  const navigate = useNavigate();
+  const { startImpersonation } = useAuth();
   const [organizations, setOrganizations] = useState<OrganizationOverview[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -694,12 +714,32 @@ export function OrganizationsPage() {
     {
       key: 'actions',
       header: 'Actions',
-      className: 'text-right',
+      className: 'text-right min-w-[210px]',
       render: (org: OrganizationOverview) => (
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-end gap-1.5">
+          {org.status === 'ACTIVE' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                startImpersonation({ id: org.id, name: org.name });
+                notify.success(`Switched to Org Admin mode for ${org.name}`);
+                navigate('/dashboard');
+              }}
+              className="text-xs h-7 px-2.5 rounded-lg border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 transition-all shadow-2xs cursor-pointer"
+              leftIcon={<Eye className="h-3 w-3 text-emerald-600" />}
+            >
+              View as Org Admin
+            </Button>
+          )}
           <OrgActionMenu
             org={org}
             onViewDetails={() => handleOpenDetails(org)}
+            onImpersonate={() => {
+              startImpersonation({ id: org.id, name: org.name });
+              notify.success(`Switched to Org Admin mode for ${org.name}`);
+              navigate('/dashboard');
+            }}
             onResetPassword={() => handleOpenResetPasswordModal(org)}
             onResendAdminInvite={() => handleResendAdminInvite(org)}
             onToggleStatus={() => handleOpenStatusModal(org)}

@@ -125,6 +125,8 @@ function extractItemName(it: any): string {
   if (it.name) return it.name;
   if (it.productName) return it.productName;
   if (it.title) return it.title;
+  if (it.product?.name) return it.product.name;
+  if (it.dishName) return it.dishName;
   if (it.productId) return `Product (${String(it.productId).slice(0, 6)})`;
   return 'Item';
 }
@@ -154,7 +156,15 @@ export function extractTransactionItems(items: any): FormattedTransactionItem[] 
   }
   if (!Array.isArray(items)) {
     if (typeof items === 'object' && items !== null) {
-      items = [items];
+      if (Array.isArray(items.items)) {
+        items = items.items;
+      } else if (Array.isArray(items.orderItems)) {
+        items = items.orderItems;
+      } else if (Array.isArray(items.detailedItems)) {
+        items = items.detailedItems;
+      } else {
+        items = [items];
+      }
     } else {
       return [];
     }

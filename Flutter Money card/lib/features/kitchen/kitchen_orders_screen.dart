@@ -112,6 +112,42 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
       body: SafeArea(
         child: Column(
           children: [
+            if (state.hasNewOrderPulse)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.teal.shade700, Colors.green.shade800],
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.notifications_active, color: Colors.white, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        state.latestNewOrderNumber != null
+                            ? 'NEW ORDER ARRIVED: Ticket #${state.latestNewOrderNumber}'
+                            : 'NEW ORDER ARRIVED FROM POS',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () => notifier.dismissPulse(),
+                      child: const Padding(
+                        padding: EdgeInsets.all(4.0),
+                        child: Icon(Icons.close, color: Colors.white, size: 18),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             if (state.isReconnecting)
               Container(
                 width: double.infinity,
@@ -563,21 +599,40 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
 
             // Action Buttons
             if (order.isPending)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => notifier.updateStatus(order.transactionId, 'PREPARING'),
-                  icon: const Icon(Icons.play_arrow, size: 18),
-                  label: const Text('START PREPARING'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade700,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: AppSpacing.roundedMd,
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => notifier.updateStatus(order.transactionId, 'PREPARING'),
+                      icon: const Icon(Icons.play_arrow, size: 16),
+                      label: const Text('PREPARING'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade700,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: AppSpacing.roundedMd,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => notifier.updateStatus(order.transactionId, 'READY'),
+                      icon: const Icon(Icons.check_circle_outline, size: 16),
+                      label: const Text('MARK READY'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: AppSpacing.roundedMd,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
 
             if (order.isPreparing)
@@ -586,7 +641,7 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
                 child: ElevatedButton.icon(
                   onPressed: () => notifier.updateStatus(order.transactionId, 'READY'),
                   icon: const Icon(Icons.check_circle_outline, size: 18),
-                  label: const Text('MARK AS READY / DONE'),
+                  label: const Text('MARK READY FOR PICKUP'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
