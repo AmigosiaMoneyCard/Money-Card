@@ -436,8 +436,6 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 child: _buildCompactMetricCard(
                   title: 'Total Sales',
                   totalText: '₹${data.netMoneyCollected.toStringAsFixed(2)}',
-                  line1Text: 'Cash: ₹${_formatCompactSubAmount(data.cashInDrawer)}',
-                  line2Text: 'UPI: ₹${_formatCompactSubAmount(data.upiMoney)}',
                   icon: Icons.payments_outlined,
                   accentColor: AppColors.success,
                 ),
@@ -456,8 +454,6 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 child: _buildCompactMetricCard(
                   title: 'Wallet Refund',
                   totalText: '₹${data.refundVolume.toStringAsFixed(2)}',
-                  line1Text: 'Cash: ₹${_formatCompactSubAmount(data.refundVolume)}',
-                  line2Text: 'UPI: ₹0',
                   icon: Icons.assignment_return_outlined,
                   accentColor: AppColors.error,
                 ),
@@ -467,8 +463,6 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 child: _buildCompactMetricCard(
                   title: 'Wallet Refund Count',
                   totalText: '${data.refundCount} Refunds',
-                  line1Text: 'Cards: ${data.refundCount}',
-                  line2Text: 'Ret: ₹${_formatCompactSubAmount(data.refundVolume)}',
                   icon: Icons.keyboard_return,
                   accentColor: AppColors.warning,
                 ),
@@ -487,8 +481,6 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 child: _buildCompactMetricCard(
                   title: 'Cancelled Amount',
                   totalText: '₹${data.cancelledTopUps.toStringAsFixed(2)}',
-                  line1Text: 'Cancelled: ₹${_formatCompactSubAmount(data.cancelledTopUps)}',
-                  line2Text: 'UPI: ₹0',
                   icon: Icons.cancel_outlined,
                   accentColor: Colors.deepOrange,
                 ),
@@ -498,8 +490,6 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 child: _buildCompactMetricCard(
                   title: 'Cancelled Count',
                   totalText: '${data.cancelledTopUpsCount} Recharges',
-                  line1Text: 'Cancelled: ${data.cancelledTopUpsCount}',
-                  line2Text: 'Ded: ₹${_formatCompactSubAmount(data.cancelledTopUps)}',
                   icon: Icons.money_off,
                   accentColor: Colors.brown,
                 ),

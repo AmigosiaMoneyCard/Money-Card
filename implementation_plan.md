@@ -1,63 +1,44 @@
-# Implementation Plan — Mobile Login Minimalist UI Streamline
+# Implementation Plan — Mobile Analytics Recharge Cards Simplification
 
 ## Overview
-Streamline the mobile login interface in `Flutter Money card` to create a clean, uncluttered, minimalist authentication flow:
-1. On the initial Role Selection screen: Remove the sub-headings "Staff Login" and "Select your operational role to proceed". Keep only the brand icon and "MONEY CARD" title.
-2. In the role buttons: Streamline both "Counter Manager" and "Kitchen Staff" buttons to show only their primary title and icon. Remove the secondary subtitle descriptions and remove the badge boxes ("Manager" green box and "Kitchen" blue box).
-3. In the Counter Manager login form: Remove the top green "Counter Manager Login" pill badge container and remove the bottom "Switch to Kitchen Staff Login" button.
-4. In the Kitchen Staff login form: Remove the top "Kitchen Staff Login" pill badge container and remove the bottom "Switch to Counter Manager Login" button.
+Simplify the metric cards in the mobile app's Counter Manager Analytics screen under the **Recharge** tab (`Flutter Money card/lib/features/analytics/analytics_screen.dart`).
+
+Remove secondary sub-labels (Cash, UPI, Cards, Ret, Cancelled, Ded) from the following five metric boxes while keeping their primary headline values clean and bold:
+1. **Total Sales**: Remove `Cash:` and `UPI:` sub-labels.
+2. **Wallet Refund**: Remove `Cash:` and `UPI:` sub-labels.
+3. **Wallet Refund Count**: Remove `Cards:` and `Ret:` sub-labels.
+4. **Cancelled Amount**: Remove `Cancelled:` and `UPI:` sub-labels.
+5. **Cancelled Count**: Remove `Cancelled:` and `Ded:` sub-labels.
 
 ---
 
 ## Visual Design Reference
 
-![Minimal Mobile Login UI](C:\Users\damie\.gemini\antigravity-ide\brain\218ce084-c8ce-49ca-a93b-bc0ce2200b0c\mobile_login_minimal_ui_1791121380307.jpg)
+![Minimal Analytics Recharge Metric Cards](C:\Users\damie\.gemini\antigravity-ide\brain\218ce084-c8ce-49ca-a93b-bc0ce2200b0c\mobile_analytics_recharge_boxes_ui_1791122617179.jpg)
 
 ---
 
 ## ASCII Wireframes
 
-### 1. Minimal Role Selection Screen
+### Recharge Tab Metric Cards Layout
 ```text
-+------------------------------------------+
-|                                          |
-|                  ( [=] )                 |
-|                                          |
-|                MONEY CARD                |
-|                                          |
-|                                          |
-|  +------------------------------------+  |
-|  | [POS]   Counter Manager        >   |  |
-|  +------------------------------------+  |
-|                                          |
-|  +------------------------------------+  |
-|  | [Chef]  Kitchen Staff          >   |  |
-|  +------------------------------------+  |
-|                                          |
-+------------------------------------------+
-```
-
-### 2. Minimal Counter Manager / Kitchen Staff Login Form
-```text
-+------------------------------------------+
-|  [<-]                                    |
-|                                          |
-|                  ( [=] )                 |
-|                                          |
-|                MONEY CARD                |
-|              Counter Manager             |
-|                                          |
-|  Phone Number                            |
-|  [ [Phone] 10-digit mobile number     ]  |
-|                                          |
-|  Password                                |
-|  [ [Lock]  ••••••••             (Eye) ]  |
-|                                          |
-|  +------------------------------------+  |
-|  |               Login                |  |
-|  +------------------------------------+  |
-|                                          |
-+------------------------------------------+
++------------------------------------------+------------------------------------------+
+| RECHARGE AMOUNT                          | TOTAL SALES                              |
+| ₹1,350.00                                | ₹1,250.00                                |
+| Cash: ₹250.00       UPI: ₹1,100.00       | (Sub-labels removed - clean value only)  |
++------------------------------------------+------------------------------------------+
+| WALLET REFUND                            | WALLET REFUND COUNT                      |
+| ₹200.00                                  | 2 Refunds                                |
+| (Sub-labels removed - clean value only)  | (Sub-labels removed - clean value only)  |
++------------------------------------------+------------------------------------------+
+| CANCELLED AMOUNT                         | CANCELLED COUNT                          |
+| ₹50.00                                   | 1 Recharges                              |
+| (Sub-labels removed - clean value only)  | (Sub-labels removed - clean value only)  |
++------------------------------------------+------------------------------------------+
+| WALLET ACTIVATION                                                                   |
+| 10 Cards                                                                            |
+| Active: 8           Settled: 2                                                      |
++-------------------------------------------------------------------------------------+
 ```
 
 ---
@@ -66,26 +47,14 @@ Streamline the mobile login interface in `Flutter Money card` to create a clean,
 
 ### Mobile POS (`Flutter Money card/`)
 
-#### [login_screen.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/auth/login_screen.dart)
-- In `_buildRoleSelectionView`:
-  - Remove `Text('Staff Login')` and `Text('Select your operational role to proceed')`.
-  - Adjust spacing between "MONEY CARD" and the role selection buttons.
-- In `_buildRoleSelectionCard`:
-  - Remove `subtitle`, `badgeText`, `badgeBg`, and `badgeColor` parameters.
-  - Simplify card layout to render only:
-    - Left icon container with subtle rounded background.
-    - Title (`Counter Manager` or `Kitchen Staff`) in bold, clear font.
-    - Right trailing arrow icon (`Icons.arrow_forward_ios`).
-- In `_buildRoleLoginForm`:
-  - In top navigation row: keep the back button (`IconButton(icon: Icon(Icons.arrow_back))`), remove the pill box container displaying `roleTitle`.
-  - Under "MONEY CARD", display clean role indicator (`Counter Manager` or `Kitchen Staff`).
-  - At the bottom of the form: remove the `TextButton` role switcher ("Switch to Kitchen Staff Login" / "Switch to Counter Manager Login").
-
-#### [login_screen_test.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/test/features/auth/login_screen_test.dart)
-- Update test cases to match the simplified UI:
-  - Verify "MONEY CARD", "Counter Manager", and "Kitchen Staff" are present on initial view.
-  - Verify "Staff Login" and "Select your operational role to proceed" are not present.
-  - Verify Counter Manager and Kitchen Staff forms navigate correctly without the removed pill badges and switcher buttons.
+#### [analytics_screen.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/analytics/analytics_screen.dart)
+- In the `ListView` of the Recharge analytics view (lines 435–508):
+  - **Total Sales**: Remove `line1Text: 'Cash: ...'` and `line2Text: 'UPI: ...'`.
+  - **Wallet Refund**: Remove `line1Text: 'Cash: ...'` and `line2Text: 'UPI: ...'`.
+  - **Wallet Refund Count**: Remove `line1Text: 'Cards: ...'` and `line2Text: 'Ret: ...'`.
+  - **Cancelled Amount**: Remove `line1Text: 'Cancelled: ...'` and `line2Text: 'UPI: ...'`.
+  - **Cancelled Count**: Remove `line1Text: 'Cancelled: ...'` and `line2Text: 'Ded: ...'`.
+- `_buildCompactMetricCard` already conditionally renders the bottom line row only when `line1Text != null || line2Text != null`. Omitting these arguments automatically produces a clean, centered, minimal card layout.
 
 ---
 
@@ -94,8 +63,9 @@ Streamline the mobile login interface in `Flutter Money card` to create a clean,
 ### Automated Verification
 - Run `flutter analyze --no-pub` in `Flutter Money card` (verify zero lint or type errors).
 - Run `flutter test` in `Flutter Money card` (verify all unit and widget tests pass).
-- Run `npm test -- --run` in `Frontend Money Card` (verify web tests pass).
-- Run `npm test` in `Backend Money Card` (verify backend tests pass).
+- Run `npm test -- --run` in `Frontend Money Card` (verify web tests continue to pass).
+- Run `npm test` in `Backend Money Card` (verify backend tests continue to pass).
 
 ### Manual Verification
-- Launch the Flutter app or inspect the widget test tree to ensure the login screen is clean, minimal, and matches the user's specification.
+- Navigate to the mobile Analytics screen -> Recharge tab.
+- Confirm Total Sales, Wallet Refund, Wallet Refund Count, Cancelled Amount, and Cancelled Count display their headline amounts and counts cleanly without Cash, UPI, Cards, Ret, Cancelled, or Ded sub-labels.
