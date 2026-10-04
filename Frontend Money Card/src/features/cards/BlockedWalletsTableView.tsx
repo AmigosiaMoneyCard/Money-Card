@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { Card as CardEntity, Branch } from '@/types';
 import {
-  Card,
   Badge,
   Button,
   Modal,
@@ -12,9 +11,7 @@ import {
 import { formatCurrency, formatDate, notify } from '@/utils';
 import { apiService } from '@/services/api';
 import {
-  ShieldAlert,
   Search,
-  Lock,
   CreditCard,
   Store,
   X,
@@ -65,11 +62,6 @@ export function BlockedWalletsTableView({
     return cards.filter((c) => c.status === 'BLOCKED');
   }, [cards]);
 
-  // KPI Calculations
-  const totalBlockedCount = blockedCards.length;
-  const totalLockedBalance = useMemo(() => {
-    return blockedCards.reduce((sum, c) => sum + (c.activeSession?.balance || 0), 0);
-  }, [blockedCards]);
 
   // Search Filter
   const filteredCards = useMemo(() => {
@@ -115,51 +107,6 @@ export function BlockedWalletsTableView({
 
   return (
     <div className="space-y-4">
-      {/* ─── 1. Top KPI Summary Cards (Exact Org Admin Standard) ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-        {/* KPI 1: Total Blocked Cards */}
-        <Card padding="md" className="border-slate-200 bg-white shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Total Blocked Cards
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600 border border-rose-100">
-              <ShieldAlert className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-2.5 flex items-baseline gap-2">
-            <p className="font-mono text-2xl sm:text-3xl font-bold text-slate-900">
-              {totalBlockedCount}
-            </p>
-            <span className="text-[11px] font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
-              Blocked
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-400 mt-1">
-            Wallets reported lost, damaged, or suspended
-          </p>
-        </Card>
-
-        {/* KPI 2: Total Locked Balance */}
-        <Card padding="md" className="border-slate-200 bg-white shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Locked Balance
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600 border border-amber-100">
-              <Lock className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-2.5 flex items-baseline gap-2">
-            <p className="font-mono text-2xl sm:text-3xl font-bold text-amber-700">
-              {formatCurrency(totalLockedBalance)}
-            </p>
-          </div>
-          <p className="text-[11px] text-slate-400 mt-1">
-            Preserved inside security-locked card wallets
-          </p>
-        </Card>
-      </div>
 
       {/* ─── 2. Search Bar with Validation ─── */}
       <div className="relative max-w-md">
