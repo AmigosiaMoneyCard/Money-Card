@@ -1,4 +1,4 @@
-import { formatCurrency, formatDate, extractTransactionItems, formatLocalDate, notify } from '@/utils';
+import { formatCurrency, formatDate, extractTransactionItems, formatLocalDate } from '@/utils';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiService } from '@/services/api';
 import { usePermissions, useAuth, useBranch } from '@/hooks';
@@ -17,6 +17,7 @@ import {
   ErrorState,
 } from '@/components/ui';
 import { UnauthorizedPage } from '@/features/auth';
+import { BlockedWalletsTableView } from './BlockedWalletsTableView';
 import {
   CreditCard,
   Search,
@@ -31,8 +32,6 @@ import {
   Phone,
   Wallet,
   DollarSign,
-  ShieldAlert,
-  CheckCircle2,
 } from 'lucide-react';
 
 function getTransactionTitle(tx: Transaction): string {
@@ -64,6 +63,7 @@ export function CounterStaffCardsView() {
 
   const { hasPermission } = usePermissions();
   const canView = hasPermission('CARD_VIEW');
+  const canUnblock = hasPermission('CARD_UNBLOCK');
 
   const [allCards, setAllCards] = useState<CardEntity[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -75,7 +75,6 @@ export function CounterStaffCardsView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchError, setSearchError] = useState<string | null>(null);
   const [walletTab, setWalletTab] = useState<'ACTIVE' | 'BLOCKED'>('ACTIVE');
-  const [unblockingCardId, setUnblockingCardId] = useState<string | null>(null);
 
   // ─── Modal Selection States ──────────────────────────────────────
   const [selectedCardForDetails, setSelectedCardForDetails] = useState<CardEntity | null>(null);
@@ -199,35 +198,6 @@ export function CounterStaffCardsView() {
     });
   }, [allCards, staffBranchId]);
 
-  const filteredBlockedCards = useMemo(() => {
-    if (!searchQuery.trim()) return blockedCardsList;
-    const sanitized = searchQuery.replace(/[^a-zA-Z0-9\s\-_]/g, '').toLowerCase().trim();
-    if (!sanitized) return blockedCardsList;
-
-    return blockedCardsList.filter((c) => {
-      const cardNum = (c.physicalCardNumber || c.qrToken || '').toLowerCase();
-      const customer = (c.activeSession?.customerName || '').toLowerCase();
-      const phone = (c.activeSession?.customerPhone || '').toLowerCase();
-      return cardNum.includes(sanitized) || customer.includes(sanitized) || phone.includes(sanitized);
-    });
-  }, [blockedCardsList, searchQuery]);
-
-  const handleUnblockCard = async (card: CardEntity) => {
-    setUnblockingCardId(card.id);
-    try {
-      const res = await apiService.cards.unblockCard(card.id);
-      if (res.success) {
-        notify.success(`Card ${card.physicalCardNumber || card.qrToken} unblocked successfully.`);
-        fetchCardsData();
-      } else {
-        notify.error(res.error?.message || 'Failed to unblock card');
-      }
-    } catch {
-      notify.error('Failed to unblock card');
-    } finally {
-      setUnblockingCardId(null);
-    }
-  };
 
   // ─── Fetch Analytics ─────────────────────────────────────────────
   const fetchCounterAnalytics = useCallback(async (branchId: string, start: string, end: string) => {
@@ -443,148 +413,52 @@ export function CounterStaffCardsView() {
         </button>
       </div>
 
-      {/* ─── Search Bar with Validation ─────────────────── */}
-      <div className="flex flex-col gap-1 max-w-md">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search by wallet ID or customer..."
-            value={searchQuery}
-            maxLength={40}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className={`w-full rounded-xl border bg-white pl-9 pr-8 py-2 text-xs text-slate-900 placeholder-slate-400 transition-colors focus:outline-none ${
-              searchError
-                ? 'border-rose-400 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
-                : 'border-slate-200 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20'
-            }`}
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={handleClearSearch}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 transition-colors cursor-pointer"
-              title="Clear search"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
-        {searchError && (
-          <p className="text-[11px] text-rose-500 font-medium pl-1 flex items-center gap-1">
-            {searchError}
-          </p>
-        )}
-      </div>
-
       {/* ─── Cards Content (Active vs Blocked) ───────── */}
       {walletTab === 'BLOCKED' ? (
-        error ? (
-          <div className="py-12 bg-white rounded-2xl border border-rose-200">
-            <ErrorState message={error} onRetry={fetchCardsData} />
-          </div>
-        ) : isLoading ? (
-          <div className="py-12 bg-white rounded-2xl border border-slate-200/80">
-            <LoadingState message="Loading blocked wallets..." />
-          </div>
-        ) : filteredBlockedCards.length === 0 ? (
-          <div className="py-12 bg-white rounded-2xl border border-slate-200/80">
-            <EmptyState
-              title={searchQuery ? 'No matching blocked wallets' : 'No Blocked Wallets'}
-              description={
-                searchQuery
-                  ? `No blocked wallets found matching "${searchQuery}".`
-                  : 'There are currently no security-locked or administratively blocked wallets at this counter.'
-              }
-            />
-            {searchQuery && (
-              <div className="text-center mt-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleClearSearch}
-                  className="text-xs px-3"
-                >
-                  Clear Search
-                </Button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                    <th className="py-3 px-4">Wallet ID</th>
-                    <th className="py-3 px-4">Customer</th>
-                    <th className="py-3 px-4">Locked Balance</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-xs">
-                  {filteredBlockedCards.map((card) => {
-                    const cardIdentifier = card.physicalCardNumber || card.qrToken || 'Card';
-                    const customerName = card.activeSession?.customerName || 'Anonymous Customer';
-                    const customerPhone = card.activeSession?.customerPhone || '—';
-                    const lockedBal = card.activeSession?.balance || 0;
-
-                    return (
-                      <tr key={card.id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="py-3.5 px-4 font-mono font-semibold text-slate-900">
-                          <div className="flex items-center gap-2">
-                            <ShieldAlert className="h-4 w-4 text-rose-500 shrink-0" />
-                            <span>{cardIdentifier}</span>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <div className="font-medium text-slate-800">{customerName}</div>
-                          <div className="text-[11px] text-slate-400 font-mono">{customerPhone}</div>
-                        </td>
-                        <td className="py-3.5 px-4 font-mono font-bold text-slate-900">
-                          {formatCurrency(lockedBal)}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <Badge variant="danger" className="text-[10px] font-semibold">
-                            Blocked
-                          </Badge>
-                        </td>
-                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                          <div className="inline-flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleOpenCustomerHistory(card)}
-                              className="text-xs h-8 px-3 rounded-lg border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
-                              leftIcon={<History className="h-3.5 w-3.5 text-emerald-600" />}
-                            >
-                              Customer History
-                            </Button>
-
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              onClick={() => handleUnblockCard(card)}
-                              isLoading={unblockingCardId === card.id}
-                              disabled={unblockingCardId === card.id}
-                              className="text-xs h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold cursor-pointer shadow-2xs"
-                              leftIcon={<CheckCircle2 className="h-3.5 w-3.5" />}
-                            >
-                              Unblock
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )
+        <BlockedWalletsTableView
+          cards={blockedCardsList}
+          branches={branches}
+          isLoading={isLoading}
+          error={error}
+          onRefresh={fetchCardsData}
+          onOpenCustomerHistory={handleOpenCustomerHistory}
+          canUnblock={canUnblock}
+        />
       ) : (
         <>
+          {/* ─── Search Bar with Validation ─────────────────── */}
+          <div className="flex flex-col gap-1 max-w-md">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search by wallet ID or customer..."
+                value={searchQuery}
+                maxLength={40}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className={`w-full rounded-xl border bg-white pl-9 pr-8 py-2 text-xs text-slate-900 placeholder-slate-400 transition-colors focus:outline-none ${
+                  searchError
+                    ? 'border-rose-400 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
+                    : 'border-slate-200 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20'
+                }`}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 transition-colors cursor-pointer"
+                  title="Clear search"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            {searchError && (
+              <p className="text-[11px] text-rose-500 font-medium pl-1 flex items-center gap-1">
+                {searchError}
+              </p>
+            )}
+          </div>
       {/* ─── Streamlined Live Active Cards Table (3 Columns) ───────── */}
       {error ? (
         <div className="py-12 bg-white rounded-2xl border border-rose-200">

@@ -587,12 +587,14 @@ export function OrgAdminDashboard() {
                   />
                 )}
 
-                <StatCard
-                  label="Blocked Wallets"
-                  value={blockedWalletsCount}
-                  description="Security locked"
-                  icon={<ShieldAlert className="h-5 w-5 text-rose-600" />}
-                />
+                {!isCounterAdmin && (
+                  <StatCard
+                    label="Blocked Wallets"
+                    value={blockedWalletsCount}
+                    description="Security locked"
+                    icon={<ShieldAlert className="h-5 w-5 text-rose-600" />}
+                  />
+                )}
 
                 <StatCard
                   label="Refunds"

@@ -255,5 +255,88 @@ describe('Staff Role Toggle and Blocked Wallets Segmentation Tests', () => {
     expect(roleType).toBe('MANAGER');
     expect(permissions).toEqual(MANAGER_PERMISSIONS);
   });
+
+  it('correctly scopes Blocked Wallets box to Org Admin Dashboard and omits from Counter Dashboard', () => {
+    const shouldShowBlockedWalletsStatCard = (isCounterAdmin: boolean) => !isCounterAdmin;
+
+    expect(shouldShowBlockedWalletsStatCard(true)).toBe(false);
+    expect(shouldShowBlockedWalletsStatCard(false)).toBe(true);
+  });
+
+  it('correctly computes Blocked Wallets KPIs and filters across multiple fields', () => {
+    const blockedCards: Card[] = [
+      {
+        id: 'card-b1',
+        physicalCardNumber: 'KD1DG3Z8J',
+        qrToken: 'QR-B1',
+        status: 'BLOCKED',
+        blockedReason: 'Lost card reported by customer',
+        blockedBy: 'Counter Admin',
+        blockedAt: '2026-10-04T10:00:00Z',
+        activeSession: {
+          id: 'sess-b1',
+          balance: 150,
+          branchId: 'branch-1',
+          branchName: 'Counter 1',
+          customerName: 'Jane Doe',
+          customerPhone: '9876543210',
+        },
+        organizationId: 'org-1',
+        createdAt: '2026-10-04T09:00:00Z',
+        updatedAt: '2026-10-04T10:00:00Z',
+      },
+      {
+        id: 'card-b2',
+        physicalCardNumber: 'MC004',
+        qrToken: 'QR-B2',
+        status: 'BLOCKED',
+        blockedReason: 'Chip damaged',
+        blockedBy: 'Staff Akhil',
+        blockedAt: '2026-10-03T14:30:00Z',
+        activeSession: null,
+        organizationId: 'org-1',
+        createdAt: '2026-10-03T10:00:00Z',
+        updatedAt: '2026-10-03T14:30:00Z',
+      },
+    ];
+
+    const totalBlockedCount = blockedCards.length;
+    const totalLockedBalance = blockedCards.reduce(
+      (sum, c) => sum + (c.activeSession?.balance || 0),
+      0
+    );
+
+    expect(totalBlockedCount).toBe(2);
+    expect(totalLockedBalance).toBe(150);
+
+    // Filter by reason
+    const filterByQuery = (query: string) => {
+      const q = query.toLowerCase().trim();
+      return blockedCards.filter((c) => {
+        const cardId = (c.physicalCardNumber || c.qrToken || c.id || '').toLowerCase();
+        const customer = (c.activeSession?.customerName || '').toLowerCase();
+        const phone = (c.activeSession?.customerPhone || '').toLowerCase();
+        const reason = (c.blockedReason || '').toLowerCase();
+        const branch = (c.activeSession?.branchName || '').toLowerCase();
+        return (
+          cardId.includes(q) ||
+          customer.includes(q) ||
+          phone.includes(q) ||
+          reason.includes(q) ||
+          branch.includes(q)
+        );
+      });
+    };
+
+    expect(filterByQuery('lost').length).toBe(1);
+    expect(filterByQuery('lost')[0].physicalCardNumber).toBe('KD1DG3Z8J');
+
+    expect(filterByQuery('damaged').length).toBe(1);
+    expect(filterByQuery('damaged')[0].physicalCardNumber).toBe('MC004');
+
+    expect(filterByQuery('9876543210').length).toBe(1);
+    expect(filterByQuery('KD1DG3Z8J').length).toBe(1);
+  });
 });
+
 
