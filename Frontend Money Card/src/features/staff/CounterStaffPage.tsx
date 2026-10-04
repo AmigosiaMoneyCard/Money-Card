@@ -274,7 +274,6 @@ export function CounterStaffPage() {
       const res = await apiService.staff.createStaff({
         name: trimmedName,
         phone: cleanPhone,
-        email: formEmail.trim() || undefined,
         password: trimmedPassword,
         assignedBranchIds: targetBranchIds,
         permissions: perms,
@@ -885,16 +884,6 @@ export function CounterStaffPage() {
                 <div className="text-[11px] text-slate-500 mt-0.5">Menu, inventory & order viewing only</div>
               </button>
             </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Email Address (Optional)</label>
-            <Input
-              type="email"
-              value={formEmail}
-              onChange={(e) => setFormEmail(e.target.value)}
-              placeholder="e.g. staff@example.com"
-            />
           </div>
 
           <ModalFooter>
