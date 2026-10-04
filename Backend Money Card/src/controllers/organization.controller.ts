@@ -616,6 +616,8 @@ export async function updateBranch(req: Request, res: Response) {
     passwordHash = await hashPassword(effectivePassword);
   }
 
+  let existingManager: any = null;
+
   const updatedBranch = await prisma.$transaction(async (tx) => {
     const updated = await tx.branch.update({
       where: { id },
@@ -632,7 +634,7 @@ export async function updateBranch(req: Request, res: Response) {
           (p) => p.permission === PermissionCode.STAFF_MANAGE || p.permission === PermissionCode.BRANCH_MANAGE,
         ),
       ) || branch.staffAssignments?.[0];
-    let existingManager = managerAssignment?.user;
+    existingManager = managerAssignment?.user;
 
     if (existingManager) {
       if (cleanPhone || passwordHash) {

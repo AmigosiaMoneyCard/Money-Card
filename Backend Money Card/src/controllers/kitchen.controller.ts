@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import prisma from '../config/database.js';
+import { prisma } from '../config/database.js';
 import { sendError, sendSuccess } from '../utils/response.js';
 import { Role, TransactionType } from '@prisma/client';
 import { balanceStreamService } from '../services/balanceStream.service.js';
