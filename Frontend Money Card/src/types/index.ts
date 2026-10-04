@@ -121,6 +121,9 @@ export type {
   PublicTransactionItem,
   PublicTransaction,
   PublicReceipt,
+  PublicSessionOrder,
+  PublicSessionOrderItem,
+  PublicMenuItem,
 } from './userPortal';
 
 export type {

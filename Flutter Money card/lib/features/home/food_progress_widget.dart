@@ -10,13 +10,9 @@ class FoodPreparationProgressWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(kitchenOrdersNotifierProvider);
     final pendingCount = ref.watch(pendingOrdersCountProvider);
     final preparingCount = ref.watch(preparingOrdersCountProvider);
     final readyCount = ref.watch(readyOrdersCountProvider);
-
-    final activeOrders = state.orders.where((o) => !o.isCompleted).toList();
-    final latestOrder = activeOrders.isNotEmpty ? activeOrders.first : null;
 
     return Material(
       color: Colors.transparent,
@@ -94,10 +90,52 @@ class FoodPreparationProgressWidget extends ConsumerWidget {
               ),
               const SizedBox(height: AppSpacing.md),
 
-              // 3 Status Count Pills
+              // 3 Status Count Pills: Queued -> In Progress -> Finished
               Row(
                 children: [
-                  // In Progress (Cooking)
+                  // 1. Queued
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '$pendingCount',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade800,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Queued',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          Text(
+                            'Pending queue',
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+
+                  // 2. In Progress (Cooking)
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
@@ -139,7 +177,7 @@ class FoodPreparationProgressWidget extends ConsumerWidget {
                   ),
                   const SizedBox(width: AppSpacing.xs),
 
-                  // Finished / Ready
+                  // 3. Finished / Ready
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
@@ -182,130 +220,8 @@ class FoodPreparationProgressWidget extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.xs),
-
-                  // Queued
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '$pendingCount',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey.shade800,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Queued',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey.shade700,
-                            ),
-                          ),
-                          Text(
-                            'Pending pickup',
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
                 ],
               ),
-
-              // Active Order Preview
-              if (latestOrder != null) ...[
-                const SizedBox(height: AppSpacing.md),
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  decoration: BoxDecoration(
-                    color: AppColors.backgroundLight,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.borderLight),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          '#${latestOrder.orderNumber}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              latestOrder.items.isNotEmpty
-                                  ? '${latestOrder.items.first.quantity}x ${latestOrder.items.first.itemName}${latestOrder.items.length > 1 ? ' +${latestOrder.items.length - 1} more' : ''}'
-                                  : 'Order placed',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimaryLight,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              '${latestOrder.elapsedMinutes}m elapsed • ${latestOrder.isReady ? 'Ready for pickup' : (latestOrder.isPreparing ? 'Cooking in kitchen' : 'Pending queue')}',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: latestOrder.isReady
-                                    ? AppColors.primary
-                                    : (latestOrder.isPreparing ? Colors.blue.shade700 : AppColors.textTertiaryLight),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: latestOrder.isReady
-                              ? AppColors.primaryLight
-                              : (latestOrder.isPreparing ? Colors.blue.shade50 : Colors.orange.shade50),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          latestOrder.isReady ? 'READY' : (latestOrder.isPreparing ? 'PREP' : 'QUEUED'),
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: latestOrder.isReady
-                                ? AppColors.primaryDark
-                                : (latestOrder.isPreparing ? Colors.blue.shade800 : Colors.orange.shade800),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
             ],
           ),
         ),

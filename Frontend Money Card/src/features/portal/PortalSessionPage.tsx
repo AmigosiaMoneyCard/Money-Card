@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiService } from '@/services/api';
-import type { PublicSessionDetail } from '@/types';
+import type { PublicSessionDetail, PublicSessionOrder, PublicMenuItem } from '@/types';
 import {
   Card,
   Badge,
@@ -25,6 +25,10 @@ import {
   ShieldAlert,
   User,
   Sparkles,
+  AlertTriangle,
+  ChefHat,
+  UtensilsCrossed,
+  X,
 } from 'lucide-react';
 
 
@@ -46,6 +50,11 @@ export function PortalSessionPage() {
   });
 
   const [sessionDetail, setSessionDetail] = useState<PublicSessionDetail | null>(null);
+  const [orders, setOrders] = useState<PublicSessionOrder[]>([]);
+  const [menuItems, setMenuItems] = useState<PublicMenuItem[]>([]);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isLoadingMenu, setIsLoadingMenu] = useState(false);
+  const [menuSearch, setMenuSearch] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isStandalone, setIsStandalone] = useState(checkIsStandalone);
@@ -78,6 +87,35 @@ export function PortalSessionPage() {
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
 
+  const fetchOrders = useCallback(async (tokenOverride?: string) => {
+    const activeToken = tokenOverride || sessionToken;
+    if (!activeToken) return;
+    try {
+      const res = await apiService.userPortal.getPublicSessionOrders(activeToken);
+      if (res.success && Array.isArray(res.data)) {
+        setOrders(res.data);
+      }
+    } catch {
+      // silent poll failure
+    }
+  }, [sessionToken]);
+
+  const fetchMenu = useCallback(async (tokenOverride?: string) => {
+    const activeToken = tokenOverride || sessionToken;
+    if (!activeToken) return;
+    setIsLoadingMenu(true);
+    try {
+      const res = await apiService.userPortal.getPublicSessionMenu(activeToken);
+      if (res.success && Array.isArray(res.data)) {
+        setMenuItems(res.data);
+      }
+    } catch {
+      // silent
+    } finally {
+      setIsLoadingMenu(false);
+    }
+  }, [sessionToken]);
+
   const fetchSessionDetail = useCallback(async (tokenOverride?: string, isSilent = false) => {
     const activeToken = tokenOverride || sessionToken;
     if (!activeToken) {
@@ -98,6 +136,7 @@ export function PortalSessionPage() {
           localStorage.removeItem('moneycard_portal_card_number');
           setSessionToken(null);
           setSessionDetail(null);
+          setOrders([]);
           setError('Portal session expired or invalid. Please scan your wallet QR code again.');
         } else {
           if (!isSilent) setError(res.error.message || 'Failed to load wallet session detail');
@@ -155,6 +194,7 @@ export function PortalSessionPage() {
       setSessionToken(res.data.sessionToken);
       setIsScanning(false);
       await fetchSessionDetail(res.data.sessionToken);
+      fetchOrders(res.data.sessionToken);
     } catch {
       setLookupError('Unable to connect to server. Please check your network and try again.');
     }
@@ -165,17 +205,20 @@ export function PortalSessionPage() {
 
     // Initial load
     fetchSessionDetail(sessionToken);
+    fetchOrders(sessionToken);
 
     // 2-second real-time polling while app/tab is active and visible
     const pollInterval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         fetchSessionDetail(sessionToken, true);
+        fetchOrders(sessionToken);
       }
     }, 2000);
 
     const handleVisibilityOrFocus = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         fetchSessionDetail(sessionToken, true);
+        fetchOrders(sessionToken);
       }
     };
 
@@ -187,7 +230,7 @@ export function PortalSessionPage() {
       document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
       window.removeEventListener('focus', handleVisibilityOrFocus);
     };
-  }, [sessionToken, fetchSessionDetail]);
+  }, [sessionToken, fetchSessionDetail, fetchOrders]);
 
   const handleExitSession = () => {
     sessionStorage.removeItem('moneycard_portal_session_token');
@@ -200,6 +243,10 @@ export function PortalSessionPage() {
     }
     setSessionToken(null);
     setSessionDetail(null);
+    setOrders([]);
+    setMenuItems([]);
+    setIsMenuOpen(false);
+    setMenuSearch('');
     setLookupError(null);
     setIsScanning(false);
     navigate('/portal', { replace: true });
@@ -393,6 +440,19 @@ export function PortalSessionPage() {
           </p>
         </div>
 
+        {/* Low Balance Warning Banner */}
+        {!isClosed && sessionDetail.currentBalance < 100 && (
+          <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 flex items-start gap-2.5">
+            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="flex-1 text-left">
+              <p className="font-bold text-amber-900">Low Balance Notice</p>
+              <p className="mt-0.5 text-amber-800">
+                Your wallet balance is {formatCurrency(sessionDetail.currentBalance)}. Top up at the counter to keep ordering without interruptions.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Closed Session Warning Banner */}
         {isClosed && (
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 space-y-1">
@@ -424,15 +484,110 @@ export function PortalSessionPage() {
         </div>
       </Card>
 
+      {/* Live Order & Food Preparation Status */}
+      {orders.length > 0 && (
+        <Card padding="md" className="border-slate-200 bg-white shadow-sm space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+            <div className="flex items-center gap-2">
+              <ChefHat className="h-5 w-5 text-emerald-600" />
+              <h3 className="text-sm font-bold text-slate-900">Food Preparation Status</h3>
+            </div>
+            <span className="text-[11px] font-semibold text-slate-500">
+              {orders.filter((o) => o.orderStatus !== 'COMPLETED').length} Active
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {orders.map((ord) => {
+              const isReady = ord.orderStatus === 'READY';
+              const isCooking = ord.orderStatus === 'PREPARING';
+              const isQueued = ord.orderStatus === 'PENDING';
+
+              return (
+                <div
+                  key={ord.id}
+                  className={`rounded-xl border p-3.5 transition-all ${
+                    isReady
+                      ? 'border-emerald-300 bg-emerald-50/60 shadow-sm'
+                      : isCooking
+                        ? 'border-blue-200 bg-blue-50/40'
+                        : 'border-slate-200 bg-slate-50/60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 text-xs font-bold rounded-md bg-slate-900 text-white font-mono">
+                        Token #{ord.orderNumber}
+                      </span>
+                      <span className="text-xs font-medium text-slate-600">
+                        {ord.counterName}
+                      </span>
+                    </div>
+                    <span
+                      className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                        isReady
+                          ? 'bg-emerald-600 text-white animate-pulse'
+                          : isCooking
+                            ? 'bg-blue-100 text-blue-800'
+                            : isQueued
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-slate-100 text-slate-700'
+                      }`}
+                    >
+                      {isReady
+                        ? 'Ready for Pickup'
+                        : isCooking
+                          ? 'Cooking Now'
+                          : isQueued
+                            ? 'In Queue'
+                            : 'Completed'}
+                    </span>
+                  </div>
+
+                  <div className="mt-2.5 space-y-1 border-t border-slate-200/60 pt-2 text-xs">
+                    {ord.items.map((it, idx) => (
+                      <div key={idx} className="flex justify-between text-slate-700">
+                        <span>
+                          <strong className="text-slate-900">{it.quantity}x</strong> {it.itemName}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {isReady && (
+                    <div className="mt-2.5 rounded-lg bg-emerald-100/90 px-3 py-1.5 text-center text-xs font-bold text-emerald-900">
+                      Your food is ready! Please collect your order from {ord.counterName}.
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
       {/* Navigation Quick Actions */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <button
+          type="button"
+          onClick={() => {
+            setIsMenuOpen(true);
+            fetchMenu();
+          }}
+          className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm transition-all hover:border-emerald-500/50 hover:bg-emerald-50/20 cursor-pointer"
+        >
+          <UtensilsCrossed className="h-6 w-6 text-emerald-600 mb-2" />
+          <span className="text-sm font-semibold text-slate-900">Today's Menu</span>
+          <span className="mt-0.5 text-xs text-slate-500">View items & prices</span>
+        </button>
+
         <Link
           to="/portal/transactions"
           className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm transition-all hover:border-emerald-500/50 hover:bg-emerald-50/20"
         >
           <History className="h-6 w-6 text-emerald-600 mb-2" />
           <span className="text-sm font-semibold text-slate-900">Transaction History</span>
-          <span className="mt-0.5 text-xs text-slate-500">View recharges & purchases</span>
+          <span className="mt-0.5 text-xs text-slate-500">Recharges & purchases</span>
         </Link>
 
         <Link
@@ -441,9 +596,85 @@ export function PortalSessionPage() {
         >
           <Receipt className="h-6 w-6 text-emerald-600 mb-2" />
           <span className="text-sm font-semibold text-slate-900">Purchase Receipts</span>
-          <span className="mt-0.5 text-xs text-slate-500">Itemized purchase details</span>
+          <span className="mt-0.5 text-xs text-slate-500">Itemized bills</span>
         </Link>
       </div>
+
+      {/* Live Menu Modal */}
+      {isMenuOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-100 p-4 bg-slate-50">
+              <div className="flex items-center gap-2">
+                <UtensilsCrossed className="h-5 w-5 text-emerald-600" />
+                <h3 className="font-bold text-slate-900">Today's Live Menu</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMenuOpen(false)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-3 border-b border-slate-100">
+              <input
+                type="text"
+                value={menuSearch}
+                onChange={(e) => setMenuSearch(e.target.value)}
+                placeholder="Search food & beverages..."
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-hidden"
+              />
+            </div>
+
+            <div className="overflow-y-auto p-4 space-y-2 flex-1">
+              {isLoadingMenu ? (
+                <div className="py-8 text-center text-sm text-slate-500">Loading menu...</div>
+              ) : (
+                (() => {
+                  const filteredMenu = menuItems.filter(
+                    (item) =>
+                      item.name.toLowerCase().includes(menuSearch.toLowerCase()) ||
+                      item.categories.some((c) => c.toLowerCase().includes(menuSearch.toLowerCase()))
+                  );
+                  if (filteredMenu.length === 0) {
+                    return <div className="py-8 text-center text-sm text-slate-500">No menu items found.</div>;
+                  }
+                  return filteredMenu.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-3 hover:bg-slate-100/60"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          className={`flex h-4 w-4 items-center justify-center rounded-xs border text-[9px] font-bold ${
+                            item.isVeg
+                              ? 'border-emerald-600 text-emerald-600'
+                              : 'border-rose-600 text-rose-600'
+                          }`}
+                          title={item.isVeg ? 'Vegetarian' : 'Non-Vegetarian'}
+                        >
+                          <span className={`h-1.5 w-1.5 rounded-full ${item.isVeg ? 'bg-emerald-600' : 'bg-rose-600'}`} />
+                        </span>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">{item.name}</p>
+                          {item.categories.length > 0 && (
+                            <p className="text-[11px] text-slate-500">{item.categories.join(', ')}</p>
+                          )}
+                        </div>
+                      </div>
+                      <span className="font-mono text-sm font-bold text-emerald-700">
+                        ₹{item.price}
+                      </span>
+                    </div>
+                  ));
+                })()
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

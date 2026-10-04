@@ -77,6 +77,20 @@ class KitchenOrder {
     return diff.inMinutes.clamp(0, 999);
   }
 
+  int get prepTimeMinutes {
+    if (readyAt != null) {
+      final diff = readyAt!.difference(orderedAt).inMinutes;
+      return diff < 1 ? 1 : diff;
+    }
+    return elapsedMinutes;
+  }
+
+  bool get canUndoReady {
+    if (!isReady || readyAt == null) return false;
+    final diff = DateTime.now().difference(readyAt!).inMinutes;
+    return diff <= 5;
+  }
+
   factory KitchenOrder.fromJson(Map<String, dynamic> json) {
     final rawItems = json['items'] as List<dynamic>? ?? [];
     return KitchenOrder(

@@ -50,6 +50,8 @@ import type {
   PublicSessionDetail,
   PublicReceipt,
   PublicTransaction,
+  PublicSessionOrder,
+  PublicMenuItem,
   CheckoutRequest,
   CheckoutResponseData,
   RechargeRequest,
@@ -737,6 +739,12 @@ export const realClient: typeof mockClient = {
     },
     async getPublicSessionReceipts(sessionToken: string): Promise<ApiResult<PublicReceipt[]>> {
       return handleApiCall(() => apiClient.get<PublicReceipt[]>(`/v1/public/sessions/${sessionToken}/receipts`));
+    },
+    async getPublicSessionOrders(sessionToken: string): Promise<ApiResult<PublicSessionOrder[]>> {
+      return handleApiCall(() => apiClient.get<PublicSessionOrder[]>(`/v1/public/sessions/${sessionToken}/orders`));
+    },
+    async getPublicSessionMenu(sessionToken: string): Promise<ApiResult<PublicMenuItem[]>> {
+      return handleApiCall(() => apiClient.get<PublicMenuItem[]>(`/v1/public/sessions/${sessionToken}/menu`));
     },
   },
 

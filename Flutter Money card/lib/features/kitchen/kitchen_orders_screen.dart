@@ -48,6 +48,38 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
+          Consumer(
+            builder: (context, ref, _) {
+              final avgPrep = ref.watch(averagePrepMinutesProvider);
+              if (avgPrep <= 0) return const SizedBox.shrink();
+              return Center(
+                child: Container(
+                  margin: const EdgeInsets.only(right: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.av_timer, size: 14, color: Colors.blue.shade700),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Avg ${avgPrep.toStringAsFixed(0)}m',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: Icon(
               state.isAudioMuted ? Icons.volume_off : Icons.volume_up,
@@ -566,7 +598,7 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
                 ),
               ),
 
-            if (order.isReady)
+            if (order.isReady) ...[
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 8),
@@ -575,15 +607,33 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
                   color: AppColors.primaryLight,
                   borderRadius: AppSpacing.roundedMd,
                 ),
-                child: const Text(
-                  'Waiting for counter pickup / handover',
-                  style: TextStyle(
+                child: Text(
+                  'Prepped in ${order.prepTimeMinutes}m - Ready for pickup',
+                  style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: AppColors.primaryDark,
                   ),
                 ),
               ),
+              const SizedBox(height: AppSpacing.xs),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => notifier.updateStatus(order.transactionId, 'PREPARING'),
+                  icon: const Icon(Icons.undo, size: 16),
+                  label: const Text('Undo / Return to Cooking'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.orange.shade800,
+                    side: BorderSide(color: Colors.orange.shade400),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: AppSpacing.roundedMd,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

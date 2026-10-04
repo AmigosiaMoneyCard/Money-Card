@@ -51,6 +51,7 @@ class KitchenOrdersNotifier extends StateNotifier<KitchenOrdersState> {
   final Ref _ref;
   Timer? _pollingTimer;
   final Set<String> _knownOrderIds = {};
+  final Set<String> _knownReadyOrderIds = {};
   bool _initialLoadDone = false;
 
   KitchenOrdersNotifier(this._kitchenService, this._ref)
@@ -94,12 +95,16 @@ class KitchenOrdersNotifier extends StateNotifier<KitchenOrdersState> {
         branchId: currentBranch?.id,
       );
 
-      // Play audio chime and haptic alert when new active tickets arrive
+      // Play audio chime and haptic alert when new active tickets arrive or orders become ready
       if (_initialLoadDone && !state.isAudioMuted) {
         final hasNewActiveOrders = orders.any((o) =>
             (o.isPending || o.isPreparing) &&
             !_knownOrderIds.contains(o.id.isNotEmpty ? o.id : o.transactionId));
-        if (hasNewActiveOrders) {
+        final hasNewlyReadyOrders = orders.any((o) =>
+            o.isReady &&
+            !_knownReadyOrderIds.contains(o.id.isNotEmpty ? o.id : o.transactionId));
+
+        if (hasNewActiveOrders || hasNewlyReadyOrders) {
           SystemSound.play(SystemSoundType.alert);
           HapticFeedback.heavyImpact();
         }
@@ -110,6 +115,9 @@ class KitchenOrdersNotifier extends StateNotifier<KitchenOrdersState> {
         final id = o.id.isNotEmpty ? o.id : o.transactionId;
         if (id.isNotEmpty) {
           _knownOrderIds.add(id);
+          if (o.isReady) {
+            _knownReadyOrderIds.add(id);
+          }
         }
       }
       _initialLoadDone = true;
@@ -182,6 +190,10 @@ class KitchenOrdersNotifier extends StateNotifier<KitchenOrdersState> {
         transactionId: transactionId,
         status: newStatus,
       );
+      if (newStatus == 'READY' && !state.isAudioMuted) {
+        SystemSound.play(SystemSoundType.alert);
+        HapticFeedback.mediumImpact();
+      }
       // Refresh summary
       loadSummary(silent: true);
       return true;
@@ -212,6 +224,17 @@ final preparingOrdersProvider = Provider<List<KitchenOrder>>((ref) {
 final readyOrdersProvider = Provider<List<KitchenOrder>>((ref) {
   final state = ref.watch(kitchenOrdersNotifierProvider);
   return state.orders.where((o) => o.isReady).toList();
+});
+
+final averagePrepMinutesProvider = Provider<double>((ref) {
+  final state = ref.watch(kitchenOrdersNotifierProvider);
+  final completedOrReady = state.orders.where((o) => o.readyAt != null).toList();
+  if (completedOrReady.isEmpty) return 0.0;
+  final totalMinutes = completedOrReady.fold<int>(
+    0,
+    (sum, o) => sum + o.prepTimeMinutes,
+  );
+  return totalMinutes / completedOrReady.length;
 });
 
 final pendingOrdersCountProvider = Provider<int>((ref) {

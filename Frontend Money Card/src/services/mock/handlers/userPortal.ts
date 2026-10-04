@@ -5,6 +5,8 @@ import type {
   PublicSessionDetail,
   PublicTransaction,
   PublicReceipt,
+  PublicSessionOrder,
+  PublicMenuItem,
 } from '@/types';
 
 // Map session tokens to session IDs
@@ -156,5 +158,34 @@ export const mockUserPortalHandlers = {
     }));
 
     return createMockSuccess(receipts);
+  },
+
+  async getPublicSessionOrders(_sessionToken: string): Promise<ApiResult<PublicSessionOrder[]>> {
+    await mockDelay();
+    return createMockSuccess([
+      {
+        id: 'ord_1',
+        orderNumber: 101,
+        orderStatus: 'PREPARING',
+        orderedAt: new Date(Date.now() - 360000).toISOString(),
+        preparingAt: new Date(Date.now() - 240000).toISOString(),
+        items: [
+          { itemName: 'Veg Thali', quantity: 1, unitPrice: 120 },
+          { itemName: 'Masala Chai', quantity: 2, unitPrice: 20 },
+        ],
+        counterName: 'Main Kitchen Counter',
+        amount: 160,
+      },
+    ]);
+  },
+
+  async getPublicSessionMenu(_sessionToken: string): Promise<ApiResult<PublicMenuItem[]>> {
+    await mockDelay();
+    return createMockSuccess([
+      { id: 'prod_1', name: 'Veg Thali', price: 120, categories: ['Meals', 'Veg'], isVeg: true, status: 'ACTIVE' },
+      { id: 'prod_2', name: 'Paneer Butter Masala', price: 150, categories: ['Curry', 'Veg'], isVeg: true, status: 'ACTIVE' },
+      { id: 'prod_3', name: 'Masala Chai', price: 20, categories: ['Beverages', 'Hot'], isVeg: true, status: 'ACTIVE' },
+      { id: 'prod_4', name: 'Chicken Biryani', price: 180, categories: ['Biryani', 'Non-Veg'], isVeg: false, status: 'ACTIVE' },
+    ]);
   },
 };
