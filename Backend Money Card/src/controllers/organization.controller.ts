@@ -779,9 +779,26 @@ export async function deleteBranch(req: Request, res: Response) {
   }
 
   await prisma.$transaction(async (tx) => {
+    const counterUsers = await tx.userBranch.findMany({
+      where: { branchId: id },
+      include: { user: true },
+    });
+
     await tx.branchInventory.deleteMany({ where: { branchId: id } });
     await tx.userBranch.deleteMany({ where: { branchId: id } });
     await tx.branch.delete({ where: { id } });
+
+    for (const assignment of counterUsers) {
+      if (assignment.user.isCounterAccount) {
+        const remaining = await tx.userBranch.count({
+          where: { userId: assignment.userId },
+        });
+        if (remaining === 0) {
+          await tx.userPermission.deleteMany({ where: { userId: assignment.userId } });
+          await tx.user.delete({ where: { id: assignment.userId } }).catch(() => {});
+        }
+      }
+    }
   });
 
   return sendSuccess(res, { deleted: true, message: 'Branch deleted successfully.' });
