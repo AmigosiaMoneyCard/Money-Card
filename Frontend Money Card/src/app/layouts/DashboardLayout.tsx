@@ -48,6 +48,7 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   FileText: <FileText className="h-5 w-5 shrink-0" />,
   Settings: <Settings className="h-5 w-5 shrink-0" />,
   Layers: <Layers className="h-5 w-5 shrink-0" />,
+  Shield: <Shield className="h-5 w-5 shrink-0" />,
 };
 
 export function DashboardLayout() {

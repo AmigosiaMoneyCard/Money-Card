@@ -116,7 +116,7 @@ class FakeSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<SessionReturnResult> returnSession(String sessionId) async {
+  Future<SessionReturnResult> returnSession(String sessionId, {String paymentMethod = 'CASH'}) async {
     final idx = sessions.indexWhere((s) => s.id == sessionId);
     final current = sessions[idx];
     final refunded = current.balance;

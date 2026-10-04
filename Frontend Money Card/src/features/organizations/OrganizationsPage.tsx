@@ -36,7 +36,9 @@ import {
   ChevronDown,
   Send,
   Mail,
+  Download,
 } from 'lucide-react';
+import { OrgDataExportModal } from './OrgDataExportModal';
 
 interface OrgActionMenuProps {
   org: OrganizationOverview;
@@ -44,6 +46,7 @@ interface OrgActionMenuProps {
   onResetPassword: () => void;
   onResendAdminInvite?: () => void;
   onToggleStatus: () => void;
+  onExportData: () => void;
   onDelete: () => void;
 }
 
@@ -53,6 +56,7 @@ function OrgActionMenu({
   onResetPassword,
   onResendAdminInvite,
   onToggleStatus,
+  onExportData,
   onDelete,
 }: OrgActionMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -215,6 +219,18 @@ function OrgActionMenu({
               type="button"
               onClick={() => {
                 setIsOpen(false);
+                onExportData();
+              }}
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-indigo-700 transition-colors cursor-pointer text-left"
+            >
+              <Download className="h-4 w-4 text-indigo-600" />
+              <span>Export Tenant Data</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsOpen(false);
                 onDelete();
               }}
               className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer text-left"
@@ -277,6 +293,7 @@ export function OrganizationsPage() {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedOrgToDelete, setSelectedOrgToDelete] = useState<OrganizationOverview | null>(null);
+  const [exportingOrg, setExportingOrg] = useState<OrganizationOverview | null>(null);
   const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
   const [tempPassword, setTempPassword] = useState('');
   const [confirmTempPassword, setConfirmTempPassword] = useState('');
@@ -686,6 +703,7 @@ export function OrganizationsPage() {
             onResetPassword={() => handleOpenResetPasswordModal(org)}
             onResendAdminInvite={() => handleResendAdminInvite(org)}
             onToggleStatus={() => handleOpenStatusModal(org)}
+            onExportData={() => setExportingOrg(org)}
             onDelete={() => handleOpenDeleteModal(org)}
           />
         </div>
@@ -1302,6 +1320,13 @@ export function OrganizationsPage() {
           </ModalFooter>
         </div>
       </Modal>
+
+      <OrgDataExportModal
+        isOpen={!!exportingOrg}
+        onClose={() => setExportingOrg(null)}
+        organizationId={exportingOrg?.id}
+        organizationName={exportingOrg?.name}
+      />
     </div>
   );
 }

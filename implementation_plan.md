@@ -1,162 +1,211 @@
-# Implementation Plan — Kitchen Operations & Customer PWA Enhancements
+# Implementation Plan: Global Security & Audit Log, Organization Data Export, End-of-Day Summary & Mobile Cash/UPI Refund Workflow
 
-## Overview
-Implement operational business logic across the Mobile POS app (`Flutter Money card`), Customer PWA portal (`Frontend Money Card`), and Backend API (`Backend Money Card`):
+Implement comprehensive platform security, compliance export, automated operational reporting, and cashier drawer-accurate card return workflows across Web Admin, Mobile POS, and Backend.
 
-1. **Counter Manager Dashboard — Food Preparation Progress**:
-   - Reorder stage pills to logical flow: `Queued` -> `In Progress` -> `Finished`.
-   - Remove active order preview box from the widget to display only clean stage counts without displaying specific preparing items in the dashboard tab.
-2. **Kitchen Display System (KDS)**:
-   - **Undo / Recall Completed Orders**: Provide a 5-minute undo option on tickets marked Ready/Done to return them back into active cooking.
-   - **Prep Time Tracking & Kitchen Analytics**: Compute elapsed duration between `orderedAt` and `readyAt` to calculate average prep time and display individual ticket prep times.
-   - **Ready Audio Notification Chime**: Play a notification sound when an order reaches `READY` status.
-3. **Customer PWA (Web Portal)**:
-   - **Live Order & Token Status Tracker**: Display customer's active food tokens and live prep stages (`In Queue` -> `Cooking` -> `Ready for Pickup`).
-   - **Real-Time Digital Menu & Dietary Viewer**: Allow customers to browse available menu items, prices, and Veg/Non-Veg tags on their phone.
-   - **Low Balance Alert & Digital Statements**: Highlight a low-balance warning banner when balance is below ₹100, with itemized statement/receipt viewing.
-4. **Backend API**:
-   - Provide public customer endpoints for live session orders and branch menu items.
+![Security Audit and Refund Workflow Mockup](file:///C:/Users/damie/.gemini/antigravity-ide/brain/218ce084-c8ce-49ca-a93b-bc0ce2200b0c/security_audit_refund_workflow_ui_1791129616172.jpg)
 
 ---
 
-## Visual Design Reference
+## User Requirements & Scope
 
-![Kitchen Operations & Customer PWA Enhancements](C:\Users\damie\.gemini\antigravity-ide\brain\218ce084-c8ce-49ca-a93b-bc0ce2200b0c\kitchen_kds_pwa_live_tracker_ui_1791123423751.jpg)
+1. **Global Security and Audit Log (Super Admin)**:
+   - Centralized security log tracking failed logins, card block events, role elevations/permission grants, and plan overrides across all cafeteria organizations.
+   - Searchable, filterable by action and severity (`INFO`, `WARN`, `HIGH`), with actor, IP, timestamp, and metadata.
+2. **Organization Data Export (Super Admin & Org Admin)**:
+   - One-click export of an entire organization's records (cards, sessions, products, transactions, branches) for backups or compliance.
+   - Downloadable in JSON format with structured tables.
+3. **Automated End-of-Day Summary (PDF)**:
+   - Closing PDF report summarizing daily revenue, cash vs UPI collections, unreturned card liabilities (active card balances in circulation), and top-selling food items.
+   - Accessible in Web Admin Reports and Mobile POS Analytics.
+4. **Mobile POS Card Return & Refund Payment Method Selection**:
+   - When staff initiates "Return Card" or "Refund Balance":
+     - If remaining balance is zero: return card immediately without prompting for payment method.
+     - If remaining balance is greater than zero: display a quick two-button toggle between **Cash** (selected by default) and **UPI**, with exact refund amount.
+     - Tapping Confirm settles the card and records transaction with selected `paymentMethod` (`CASH` vs `UPI`).
+5. **Mobile POS Analytics Wallet Refund Sublabel**:
+   - In Mobile Counter Manager Analytics -> Recharge page, restore the Cash / UPI sub-label breakdown under the "Wallet Refund" box (`Cash: ₹...` and `UPI: ₹...`) while maintaining clean design on the other metric cards.
 
 ---
 
 ## ASCII Wireframes
 
-### 1. Counter Manager Dashboard — Clean Food Progress Widget
-```text
-+-------------------------------------------------------------+
-| [Kitchen] Food Preparation Progress          Live Tracker > |
-|                                                             |
-| +-----------------+   +-----------------+   +-------------+ |
-| | 4               |   | 2               |   | 6           | |
-| | Queued          |   | In Progress     |   | Finished    | |
-| | Pending queue   |   | Cooking         |   | Ready pickup| |
-| +-----------------+   +-----------------+   +-------------+ |
-+-------------------------------------------------------------+
-(Active order items preview removed for a clean dashboard view)
+### 1. Mobile App Card Return & Refund Dialog
+
+```
++-----------------------------------------------------+
+|                  Card Return                     X  |
++-----------------------------------------------------+
+|                Processing Refund                    |
+|                                                     |
+|                Amount to Refund:                    |
+|                 ₹150.00 Rupees                      |
+|                                                     |
+|    +-----------------------+ +--------------------+ |
+|    | [x] Cash (Selected)   | | [ ] UPI            | |
+|    +-----------------------+ +--------------------+ |
+|                                                     |
+|       Ensure accurate drawer counting before        |
+|             confirming cash payout.                 |
+|                                                     |
+|    +-----------------------------------------------+|
+|    |               Confirm Return                  ||
+|    +-----------------------------------------------+|
++-----------------------------------------------------+
 ```
 
-### 2. Mobile KDS — Average Prep Time & Undo Recall
-```text
-+-------------------------------------------------------------+
-| Kitchen Display System       Avg Prep: 6m     [Audio: ON]   |
-+-------------------------------------------------------------+
-| Ticket #104                      Card: 104    [READY / DONE]|
-| Prepped in 7m • Counter 1                                   |
-| - 2x Masala Dosa                                            |
-| - 1x Filter Coffee                                          |
-|                                                             |
-| [ Undo / Return to Cooking ]                                |
-+-------------------------------------------------------------+
+### 2. Mobile App Analytics: Wallet Refund Box with Sub-labels
+
+```
++----------------------------------+  +----------------------------------+
+| Recharge Amount       [Wallet]   |  | Total Sales          [Payments]  |
+| ₹12,450.00                       |  | ₹11,200.00                       |
+| Cash: ₹8,200   UPI: ₹4,250       |  |                                  |
++----------------------------------+  +----------------------------------+
+
++----------------------------------+  +----------------------------------+
+| Wallet Refund           [Return] |  | Wallet Refund Count    [Refresh] |
+| ₹1,250.00                        |  | 9 Refunds                        |
+| Cash: ₹950     UPI: ₹300         |  |                                  |
++----------------------------------+  +----------------------------------+
+
++----------------------------------+  +----------------------------------+
+| Cancelled Amount        [Cancel] |  | Cancelled Count          [Money] |
+| ₹500.00                          |  | 2 Recharges                      |
++----------------------------------+  +----------------------------------+
 ```
 
-### 3. Customer PWA Portal — Live Token Tracker & Low Balance Warning
-```text
+### 3. Super Admin Global Security & Audit Log
+
+```
++----------------------------------------------------------------------------------------------------------------+
+|  Global Security & Audit Log                                      [ Search logs... ] [ Filter Severity v ]     |
++----------------------------------------------------------------------------------------------------------------+
+| Timestamp            Severity   Action           Actor             Entity/Organization       Details           |
+|----------------------------------------------------------------------------------------------------------------|
+| 2026-10-04 21:15:10  [HIGH]     CARD_BLOCKED     Admin R. Verma    Card #MC-0042 (Apex Org)  Physical damaged  |
+| 2026-10-04 20:45:22  [WARN]     FAILED_LOGIN     Unknown           admin@apex.com (Apex Org) Invalid password  |
+| 2026-10-04 19:30:05  [INFO]     PLAN_OVERRIDE    Super Admin       Zenith Cafeteria          Max cards: 200    |
+| 2026-10-04 18:12:44  [INFO]     ROLE_ELEVATION   Org Owner         Staff S. Khan -> Counter  Assigned Counter1 |
++----------------------------------------------------------------------------------------------------------------+
+| Showing 1-20 of 142 audit events                                                            [ Previous ] [ Next ] |
++----------------------------------------------------------------------------------------------------------------+
+```
+
+### 4. Organization Data Export Modal
+
+```
 +-------------------------------------------------------------+
-| Customer Wallet: CARD-104                       [ ACTIVE ]  |
-| Current Balance: ₹65.00                                     |
+| Export Organization Data                                  X |
++-------------------------------------------------------------+
+| Organization: Apex Cafeteria (ID: org_apex_01)             |
+| Records included:                                           |
+|   - 142 Cards & Status History                              |
+|   - 389 Card Sessions & Balances                            |
+|   - 1,240 Transactions (Purchases, Recharges, Refunds)      |
+|   - 48 Menu Products & Branch Catalogs                      |
 |                                                             |
-| ! LOW BALANCE ALERT: Balance is below ₹100.                  |
-|   Please visit the counter to recharge before ordering.     |
+| Export Format:                                              |
+|   (o) Complete JSON Archive (.json)                         |
+|   ( ) Tabular CSV Package (.zip)                            |
 |                                                             |
-| +---------------------------------------------------------+ |
-| | ACTIVE TOKEN: #104                    [READY FOR PICKUP]| |
-| | Your order is ready at Counter 1!                       | |
-| | - 2x Masala Dosa, 1x Filter Coffee                      | |
-| +---------------------------------------------------------+ |
-|                                                             |
-| [ View Digital Menu ]           [ Transaction History ]     |
+| [ Cancel ]                               [ Download Export ]|
 +-------------------------------------------------------------+
 ```
 
 ---
 
-## Step-by-Step Implementation Worktree Changes
+## Technical Design & Component Breakdown
 
-### Mobile POS Sub-Project (`Flutter Money card/`)
+### Sub-Project 1: Backend (`Backend Money Card/`)
 
-#### 1. [food_progress_widget.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/home/food_progress_widget.dart)
-- Reorder stage count boxes in the `Row`:
-  1. `Queued` (`pendingCount`)
-  2. `In Progress` (`preparingCount`)
-  3. `Finished` (`readyCount`)
-- Remove the "Active Order Preview" card (`if (latestOrder != null) ...`) so specific preparing items are not shown in this summary tab.
+1. **Audit Log System**:
+   - `prisma/schema.prisma`: Add `AuditLog` model:
+     - `id`, `organizationId` (nullable), `userId` (nullable), `userName` (string), `action` (string), `severity` (`INFO`, `WARN`, `HIGH`), `details` (Json), `ipAddress` (string?), `createdAt` (DateTime).
+     - Relation to Organization and User.
+   - `src/services/auditLog.service.ts`: Helper `recordAuditEvent({ action, severity, organizationId, userId, userName, details, ipAddress })`.
+   - Instrumentation:
+     - Failed login attempts in `auth.controller.ts`.
+     - Card block/unblock in `cards.controller.ts`.
+     - Plan overrides in `admin.controller.ts`.
+     - Staff role updates in `staff.controller.ts`.
+   - `src/controllers/admin.controller.ts` & `src/routes/admin.routes.ts`:
+     - Route `GET /api/admin/audit-logs` (Super Admin only) with pagination and filters.
 
-#### 2. [kitchen_orders_screen.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/features/kitchen/kitchen_orders_screen.dart)
-- In the AppBar / Header: Display average preparation time calculated across ready/completed orders (e.g. `Avg Prep: 6m`).
-- In `_buildKitchenOrderCard`:
-  - When `order.isReady`:
-    - Display duration badge: `Prepped in ${order.prepTimeMinutes}m`.
-    - Provide an `Undo / Return to Cooking` button that invokes `notifier.updateStatus(order.transactionId, 'PREPARING')`.
-- When an order transitions to `READY`, play an alert notification sound.
+2. **Organization Data Export**:
+   - `src/controllers/organization.controller.ts` & `src/routes/organization.routes.ts`:
+     - Route `GET /api/organization/export` (Org Admin: own org) and `GET /api/admin/organizations/:id/export` (Super Admin: any org).
+     - Queries organization, branches, staff, products, cards, card sessions, and transactions.
+     - Streams JSON export payload.
 
-#### 3. [kitchen_order.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/models/kitchen_order.dart)
-- Add helper getter `int get prepTimeMinutes`:
-  - If `readyAt != null`, calculates `readyAt!.difference(orderedAt).inMinutes`.
-  - Fallback to `elapsedMinutes`.
-
-#### 4. [kitchen_orders_provider.dart](file:///d:/Money%20Card%20Project/Flutter%20Money%20card/lib/providers/kitchen_orders_provider.dart)
-- Track average prep time in `KitchenOrdersState`: `double get averagePrepMinutes`.
-- In `loadOrders`, detect when any ticket transitions to `READY` and trigger notification sound (`SystemSound.play(SystemSoundType.alert)`).
-
----
-
-### Web PWA Sub-Project (`Frontend Money Card/`)
-
-#### 1. [PortalSessionPage.tsx](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/portal/PortalSessionPage.tsx)
-- Add Low Balance Warning banner if `sessionDetail.currentBalance < 100`.
-- Fetch active session orders via `apiService.userPortal.getPublicSessionOrders(sessionToken)`.
-- Render **Live Token Tracker Card**:
-  - Token number (`Token #104`)
-  - Live status indicator:
-    - `QUEUED`: "Order in Kitchen Queue" (amber badge)
-    - `PREPARING`: "Cooking in Kitchen" (blue badge)
-    - `READY`: "Ready for Pickup!" (pulsing green highlight with counter name)
-- Add button and modal for **View Digital Menu**:
-  - Displays cafeteria products with price, stock status, and Veg / Non-Veg dietary badges.
-
-#### 2. [api/index.ts](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/services/api/index.ts) & [userPortal.ts](file:///d:/Money%20Card%20Project/Frontend%20Money%20Card/src/types/userPortal.ts)
-- Add API methods and types for:
-  - `getPublicSessionOrders(sessionToken)`
-  - `getPublicSessionMenu(sessionToken)`
+3. **Refund Payment Method & Analytics Parity**:
+   - `src/controllers/sessions.controller.ts`:
+     - Update `returnSession`: accept `paymentMethod` (`CASH` | `UPI`, default `CASH`).
+     - Save `paymentMethod: (paymentMethod || 'CASH').toUpperCase()` on `tx.transaction.create` for `REFUND_RETURN`.
+     - Update `refundSessionBalance`: accept `paymentMethod` (`CASH` | `UPI`, default `CASH`).
+   - `src/controllers/analytics.controller.ts`:
+     - Breakdown `cashRefunds` and `upiRefunds`:
+       `cashRefunds`: sum of `REFUND_RETURN` with `paymentMethod === 'CASH'`.
+       `upiRefunds`: sum of `REFUND_RETURN` with `paymentMethod === 'UPI'`.
+     - Return `cashRefunds` and `upiRefunds` in `financialAnalytics` response.
 
 ---
 
-### Backend Engine Sub-Project (`Backend Money Card/`)
+### Sub-Project 2: Frontend Web Admin (`Frontend Money Card/`)
 
-#### 1. [public.controller.ts](file:///d:/Money%20Card%20Project/Backend%20Money%20Card/src/controllers/public.controller.ts)
-- Implement `getPublicSessionOrders(req, res)`:
-  - Finds purchase transactions for the active session token.
-  - Extracts items, token number (`orderNumber`), live status (`orderStatus`), `orderedAt`, `preparingAt`, and `readyAt`.
-- Implement `getPublicSessionMenu(req, res)`:
-  - Resolves session's branch and organization.
-  - Returns active products with name, price, category tags (Veg, Non-Veg, Beverage), and stock status.
+1. **Global Security & Audit Log View**:
+   - `src/features/admin/GlobalAuditLogPage.tsx`:
+     - Table with columns: Timestamp, Severity Badge, Action, Actor, Organization/Entity, Details, IP.
+     - Severity filter (`ALL`, `HIGH`, `WARN`, `INFO`), action filter, and search.
+   - Navigation: Add "Audit Log" item in Super Admin sidebar under `src/config/navigation.ts`.
 
-#### 2. [public.routes.ts](file:///d:/Money%20Card%20Project/Backend%20Money%20Card/src/routes/public.routes.ts)
-- Add routes:
-  - `GET /sessions/:sessionToken/orders` -> `getPublicSessionOrders`
-  - `GET /sessions/:sessionToken/menu` -> `getPublicSessionMenu`
+2. **Organization Data Export**:
+   - `src/features/organization/OrgDataExportModal.tsx`:
+     - Modal displaying total records to export and download button triggering `apiService.organization.exportData()`.
+   - Add "Export Data" button in Organization Settings / Super Admin Org details view.
+
+3. **End-of-Day Summary PDF**:
+   - `src/features/reports/EndOfDaySummaryPdf.ts`:
+     - PDF generator rendering today's closing summary: Net sales, Cash in drawer vs UPI, Active card liabilities (unclaimed balances), Top-selling products, and Refund totals.
+   - Add "End-of-Day Summary PDF" button in Reports page.
+
+---
+
+### Sub-Project 3: Mobile POS App (`Flutter Money card/`)
+
+1. **Refund Payment Method Dialog**:
+   - `lib/widgets/dialogs/refund_payment_dialog.dart`:
+     - If `refundAmount <= 0`: settles immediately.
+     - If `refundAmount > 0`: shows clean modal with exact amount, two-button toggle between "Cash" and "UPI" (Cash default), and "Confirm Return" button.
+     - Returns selected payment method string (`'CASH'` or `'UPI'`).
+   - `lib/features/payments/return_card_screen.dart`:
+     - Use `showRefundPaymentDialog` before calling `executeReturn(sessionId, paymentMethod)`.
+   - `lib/features/pos/pos_scan_purchase_screen.dart`:
+     - Use `showRefundPaymentDialog` on return card button before calling `returnSession(sessionId, paymentMethod)`.
+   - `lib/services/session_service.dart` & `lib/repositories/session_repository.dart`:
+     - Update `returnSession(String sessionId, {String paymentMethod = 'CASH'})` and `refundSession(String sessionId, {String paymentMethod = 'CASH'})` to send `{ paymentMethod }` in request body.
+
+2. **Mobile Analytics Wallet Refund Sub-labels**:
+   - `lib/models/analytics.dart`: Add `cashRefunds` and `upiRefunds` fields to `FinancialAnalytics`.
+   - `lib/features/analytics/analytics_screen.dart`:
+     - Restore `line1Text: 'Cash: ₹${_formatCompactSubAmount(data.cashRefunds)}'` and `line2Text: 'UPI: ₹${_formatCompactSubAmount(data.upiRefunds)}'` under `Wallet Refund`.
+
+3. **Mobile End-of-Day Summary PDF**:
+   - `lib/services/analytics_pdf_service.dart`: Add `generateEndOfDaySummaryPdf(...)` for cashier shift closing.
 
 ---
 
 ## Verification Plan
 
-### Automated Verification
-- Run `flutter analyze --no-pub` in `Flutter Money card` (verify zero lint or type errors).
-- Run `flutter test` in `Flutter Money card` (verify all 181 mobile tests pass).
-- Run `npx tsc --noEmit` and `npm test -- --run` in `Frontend Money Card` (verify 297 web tests pass).
-- Run `npm test` in `Backend Money Card` (verify 124 backend tests pass).
+### Automated Tests
+1. **Backend**:
+   - Run `npm test` verifying Prisma schema, audit log recorder, refund payment method propagation, and export endpoints.
+2. **Frontend**:
+   - Run `npx tsc --noEmit` and `npm test -- --run` verifying TypeScript types and component rendering.
+3. **Flutter POS**:
+   - Run `flutter analyze --no-pub` and `flutter test` verifying dialog behavior, model parsing, and return workflows.
 
 ### Manual Verification
-- In Mobile App:
-  - Counter Manager Dashboard: Verify `Queued`, `In Progress`, `Finished` stage order and confirm active order preview items are removed.
-  - KDS: Mark an order Ready, verify "Prepped in Xm" and test the "Undo / Return to Cooking" button. Verify notification chime sounds.
-- In PWA Customer Portal:
-  - Confirm Low Balance warning displays when balance is below ₹100.
-  - Confirm active orders show live token status (Queued, Cooking, Ready).
-  - Open Digital Menu and verify Veg/Non-Veg tags and items display properly.
+- Test 0-balance return: confirm card returns instantly with zero prompts.
+- Test >0 balance return: verify modal shows Cash / UPI toggle, Cash is default, selecting UPI records `UPI` in transaction.
+- Check Mobile Analytics: verify `Wallet Refund` displays Cash and UPI sublabels accurately.
+- Verify Super Admin Audit Log and Data Export download in Web Admin.

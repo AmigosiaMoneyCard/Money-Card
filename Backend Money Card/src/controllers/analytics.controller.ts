@@ -362,6 +362,10 @@ export async function getOrgAnalytics(req: Request, res: Response) {
   let totalRechargeVolume = 0;
   let totalPurchaseVolume = 0;
   let totalRefundVolume = 0;
+  let cashRefunds = 0;
+  let upiRefunds = 0;
+  let cashRefundCount = 0;
+  let upiRefundCount = 0;
   let totalRechargeCount = 0;
   let totalRefundCount = 0;
   let cashRechargeCount = 0;
@@ -769,6 +773,14 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     } else if (txType.includes('REFUND') || txType.includes('RETURN') || txType.includes('SETTLE')) {
       totalRefundVolume += tx.amount;
       totalRefundCount++;
+      const pMethod = String(tx.paymentMethod || '').toUpperCase();
+      if (pMethod === 'UPI') {
+        upiRefunds += tx.amount;
+        upiRefundCount++;
+      } else {
+        cashRefunds += tx.amount;
+        cashRefundCount++;
+      }
       if (bm) {
         bm.transactionCount++;
         bm.refundCount++;
@@ -1118,6 +1130,10 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     upiRechargeCount,
     totalPurchaseVolume: Number(totalPurchaseVolume.toFixed(2)),
     totalRefundVolume: Number(totalRefundVolume.toFixed(2)),
+    cashRefunds: Number(cashRefunds.toFixed(2)),
+    upiRefunds: Number(upiRefunds.toFixed(2)),
+    cashRefundCount,
+    upiRefundCount,
     activeSessionsCount,
     activeCardsCount,
     lowStockItemsCount: lowStockCount,

@@ -13,6 +13,7 @@ import '../../providers/session_operations_provider.dart';
 import '../../widgets/common/app_badge.dart';
 import '../../widgets/common/app_card.dart';
 import '../../widgets/common/app_dialog.dart';
+import '../../widgets/dialogs/refund_payment_dialog.dart';
 import '../../widgets/receipt/digital_receipt_dialog.dart';
 import '../../widgets/states/app_loading_view.dart';
 
@@ -56,19 +57,18 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
 
     final returnNotifier = ref.read(returnCardNotifierProvider.notifier);
 
-    final confirm = await AppDialog.show(
+    final paymentMethod = await RefundPaymentSelectionDialog.show(
       context,
+      refundAmount: session.balance,
       title: 'Confirm Wallet Return',
-      message: session.balance > 0
-          ? 'Refund ₹${session.balance.toStringAsFixed(2)} to customer and settle this wallet session?'
-          : 'Settle this wallet session and return wallet to AVAILABLE state?',
-      confirmLabel: 'Confirm & Settle',
-      isDestructive: session.balance > 0,
+      subtitle: session.balance > 0
+          ? 'Refund ₹${session.balance.toStringAsFixed(2)} to customer and settle wallet'
+          : 'Settle wallet session and reset to Available',
     );
 
-    if (confirm != true) return;
+    if (paymentMethod == null) return;
 
-    final result = await returnNotifier.executeReturn(session.id);
+    final result = await returnNotifier.executeReturn(session.id, paymentMethod: paymentMethod);
 
     if (result != null && mounted) {
       // Reload card list & sessions list
@@ -101,15 +101,14 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
       return;
     }
 
-    final confirm = await AppDialog.show(
+    final paymentMethod = await RefundPaymentSelectionDialog.show(
       context,
+      refundAmount: session.balance,
       title: 'Confirm Balance Refund',
-      message: 'Refund available money of ₹${session.balance.toStringAsFixed(2)} to customer?',
-      confirmLabel: 'Refund Money',
-      isDestructive: true,
+      subtitle: 'Refund ₹${session.balance.toStringAsFixed(2)} to customer',
     );
 
-    if (confirm != true) return;
+    if (paymentMethod == null) return;
 
     setState(() {
       _isRefunding = true;
@@ -117,7 +116,7 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
 
     try {
       final sessionRepo = ref.read(sessionRepositoryProvider);
-      final result = await sessionRepo.refundSession(session.id);
+      final result = await sessionRepo.refundSession(session.id, paymentMethod: paymentMethod);
 
       await ref.read(sessionDetailsNotifierProvider.notifier).loadSessionById(widget.sessionId);
       ref.read(cardListNotifierProvider.notifier).loadCards();

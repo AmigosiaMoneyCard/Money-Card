@@ -454,6 +454,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 child: _buildCompactMetricCard(
                   title: 'Wallet Refund',
                   totalText: '₹${data.refundVolume.toStringAsFixed(2)}',
+                  line1Text: 'Cash: ₹${_formatCompactSubAmount(data.cashRefunds)}',
+                  line2Text: 'UPI: ₹${_formatCompactSubAmount(data.upiRefunds)}',
                   icon: Icons.assignment_return_outlined,
                   accentColor: AppColors.error,
                 ),

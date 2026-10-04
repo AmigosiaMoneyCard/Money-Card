@@ -105,19 +105,19 @@ class SessionService {
   }
 
   /// Return/settle card session (POST /api/v1/card-sessions/:id/return)
-  Future<SessionReturnResult> returnSession(String sessionId) async {
+  Future<SessionReturnResult> returnSession(String sessionId, {String paymentMethod = 'CASH'}) async {
     return _apiService.post<SessionReturnResult>(
       ApiEndpoints.returnCardSession(sessionId),
-      data: {},
+      data: {'paymentMethod': paymentMethod},
       fromJson: (data) => SessionReturnResult.fromJson(data as Map<String, dynamic>),
     );
   }
 
   /// Refund balance of card session without returning card (POST /api/v1/card-sessions/:id/refund)
-  Future<SessionRefundResult> refundSession(String sessionId) async {
+  Future<SessionRefundResult> refundSession(String sessionId, {String paymentMethod = 'CASH'}) async {
     return _apiService.post<SessionRefundResult>(
       ApiEndpoints.refundSession(sessionId),
-      data: {},
+      data: {'paymentMethod': paymentMethod},
       fromJson: (data) => SessionRefundResult.fromJson(data as Map<String, dynamic>),
     );
   }

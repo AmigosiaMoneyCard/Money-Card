@@ -4,6 +4,7 @@ import { sendError, sendSuccess } from '../utils/response.js';
 import { generateQrToken } from '../utils/crypto.js';
 import { CardStatus, CardAssignmentStatus, CardHistoryAction, SessionStatus } from '@prisma/client';
 import { getEffectiveLimits } from '../utils/limits.js';
+import { recordAuditLog } from '../services/auditLog.service.js';
 
 export async function getCards(req: Request, res: Response) {
   const orgId = req.user?.organizationId;
@@ -506,6 +507,20 @@ export async function blockCard(req: Request, res: Response) {
     return { updatedCard: updated, auditEvent: event };
   });
 
+  await recordAuditLog({
+    organizationId: orgId,
+    userId: staffUserId,
+    userName: staffName,
+    action: 'CARD_BLOCKED',
+    severity: 'WARNING',
+    ipAddress: req.ip,
+    details: {
+      cardId: card.id,
+      physicalCardNumber: card.physicalCardNumber || card.qrToken,
+      reason,
+    },
+  });
+
   return sendSuccess(res, {
     card: updatedCard,
     auditEvent,
@@ -570,6 +585,20 @@ export async function unblockCard(req: Request, res: Response) {
     });
 
     return { updatedCard: updated, auditEvent: event };
+  });
+
+  await recordAuditLog({
+    organizationId: orgId,
+    userId: staffUserId,
+    userName: staffName,
+    action: 'CARD_UNBLOCKED',
+    severity: 'INFO',
+    ipAddress: req.ip,
+    details: {
+      cardId: card.id,
+      physicalCardNumber: card.physicalCardNumber || card.qrToken,
+      reason,
+    },
   });
 
   return sendSuccess(res, {

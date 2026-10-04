@@ -1,4 +1,5 @@
 import { sendPasswordResetEmail, sendAccountActivationEmail } from '../services/email.service.js';
+import { recordAuditLog } from '../services/auditLog.service.js';
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
@@ -67,6 +68,12 @@ export async function login(req: Request, res: Response) {
   }
 
   if (!user) {
+    await recordAuditLog({
+      action: 'AUTH_LOGIN_FAILED',
+      severity: 'WARNING',
+      ipAddress: req.ip,
+      details: { reason: 'USER_NOT_FOUND', identifier: email || phone, portal: requestedPortal },
+    });
     if (requestedPortal === 'COUNTER') {
       return sendError(res, 401, 'INVALID_CREDENTIALS', "Counter doesn't exist.");
     }
@@ -155,6 +162,15 @@ export async function login(req: Request, res: Response) {
   }
 
   if (!isPasswordValid) {
+    await recordAuditLog({
+      organizationId: user.organizationId,
+      userId: user.id,
+      userName: user.name,
+      action: 'AUTH_LOGIN_FAILED',
+      severity: 'WARNING',
+      ipAddress: req.ip,
+      details: { reason: 'INVALID_PASSWORD', portal: requestedPortal },
+    });
     return sendError(res, 401, 'INVALID_CREDENTIALS', 'Credentials are wrong.');
   }
 
@@ -205,6 +221,16 @@ export async function login(req: Request, res: Response) {
     }
   }
   const assignedBranchIds = activeAssignedBranches.map((b) => b.id);
+
+  await recordAuditLog({
+    organizationId: user.organizationId,
+    userId: user.id,
+    userName: user.name,
+    action: 'AUTH_LOGIN_SUCCESS',
+    severity: 'INFO',
+    ipAddress: req.ip,
+    details: { portal: requestedPortal || user.role },
+  });
 
   return sendSuccess(res, {
     token: accessToken,

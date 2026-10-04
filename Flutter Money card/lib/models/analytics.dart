@@ -95,6 +95,8 @@ class BranchPerformanceMetric {
   final int cardsReturned;
   final int cancelledOrdersCount;
   final double cancelledOrdersVolume;
+  final double cashRefunds;
+  final double upiRefunds;
 
   const BranchPerformanceMetric({
     required this.branchId,
@@ -132,6 +134,8 @@ class BranchPerformanceMetric {
     this.cardsReturned = 0,
     this.cancelledOrdersCount = 0,
     this.cancelledOrdersVolume = 0.0,
+    this.cashRefunds = 0.0,
+    this.upiRefunds = 0.0,
   });
 
   factory BranchPerformanceMetric.fromJson(Map<String, dynamic> json) {
@@ -142,6 +146,12 @@ class BranchPerformanceMetric {
         0.0;
     final cancelTopUps = (json['cancelledTopUps'] as num?)?.toDouble() ??
         (json['cancelledTopUpsVolume'] as num?)?.toDouble() ??
+        0.0;
+    final cashRefundVal = (json['cashRefunds'] as num?)?.toDouble() ??
+        (json['cashRefundVolume'] as num?)?.toDouble() ??
+        refVol;
+    final upiRefundVal = (json['upiRefunds'] as num?)?.toDouble() ??
+        (json['upiRefundVolume'] as num?)?.toDouble() ??
         0.0;
 
     return BranchPerformanceMetric(
@@ -184,6 +194,8 @@ class BranchPerformanceMetric {
       cardsReturned: (json['cardsReturned'] as num?)?.toInt() ?? (json['settledSessionsCount'] as num?)?.toInt() ?? 0,
       cancelledOrdersCount: (json['cancelledOrdersCount'] as num?)?.toInt() ?? 0,
       cancelledOrdersVolume: (json['cancelledOrdersVolume'] as num?)?.toDouble() ?? 0.0,
+      cashRefunds: cashRefundVal,
+      upiRefunds: upiRefundVal,
     );
   }
 
@@ -198,6 +210,8 @@ class BranchPerformanceMetric {
         'rechargeVolume': rechargeVolume,
         'refundCount': refundCount,
         'refundVolume': refundVolume,
+        'cashRefunds': cashRefunds,
+        'upiRefunds': upiRefunds,
         'totalRevenue': totalRevenue,
         'sessionCount': sessionCount,
         'activeSessionsCount': activeSessionsCount,

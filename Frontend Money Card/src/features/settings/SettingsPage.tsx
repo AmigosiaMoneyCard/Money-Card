@@ -29,7 +29,9 @@ import {
   Store,
   Phone,
   Building2,
+  Download,
 } from 'lucide-react';
+import { OrgDataExportModal } from '@/features/organizations/OrgDataExportModal';
 
 export function SettingsPage() {
   const { user, isLoading } = useAuth();
@@ -120,6 +122,7 @@ function OrgAdminSettingsView() {
   const [nameError, setNameError] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   const fetchOrganizationDetails = useCallback(async () => {
     setIsLoading(true);
@@ -290,6 +293,35 @@ function OrgAdminSettingsView() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Organization Data Backup & Export */}
+      <Card>
+        <CardHeader
+          title="Data Backup & Compliance Export"
+          description="Download a complete snapshot of your cafeteria data including branches, staff, cards, and transactions in JSON format."
+        />
+        <CardContent>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="text-sm text-slate-600">
+              <p>Download full tenant archive for bookkeeping, audit compliance, or offline records.</p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsExportModalOpen(true)}
+              leftIcon={<Download className="h-4 w-4 text-indigo-600" />}
+            >
+              Export Organization Data
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <OrgDataExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        organizationName={orgData?.name}
+      />
 
       {/* Account Security Section */}
       <div className="space-y-4">

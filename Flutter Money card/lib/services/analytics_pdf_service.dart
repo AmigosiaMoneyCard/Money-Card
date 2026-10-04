@@ -387,6 +387,25 @@ class AnalyticsPdfService {
     return pdf.save();
   }
 
+  /// Generates End-of-Day Shift Settlement Summary PDF bytes
+  static Future<Uint8List> generateEndOfDaySummaryPdf({
+    required BranchPerformanceMetric analytics,
+    required String branchName,
+    String organizationName = 'Money Card Cafeteria',
+    String? cashierName,
+  }) async {
+    return generateAnalyticsPdf(
+      analytics: analytics,
+      branchName: branchName,
+      timeWindow: 'End-of-Day Shift Settlement (${DateFormat('yyyy-MM-dd').format(DateTime.now())})',
+      sections: const AnalyticsPdfSectionOptions(
+        includeFinancialOverview: true,
+        includeMenuAnalytics: true,
+      ),
+      organizationName: organizationName,
+    );
+  }
+
   /// Downloads or shares the generated PDF binary file on the device
   static Future<void> downloadOrSharePdf({
     required Uint8List pdfBytes,

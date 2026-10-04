@@ -176,6 +176,7 @@ model User {
   recordedTransactions Transaction[]  @relation("StaffTransactions")
   issuedSessions     CardSession[]    @relation("StaffIssuedSessions")
   settledSessions    CardSession[]    @relation("StaffSettledSessions")
+  auditLogs          AuditLog[]
 
   @@map("users")
 }
@@ -202,6 +203,7 @@ model Organization {
   subscriptionPayments SubscriptionPayment[]
   planChangeRequests   PlanChangeRequest[]
   customerHistoryEvents CustomerHistoryEvent[]
+  auditLogs             AuditLog[]
 
   @@map("organizations")
 }
@@ -451,4 +453,23 @@ model CustomerHistoryEvent {
   @@index([organizationId, cardId])
   @@index([organizationId, createdAt])
   @@map("customer_history_events")
+}
+
+model AuditLog {
+  id             String        @id @default(uuid())
+  organizationId String?
+  userId         String?
+  userName       String?
+  action         String
+  severity       String        @default("INFO")
+  details        Json?
+  ipAddress      String?
+  createdAt      DateTime      @default(now())
+
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([action])
+  @@map("audit_logs")
 }

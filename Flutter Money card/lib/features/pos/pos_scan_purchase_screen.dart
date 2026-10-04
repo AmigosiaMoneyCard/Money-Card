@@ -23,6 +23,7 @@ import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_card.dart';
 import '../../widgets/common/app_dialog.dart';
 import '../../widgets/common/section_header.dart';
+import '../../widgets/dialogs/refund_payment_dialog.dart';
 import '../../widgets/scanner/qr_scanner_view.dart';
 import '../../widgets/states/app_loading_view.dart';
 import '../../core/utils/formatters.dart';
@@ -365,17 +366,16 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
       return;
     }
 
-    final confirm = await AppDialog.show(
+    final paymentMethod = await RefundPaymentSelectionDialog.show(
       context,
+      refundAmount: session.balance,
       title: 'Confirm Wallet Return & Settlement',
-      message: session.balance > 0
-          ? 'Refund remaining balance of ₹${session.balance.toStringAsFixed(2)} to customer and settle this wallet session?'
-          : 'Settle this wallet session and return wallet ${card.displayCardNumber} to AVAILABLE state?',
-      confirmLabel: 'Confirm & Settle',
-      isDestructive: session.balance > 0,
+      subtitle: session.balance > 0
+          ? 'Refund remaining balance of ₹${session.balance.toStringAsFixed(2)} to customer and settle wallet'
+          : 'Settle wallet session and reset to Available',
     );
 
-    if (confirm != true) return;
+    if (paymentMethod == null) return;
 
     setState(() {
       _isResolving = true;
@@ -383,7 +383,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
 
     try {
       final sessionRepo = ref.read(sessionRepositoryProvider);
-      final result = await sessionRepo.returnSession(session.id);
+      final result = await sessionRepo.returnSession(session.id, paymentMethod: paymentMethod);
 
       // Refresh global stores
       ref.read(sessionListNotifierProvider.notifier).loadSessions();

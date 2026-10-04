@@ -244,6 +244,24 @@ export const realClient: typeof mockClient = {
         apiClient.post<{ message: string }>(`/v1/admin/organizations/${id}/resend-admin-invite`),
       );
     },
+
+    async getAuditLogs(params?: {
+      organizationId?: string;
+      action?: string;
+      severity?: string;
+      search?: string;
+      page?: number;
+      limit?: number;
+    }): Promise<ApiResult<any>> {
+      return handleApiCall(() => apiClient.get('/v1/admin/audit-logs', { params }));
+    },
+
+    async exportOrganizationData(organizationId?: string): Promise<ApiResult<any>> {
+      const endpoint = organizationId
+        ? `/v1/admin/organizations/${organizationId}/export`
+        : '/v1/organization/export';
+      return handleApiCall(() => apiClient.get(endpoint));
+    },
   },
 
   branches: {
