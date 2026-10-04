@@ -37,13 +37,6 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
     roles: ['SUPER_ADMIN'],
   },
   {
-    id: 'audit-logs',
-    label: 'Security & Audit Log',
-    path: '/audit-logs',
-    iconName: 'Shield',
-    roles: ['SUPER_ADMIN'],
-  },
-  {
     id: 'branches',
     label: 'Counters',
     path: '/branches',

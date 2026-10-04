@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks';
 import { apiService } from '@/services/api';
 import type { OrganizationOverview, Plan } from '@/types';
 import {
@@ -38,29 +36,24 @@ import {
   ChevronDown,
   Send,
   Mail,
-  Download,
+  Copy,
 } from 'lucide-react';
-import { OrgDataExportModal } from './OrgDataExportModal';
 
 interface OrgActionMenuProps {
   org: OrganizationOverview;
   onViewDetails: () => void;
-  onImpersonate: () => void;
   onResetPassword: () => void;
   onResendAdminInvite?: () => void;
   onToggleStatus: () => void;
-  onExportData: () => void;
   onDelete: () => void;
 }
 
 function OrgActionMenu({
   org,
   onViewDetails,
-  onImpersonate,
   onResetPassword,
   onResendAdminInvite,
   onToggleStatus,
-  onExportData,
   onDelete,
 }: OrgActionMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -173,20 +166,6 @@ function OrgActionMenu({
               <span>View Details</span>
             </button>
 
-            {org.status === 'ACTIVE' && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsOpen(false);
-                  onImpersonate();
-                }}
-                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer text-left"
-              >
-                <Users className="h-4 w-4 text-emerald-600" />
-                <span>View as Org Admin</span>
-              </button>
-            )}
-
             <button
               type="button"
               onClick={() => {
@@ -237,18 +216,6 @@ function OrgActionMenu({
               type="button"
               onClick={() => {
                 setIsOpen(false);
-                onExportData();
-              }}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-indigo-700 transition-colors cursor-pointer text-left"
-            >
-              <Download className="h-4 w-4 text-indigo-600" />
-              <span>Export Tenant Data</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setIsOpen(false);
                 onDelete();
               }}
               className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer text-left"
@@ -264,8 +231,6 @@ function OrgActionMenu({
 }
 
 export function OrganizationsPage() {
-  const navigate = useNavigate();
-  const { startImpersonation } = useAuth();
   const [organizations, setOrganizations] = useState<OrganizationOverview[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -299,9 +264,33 @@ export function OrganizationsPage() {
     });
   }, [organizations, searchQuery, selectedPlanFilter, selectedStatusFilter]);
 
+  // ── Persistent Org Admin Password Cache ──────────────────────────
+  const ORG_PASSWORDS_KEY = 'mc_org_passwords';
+
+  const getStoredOrgPassword = (orgId?: string, email?: string, adminId?: string): string | null => {
+    try {
+      const orgMap = JSON.parse(localStorage.getItem(ORG_PASSWORDS_KEY) || '{}');
+      if (orgId && orgMap[orgId]) return orgMap[orgId];
+      if (email && orgMap[email.toLowerCase().trim()]) return orgMap[email.toLowerCase().trim()];
+      if (adminId && orgMap[adminId]) return orgMap[adminId];
+    } catch {}
+    return null;
+  };
+
+  const storeOrgPassword = (orgId: string, pass: string, email?: string, adminId?: string): void => {
+    try {
+      if (!pass) return;
+      const orgMap = JSON.parse(localStorage.getItem(ORG_PASSWORDS_KEY) || '{}');
+      if (orgId) orgMap[orgId] = pass;
+      if (email) orgMap[email.toLowerCase().trim()] = pass;
+      if (adminId) orgMap[adminId] = pass;
+      localStorage.setItem(ORG_PASSWORDS_KEY, JSON.stringify(orgMap));
+    } catch {}
+  };
 
   // Modals
   const [selectedOrg, setSelectedOrg] = useState<OrganizationOverview | null>(null);
+  const [showOrgAdminPassword, setShowOrgAdminPassword] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createdPendingOrg, setCreatedPendingOrg] = useState<{
     id: string;
@@ -313,7 +302,6 @@ export function OrganizationsPage() {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedOrgToDelete, setSelectedOrgToDelete] = useState<OrganizationOverview | null>(null);
-  const [exportingOrg, setExportingOrg] = useState<OrganizationOverview | null>(null);
   const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
   const [tempPassword, setTempPassword] = useState('');
   const [confirmTempPassword, setConfirmTempPassword] = useState('');
@@ -450,6 +438,7 @@ export function OrganizationsPage() {
         return;
       }
 
+      storeOrgPassword(selectedOrg.id, trimmedTemp, selectedOrg.adminUser?.email, selectedOrg.adminUser?.id);
       notify.success(res.data.message || `Password reset successfully for ${selectedOrg.adminUser?.name || 'Org Admin'}.`);
       setShowResetPasswordModal(false);
       setTempPassword('');
@@ -584,6 +573,7 @@ export function OrganizationsPage() {
   // ── Open Details ──────────────────────────────────────────
   const handleOpenDetails = async (org: OrganizationOverview) => {
     setSelectedOrg(org);
+    setShowOrgAdminPassword(false);
     setIsEditingName(false);
     setEditingOrgName(org.name);
     setShowDetailsModal(true);
@@ -714,36 +704,15 @@ export function OrganizationsPage() {
     {
       key: 'actions',
       header: 'Actions',
-      className: 'text-right min-w-[210px]',
+      className: 'text-right min-w-[120px]',
       render: (org: OrganizationOverview) => (
         <div className="flex items-center justify-end gap-1.5">
-          {org.status === 'ACTIVE' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                startImpersonation({ id: org.id, name: org.name });
-                notify.success(`Switched to Org Admin mode for ${org.name}`);
-                navigate('/dashboard');
-              }}
-              className="text-xs h-7 px-2.5 rounded-lg border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 transition-all shadow-2xs cursor-pointer"
-              leftIcon={<Eye className="h-3 w-3 text-emerald-600" />}
-            >
-              View as Org Admin
-            </Button>
-          )}
           <OrgActionMenu
             org={org}
             onViewDetails={() => handleOpenDetails(org)}
-            onImpersonate={() => {
-              startImpersonation({ id: org.id, name: org.name });
-              notify.success(`Switched to Org Admin mode for ${org.name}`);
-              navigate('/dashboard');
-            }}
             onResetPassword={() => handleOpenResetPasswordModal(org)}
             onResendAdminInvite={() => handleResendAdminInvite(org)}
             onToggleStatus={() => handleOpenStatusModal(org)}
-            onExportData={() => setExportingOrg(org)}
             onDelete={() => handleOpenDeleteModal(org)}
           />
         </div>
@@ -1089,6 +1058,54 @@ export function OrganizationsPage() {
               )}
             </div>
 
+            {/* Org Admin Current Password Display Card */}
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 border border-emerald-200">
+                  <KeyRound className="h-4 w-4" />
+                </div>
+                <div>
+                  <span className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider block">
+                    Current Admin Password
+                  </span>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="font-mono text-sm font-bold text-slate-800">
+                      {showOrgAdminPassword
+                        ? (getStoredOrgPassword(selectedOrg.id, selectedOrg.adminUser?.email, selectedOrg.adminUser?.id) || 'admin@123')
+                        : '••••••••'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowOrgAdminPassword(!showOrgAdminPassword)}
+                      className="p-1 rounded-lg text-emerald-700 hover:bg-emerald-100 transition-colors cursor-pointer"
+                      title={showOrgAdminPassword ? 'Hide password' : 'Show password'}
+                      aria-label={showOrgAdminPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showOrgAdminPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const pass = getStoredOrgPassword(selectedOrg.id, selectedOrg.adminUser?.email, selectedOrg.adminUser?.id) || 'admin@123';
+                    const email = selectedOrg.adminUser?.email || 'admin@' + selectedOrg.name.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
+                    navigator.clipboard.writeText(`Cafeteria: ${selectedOrg.name}\nEmail: ${email}\nPassword: ${pass}`);
+                    notify.success('Admin credentials copied to clipboard');
+                  }}
+                  className="flex items-center gap-1.5 text-xs py-1.5 px-3 bg-white border-slate-200 hover:border-slate-300 text-slate-700 cursor-pointer shadow-2xs"
+                  leftIcon={<Copy className="h-3.5 w-3.5 text-slate-500" />}
+                >
+                  Copy Credentials
+                </Button>
+              </div>
+            </div>
+
             <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">
@@ -1360,13 +1377,6 @@ export function OrganizationsPage() {
           </ModalFooter>
         </div>
       </Modal>
-
-      <OrgDataExportModal
-        isOpen={!!exportingOrg}
-        onClose={() => setExportingOrg(null)}
-        organizationId={exportingOrg?.id}
-        organizationName={exportingOrg?.name}
-      />
     </div>
   );
 }

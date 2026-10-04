@@ -24,7 +24,6 @@ import { InventoryPage } from '@/features/inventory';
 import { AnalyticsPage } from '@/features/analytics';
 import { SubscriptionsPage } from '@/features/subscriptions';
 import { SettingsPage } from '@/features/settings';
-import { GlobalAuditLogPage } from '@/features/admin/GlobalAuditLogPage';
 
 import {
   QrResolutionPage,
@@ -159,14 +158,6 @@ export function AppRoutes() {
           element={
             <PermissionGuard roles={['SUPER_ADMIN']}>
               <SubscriptionsPage />
-            </PermissionGuard>
-          }
-        />
-        <Route
-          path="/audit-logs"
-          element={
-            <PermissionGuard roles={['SUPER_ADMIN']}>
-              <GlobalAuditLogPage />
             </PermissionGuard>
           }
         />
