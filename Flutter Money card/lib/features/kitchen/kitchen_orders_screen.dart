@@ -49,6 +49,15 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
         ),
         actions: [
           IconButton(
+            icon: Icon(
+              state.isAudioMuted ? Icons.volume_off : Icons.volume_up,
+            ),
+            tooltip: state.isAudioMuted ? 'Unmute Audio Alert' : 'Mute Audio Alert',
+            onPressed: () {
+              notifier.toggleAudioMute();
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh Queue',
             onPressed: () {
@@ -69,35 +78,170 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
         ),
       ),
       body: SafeArea(
-        child: TabBarView(
-          controller: _tabController,
+        child: Column(
           children: [
-            // Active orders tab
-            _buildOrderList(
-              orders: activeOrders,
-              emptyTitle: 'Kitchen Queue Clear',
-              emptyDescription: 'No food orders pending preparation right now.',
-              onRefresh: () async {
-                await notifier.loadOrders();
-                await notifier.loadSummary();
-              },
-              notifier: notifier,
-              isActiveTab: true,
-            ),
-            // Ready orders tab
-            _buildOrderList(
-              orders: readyOrders,
-              emptyTitle: 'No Orders Ready',
-              emptyDescription: 'Orders marked done will appear here for pickup.',
-              onRefresh: () async {
-                await notifier.loadOrders();
-                await notifier.loadSummary();
-              },
-              notifier: notifier,
-              isActiveTab: false,
+            if (state.isReconnecting)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: Colors.amber.shade100,
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.amber.shade900,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Reconnecting to kitchen server... Showing cached tickets',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.amber.shade900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  // Active orders tab
+                  _buildOrderList(
+                    orders: activeOrders,
+                    emptyTitle: 'Kitchen Queue Clear',
+                    emptyDescription: 'No food orders pending preparation right now.',
+                    onRefresh: () async {
+                      await notifier.loadOrders();
+                      await notifier.loadSummary();
+                    },
+                    notifier: notifier,
+                    isActiveTab: true,
+                  ),
+                  // Ready orders tab
+                  _buildOrderList(
+                    orders: readyOrders,
+                    emptyTitle: 'No Orders Ready',
+                    emptyDescription: 'Orders marked done will appear here for pickup.',
+                    onRefresh: () async {
+                      await notifier.loadOrders();
+                      await notifier.loadSummary();
+                    },
+                    notifier: notifier,
+                    isActiveTab: false,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildBatchSummaryCard(List<KitchenOrder> activeOrders) {
+    final Map<String, int> itemCounts = {};
+    for (final order in activeOrders) {
+      for (final item in order.items) {
+        itemCounts[item.itemName] = (itemCounts[item.itemName] ?? 0) + item.quantity;
+      }
+    }
+
+    if (itemCounts.isEmpty) return const SizedBox.shrink();
+
+    final sortedEntries = itemCounts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FDF4),
+        borderRadius: AppSpacing.roundedMd,
+        border: Border.all(color: const Color(0xFFBBF7D0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.restaurant_menu,
+                size: 16,
+                color: Color(0xFF166534),
+              ),
+              const SizedBox(width: 6),
+              const Text(
+                'Batch Preparation Summary',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF166534),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${sortedEntries.length} items to cook',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Color(0xFF15803D),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: sortedEntries.map((e) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFF86EFAC)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF166534),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '${e.value}x',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      e.key,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1E293B),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }
@@ -156,13 +300,22 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
       );
     }
 
+    final totalCount = orders.length + (isActiveTab ? 1 : 0);
+
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: ListView.separated(
         padding: AppSpacing.paddingMd,
-        itemCount: orders.length,
+        itemCount: totalCount,
         separatorBuilder: (context, index) => const SizedBox(height: AppSpacing.sm),
         itemBuilder: (context, index) {
+          if (isActiveTab) {
+            if (index == 0) {
+              return _buildBatchSummaryCard(orders);
+            }
+            final order = orders[index - 1];
+            return _buildKitchenOrderCard(order, notifier);
+          }
           final order = orders[index];
           return _buildKitchenOrderCard(order, notifier);
         },
@@ -189,14 +342,28 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
       statusText = 'FINISHED / READY';
     }
 
+    final elapsed = order.elapsedMinutes;
+    final isUrgent = order.isPending || order.isPreparing;
+    final isDelayed = isUrgent && elapsed >= 15;
+    final isRush = isUrgent && elapsed >= 10 && elapsed < 15;
+
+    BorderSide cardBorder;
+    if (isDelayed) {
+      cardBorder = BorderSide(color: Colors.red.shade400, width: 2.0);
+    } else if (isRush) {
+      cardBorder = BorderSide(color: Colors.amber.shade500, width: 1.5);
+    } else {
+      cardBorder = BorderSide(
+        color: order.isPreparing ? Colors.blue.shade300 : AppColors.borderLight,
+        width: order.isPreparing ? 1.5 : 1.0,
+      );
+    }
+
     return Card(
-      elevation: 2,
+      elevation: isDelayed ? 3 : 2,
       shape: RoundedRectangleBorder(
         borderRadius: AppSpacing.roundedMd,
-        side: BorderSide(
-          color: order.isPreparing ? Colors.blue.shade300 : AppColors.borderLight,
-          width: order.isPreparing ? 1.5 : 1.0,
-        ),
+        side: cardBorder,
       ),
       child: Padding(
         padding: AppSpacing.paddingMd,
@@ -254,7 +421,7 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
             ),
             const SizedBox(height: AppSpacing.xs),
 
-            // Time and Counter
+            // Time and Counter with Urgency Indicators
             Row(
               children: [
                 const Icon(Icons.timer_outlined, size: 14, color: AppColors.textTertiaryLight),
@@ -266,12 +433,53 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
                     color: AppColors.textTertiaryLight,
                   ),
                 ),
+                if (isDelayed) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.red.shade300),
+                    ),
+                    child: Text(
+                      'DELAYED (${elapsed}m)',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red.shade700,
+                      ),
+                    ),
+                  ),
+                ] else if (isRush) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.amber.shade400),
+                    ),
+                    child: Text(
+                      'RUSH (${elapsed}m)',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.amber.shade800,
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(width: AppSpacing.md),
-                Text(
-                  order.counterName,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textTertiaryLight,
+                Expanded(
+                  child: Text(
+                    order.counterName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textTertiaryLight,
+                    ),
                   ),
                 ),
               ],

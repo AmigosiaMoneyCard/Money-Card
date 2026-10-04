@@ -3,6 +3,13 @@ import { prisma } from '../config/database.js';
 import { sendError, sendSuccess } from '../utils/response.js';
 import { Role, OrgStatus } from '@prisma/client';
 
+interface AnalyticsCacheEntry {
+  data: any;
+  timestamp: number;
+}
+const analyticsMemoryCache = new Map<string, AnalyticsCacheEntry>();
+const ANALYTICS_CACHE_TTL_MS = 20 * 1000;
+
 function normalizeTimezone(tz?: string): string {
   if (!tz || typeof tz !== 'string' || tz.trim() === '') return 'Asia/Kolkata';
   const clean = tz.trim();
@@ -99,6 +106,12 @@ export async function getOrgAnalytics(req: Request, res: Response) {
 
   const { branchId, startDate, endDate, range, timezone } = req.query as Record<string, string>;
   const clientTimezone = normalizeTimezone(timezone || (req.headers['x-timezone'] as string) || process.env.APP_TIMEZONE);
+
+  const cacheKey = `${orgId || 'all'}:${branchId || 'all'}:${range || 'none'}:${startDate || ''}:${endDate || ''}:${clientTimezone}:${req.user?.role || 'user'}:${req.user?.id || 'id'}`;
+  const cached = analyticsMemoryCache.get(cacheKey);
+  if (cached && (Date.now() - cached.timestamp < ANALYTICS_CACHE_TTL_MS)) {
+    return sendSuccess(res, cached.data);
+  }
 
   let fromDate: Date | undefined;
   let toDate: Date | undefined;
@@ -1096,7 +1109,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     };
   });
 
-  return sendSuccess(res, {
+  const analyticsPayload = {
     totalTransactions: transactions.length,
     totalRechargeVolume: Number(totalRechargeVolume.toFixed(2)),
     cashRechargeVolume: Number(cashRechargeVolume.toFixed(2)),
@@ -1159,7 +1172,11 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     foodPurchasesByCounter: foodPurchasesByCounter.sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     ),
-  });
+  };
+
+  analyticsMemoryCache.set(cacheKey, { data: analyticsPayload, timestamp: Date.now() });
+
+  return sendSuccess(res, analyticsPayload);
 }
 
 export async function getSuperAdminAnalytics(req: Request, res: Response) {

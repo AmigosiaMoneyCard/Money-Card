@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/kitchen_order.dart';
 import '../services/kitchen_service.dart';
@@ -11,6 +12,8 @@ class KitchenOrdersState {
   final bool isLoading;
   final String? errorMessage;
   final String selectedTab; // 'ALL', 'PREPARING', 'READY', 'COMPLETED'
+  final bool isAudioMuted;
+  final bool isReconnecting;
 
   const KitchenOrdersState({
     this.orders = const [],
@@ -18,6 +21,8 @@ class KitchenOrdersState {
     this.isLoading = false,
     this.errorMessage,
     this.selectedTab = 'ALL',
+    this.isAudioMuted = false,
+    this.isReconnecting = false,
   });
 
   KitchenOrdersState copyWith({
@@ -26,6 +31,8 @@ class KitchenOrdersState {
     bool? isLoading,
     String? errorMessage,
     String? selectedTab,
+    bool? isAudioMuted,
+    bool? isReconnecting,
   }) {
     return KitchenOrdersState(
       orders: orders ?? this.orders,
@@ -33,6 +40,8 @@ class KitchenOrdersState {
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage,
       selectedTab: selectedTab ?? this.selectedTab,
+      isAudioMuted: isAudioMuted ?? this.isAudioMuted,
+      isReconnecting: isReconnecting ?? this.isReconnecting,
     );
   }
 }
@@ -41,6 +50,8 @@ class KitchenOrdersNotifier extends StateNotifier<KitchenOrdersState> {
   final KitchenService _kitchenService;
   final Ref _ref;
   Timer? _pollingTimer;
+  final Set<String> _knownOrderIds = {};
+  bool _initialLoadDone = false;
 
   KitchenOrdersNotifier(this._kitchenService, this._ref)
       : super(const KitchenOrdersState()) {
@@ -69,6 +80,10 @@ class KitchenOrdersNotifier extends StateNotifier<KitchenOrdersState> {
     state = state.copyWith(selectedTab: tab);
   }
 
+  void toggleAudioMute() {
+    state = state.copyWith(isAudioMuted: !state.isAudioMuted);
+  }
+
   Future<void> loadOrders({bool silent = false}) async {
     if (!silent) {
       state = state.copyWith(isLoading: true, errorMessage: null);
@@ -78,16 +93,45 @@ class KitchenOrdersNotifier extends StateNotifier<KitchenOrdersState> {
       final orders = await _kitchenService.getKitchenOrders(
         branchId: currentBranch?.id,
       );
+
+      // Play audio chime and haptic alert when new active tickets arrive
+      if (_initialLoadDone && !state.isAudioMuted) {
+        final hasNewActiveOrders = orders.any((o) =>
+            (o.isPending || o.isPreparing) &&
+            !_knownOrderIds.contains(o.id.isNotEmpty ? o.id : o.transactionId));
+        if (hasNewActiveOrders) {
+          SystemSound.play(SystemSoundType.alert);
+          HapticFeedback.heavyImpact();
+        }
+      }
+
+      // Update known order IDs cache
+      for (final o in orders) {
+        final id = o.id.isNotEmpty ? o.id : o.transactionId;
+        if (id.isNotEmpty) {
+          _knownOrderIds.add(id);
+        }
+      }
+      _initialLoadDone = true;
+
       state = state.copyWith(
         orders: orders,
         isLoading: false,
+        isReconnecting: false,
         errorMessage: null,
       );
     } catch (e) {
-      if (!silent) {
+      // Offline grace: preserve existing orders on network drop
+      if (silent) {
         state = state.copyWith(
           isLoading: false,
-          errorMessage: 'Failed to load kitchen tickets',
+          isReconnecting: true,
+        );
+      } else {
+        state = state.copyWith(
+          isLoading: false,
+          isReconnecting: true,
+          errorMessage: 'Network issue. Showing cached orders.',
         );
       }
     }

@@ -26,6 +26,7 @@ class ApiClient {
   private accessToken: string | null = null;
   private refreshToken: string | null = null;
   private isRefreshing = false;
+  private inFlightGetRequests = new Map<string, Promise<any>>();
   private failedQueue: Array<{
     resolve: (token: string) => void;
     reject: (error: unknown) => void;
@@ -196,8 +197,23 @@ class ApiClient {
   // ─── HTTP Methods ──────────────────────────────────────────────────────────
 
   async get<T>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
-    const response = await this.client.get<ApiResponse<T>>(url, config);
-    return response.data;
+    const key = `${url}:${JSON.stringify(config?.params || {})}`;
+    const existing = this.inFlightGetRequests.get(key);
+    if (existing) {
+      return existing as Promise<ApiResponse<T>>;
+    }
+
+    const requestPromise = (async () => {
+      try {
+        const response = await this.client.get<ApiResponse<T>>(url, config);
+        return response.data;
+      } finally {
+        this.inFlightGetRequests.delete(key);
+      }
+    })();
+
+    this.inFlightGetRequests.set(key, requestPromise);
+    return requestPromise;
   }
 
   async post<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
