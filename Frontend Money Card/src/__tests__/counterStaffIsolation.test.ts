@@ -17,14 +17,15 @@ describe('Counter Admin vs Org Admin Staff Isolation', () => {
     expect(counter2Staff[0].name).toBe('Ramesh Cashier');
   });
 
-  it('renders clean counter name without Staff - prefix in Org Admin view', () => {
-    const formatCounterGroupTitle = (counterName: string) => {
-      return counterName.replace(/^Staff\s*-\s*/i, '');
+  it('renders formatted counter name with Staff - prefix in Org Admin view matching Menu Management', () => {
+    const formatCounterRowTitle = (counterName: string) => {
+      const cleanName = counterName.replace(/^Staff\s*-\s*/i, '');
+      return `Staff - ${cleanName}`;
     };
 
-    expect(formatCounterGroupTitle('Counter 2')).toBe('Counter 2');
-    expect(formatCounterGroupTitle('Staff - Counter 2')).toBe('Counter 2');
-    expect(formatCounterGroupTitle('South Indian Express')).toBe('South Indian Express');
+    expect(formatCounterRowTitle('Counter 2')).toBe('Staff - Counter 2');
+    expect(formatCounterRowTitle('Staff - Counter 2')).toBe('Staff - Counter 2');
+    expect(formatCounterRowTitle('South Indian Express')).toBe('Staff - South Indian Express');
   });
 
   it('calculates zero staff quota usage when only counter accounts exist', () => {

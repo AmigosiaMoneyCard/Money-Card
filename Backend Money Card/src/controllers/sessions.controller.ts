@@ -859,6 +859,11 @@ export async function cancelOrder(req: Request, res: Response) {
     return sendError(res, 400, 'ALREADY_CANCELLED', 'This order has already been cancelled');
   }
 
+  const kitchenStatus = (existingMeta?.orderStatus || 'PENDING').toUpperCase();
+  if (kitchenStatus === 'READY' || kitchenStatus === 'COMPLETED') {
+    return sendError(res, 400, 'CANNOT_CANCEL_SERVED', 'Cannot cancel order that has already been prepared or served');
+  }
+
   const session = txRecord.session;
   if (session.status !== SessionStatus.ACTIVE) {
     return sendError(res, 400, 'SESSION_INACTIVE', 'Cannot cancel order on an inactive or settled session');

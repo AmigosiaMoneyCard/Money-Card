@@ -19,7 +19,7 @@ class _LiveOrderTrackerScreenState extends ConsumerState<LiveOrderTrackerScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(kitchenOrdersNotifierProvider.notifier).loadOrders();
       ref.read(kitchenOrdersNotifierProvider.notifier).loadSummary();
@@ -39,13 +39,12 @@ class _LiveOrderTrackerScreenState extends ConsumerState<LiveOrderTrackerScreen>
 
     final inProgressOrders = state.orders.where((o) => o.isPreparing || o.isPending).toList();
     final readyOrders = state.orders.where((o) => o.isReady).toList();
-    final allOrders = state.orders;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
         title: const Text(
-          'Live Food Progress Tracker',
+          'Food Progress',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
@@ -65,8 +64,7 @@ class _LiveOrderTrackerScreenState extends ConsumerState<LiveOrderTrackerScreen>
           unselectedLabelColor: AppColors.textSecondaryLight,
           tabs: [
             Tab(text: 'In Progress (${inProgressOrders.length})'),
-            Tab(text: 'Finished / Ready (${readyOrders.length})'),
-            Tab(text: 'All (${allOrders.length})'),
+            Tab(text: 'Ready (${readyOrders.length})'),
           ],
         ),
       ),
@@ -76,7 +74,6 @@ class _LiveOrderTrackerScreenState extends ConsumerState<LiveOrderTrackerScreen>
           children: [
             _buildList(inProgressOrders, 'No Orders In Progress', 'Orders being cooked in the kitchen will show here.', notifier, false),
             _buildList(readyOrders, 'No Orders Ready', 'Orders plated and ready for pickup will appear here.', notifier, true),
-            _buildList(allOrders, 'No Orders Found', 'Shift order tickets will appear here.', notifier, false),
           ],
         ),
       ),
@@ -151,11 +148,11 @@ class _LiveOrderTrackerScreenState extends ConsumerState<LiveOrderTrackerScreen>
     } else if (order.isPreparing) {
       statusColor = Colors.blue.shade800;
       statusBg = Colors.blue.shade50;
-      statusLabel = 'COOKING / IN PROGRESS';
+      statusLabel = 'COOKING';
     } else if (order.isReady) {
       statusColor = AppColors.primaryDark;
       statusBg = AppColors.primaryLight;
-      statusLabel = 'FINISHED / READY';
+      statusLabel = 'READY';
     } else {
       statusColor = AppColors.textSecondaryLight;
       statusBg = AppColors.backgroundLight;

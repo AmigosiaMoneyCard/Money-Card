@@ -13,6 +13,7 @@ import '../../models/product.dart';
 import '../../models/transaction.dart';
 import '../../providers/analytics_provider.dart';
 import '../../providers/api_providers.dart';
+import '../../providers/kitchen_orders_provider.dart';
 import '../../providers/branch_provider.dart';
 import '../../providers/card_operations_provider.dart';
 import '../../providers/permission_provider.dart';
@@ -1243,6 +1244,11 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                       itemBuilder: (ctx, idx) {
                         final t = orders[idx];
                         final items = t.items ?? [];
+                        final kitchenOrders = ref.watch(kitchenOrdersNotifierProvider).orders;
+                        final matchingKo = kitchenOrders.where(
+                          (ko) => ko.transactionId == t.id || (t.id.isNotEmpty && ko.transactionId.contains(t.id)),
+                        ).firstOrNull;
+                        final isFinishServed = matchingKo != null && (matchingKo.isReady || matchingKo.isCompleted);
 
                         return Container(
                           padding: const EdgeInsets.all(12),
@@ -1276,6 +1282,19 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: const Text('CANCELLED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                                    )
+                                  else if (isFinishServed)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green.shade50,
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(color: Colors.green.shade200),
+                                      ),
+                                      child: Text(
+                                        matchingKo.isCompleted ? 'SERVED' : 'READY',
+                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green.shade800),
+                                      ),
                                     )
                                   else
                                     Row(
@@ -1927,6 +1946,22 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
   }
 
   Future<void> _handleCancelOrder(String txId, double amount, CardSession session) async {
+    final kitchenOrders = ref.read(kitchenOrdersNotifierProvider).orders;
+    final matchingKo = kitchenOrders.where(
+      (ko) => ko.transactionId == txId || (txId.isNotEmpty && ko.transactionId.contains(txId)),
+    ).firstOrNull;
+    if (matchingKo != null && (matchingKo.isReady || matchingKo.isCompleted)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cannot cancel order that has already been prepared or served'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+      return;
+    }
+
     String selectedReason = 'Ordered Wrong Item';
     final customReasonCtrl = TextEditingController();
 
@@ -2032,6 +2067,22 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
   }
 
   Future<void> _handleEditOrder(Transaction orderTx, CardSession session) async {
+    final kitchenOrders = ref.read(kitchenOrdersNotifierProvider).orders;
+    final matchingKo = kitchenOrders.where(
+      (ko) => ko.transactionId == orderTx.id || (orderTx.id.isNotEmpty && ko.transactionId.contains(orderTx.id)),
+    ).firstOrNull;
+    if (matchingKo != null && (matchingKo.isReady || matchingKo.isCompleted)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cannot edit order that has already been prepared or served'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+      return;
+    }
+
     final items = orderTx.items ?? [];
     final itemsSummary = items.isNotEmpty
         ? items.map((i) => '${i.quantity}x ${i.itemName ?? "Item"}').join(', ')

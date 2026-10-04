@@ -107,15 +107,17 @@ describe('Staff Management Minimal Table & Counter-First Layout Tests', () => {
     expect(getStaffDetailsButtonLabel(groupWithZero)).toBe('Staff Details');
   });
 
-  it('should verify the minimal 2-column table structure: Counter Name and Staff Details only', () => {
+  it('should verify the 3-column table structure matching Menu Management: Counter Name, Add Staff, and View / Edit', () => {
     const tableColumns = [
       { key: 'counterName', header: 'Counter Name' },
-      { key: 'staffDetails', header: 'Staff Details' },
+      { key: 'addStaff', header: 'Add Staff' },
+      { key: 'staffDetails', header: 'View / Edit' },
     ];
 
-    expect(tableColumns.length).toBe(2);
+    expect(tableColumns.length).toBe(3);
     expect(tableColumns[0].header).toBe('Counter Name');
-    expect(tableColumns[1].header).toBe('Staff Details');
+    expect(tableColumns[1].header).toBe('Add Staff');
+    expect(tableColumns[2].header).toBe('View / Edit');
   });
 
   it('should validate staff name field with a limit of 20 characters', () => {

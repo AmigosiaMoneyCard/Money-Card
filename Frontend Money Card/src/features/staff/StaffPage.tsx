@@ -1134,7 +1134,7 @@ export function StaffPage() {
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
             <Building2 className="h-4 w-4" />
           </div>
-          <span className="font-semibold text-slate-900 text-sm">{group.counterName}</span>
+          <span className="font-semibold text-slate-900 text-sm">Staff - {group.counterName}</span>
         </div>
       ),
     },
@@ -1152,7 +1152,7 @@ export function StaffPage() {
               className="text-xs font-semibold py-1.5 px-3 rounded-lg border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 transition-all shadow-2xs cursor-pointer"
               leftIcon={<Plus className="h-3.5 w-3.5 text-emerald-600" />}
             >
-              Add
+              Add Staff
             </Button>
           )}
         </div>
@@ -1160,7 +1160,7 @@ export function StaffPage() {
     },
     {
       key: 'staffDetails',
-      header: 'Staff Details',
+      header: 'View / Edit',
       className: 'w-44 text-right',
       render: (group: CounterStaffGroup) => (
         <div className="flex items-center justify-end">
@@ -1169,9 +1169,9 @@ export function StaffPage() {
             size="sm"
             onClick={() => handleOpenCounterStaff(group)}
             className="text-xs font-semibold py-1.5 px-3 rounded-lg border-slate-300 text-slate-700 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 transition-all shadow-2xs cursor-pointer"
-            leftIcon={<Users className="h-3.5 w-3.5 text-emerald-600" />}
+            leftIcon={<Eye className="h-3.5 w-3.5 text-slate-500" />}
           >
-            Staff Details {group.staff.length > 0 ? `(${group.staff.length})` : ''}
+            View / Edit
           </Button>
         </div>
       ),
@@ -1987,7 +1987,7 @@ export function StaffPage() {
           setShowCounterStaffModal(false);
           setModalCounterSearch('');
         }}
-        title={selectedCounterGroup ? `${selectedCounterGroup.counterName} — Staff Details` : 'Staff Details'}
+        title={selectedCounterGroup ? `Staff - ${selectedCounterGroup.counterName}` : 'Staff Details'}
         size="2xl"
       >
         {selectedCounterGroup && (

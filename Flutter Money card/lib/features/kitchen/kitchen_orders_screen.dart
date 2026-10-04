@@ -44,51 +44,10 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
         title: const Text(
-          'Kitchen Display System',
+          'Kitchen Orders',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
-          Consumer(
-            builder: (context, ref, _) {
-              final avgPrep = ref.watch(averagePrepMinutesProvider);
-              if (avgPrep <= 0) return const SizedBox.shrink();
-              return Center(
-                child: Container(
-                  margin: const EdgeInsets.only(right: 4),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.blue.shade200),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.av_timer, size: 14, color: Colors.blue.shade700),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Avg ${avgPrep.toStringAsFixed(0)}m',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade800,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: Icon(
-              state.isAudioMuted ? Icons.volume_off : Icons.volume_up,
-            ),
-            tooltip: state.isAudioMuted ? 'Unmute Audio Alert' : 'Mute Audio Alert',
-            onPressed: () {
-              notifier.toggleAudioMute();
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh Queue',
@@ -214,106 +173,6 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
     );
   }
 
-  Widget _buildBatchSummaryCard(List<KitchenOrder> activeOrders) {
-    final Map<String, int> itemCounts = {};
-    for (final order in activeOrders) {
-      for (final item in order.items) {
-        itemCounts[item.itemName] = (itemCounts[item.itemName] ?? 0) + item.quantity;
-      }
-    }
-
-    if (itemCounts.isEmpty) return const SizedBox.shrink();
-
-    final sortedEntries = itemCounts.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0FDF4),
-        borderRadius: AppSpacing.roundedMd,
-        border: Border.all(color: const Color(0xFFBBF7D0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.restaurant_menu,
-                size: 16,
-                color: Color(0xFF166534),
-              ),
-              const SizedBox(width: 6),
-              const Text(
-                'Batch Preparation Summary',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF166534),
-                ),
-              ),
-              const Spacer(),
-              Text(
-                '${sortedEntries.length} items to cook',
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: Color(0xFF15803D),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: sortedEntries.map((e) {
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFF86EFAC)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF166534),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        '${e.value}x',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      e.key,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1E293B),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildOrderList({
     required List<KitchenOrder> orders,
     required String emptyTitle,
@@ -368,22 +227,13 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
       );
     }
 
-    final totalCount = orders.length + (isActiveTab ? 1 : 0);
-
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: ListView.separated(
         padding: AppSpacing.paddingMd,
-        itemCount: totalCount,
+        itemCount: orders.length,
         separatorBuilder: (context, index) => const SizedBox(height: AppSpacing.sm),
         itemBuilder: (context, index) {
-          if (isActiveTab) {
-            if (index == 0) {
-              return _buildBatchSummaryCard(orders);
-            }
-            final order = orders[index - 1];
-            return _buildKitchenOrderCard(order, notifier);
-          }
           final order = orders[index];
           return _buildKitchenOrderCard(order, notifier);
         },
@@ -403,11 +253,11 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
     } else if (order.isPreparing) {
       statusColor = Colors.blue.shade800;
       statusBg = Colors.blue.shade50;
-      statusText = 'COOKING / IN PROGRESS';
+      statusText = 'COOKING';
     } else {
       statusColor = AppColors.primaryDark;
       statusBg = AppColors.primaryLight;
-      statusText = 'FINISHED / READY';
+      statusText = 'READY';
     }
 
     final elapsed = order.elapsedMinutes;
