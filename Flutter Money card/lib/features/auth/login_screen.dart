@@ -125,26 +125,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: AppSpacing.xxs),
-        const Text(
-          'Staff Login',
-          style: TextStyle(
-            fontSize: 15,
-            color: AppColors.textSecondaryLight,
-            fontWeight: FontWeight.w500,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        const Text(
-          'Select your operational role to proceed',
-          style: TextStyle(
-            fontSize: 13,
-            color: AppColors.textSecondaryLight,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: AppSpacing.xl),
+        const SizedBox(height: AppSpacing.lg),
 
         // Session Expired Banner if applicable
         if (authState.isSessionExpired) ...[
@@ -161,12 +142,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         // 1. Counter Manager Card Button
         _buildRoleSelectionCard(
           title: 'Counter Manager',
-          subtitle: 'Cashier, cards, top-ups and sales reports',
           icon: Icons.point_of_sale_outlined,
           accentColor: AppColors.primary,
-          badgeText: 'Manager',
           badgeBg: AppColors.primaryLight,
-          badgeColor: AppColors.primaryDark,
           onTap: () {
             setState(() {
               _roleMode = LoginRoleMode.manager;
@@ -178,12 +156,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         // 2. Kitchen Staff Card Button
         _buildRoleSelectionCard(
           title: 'Kitchen Staff',
-          subtitle: 'Live kitchen orders, prep status and menu availability',
           icon: Icons.soup_kitchen_outlined,
           accentColor: const Color(0xFF2563EB),
-          badgeText: 'Kitchen',
           badgeBg: const Color(0xFFDBEAFE),
-          badgeColor: const Color(0xFF1D4ED8),
           onTap: () {
             setState(() {
               _roleMode = LoginRoleMode.kitchen;
@@ -196,12 +171,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Widget _buildRoleSelectionCard({
     required String title,
-    required String subtitle,
     required IconData icon,
     required Color accentColor,
-    required String badgeText,
     required Color badgeBg,
-    required Color badgeColor,
     required VoidCallback onTap,
   }) {
     return Material(
@@ -239,47 +211,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimaryLight,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: badgeBg,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            badgeText,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: badgeColor,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondaryLight,
-                        height: 1.3,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimaryLight,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -299,8 +237,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final isKitchen = _roleMode == LoginRoleMode.kitchen;
     final accentColor = isKitchen ? const Color(0xFF2563EB) : AppColors.primary;
     final badgeBg = isKitchen ? const Color(0xFFDBEAFE) : AppColors.primaryLight;
-    final badgeColor = isKitchen ? const Color(0xFF1D4ED8) : AppColors.primaryDark;
-    final roleTitle = isKitchen ? 'Kitchen Staff Login' : 'Counter Manager Login';
 
     return Form(
       key: _formKey,
@@ -321,24 +257,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     _roleMode = LoginRoleMode.selectRole;
                   });
                 },
-              ),
-              const SizedBox(width: 8),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: badgeBg,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
-                ),
-                child: Text(
-                  roleTitle,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: badgeColor,
-                  ),
-                ),
               ),
             ],
           ),
@@ -374,7 +292,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
           const SizedBox(height: AppSpacing.xxs),
           Text(
-            isKitchen ? 'Kitchen Display Login' : 'Staff Login',
+            isKitchen ? 'Kitchen Staff' : 'Counter Manager',
             style: const TextStyle(
               fontSize: 15,
               color: AppColors.textSecondaryLight,
@@ -478,28 +396,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             backgroundColor: accentColor,
             isLoading: authState.isAuthenticating,
             onPressed: authState.isAuthenticating ? null : _handleLogin,
-          ),
-          const SizedBox(height: AppSpacing.md),
-
-          // Role Switcher Link
-          Center(
-            child: TextButton(
-              onPressed: () {
-                setState(() {
-                  _roleMode = isKitchen ? LoginRoleMode.manager : LoginRoleMode.kitchen;
-                });
-              },
-              child: Text(
-                isKitchen
-                    ? 'Switch to Counter Manager Login'
-                    : 'Switch to Kitchen Staff Login',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: accentColor,
-                ),
-              ),
-            ),
           ),
         ],
       ),

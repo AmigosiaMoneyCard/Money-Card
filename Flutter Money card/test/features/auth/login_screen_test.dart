@@ -91,8 +91,8 @@ void main() {
       );
 
       expect(find.text('MONEY CARD'), findsOneWidget);
-      expect(find.text('Staff Login'), findsOneWidget);
-      expect(find.text('Select your operational role to proceed'), findsOneWidget);
+      expect(find.text('Staff Login'), findsNothing);
+      expect(find.text('Select your operational role to proceed'), findsNothing);
       expect(find.text('Counter Manager'), findsOneWidget);
       expect(find.text('Kitchen Staff'), findsOneWidget);
       expect(find.textContaining('Server:'), findsNothing);
@@ -115,7 +115,7 @@ void main() {
       await tester.tap(find.text('Counter Manager'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Counter Manager Login'), findsOneWidget);
+      expect(find.text('Counter Manager'), findsOneWidget);
       expect(find.text('Phone Number'), findsOneWidget);
       expect(find.text('Password'), findsOneWidget);
       expect(find.text('Login'), findsOneWidget);
@@ -139,7 +139,7 @@ void main() {
       await tester.tap(find.text('Kitchen Staff'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Kitchen Staff Login'), findsOneWidget);
+      expect(find.text('Kitchen Staff'), findsOneWidget);
       expect(find.text('Phone Number'), findsOneWidget);
       expect(find.text('Password'), findsOneWidget);
       expect(find.text('Login'), findsOneWidget);
