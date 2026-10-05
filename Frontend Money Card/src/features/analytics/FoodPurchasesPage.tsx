@@ -33,11 +33,6 @@ export function FoodPurchasesPage() {
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
             Food Purchases
           </h1>
-          <p className="mt-1 text-xs text-slate-500 font-medium">
-            {isCounterStaff
-              ? 'Real-time itemized food purchase ledger for your counter'
-              : 'Detailed itemized food purchases across all cafeteria counters'}
-          </p>
         </div>
 
         {/* Filter Controls: Cafeteria Filter + Custom Date Range + Actions */}
