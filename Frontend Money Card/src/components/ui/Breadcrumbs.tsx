@@ -18,6 +18,7 @@ const ROUTE_LABELS: Record<string, string> = {
   products: 'Products',
   inventory: 'Inventory',
   analytics: 'Analytics',
+  'food-purchases': 'Food Purchases by Counter',
   reports: 'Reports',
   subscriptions: 'Subscriptions',
   settings: 'Settings',

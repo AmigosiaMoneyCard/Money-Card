@@ -30,6 +30,8 @@ import {
   PanelLeftOpen,
   Shield,
   ArrowLeft,
+  ShoppingBag,
+  UtensilsCrossed,
 } from 'lucide-react';
 
 // Icon Map for dynamic lookup from config
@@ -49,6 +51,8 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   Settings: <Settings className="h-5 w-5 shrink-0" />,
   Layers: <Layers className="h-5 w-5 shrink-0" />,
   Shield: <Shield className="h-5 w-5 shrink-0" />,
+  ShoppingBag: <ShoppingBag className="h-5 w-5 shrink-0" />,
+  UtensilsCrossed: <UtensilsCrossed className="h-5 w-5 shrink-0" />,
 };
 
 export function DashboardLayout() {

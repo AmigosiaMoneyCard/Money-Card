@@ -1032,9 +1032,6 @@ export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSection
           </div>
         )}
       </div>
-
-      {/* Food Purchases by Counter Table */}
-      <FoodPurchasesByCounterTable purchases={analytics.foodPurchasesByCounter || []} />
     </div>
   );
 }

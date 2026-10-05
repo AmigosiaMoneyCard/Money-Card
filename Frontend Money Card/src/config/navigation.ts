@@ -77,6 +77,14 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
     permission: 'VIEW_ANALYTICS',
   },
   {
+    id: 'food-purchases',
+    label: 'Food Purchases by Counter',
+    path: '/food-purchases',
+    iconName: 'ShoppingBag',
+    roles: ['ORG_ADMIN', 'STAFF'],
+    permission: 'VIEW_ANALYTICS',
+  },
+  {
     id: 'subscriptions',
     label: 'Subscription',
     path: '/subscriptions',

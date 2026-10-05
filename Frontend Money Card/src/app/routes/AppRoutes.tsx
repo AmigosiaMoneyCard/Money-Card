@@ -21,7 +21,7 @@ import { StaffPage, CounterStaffPage } from '@/features/staff';
 import { CardsPage } from '@/features/cards';
 import { ProductsPage } from '@/features/products';
 import { InventoryPage } from '@/features/inventory';
-import { AnalyticsPage } from '@/features/analytics';
+import { AnalyticsPage, FoodPurchasesPage } from '@/features/analytics';
 import { SubscriptionsPage } from '@/features/subscriptions';
 import { SettingsPage } from '@/features/settings';
 
@@ -129,6 +129,18 @@ export function AppRoutes() {
           }
         />
         <Route path="/analytics" element={<AnalyticsPage />} />
+        <Route
+          path="/food-purchases"
+          element={
+            <PermissionGuard roles={['ORG_ADMIN', 'STAFF']}>
+              <FoodPurchasesPage />
+            </PermissionGuard>
+          }
+        />
+        <Route
+          path="/purchases"
+          element={<Navigate to="/food-purchases" replace />}
+        />
         <Route
           path="/peak"
           element={<Navigate to="/analytics?tab=demand" replace />}
