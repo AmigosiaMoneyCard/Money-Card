@@ -190,8 +190,12 @@ class KitchenOrdersNotifier extends StateNotifier<KitchenOrdersState> {
           orderNumber: o.orderNumber,
           orderStatus: newStatus,
           orderedAt: o.orderedAt,
-          preparingAt: newStatus == 'PREPARING' ? DateTime.now() : o.preparingAt,
-          readyAt: newStatus == 'READY' ? DateTime.now() : o.readyAt,
+          preparingAt: newStatus == 'PREPARING'
+              ? (o.preparingAt ?? DateTime.now())
+              : (newStatus == 'PENDING' ? null : o.preparingAt),
+          readyAt: newStatus == 'READY'
+              ? DateTime.now()
+              : (newStatus == 'PREPARING' || newStatus == 'PENDING' ? null : o.readyAt),
           completedAt: newStatus == 'COMPLETED' ? DateTime.now() : o.completedAt,
           items: o.items,
           cardDisplayNumber: o.cardDisplayNumber,

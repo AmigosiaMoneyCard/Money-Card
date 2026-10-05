@@ -110,11 +110,7 @@ class _RechargeScreenState extends ConsumerState<RechargeScreen> {
 
     final rechargeAmt = result.amount > 0 ? result.amount : rechargeState.amount;
     final newBal = result.balance;
-    final prevBal = (result.balanceBefore != null && result.balanceBefore! > 0)
-        ? result.balanceBefore!
-        : ((session?.balance != null && session!.balance > 0)
-            ? session.balance
-            : (newBal - rechargeAmt).clamp(0.0, double.infinity));
+    final prevBal = result.balanceBefore ?? (newBal - rechargeAmt).clamp(0.0, double.infinity);
 
     DigitalReceiptDialog.show(
       context,

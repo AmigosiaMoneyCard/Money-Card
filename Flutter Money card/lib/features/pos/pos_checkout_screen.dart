@@ -771,6 +771,7 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
   }
 
   void _showOrdersBottomSheet(BuildContext context, CardSession session) {
+    ref.read(kitchenOrdersNotifierProvider.notifier).loadOrders();
     final allTx = session.transactions ?? [];
     final orders = allTx.where((t) => t.type == TransactionType.purchase).toList();
 

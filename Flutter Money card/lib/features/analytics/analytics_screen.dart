@@ -437,7 +437,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               Expanded(
                 child: _buildCompactMetricCard(
                   title: 'Total Sales',
-                  totalText: '₹${data.netMoneyCollected.toStringAsFixed(2)}',
+                  totalText: '₹${(data.salesVolume > 0 ? data.salesVolume : data.purchaseVolume).toStringAsFixed(2)}',
+                  line1Text: 'Orders: ${data.salesCount > 0 ? data.salesCount : data.purchaseCount}',
                   icon: Icons.payments_outlined,
                   accentColor: AppColors.success,
                 ),
@@ -503,7 +504,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         ),
         const SizedBox(height: 10),
 
-        // Row 4: Wallet Activation
+        // Row 4: Wallet Activation & Retained Profit
         IntrinsicHeight(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -516,6 +517,16 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   line2Text: 'Settled: ${data.settledSessionsCount}',
                   icon: Icons.credit_card,
                   accentColor: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildCompactMetricCard(
+                  title: 'Retained Profit',
+                  totalText: '₹${data.retainedCardProfit.toStringAsFixed(2)}',
+                  line1Text: 'Unreturned balance',
+                  icon: Icons.savings_outlined,
+                  accentColor: AppColors.success,
                 ),
               ),
             ],

@@ -1144,6 +1144,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
 
   // ignore: unused_element
   void _showBillingHubSheet(BuildContext context, CardSession session, Card card) {
+    ref.read(kitchenOrdersNotifierProvider.notifier).loadOrders();
     final allTx = session.transactions ?? [];
     final orders = allTx.where((t) => t.type == TransactionType.purchase).toList();
 

@@ -21,7 +21,7 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(kitchenOrdersNotifierProvider.notifier).loadOrders();
       ref.read(kitchenOrdersNotifierProvider.notifier).loadSummary();
@@ -48,7 +48,8 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
     final state = ref.watch(kitchenOrdersNotifierProvider);
     final notifier = ref.read(kitchenOrdersNotifierProvider.notifier);
 
-    final activeOrders = state.orders.where((o) => (o.isPending || o.isPreparing) && _matchesSearch(o)).toList();
+    final queuedOrders = state.orders.where((o) => o.isPending && _matchesSearch(o)).toList();
+    final inProgressOrders = state.orders.where((o) => o.isPreparing && _matchesSearch(o)).toList();
     final readyOrders = state.orders.where((o) => o.isReady && _matchesSearch(o)).toList();
 
     return Scaffold(
@@ -74,8 +75,9 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
           labelColor: AppColors.primary,
           unselectedLabelColor: AppColors.textSecondaryLight,
           tabs: [
-            Tab(text: 'Active Prep (${activeOrders.length})'),
-            Tab(text: 'Ready for Pickup (${readyOrders.length})'),
+            Tab(text: 'In Queue (${queuedOrders.length})'),
+            Tab(text: 'In Progress (${inProgressOrders.length})'),
+            Tab(text: 'Ready (${readyOrders.length})'),
           ],
         ),
       ),
@@ -192,11 +194,23 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  // Active orders tab
+                  // In Queue tab
                   _buildOrderList(
-                    orders: activeOrders,
-                    emptyTitle: 'Kitchen Queue Clear',
-                    emptyDescription: 'No food orders pending preparation right now.',
+                    orders: queuedOrders,
+                    emptyTitle: 'Queue Clear',
+                    emptyDescription: 'No food orders waiting in queue.',
+                    onRefresh: () async {
+                      await notifier.loadOrders();
+                      await notifier.loadSummary();
+                    },
+                    notifier: notifier,
+                    isActiveTab: true,
+                  ),
+                  // In Progress tab
+                  _buildOrderList(
+                    orders: inProgressOrders,
+                    emptyTitle: 'No Orders In Progress',
+                    emptyDescription: 'No food orders currently cooking.',
                     onRefresh: () async {
                       await notifier.loadOrders();
                       await notifier.loadSummary();
@@ -208,7 +222,7 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
                   _buildOrderList(
                     orders: readyOrders,
                     emptyTitle: 'No Orders Ready',
-                    emptyDescription: 'Orders marked done will appear here for pickup.',
+                    emptyDescription: 'Orders marked ready will appear here for pickup.',
                     onRefresh: () async {
                       await notifier.loadOrders();
                       await notifier.loadSummary();
@@ -581,7 +595,7 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
                 child: OutlinedButton.icon(
                   onPressed: () => notifier.updateStatus(order.transactionId, 'PREPARING'),
                   icon: const Icon(Icons.undo, size: 16),
-                  label: const Text('Undo / Return to Cooking'),
+                  label: const Text('Return to cooking'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.orange.shade800,
                     side: BorderSide(color: Colors.orange.shade400),

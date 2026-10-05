@@ -246,8 +246,17 @@ export async function updateOrderStatus(req: Request, res: Response) {
     ...(newStatus === 'PREPARING'
       ? {
           preparingAt: new Date().toISOString(),
+          readyAt: null,
           preparedByUserId: req.user?.id || null,
           preparedByName: req.user?.name || 'Kitchen Staff',
+        }
+      : {}),
+    ...(newStatus === 'PENDING'
+      ? {
+          preparingAt: null,
+          readyAt: null,
+          preparedByUserId: null,
+          preparedByName: null,
         }
       : {}),
     ...(newStatus === 'READY'

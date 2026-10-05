@@ -41,6 +41,8 @@ export interface BranchPerformanceMetric {
   cardsReturned?: number;
   cancelledOrdersCount?: number;
   cancelledOrdersVolume?: number;
+  retainedCardProfit?: number;
+  retainedProfitCount?: number;
 }
 
 export interface StaffActivityItem {
@@ -127,6 +129,8 @@ export interface AnalyticsOverview {
   cardsReturned?: number;
   cancelledOrdersCount?: number;
   cancelledOrdersVolume?: number;
+  retainedCardProfit?: number;
+  retainedProfitCount?: number;
 
   // Menu Analytics & Food Order Metrics
   foodOrdersCount?: number;

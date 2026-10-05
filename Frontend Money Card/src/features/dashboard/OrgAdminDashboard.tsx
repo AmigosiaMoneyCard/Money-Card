@@ -10,7 +10,6 @@ import type {
   Branch,
   Staff,
   Card as CardEntity,
-  InventoryItem,
   AnalyticsOverview,
 } from '@/types';
 import {
@@ -19,12 +18,11 @@ import {
   Card,
   CardHeader,
   CardContent,
-  Badge,
   StatCard,
   LoadingState,
   ErrorState,
 } from '@/components/ui';
-import { formatCurrency, formatLocalDate, storage } from '@/utils';
+import { formatCurrency, formatLocalDate } from '@/utils';
 import {
   Users,
   CreditCard,
@@ -33,11 +31,9 @@ import {
   RefreshCw,
   ArrowRight,
   BarChart3,
-  CheckCircle2,
-  Sparkles,
-  X,
   ShieldAlert,
   DollarSign,
+  RotateCcw,
 } from 'lucide-react';
 
 export type DatePreset = 'thisMonth' | 'today' | 'yesterday' | 'last7' | 'last30' | 'all' | 'custom';
@@ -80,21 +76,9 @@ export function OrgAdminDashboard() {
   const { currentBranch, selectBranch, clearBranch, setBranches: updateBranchContext } = useBranch();
   const isCounterAdmin = user?.role === 'STAFF';
 
-  const setupStorageKey = `org_setup_complete_${user?.organizationId || 'default'}`;
-  const setupDismissedKey = `org_setup_dismissed_${user?.organizationId || 'default'}`;
-
-  const isPreviouslyCompleted = useMemo(() => {
-    return storage.get<boolean>(setupStorageKey) === true;
-  }, [setupStorageKey]);
-
-  const [isDismissed, setIsDismissed] = useState<boolean>(() => {
-    return storage.get<boolean>(setupDismissedKey) === true;
-  });
-
   const [branches, setBranches] = useState<Branch[]>([]);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [cardsList, setCardsList] = useState<CardEntity[]>([]);
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsOverview | null>(null);
 
   // Date Filtering State (Custom Range, Default: Today)
@@ -110,12 +94,11 @@ export function OrgAdminDashboard() {
     setIsRefreshing(true);
     setError(null);
     try {
-      const [branchRes, staffRes, cardRes, invRes, analyticsRes] =
+      const [branchRes, staffRes, cardRes, analyticsRes] =
         await Promise.all([
           apiService.branches.getBranches(),
           apiService.staff.getStaff(),
           apiService.cards.getCards(),
-          apiService.inventory.getInventory(currentBranch ? { branchId: currentBranch.id } : undefined),
           apiService.analytics.getAnalyticsOverview({
             branchId: currentBranch ? currentBranch.id : undefined,
             startDate: startDate || undefined,
@@ -129,7 +112,6 @@ export function OrgAdminDashboard() {
       }
       if (staffRes.success) setStaffList(staffRes.data.items);
       if (cardRes.success) setCardsList(cardRes.data.items);
-      if (invRes.success) setInventory(invRes.data.items);
       if (analyticsRes.success) setAnalytics(analyticsRes.data);
     } catch {
       setError('Unable to connect to server. Please try again.');
@@ -144,12 +126,11 @@ export function OrgAdminDashboard() {
     const load = async () => {
       setError(null);
       try {
-        const [branchRes, staffRes, cardRes, invRes, analyticsRes] =
+        const [branchRes, staffRes, cardRes, analyticsRes] =
           await Promise.all([
             apiService.branches.getBranches(),
             apiService.staff.getStaff(),
             apiService.cards.getCards(),
-            apiService.inventory.getInventory(currentBranch ? { branchId: currentBranch.id } : undefined),
             apiService.analytics.getAnalyticsOverview({
               branchId: currentBranch ? currentBranch.id : undefined,
               startDate: startDate || undefined,
@@ -164,7 +145,6 @@ export function OrgAdminDashboard() {
         }
         if (staffRes.success) setStaffList(staffRes.data.items);
         if (cardRes.success) setCardsList(cardRes.data.items);
-        if (invRes.success) setInventory(invRes.data.items);
         if (analyticsRes.success) setAnalytics(analyticsRes.data);
       } catch {
         if (!isCancelled) setError('Unable to connect to server. Please try again.');
@@ -197,67 +177,6 @@ export function OrgAdminDashboard() {
   const remainingWalletsBalance = useMemo(() => {
     return cardsList.reduce((acc, c) => acc + (c.activeSession?.balance || 0), 0);
   }, [cardsList]);
-
-  // Getting Started Checklist Calculations
-  const hasBranches = branches.length > 0 || !!currentBranch;
-  const hasStaff = staffList.length > 0;
-  const hasCards = cardsList.length > 0;
-  const hasProducts = inventory.length > 0;
-
-  const setupSteps = useMemo(() => [
-    {
-      id: 'branches',
-      title: '1. Create cafeteria location',
-      description: 'Define your cafeteria location.',
-      completed: hasBranches,
-      path: '/branches',
-      actionLabel: 'Add Cafeteria',
-    },
-    {
-      id: 'staff',
-      title: '2. Add team members & cashiers',
-      description: 'Grant staff access to scan cards and take orders.',
-      completed: hasStaff,
-      path: '/staff',
-      actionLabel: 'Add Staff',
-    },
-    {
-      id: 'cards',
-      title: '3. Wallets directory',
-      description: 'Wallets auto-register immediately when scanned by staff.',
-      completed: hasCards,
-      path: '/cards',
-      actionLabel: 'View Wallets',
-    },
-    {
-      id: 'products',
-      title: '4. Add menu items & prices',
-      description: 'Create food items and prices for POS checkout.',
-      completed: hasProducts,
-      path: '/products',
-      actionLabel: 'Add Products',
-    },
-  ], [hasBranches, hasStaff, hasCards, hasProducts]);
-
-  const completedStepsCount = setupSteps.filter((s) => s.completed).length;
-  const setupPercent = Math.round((completedStepsCount / setupSteps.length) * 100);
-  const isSetupComplete = completedStepsCount === setupSteps.length;
-
-  // Persist setup completion so it never flashes or reappears once completed
-  useEffect(() => {
-    if (isSetupComplete && !isLoading) {
-      storage.set(setupStorageKey, true);
-    }
-  }, [isSetupComplete, isLoading, setupStorageKey]);
-
-  // NEVER show the first-time setup checklist while loading, when scoped to a specific branch,
-  // or when already completed or dismissed.
-  const showSetupChecklist =
-    !isLoading &&
-    !currentBranch &&
-    !isPreviouslyCompleted &&
-    !isDismissed &&
-    !isSetupComplete;
 
   return (
     <div className="space-y-6">
@@ -358,93 +277,6 @@ export function OrgAdminDashboard() {
           </div>
         </button>
       </div>
-
-
-
-      {/* ─── Getting Started Checklist (Interactive Setup Guide) ─── */}
-      {showSetupChecklist && (
-        <Card className="border-emerald-200 bg-gradient-to-br from-white via-emerald-50/20 to-teal-50/30 p-5 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
-            <div>
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-emerald-600" />
-                <h3 className="font-bold text-slate-900 text-base">
-                  Getting Started Checklist
-                </h3>
-                <Badge variant="warning" className="text-xs font-semibold">
-                  {completedStepsCount} of {setupSteps.length} Steps
-                </Badge>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-full sm:w-48 space-y-1">
-                <div className="flex justify-between text-xs font-medium text-slate-600">
-                  <span>Setup Progress</span>
-                  <span className="font-bold text-emerald-600">{setupPercent}%</span>
-                </div>
-                <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-500"
-                    style={{ width: `${setupPercent}%` }}
-                  />
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  storage.set(setupDismissedKey, true);
-                  setIsDismissed(true);
-                }}
-                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors shrink-0"
-                title="Dismiss setup checklist"
-                aria-label="Dismiss setup checklist"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
-          <div className="grid gap-3 pt-4 sm:grid-cols-2">
-            {setupSteps.map((step) => (
-              <div
-                key={step.id}
-                className={`flex items-start justify-between p-3.5 rounded-xl border transition-all ${
-                  step.completed
-                    ? 'border-emerald-200 bg-emerald-50/60 text-slate-700'
-                    : 'border-slate-200 bg-white hover:border-slate-300 text-slate-800'
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5">
-                    {step.completed ? (
-                      <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                    ) : (
-                      <div className="h-5 w-5 rounded-full border-2 border-slate-300 flex items-center justify-center text-[10px] text-slate-400 font-bold" />
-                    )}
-                  </div>
-                  <div>
-                    <p className={`text-xs font-bold ${step.completed ? 'text-emerald-800 line-through' : 'text-slate-900'}`}>
-                      {step.title}
-                    </p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">{step.description}</p>
-                  </div>
-                </div>
-
-                {!step.completed && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0 text-xs py-1 px-2.5 ml-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-                    onClick={() => navigate(step.path)}
-                  >
-                    {step.actionLabel}
-                  </Button>
-                )}
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
 
       {isLoading ? (
         <LoadingState message="Loading cafeteria dashboard..." />
@@ -558,7 +390,7 @@ export function OrgAdminDashboard() {
                 />
 
                 <StatCard
-                  label="Money Added"
+                  label="Recharge Amount"
                   value={formatCurrency(analytics?.moneyAdded ?? analytics?.totalRechargeVolume ?? analytics?.rechargeVolume ?? 0)}
                   description={`${analytics?.rechargeCount ?? 0} recharges`}
                   icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
@@ -587,12 +419,19 @@ export function OrgAdminDashboard() {
                   />
                 )}
 
-                {!isCounterAdmin && (
+                {!isCounterAdmin ? (
                   <StatCard
                     label="Blocked Wallets"
                     value={blockedWalletsCount}
                     description="Security locked"
                     icon={<ShieldAlert className="h-5 w-5 text-rose-600" />}
+                  />
+                ) : (
+                  <StatCard
+                    label="Cancelled Recharged"
+                    value={formatCurrency(analytics?.cancelledTopUps ?? 0)}
+                    description={`${analytics?.cancelledTopUpsCount ?? 0} cancelled`}
+                    icon={<RotateCcw className="h-5 w-5 text-rose-600" />}
                   />
                 )}
 

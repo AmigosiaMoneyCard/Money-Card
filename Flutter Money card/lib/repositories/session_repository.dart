@@ -69,8 +69,16 @@ class SessionRepository {
     );
   }
 
-  Future<SessionReturnResult> returnSession(String sessionId, {String paymentMethod = 'CASH'}) async {
-    return _sessionService.returnSession(sessionId, paymentMethod: paymentMethod);
+  Future<SessionReturnResult> returnSession(
+    String sessionId, {
+    String paymentMethod = 'CASH',
+    bool skipRefund = false,
+  }) async {
+    return _sessionService.returnSession(
+      sessionId,
+      paymentMethod: paymentMethod,
+      skipRefund: skipRefund,
+    );
   }
 
   Future<SessionRefundResult> refundSession(String sessionId, {String paymentMethod = 'CASH'}) async {

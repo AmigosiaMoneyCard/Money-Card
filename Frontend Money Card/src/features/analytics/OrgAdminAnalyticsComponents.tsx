@@ -59,8 +59,8 @@ export function OrgAdminFinancialSection({
   const moneyAdded = analytics.moneyAdded ?? analytics.totalRechargeVolume ?? (cashRecharge + upiRecharge);
   const moneyRefunded = analytics.moneyRefunded ?? analytics.totalRefundVolume ?? totalRefund;
   const cancelledTopUps = analytics.cancelledTopUps ?? 0;
-
-  const netMoneyCollected = analytics.netMoneyCollected ?? (moneyAdded - moneyRefunded);
+  const totalFoodSales = analytics.totalPurchaseVolume ?? analytics.salesVolume ?? 0;
+  const retainedCardProfit = analytics.retainedCardProfit ?? 0;
 
   const upiMoney = analytics.upiMoney ?? upiRecharge;
   const cashMoney = analytics.cashMoney ?? cashRecharge;
@@ -83,7 +83,7 @@ export function OrgAdminFinancialSection({
           </div>
           <div className="mt-1.5">
             <p className="font-mono text-3xl font-extrabold text-slate-900">
-              {formatCurrency(netMoneyCollected)}
+              {formatCurrency(totalFoodSales)}
             </p>
           </div>
         </Card>
@@ -149,7 +149,7 @@ export function OrgAdminFinancialSection({
       </Card>
 
       {/* 3. Follow-up Metric Cards Below */}
-      <div className={`grid gap-4 sm:grid-cols-2 ${leadingCard ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
+      <div className={`grid gap-4 sm:grid-cols-2 ${leadingCard ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
         {/* Optional Leading Card (e.g. Cafeterias in Super Admin) */}
         {leadingCard}
 
@@ -170,11 +170,11 @@ export function OrgAdminFinancialSection({
           </div>
         </Card>
 
-        {/* Cancelled Top-ups */}
+        {/* Cancelled Recharged */}
         <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Cancelled Top-ups
+              Cancelled Recharged
             </span>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
               <RefreshCw className="h-4 w-4" />
@@ -183,6 +183,23 @@ export function OrgAdminFinancialSection({
           <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-amber-600">
               {formatCurrency(cancelledTopUps)}
+            </p>
+          </div>
+        </Card>
+
+        {/* Retained Card Profit */}
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Retained Profit
+            </span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+              <DollarSign className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2">
+            <p className="font-mono text-2xl font-bold text-emerald-600">
+              {formatCurrency(retainedCardProfit)}
             </p>
           </div>
         </Card>

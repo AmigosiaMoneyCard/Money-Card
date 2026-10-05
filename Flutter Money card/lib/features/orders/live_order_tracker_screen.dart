@@ -23,7 +23,7 @@ class _LiveOrderTrackerScreenState extends ConsumerState<LiveOrderTrackerScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(kitchenOrdersNotifierProvider.notifier).loadOrders();
       ref.read(kitchenOrdersNotifierProvider.notifier).loadSummary();
@@ -98,7 +98,8 @@ class _LiveOrderTrackerScreenState extends ConsumerState<LiveOrderTrackerScreen>
     final state = ref.watch(kitchenOrdersNotifierProvider);
     final notifier = ref.read(kitchenOrdersNotifierProvider.notifier);
 
-    final inProgressOrders = state.orders.where((o) => (o.isPreparing || o.isPending) && _matchesSearch(o)).toList();
+    final queuedOrders = state.orders.where((o) => o.isPending && _matchesSearch(o)).toList();
+    final inProgressOrders = state.orders.where((o) => o.isPreparing && _matchesSearch(o)).toList();
     final readyOrders = state.orders.where((o) => o.isReady && _matchesSearch(o)).toList();
 
     return Scaffold(
@@ -124,6 +125,7 @@ class _LiveOrderTrackerScreenState extends ConsumerState<LiveOrderTrackerScreen>
           labelColor: AppColors.primary,
           unselectedLabelColor: AppColors.textSecondaryLight,
           tabs: [
+            Tab(text: 'In Queue (${queuedOrders.length})'),
             Tab(text: 'In Progress (${inProgressOrders.length})'),
             Tab(text: 'Ready (${readyOrders.length})'),
           ],
@@ -195,6 +197,7 @@ class _LiveOrderTrackerScreenState extends ConsumerState<LiveOrderTrackerScreen>
               child: TabBarView(
                 controller: _tabController,
                 children: [
+                  _buildList(queuedOrders, 'No Orders In Queue', 'Orders waiting for kitchen to start preparation will show here.', notifier, false),
                   _buildList(inProgressOrders, 'No Orders In Progress', 'Orders being cooked in the kitchen will show here.', notifier, false),
                   _buildList(readyOrders, 'No Orders Ready', 'Orders plated and ready for pickup will appear here.', notifier, true),
                 ],

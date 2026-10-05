@@ -362,6 +362,7 @@ model CardSession {
   settledByUserId   String?
   settledAt         DateTime?
   refundAmount      Float?
+  retainedProfit    Float         @default(0.0)
 
   organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   branch       Branch        @relation(fields: [branchId], references: [id], onDelete: Cascade)

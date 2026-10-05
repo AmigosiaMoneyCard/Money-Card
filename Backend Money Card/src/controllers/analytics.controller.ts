@@ -225,6 +225,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     staffUsers,
     historyEvents,
     allSessions,
+    retainedProfitAggregate,
   ] = await Promise.all([
     prisma.transaction.findMany({
       where: txWhere,
@@ -357,6 +358,20 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       orderBy: { issuedAt: 'desc' },
       take: 300,
     }),
+    prisma.cardSession.aggregate({
+      where: {
+        ...orgScope,
+        ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
+        ...(fromDate || toDate ? { settledAt: dateFilter } : {}),
+        retainedProfit: { gt: 0 },
+      },
+      _sum: {
+        retainedProfit: true,
+      },
+      _count: {
+        _all: true,
+      },
+    }),
   ]);
 
   let totalRechargeVolume = 0;
@@ -460,6 +475,8 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     cashCount: number;
     cardsGivenOut: number;
     cardsReturned: number;
+    retainedCardProfit: number;
+    retainedProfitCount: number;
   }>();
 
   const branchProductDemandMap = new Map<string, Map<string, { productId: string; productName: string; quantitySold: number; totalRevenue: number }>>();
@@ -527,6 +544,8 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       cashCount: 0,
       cardsGivenOut: branchGivenOut,
       cardsReturned: branchSettledSess,
+      retainedCardProfit: 0,
+      retainedProfitCount: 0,
     });
   });
 
@@ -845,6 +864,12 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     bm.cashCount = bm.cashRechargeCount;
     bm.cardsGivenOut = bm.sessionCount;
     bm.cardsReturned = bm.settledSessionsCount;
+    const branchSessionsList = branches.find((b) => b.id === bm.branchId)?.cardSessions || [];
+    const bRetained = branchSessionsList.filter(
+      (s) => s.status === 'SETTLED' && (s.retainedProfit || 0) > 0 && (!fromDate || (s.settledAt && s.settledAt >= fromDate)) && (!toDate || (s.settledAt && s.settledAt <= toDate))
+    );
+    bm.retainedCardProfit = Number(bRetained.reduce((sum, s) => sum + (s.retainedProfit || 0), 0).toFixed(2));
+    bm.retainedProfitCount = bRetained.length;
     bm.purchaseVolume = Number(bm.purchaseVolume.toFixed(2));
     bm.rechargeVolume = Number(bm.rechargeVolume.toFixed(2));
     bm.cardRechargeVolume = Number((bm.cardRechargeVolume || 0).toFixed(2));
@@ -1185,6 +1210,8 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     cashCount: cashRechargeCount,
     cardsGivenOut: allSessions.length,
     cardsReturned: settledSessionsCount,
+    retainedCardProfit: Number((retainedProfitAggregate._sum.retainedProfit || 0).toFixed(2)),
+    retainedProfitCount: retainedProfitAggregate._count._all || 0,
     cancelledOrdersCount,
     cancelledOrdersVolume: Number(cancelledOrdersVolume.toFixed(2)),
     rechargeCount: totalRechargeCount,

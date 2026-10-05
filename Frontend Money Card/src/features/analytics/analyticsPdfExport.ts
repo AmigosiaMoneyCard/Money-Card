@@ -129,10 +129,10 @@ export function buildOrgAnalyticsJsPdf({
     doc.text(`${sectionCounter}. Financial Overview`, margin, curY);
     sectionCounter++;
 
-    // Net Money Collected Highlight Card (full width)
+    // Food Sales Highlight Card (full width)
     const moneyAdded = analytics.moneyAdded ?? analytics.totalRechargeVolume ?? 0;
     const moneyRefunded = analytics.moneyRefunded ?? analytics.totalRefundVolume ?? 0;
-    const netMoney = analytics.netMoneyCollected ?? (moneyAdded - moneyRefunded);
+    const foodSales = analytics.totalPurchaseVolume ?? analytics.salesVolume ?? 0;
 
     doc.setFillColor(241, 245, 249); // slate-100
     doc.setDrawColor(203, 213, 225);
@@ -146,12 +146,12 @@ export function buildOrgAnalyticsJsPdf({
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(15, 23, 42);
-    doc.text(formatPdfCurrency(netMoney), margin + 4, curY + 16);
+    doc.text(formatPdfCurrency(foodSales), margin + 4, curY + 16);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6);
     doc.setTextColor(100, 116, 139);
-    doc.text('Total Sales across UPI & Cash Deposits', margin + 4, curY + 20);
+    doc.text('Total Sales from Food Orders', margin + 4, curY + 20);
 
     curY += 25;
 
@@ -194,12 +194,14 @@ export function buildOrgAnalyticsJsPdf({
 
     curY += 22;
 
-    // Row 3: Follow-up Operations (2 cards)
+    // Row 3: Follow-up Operations (3 cards)
+    const retainedProfit = analytics.retainedCardProfit ?? 0;
     const row3Kpis = [
       { label: 'Refunds', val: formatPdfCurrency(moneyRefunded), sub: 'Returned to customers' },
-      { label: 'Cancelled Top-ups', val: formatPdfCurrency(cancelledTopUps), sub: `${cancelledTopUpsCount} recharges reversed` },
+      { label: 'Cancelled Recharged', val: formatPdfCurrency(cancelledTopUps), sub: `${cancelledTopUpsCount} recharges reversed` },
+      { label: 'Retained Profit', val: formatPdfCurrency(retainedProfit), sub: 'Unreturned balances' },
     ];
-    const cardW3 = (contentWidth - 3) / 2;
+    const cardW3 = (contentWidth - 6) / 3;
 
     row3Kpis.forEach((kpi, idx) => {
       const x = margin + idx * (cardW3 + 3);

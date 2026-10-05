@@ -97,6 +97,10 @@ class BranchPerformanceMetric {
   final double cancelledOrdersVolume;
   final double cashRefunds;
   final double upiRefunds;
+  final double salesVolume;
+  final int salesCount;
+  final double retainedCardProfit;
+  final int retainedProfitCount;
 
   const BranchPerformanceMetric({
     required this.branchId,
@@ -136,6 +140,10 @@ class BranchPerformanceMetric {
     this.cancelledOrdersVolume = 0.0,
     this.cashRefunds = 0.0,
     this.upiRefunds = 0.0,
+    this.salesVolume = 0.0,
+    this.salesCount = 0,
+    this.retainedCardProfit = 0.0,
+    this.retainedProfitCount = 0,
   });
 
   factory BranchPerformanceMetric.fromJson(Map<String, dynamic> json) {
@@ -196,6 +204,10 @@ class BranchPerformanceMetric {
       cancelledOrdersVolume: (json['cancelledOrdersVolume'] as num?)?.toDouble() ?? 0.0,
       cashRefunds: cashRefundVal,
       upiRefunds: upiRefundVal,
+      salesVolume: (json['salesVolume'] as num?)?.toDouble() ?? (json['purchaseVolume'] as num?)?.toDouble() ?? 0.0,
+      salesCount: (json['salesCount'] as num?)?.toInt() ?? (json['purchaseCount'] as num?)?.toInt() ?? 0,
+      retainedCardProfit: (json['retainedCardProfit'] as num?)?.toDouble() ?? 0.0,
+      retainedProfitCount: (json['retainedProfitCount'] as num?)?.toInt() ?? 0,
     );
   }
 

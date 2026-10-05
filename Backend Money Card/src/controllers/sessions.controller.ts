@@ -604,7 +604,12 @@ export async function returnSession(req: Request, res: Response) {
     return sendError(res, 400, 'ALREADY_SETTLED', 'Session is already settled and refunded');
   }
 
-  const refundAmount = session.balance;
+  const { paymentMethod, skipRefund } = req.body || {};
+  const isSkipRefund = Boolean(skipRefund);
+  const selectedPaymentMethod = paymentMethod === 'UPI' ? 'UPI' : 'CASH';
+
+  const refundAmount = isSkipRefund ? 0.0 : session.balance;
+  const retainedProfit = isSkipRefund ? session.balance : 0.0;
 
   const result = await prisma.$transaction(async (tx) => {
     const settledSession = await tx.cardSession.update({
@@ -615,6 +620,7 @@ export async function returnSession(req: Request, res: Response) {
         settledAt: new Date(),
         settledByUserId: req.user?.id,
         refundAmount,
+        retainedProfit,
       },
     });
 
@@ -626,7 +632,7 @@ export async function returnSession(req: Request, res: Response) {
           staffUserId: req.user?.id,
           type: TransactionType.REFUND_RETURN,
           amount: refundAmount,
-          balanceBefore: refundAmount,
+          balanceBefore: session.balance,
           balanceAfter: 0.0,
           paymentMethod: selectedPaymentMethod,
         },
@@ -641,13 +647,13 @@ export async function returnSession(req: Request, res: Response) {
       });
     }
 
-    return { session: settledSession, refundAmount };
+    return { session: settledSession, refundAmount, retainedProfit };
   });
 
   balanceStreamService.broadcastBalanceUpdate(session.id, {
     balance: 0.0,
     status: SessionStatus.SETTLED,
-    type: 'REFUND',
+    type: isSkipRefund ? 'RETURN_NO_REFUND' : 'REFUND',
     amount: refundAmount,
     sessionId: session.id,
   });

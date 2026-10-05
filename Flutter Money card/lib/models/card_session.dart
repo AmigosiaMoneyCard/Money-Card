@@ -264,12 +264,14 @@ class PurchaseResult {
 class SessionReturnResult {
   final String sessionId;
   final double refundedAmount;
+  final double retainedProfit;
   final String sessionStatus;
   final String cardStatus;
 
   const SessionReturnResult({
     required this.sessionId,
     required this.refundedAmount,
+    this.retainedProfit = 0.0,
     required this.sessionStatus,
     required this.cardStatus,
   });
@@ -278,6 +280,7 @@ class SessionReturnResult {
     return SessionReturnResult(
       sessionId: json['sessionId'] as String? ?? '',
       refundedAmount: (json['refundedAmount'] as num? ?? json['refundAmount'] as num?)?.toDouble() ?? 0.0,
+      retainedProfit: (json['retainedProfit'] as num?)?.toDouble() ?? 0.0,
       sessionStatus: json['sessionStatus'] as String? ?? 'SETTLED',
       cardStatus: json['cardStatus'] as String? ?? 'AVAILABLE',
     );
@@ -286,6 +289,7 @@ class SessionReturnResult {
   Map<String, dynamic> toJson() => {
         'sessionId': sessionId,
         'refundedAmount': refundedAmount,
+        'retainedProfit': retainedProfit,
         'sessionStatus': sessionStatus,
         'cardStatus': cardStatus,
       };

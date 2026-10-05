@@ -49,6 +49,8 @@ class FakeAnalyticsRepository implements AnalyticsRepository {
     transactionCount: 148,
     purchaseCount: 96,
     purchaseVolume: 18450.0,
+    salesCount: 96,
+    salesVolume: 18450.0,
     rechargeCount: 52,
     rechargeVolume: 24800.0,
     totalRevenue: 43250.0,
@@ -152,7 +154,7 @@ void main() {
       await tester.drag(find.byType(ListView).first, const Offset(0, -300));
       await tester.pumpAndSettle();
       expect(find.text('TOTAL SALES'), findsOneWidget);
-      expect(find.text('₹43250.00'), findsOneWidget);
+      expect(find.text('₹18450.00'), findsOneWidget);
 
       // Verify tapping Reset to Today
       await tester.tap(find.text('Reset to Today'));

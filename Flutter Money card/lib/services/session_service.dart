@@ -105,10 +105,17 @@ class SessionService {
   }
 
   /// Return/settle card session (POST /api/v1/card-sessions/:id/return)
-  Future<SessionReturnResult> returnSession(String sessionId, {String paymentMethod = 'CASH'}) async {
+  Future<SessionReturnResult> returnSession(
+    String sessionId, {
+    String paymentMethod = 'CASH',
+    bool skipRefund = false,
+  }) async {
     return _apiService.post<SessionReturnResult>(
       ApiEndpoints.returnCardSession(sessionId),
-      data: {'paymentMethod': paymentMethod},
+      data: {
+        'paymentMethod': paymentMethod,
+        if (skipRefund) 'skipRefund': true,
+      },
       fromJson: (data) => SessionReturnResult.fromJson(data as Map<String, dynamic>),
     );
   }

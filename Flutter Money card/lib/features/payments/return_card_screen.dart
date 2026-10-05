@@ -79,6 +79,40 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
     }
   }
 
+  Future<void> _handleReturnWithoutRefund(CardSession session) async {
+    final currentBranch = ref.read(currentBranchProvider);
+    if (currentBranch != null && session.branchId.isNotEmpty && session.branchId != currentBranch.id) {
+      await AppDialog.show(
+        context,
+        title: 'Return Not Allowed at this Counter',
+        message: 'This wallet was issued at another counter. Wallets can only be returned and settled at the counter where they were issued.',
+        confirmLabel: 'Understood',
+      );
+      return;
+    }
+
+    final confirmed = await AppDialog.show(
+      context,
+      title: 'Retain Profit Without Cash Refund',
+      message: 'Return physical card and keep remaining balance of ₹${session.balance.toStringAsFixed(2)} as counter profit? No cash will be deducted from your drawer.',
+      confirmLabel: 'Retain Profit & Return',
+      cancelLabel: 'Cancel',
+      isDestructive: false,
+    );
+
+    if (confirmed != true) return;
+
+    final returnNotifier = ref.read(returnCardNotifierProvider.notifier);
+    final result = await returnNotifier.executeReturn(session.id, skipRefund: true);
+
+    if (result != null && mounted) {
+      ref.read(cardListNotifierProvider.notifier).loadCards();
+      ref.read(sessionListNotifierProvider.notifier).loadSessions();
+
+      _showReturnSuccessDialog(result);
+    }
+  }
+
   Future<void> _handleRefundOnly(CardSession session) async {
     final currentBranch = ref.read(currentBranchProvider);
     if (currentBranch != null && session.branchId.isNotEmpty && session.branchId != currentBranch.id) {
@@ -170,12 +204,17 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
     final rawTx = (session?.id ?? widget.sessionId).replaceAll('-', '');
     final shortTxId = rawTx.length > 8 ? rawTx.substring(0, 8).toUpperCase() : rawTx.toUpperCase();
 
+    final bool isRetainedProfit = result.retainedProfit > 0 && result.refundedAmount == 0;
+    final effectiveAmount = isRetainedProfit ? result.retainedProfit : result.refundedAmount;
+
     final itemsList = [
       {
-        'name': 'Wallet Return & Balance Refund',
+        'name': isRetainedProfit
+            ? 'Wallet Return (Retained Profit: ₹${result.retainedProfit.toStringAsFixed(2)})'
+            : 'Wallet Return & Balance Refund',
         'quantity': 1,
-        'price': result.refundedAmount,
-        'total': result.refundedAmount,
+        'price': effectiveAmount,
+        'total': effectiveAmount,
       }
     ];
 
@@ -186,14 +225,14 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
       timestamp: DateTime.now(),
       cardIdentifier: cardNum,
       items: itemsList,
-      totalAmount: result.refundedAmount,
+      totalAmount: effectiveAmount,
       remainingBalance: 0.0,
-      previousBalance: result.refundedAmount,
+      previousBalance: effectiveAmount,
       sessionId: session?.id ?? widget.sessionId,
       staffName: user?.name,
-      title: 'Wallet Returned Successfully',
-      receiptTitle: 'SETTLEMENT RECEIPT',
-      paymentMethod: 'CASH REFUND',
+      title: isRetainedProfit ? 'Card Returned (Profit Retained)' : 'Wallet Returned Successfully',
+      receiptTitle: isRetainedProfit ? 'RETURN & RETAINED PROFIT' : 'SETTLEMENT RECEIPT',
+      paymentMethod: isRetainedProfit ? 'RETAINED PROFIT' : 'CASH REFUND',
       onDone: () {
         ref.read(returnCardNotifierProvider.notifier).reset();
         context.pop(); // Pop return screen
@@ -346,6 +385,30 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
                       ),
                     ],
                   ),
+                  if (session.balance > 0 && !isSettled) ...[
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.savings_outlined, size: 16),
+                        label: const Text(
+                          'Return Without Refund (Retain Profit)',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: isCounterMismatch ? Colors.grey : AppColors.success,
+                          side: BorderSide(
+                            color: isCounterMismatch ? Colors.grey.shade300 : AppColors.success,
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onPressed: isSettled || isCounterMismatch || _isRefunding || returnState.isSubmitting
+                            ? null
+                            : () => _handleReturnWithoutRefund(session),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

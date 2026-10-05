@@ -36,7 +36,7 @@ import {
   BarChart3,
   TrendingUp,
   ShoppingBag,
-  CreditCard,
+  Wallet,
 } from 'lucide-react';
 
 export function SuperAdminDashboard() {
@@ -509,7 +509,7 @@ export function SuperAdminDashboard() {
 
                   <div className="flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition-colors">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-slate-600">Money Added</span>
+                      <span className="text-xs font-semibold text-slate-600">Recharge Amount</span>
                       <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
                         <TrendingUp className="h-4 w-4" />
                       </div>
@@ -526,17 +526,20 @@ export function SuperAdminDashboard() {
 
                   <div className="flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition-colors">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-slate-600">Active Wallets</span>
+                      <span className="text-xs font-semibold text-slate-600">Net Recharge Inflow</span>
                       <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
-                        <CreditCard className="h-4 w-4" />
+                        <Wallet className="h-4 w-4" />
                       </div>
                     </div>
                     <div className="mt-2">
                       <div className="font-mono text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-                        {analytics?.activeCardsCount ?? (selectedOrg ? (selectedOrg.usage?.activeCardCount ?? 0) : activeCardholdersCount)}
+                        {formatCurrency(
+                          (analytics?.moneyAdded ?? analytics?.totalRechargeVolume ?? analytics?.rechargeVolume ?? 0) -
+                            (analytics?.totalRefundVolume ?? analytics?.moneyRefunded ?? 0)
+                        )}
                       </div>
                       <p className="mt-0.5 text-[11px] font-medium text-slate-400">
-                        In use
+                        Recharges minus refunds
                       </p>
                     </div>
                   </div>
