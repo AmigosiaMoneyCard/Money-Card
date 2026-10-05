@@ -23,6 +23,14 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
     roles: ['SUPER_ADMIN', 'ORG_ADMIN', 'STAFF'],
   },
   {
+    id: 'food-purchases',
+    label: 'Food Purchases',
+    path: '/food-purchases',
+    iconName: 'ShoppingBag',
+    roles: ['ORG_ADMIN', 'STAFF'],
+    permission: 'VIEW_ANALYTICS',
+  },
+  {
     id: 'organizations',
     label: 'Organizations',
     path: '/organizations',
@@ -74,14 +82,6 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
     path: '/analytics',
     iconName: 'BarChart3',
     roles: ['SUPER_ADMIN', 'ORG_ADMIN', 'STAFF'],
-    permission: 'VIEW_ANALYTICS',
-  },
-  {
-    id: 'food-purchases',
-    label: 'Food Purchases by Counter',
-    path: '/food-purchases',
-    iconName: 'ShoppingBag',
-    roles: ['ORG_ADMIN', 'STAFF'],
     permission: 'VIEW_ANALYTICS',
   },
   {

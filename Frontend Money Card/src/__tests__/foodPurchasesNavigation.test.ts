@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { NAVIGATION_ITEMS } from '@/config/navigation';
 import type { FoodPurchaseRecord } from '@/types';
 
-describe('Food Purchases by Counter Navigation & Page Isolation Tests', () => {
-  it('should verify that Food Purchases by Counter is present for ORG_ADMIN', () => {
+describe('Food Purchases Navigation & Page Isolation Tests', () => {
+  it('should verify that Food Purchases is present for ORG_ADMIN as the second item under Dashboard', () => {
     const orgAdminItems = NAVIGATION_ITEMS.filter((item) =>
       item.roles.includes('ORG_ADMIN'),
     );
@@ -11,11 +11,15 @@ describe('Food Purchases by Counter Navigation & Page Isolation Tests', () => {
 
     expect(purchaseItem).toBeDefined();
     expect(purchaseItem?.path).toBe('/food-purchases');
-    expect(purchaseItem?.label).toBe('Food Purchases by Counter');
+    expect(purchaseItem?.label).toBe('Food Purchases');
     expect(purchaseItem?.permission).toBe('VIEW_ANALYTICS');
+
+    // Second item under dashboard
+    expect(orgAdminItems[0].id).toBe('dashboard');
+    expect(orgAdminItems[1].id).toBe('food-purchases');
   });
 
-  it('should verify that Food Purchases by Counter is present for STAFF (Counter Admin)', () => {
+  it('should verify that Food Purchases is present for STAFF (Counter Admin) as the second item under Dashboard', () => {
     const staffItems = NAVIGATION_ITEMS.filter((item) =>
       item.roles.includes('STAFF'),
     );
@@ -23,11 +27,15 @@ describe('Food Purchases by Counter Navigation & Page Isolation Tests', () => {
 
     expect(purchaseItem).toBeDefined();
     expect(purchaseItem?.path).toBe('/food-purchases');
-    expect(purchaseItem?.label).toBe('Food Purchases by Counter');
+    expect(purchaseItem?.label).toBe('Food Purchases');
     expect(purchaseItem?.permission).toBe('VIEW_ANALYTICS');
+
+    // Second item under dashboard
+    expect(staffItems[0].id).toBe('dashboard');
+    expect(staffItems[1].id).toBe('food-purchases');
   });
 
-  it('should ensure Food Purchases by Counter is NOT visible to SUPER_ADMIN', () => {
+  it('should ensure Food Purchases is NOT visible to SUPER_ADMIN', () => {
     const superAdminItems = NAVIGATION_ITEMS.filter((item) =>
       item.roles.includes('SUPER_ADMIN'),
     );
@@ -36,12 +44,12 @@ describe('Food Purchases by Counter Navigation & Page Isolation Tests', () => {
     expect(purchaseItem).toBeUndefined();
   });
 
-  it('should verify that food-purchases is positioned directly after analytics in navigation', () => {
-    const analyticsIndex = NAVIGATION_ITEMS.findIndex((item) => item.id === 'analytics');
+  it('should verify that food-purchases is positioned directly after dashboard in navigation items list', () => {
+    const dashboardIndex = NAVIGATION_ITEMS.findIndex((item) => item.id === 'dashboard');
     const foodPurchasesIndex = NAVIGATION_ITEMS.findIndex((item) => item.id === 'food-purchases');
 
-    expect(analyticsIndex).toBeGreaterThan(-1);
-    expect(foodPurchasesIndex).toBe(analyticsIndex + 1);
+    expect(dashboardIndex).toBe(0);
+    expect(foodPurchasesIndex).toBe(1);
   });
 
   it('should accurately calculate food purchase metrics and cross-counter counts', () => {
