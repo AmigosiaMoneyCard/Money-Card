@@ -50,9 +50,7 @@ export function globalErrorHandler(
   const isDev = env.NODE_ENV === 'development';
   const message = err instanceof Error ? err.message : 'An unexpected server error occurred';
 
-  if (isDev) {
-    console.error('💥 Unhandled Server Error:', err);
-  }
+  console.error('Unhandled Server Error:', err);
 
   return sendError(
     res,

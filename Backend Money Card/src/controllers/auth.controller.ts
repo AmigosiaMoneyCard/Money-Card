@@ -18,7 +18,8 @@ export const loginSchema = z.object({
 });
 
 export async function login(req: Request, res: Response) {
-  let { email, phone, password, portal, role } = req.body;
+  try {
+    let { email, phone, password, portal, role } = req.body;
   const requestedPortal = String(portal || role || '').toUpperCase();
 
   if (!password || (!email && !phone)) {
@@ -236,6 +237,10 @@ export async function login(req: Request, res: Response) {
       assignedBranches: activeAssignedBranches,
     },
   });
+  } catch (error) {
+    console.error('Unhandled login error:', error);
+    return sendError(res, 500, 'INTERNAL_ERROR', 'Login failed due to a server error. Please try again.');
+  }
 }
 
 export async function refresh(req: Request, res: Response) {
