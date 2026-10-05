@@ -1,126 +1,202 @@
-# Implementation Plan: Super Admin Minimal Overview, Analytics Menu Tab Removal, and Customer Portal PWA Button
+# Implementation Plan: Analytics Wallets Refinement, Real Counter Password & PWA Portal Improvements
 
-## User Requirements
-1. Super Admin Dashboard:
-   - Make the Overview section minimal and compact while including:
-     - Title: "Overview"
-     - Subtitle description: "Platform scale and operational wallet analytics under a unified organization and time window filter."
-     - Organization filter dropdown ("All Organizations")
-     - Time Window with date inputs (dd-mm-yyyy to dd-mm-yyyy)
-     - "Today" button and "All Time" button (clears date range)
-     - "Refresh Metrics" button
-     - "Platform Scale" section with 4 minimal metrics:
-       - Organizations (count + "Active platforms")
-       - Active Cardholders (count + "Across all organizations")
-       - Active Counters (count + "Active POS counters")
-       - Staff Members (count + "Registered staff")
-     - "Wallet Analytics" section with 4 minimal metrics:
-       - Total Sales (currency + "X orders")
-       - Money Added (currency + "X recharges")
-       - Active Wallets (count + "In use")
-       - Refunds (currency + "X refunds")
-2. Super Admin Analytics:
-   - Remove the "Menu Analytics" tab and page (`OrgAdminMenuAnalyticsSection`) from `SuperAdminAnalyticsView.tsx`, retaining Financial Overview and Card Analytics.
-3. Counter Admin and Org Admin Wallets Page:
-   - On the Wallets page (`/cards`), add a "Customer Portal" button positioned directly to the left of the "Customer History" button.
-   - Clicking "Customer Portal" opens the PWA customer portal view (`getPublicCustomerPortalUrl(...)`) in a new browser tab.
-   - Support both Counter Staff view (`CounterStaffCardsView.tsx`), Org Admin view (`OrgAdminCardsView.tsx`), and Blocked Wallets table (`BlockedWalletsTableView.tsx`).
-   - Also add a Customer Portal action in the page header next to Refresh.
+Provide streamlined analytics naming across Super Admin, Org Admin, and Counter Dashboard, serve authentic counter passwords from backend persistence, and refine the Customer Portal PWA with direct view access, item-named transaction history, minimal food preparation tracking, and removal of the view menu option.
+
+![Analytics, Counter Credentials, and Customer Portal UI](C:\Users\damie\.gemini\antigravity-ide\brain\5d95263b-cd5f-4577-8545-14c5773f5f9e\analytics_credentials_portal_sketch_1791182658247.jpg)
+
+## User Review Required
+
+> [!IMPORTANT]
+> Implementation will begin only after explicit user approval of this plan.
+
+Key changes to confirm:
+- Analytics Metric Box Removal: Removing the `Wallet Activations / X Wallets` box from Super Admin, Org Admin, and Counter Dashboard financial analytics and PDF export.
+- Analytics Renaming: Renaming all `Card Analytics` occurrences to `Wallet Analytics` (navigation tabs, export dialogs, PDF headers).
+- Card Metric Box Renaming: Renaming metric card labels in the card tracker to `Active Wallets`, `Settled Wallets`, `Blocked Wallets`, `Blocked Balance`, `Zero Balance Wallets`, and `Inactive Wallets`.
+- Authentic Counter Password: Adding `initialPassword` persistence on counter accounts in PostgreSQL/Prisma so `View / Edit Counter Details` displays the actual configured password rather than a hardcoded `12345678`.
+- PWA Direct Access: Removing the blocking PWA installation modal gate so navigating to the Customer Portal directly opens the active customer view.
+- PWA View Menu Removal: Removing the `Today's Menu` ("View items & prices") button and the live menu modal from the Customer Portal PWA.
+- Transaction History Refinements: Showing specific purchased item names instead of generic `Purchase item`, and removing the green `SUCCESS` box.
+- Minimal Food Preparation Status: Condensing the food preparation card into a sleek, compact horizontal status strip.
 
 ## Proposed Changes
 
-### 1. Super Admin Dashboard Minimal Overview
-File: `Frontend Money Card/src/features/dashboard/SuperAdminDashboard.tsx`
-- Restore CardHeader description: "Platform scale and operational wallet analytics under a unified organization and time window filter."
-- In the filter toolbar, ensure clean compact layout with:
-  - Organization Select
-  - Time Window date inputs
-  - "Today" preset button
-  - "All Time" preset button (resets `startDate` and `endDate` to empty string)
-  - Action button renamed back to "Refresh Metrics"
-- Refactor the 8 stat cards into a lightweight, minimal card style:
-  - Compact padding (`p-3.5 sm:p-4`)
-  - Crisp typography (`font-mono text-xl sm:text-2xl font-bold`)
-  - Sleek icon container (`h-8 w-8` rounded-lg)
-  - Muted secondary labels ("Active platforms", "Across all organizations", "Active POS counters", "Registered staff", "X orders", "X recharges", "In use", "X refunds")
-- Update unit tests in `Frontend Money Card/src/__tests__/superAdminDashboardUnifiedFilters.test.ts` to assert "All Time" button and "Refresh Metrics" label.
+### Web Admin Analytics
 
-### 2. Super Admin Analytics Menu Tab Removal
-File: `Frontend Money Card/src/features/analytics/SuperAdminAnalyticsView.tsx`
-- Change active tab type from `'overview' | 'cards' | 'menu'` to `'overview' | 'cards'`.
-- Remove the "Menu Analytics" button from the tab navigation.
-- Remove the conditional rendering of `OrgAdminMenuAnalyticsSection`.
-- Remove unused imports (`UtensilsCrossed`, `OrgAdminMenuAnalyticsSection`).
+#### `Frontend Money Card/src/features/analytics/OrgAdminAnalyticsComponents.tsx`
+- Remove the `Wallet Activations` card (lines 154-169).
+- Adjust follow-up metric card grid from `lg:grid-cols-4` to `lg:grid-cols-3` (with `leadingCard`) and `lg:grid-cols-2` (without `leadingCard`).
+- Rename `Tile 2: Card Analytics` header to `Wallet Analytics`.
+- Rename `Download Card Analytics` button text to `Download Wallet Analytics`.
 
-### 3. Customer Portal Button in Wallets Page
-Files:
-- `Frontend Money Card/src/utils/formatters.ts`: Update `getPublicCustomerPortalUrl(token?: string)` so that when no token is provided, it returns `${origin}/portal` (or staging domain equivalent).
-- `Frontend Money Card/src/features/cards/CounterStaffCardsView.tsx`:
-  - In each active card row action buttons, add `Customer Portal` button to the left of `Customer History`.
-  - In the page header next to Refresh, add `Customer Portal` button.
-  - Clicking opens `getPublicCustomerPortalUrl(card.qrToken)` in a new tab.
-- `Frontend Money Card/src/features/cards/OrgAdminCardsView.tsx`:
-  - In each counter row action buttons, add `Customer Portal` button to the left of `Customer History`.
-  - In the page header next to Refresh, add `Customer Portal` button.
-  - Clicking opens `getPublicCustomerPortalUrl()` (or active card token for that branch) in a new tab.
-- `Frontend Money Card/src/features/cards/BlockedWalletsTableView.tsx`:
-  - In each blocked card row action buttons, add `Customer Portal` button to the left of `Customer History`.
+#### `Frontend Money Card/src/features/analytics/SuperAdminAnalyticsView.tsx`
+- In tab navigation, update `<span>Card Analytics</span>` to `<span>Wallet Analytics</span>`.
+- Update toast notification text to `Wallet Analytics PDF downloaded.`
+
+#### `Frontend Money Card/src/features/analytics/OrgAdminAnalyticsView.tsx`
+- In tab navigation, update `<span>Card Analytics</span>` to `<span>Wallet Analytics</span>`.
+
+#### `Frontend Money Card/src/features/analytics/useOrgAdminAnalytics.ts`
+- Update notification messages: `Wallet Analytics PDF downloaded.`
+
+#### `Frontend Money Card/src/features/analytics/OrgAdminCardTracker.tsx`
+- Rename card labels:
+  - `Active Cards` -> `Active Wallets`
+  - `Settled Cards` -> `Settled Wallets`
+  - `Blocked Cards` -> `Blocked Wallets`
+  - `Blocked Balance` -> `Blocked Balance`
+  - `Zero Balance` -> `Zero Balance Wallets`
+  - `Inactive Cards` -> `Inactive Wallets`
+
+#### `Frontend Money Card/src/features/analytics/analyticsPdfExport.ts`
+- Remove `Wallet Activations` summary box from PDF generation.
+- Rename PDF section header from `Card Analytics` to `Wallet Analytics`.
+
+### Backend: Authentic Counter Password Storage
+
+#### `Backend Money Card/prisma/schema.prisma`
+- Add `initialPassword String?` to `model User`.
+- Run `npx prisma db push` to synchronize PostgreSQL.
+
+#### `Backend Money Card/src/controllers/organization.controller.ts`
+- In `createBranch`: Save `initialPassword: effectivePassword` when creating or updating the counter manager user.
+- In `updateBranch`: Update `initialPassword: password.trim()` when a new password is provided.
+- In `getBranches`: Include `initialPassword` in the manager select and return `password: manager.initialPassword || ''` in `credentials`.
+- In `getBranchById`: Include `initialPassword` and return `password: manager.initialPassword || ''` in `credentials`.
+
+### Frontend: Counter Password Display
+
+#### `Frontend Money Card/src/features/branches/BranchesPage.tsx`
+- In `handleOpenViewEdit`: Read `branch.credentials?.password` directly from backend API response, falling back to local storage cache if available.
+- Remove hardcoded `'12345678'` fallback; if no password is recorded, display `Not set`.
+- When "Reveal" is clicked, display the authentic counter password.
+
+### Customer Portal PWA Improvements
+
+#### `Frontend Money Card/src/features/portal/PortalSessionPage.tsx`
+- Remove the blocking `if (!isStandalone && !bypassInstall)` install gate that prevented users from directly seeing the active portal screen.
+- Retain non-intrusive `<PwaInstallBanner />` at the top of the session view without blocking portal actions.
+- Remove the `Today's Menu` quick action button and the `Live Menu Modal` (`isMenuOpen && ...`).
+- Remove unused menu states (`menuItems`, `isMenuOpen`, `isLoadingMenu`, `menuSearch`) and `fetchMenu` callback.
+- Adjust quick action grid to a streamlined 2-column layout: `Transaction History` and `Purchase Receipts`.
+- Redesign the food preparation status card into a minimal, compact strip:
+  - Token number badge + Counter name + Compact status pill (`Ready` / `Preparing` / `Queued`).
+  - Single-line concise item preview (e.g. `2x Veg Burger, 1x Cold Coffee`).
+  - Remove oversized multi-layered cards and large notification banners.
+
+#### `Frontend Money Card/src/features/portal/PortalTransactionsPage.tsx`
+- Replace `'Purchase item'` fallback text with actual purchased food item names:
+  - Format items from `txn.items`: `txn.items.map(it => it.quantity > 1 ? `${it.quantity}x ${it.itemName}` : it.itemName).join(', ')`.
+  - Fall back to `'Purchase'` only if items array is empty.
+- Remove the green `<Badge variant="success">SUCCESS</Badge>` box from transaction cards.
 
 ## ASCII Wireframes
 
-### Super Admin Dashboard Minimal Overview
+### 1. Analytics: Wallet Analytics Tabs & Metric Grid
+
 ```
-+-------------------------------------------------------------------------------------------------------------------------+
-| Welcome back, Super Admin                                                                                     [Refresh] |
-+-------------------------------------------------------------------------------------------------------------------------+
-| Quick Actions: [ + Add Organization ]   [ Bell Review Requests ]   [ Layers Manage Plans ]   [ BarChart View Reports ]  |
-+-------------------------------------------------------------------------------------------------------------------------+
-|                                                                                                                         |
-| +-- OVERVIEW ---------------------------------------------------------------------------------------------------------+ |
-| | Overview                                                                                                            | |
-| | Platform scale and operational wallet analytics under a unified organization and time window filter.                | |
-| |                                                                                                                     | |
-| | [ Organization: [ All Organizations       v] ]  [ Time Window: [dd-mm-yyyy] to [dd-mm-yyyy] [Today] [All Time] ]   | |
-| |                                                                                                   [Refresh Metrics] | |
-| | ------------------------------------------------------------------------------------------------------------------- | |
-| | PLATFORM SCALE                                                                                                      | |
-| | +---------------------+ +---------------------+ +---------------------+ +---------------------+                 | |
-| | | [Building]          | | [Users]             | | [Store]             | | [UserCheck]         |                 | |
-| | | Organizations       | | Active Cardholders  | | Active Counters     | | Staff Members       |                 | |
-| | | 1                   | | 1                   | | 1                   | | 3                   |                 | |
-| | | Active platforms    | | Across all orgs     | | Active POS counters | | Registered staff    |                 | |
-| | +---------------------+ +---------------------+ +---------------------+ +---------------------+                 | |
-| |                                                                                                                     | |
-| | WALLET ANALYTICS                                                                                                    | |
-| | +---------------------+ +---------------------+ +---------------------+ +---------------------+                 | |
-| | | [ShoppingBag]       | | [TrendingUp]        | | [CreditCard]        | | [RefreshCw]         |                 | |
-| | | Total Sales         | | Money Added         | | Active Wallets      | | Refunds             |                 | |
-| | | Rs.3,466            | | Rs.3,650            | | 1                   | | Rs.0                |                 | |
-| | | 3 orders            | | 2 recharges         | | In use              | | 0 refunds           |                 | |
-| | +---------------------+ +---------------------+ +---------------------+ +---------------------+                 | |
-| +---------------------------------------------------------------------------------------------------------------------+ |
-+-------------------------------------------------------------------------------------------------------------------------+
++---------------------------------------------------------------------------------------+
+|  Overview    [ Financial Overview ]   [ Wallet Analytics ]                            |
++---------------------------------------------------------------------------------------+
+|  +-----------------------+  +-----------------------+  +---------------------------+  |
+|  | TOTAL SALES           |  | MONEY ADDED           |  | NET CASH FLOW             |  |
+|  | Rs 3,466              |  | Rs 3,650              |  | Rs 184                    |  |
+|  | 3 orders              |  | 2 recharges           |  | Operating net             |  |
+|  +-----------------------+  +-----------------------+  +---------------------------+  |
+|                                                                                       |
+|  +---------------------------------------------------------------------------------+  |
+|  | WALLET FLEET TRACKER                                                            |  |
+|  | +---------------+ +---------------+ +---------------+ +---------------+        |  |
+|  | | ACTIVE        | | SETTLED       | | BLOCKED       | | BLOCKED       |        |  |
+|  | | WALLETS       | | WALLETS       | | WALLETS       | | BALANCE       |        |  |
+|  | | 1             | | 0             | | 0             | | Rs 0          |        |  |
+|  | +---------------+ +---------------+ +---------------+ +---------------+        |  |
+|  | +-------------------------------+ +-------------------------------+             |  |
+|  | | ZERO BALANCE WALLETS          | | INACTIVE WALLETS              |             |  |
+|  | | 0                             | | 0                             |             |  |
+|  | +-------------------------------+ +-------------------------------+             |  |
+|  +---------------------------------------------------------------------------------+  |
++---------------------------------------------------------------------------------------+
 ```
 
-### Counter Admin & Org Admin Wallets Table (Action Buttons)
+### 2. View / Edit Counter Details Modal (Authentic Password)
+
 ```
-+-------------------------------------------------------------------------------------------------------------------------+
-| Wallets & Customer History                                                  [ Customer Portal (PWA) ]   [ Refresh ]     |
-+-------------------------------------------------------------------------------------------------------------------------+
-| [ Search wallet ID or customer...           [X] ]                                                                       |
-+-------------------------------------------------------------------------------------------------------------------------+
-| [ Live Active Wallets (1) ]   [ Blocked Wallets (0) ]                                                                   |
-+-------------------------------------------------------------------------------------------------------------------------+
-| WALLET ID            LIVE BALANCE   ACTIONS                                                                             |
-| ----------------------------------------------------------------------------------------------------------------------- |
-| [Card] KD1IRUG9      Rs.450.00      [ Customer Portal ] [ Customer History ] [ Wallet Analytics ] [ Wallet Details ]    |
-|                                     ^-- NEW BUTTON TO THE LEFT OF CUSTOMER HISTORY                                      |
-+-------------------------------------------------------------------------------------------------------------------------+
++---------------------------------------------------------------------------------------+
+|  Counter Details: Main Cafeteria Counter 1                                        [X] |
++---------------------------------------------------------------------------------------+
+|  Counter Name                                                                         |
+|  [ Main Cafeteria Counter 1                                                         ] |
+|                                                                                       |
+|  Mobile Number                                                                        |
+|  [ +91 | 9876543210                                                                 ] |
+|                                                                                       |
+|  Reset Password                                                                       |
+|  [ Enter new password (optional)                                            ] [Eye]   |
+|                                                                                       |
+|  +---------------------------------------------------------------------------------+  |
+|  | CURRENT PASSWORD                                                                |  |
+|  | Pass@2026                                                             [Eye] Hide|  |
+|  | Real saved password served directly from counter credentials                     |  |
+|  +---------------------------------------------------------------------------------+  |
+|                                                                                       |
+|  [ Copy Credentials ]   [ Send via WhatsApp ]   [ Cancel ]   [ Save Changes ]         |
++---------------------------------------------------------------------------------------+
+```
+
+### 3. Customer Portal PWA: Direct Landing & Streamlined Actions (No Menu)
+
+```
++---------------------------------------------------------------------------------------+
+|  MONEY CARD PORTAL                                                  [Live Connected]  |
+|  +---------------------------------------------------------------------------------+  |
+|  | Customer: Rajesh Kumar              Wallet: MC-102               Session: ACTIVE|  |
+|  |                                                                                 |  |
+|  |                             CURRENT WALLET BALANCE                              |  |
+|  |                                   Rs 450.00                                     |  |
+|  |                               Main Food Counter                                 |  |
+|  |                                                                                 |  |
+|  |                         [ Download PDF Receipt ]                                |  |
+|  +---------------------------------------------------------------------------------+  |
+|                                                                                       |
+|  +---------------------------------------------------------------------------------+  |
+|  | Food Prep: [Token #4] South Counter | 2x Masala Dosa, 1x Tea     [Cooking Now]  |  |
+|  +---------------------------------------------------------------------------------+  |
+|                                                                                       |
+|  [ Transaction History ]                              [ Purchase Receipts ]           |
++---------------------------------------------------------------------------------------+
+```
+
+### 4. PWA Transaction History (Item Names & Clean Design)
+
+```
++---------------------------------------------------------------------------------------+
+|  [<-] Transaction History                                                             |
++---------------------------------------------------------------------------------------+
+|  +---------------------------------------------------------------------------------+  |
+|  | [Bag] 2x Veg Burger, 1x Cold Coffee                              - Rs 240.00    |  |
+|  |       05-10-2026 12:45 PM                                        2 items [v]    |  |
+|  +---------------------------------------------------------------------------------+  |
+|  | [Arrow] Recharge successful                                      + Rs 500.00    |  |
+|  |         05-10-2026 12:30 PM                                      UPI Top-up     |  |
+|  +---------------------------------------------------------------------------------+  |
+|  (Clean rows with item names, no green SUCCESS badges, no generic Purchase item)     |
++---------------------------------------------------------------------------------------+
 ```
 
 ## Verification Plan
 
-### Automated Tests
-1. Frontend Tests: Run `npm test -- --run` in `Frontend Money Card` (verify all test suites pass, including updated `superAdminDashboardUnifiedFilters.test.ts`).
-2. Frontend Type Check: Run `npx tsc --noEmit` in `Frontend Money Card` (verify 0 errors).
-3. Mobile Parity Check: Verify no regressions across Mobile POS (`flutter analyze --no-pub`).
+### Automated Test Suites
+- Frontend Tests: `npm test -- --run` in `Frontend Money Card` (verify all 300+ tests pass).
+- TypeScript Validation: `npx tsc --noEmit` in `Frontend Money Card` (zero errors).
+- Backend Tests: `npm test` in `Backend Money Card` (verify all 124 tests pass).
+- Prisma DB Push: verify schema synchronization with local PostgreSQL.
+
+### Manual Parity & Operational Verification
+- Super Admin Analytics: Verify `Wallet Analytics` tab, verify `Wallet Activations` card is gone, verify 6 wallet fleet boxes with `Wallets` labels.
+- Org Admin & Counter Dashboard Analytics: Verify identical `Wallet Analytics` tabs and metrics parity.
+- View / Edit Counter Details: Verify real password appears upon clicking Reveal, matching the actual password saved during creation/edit.
+- Customer Portal PWA: Verify opening `/portal` lands directly on the customer screen without the 2-step install prompt block.
+- PWA View Menu Removal: Verify the "Today's Menu" button and menu modal are removed, leaving a 2-button layout (Transaction History and Purchase Receipts).
+- PWA Transaction History: Verify item names (e.g. `2x Veg Burger, 1x Cold Coffee`) appear instead of `Purchase item`, and no green SUCCESS badge is shown.
+- Food Preparation Box: Verify minimal compact strip layout.

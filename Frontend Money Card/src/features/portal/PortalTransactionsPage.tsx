@@ -7,7 +7,6 @@ import { apiService } from '@/services/api';
 import type { PublicTransaction } from '@/types';
 import {
   Card,
-  Badge,
   LoadingState,
   EmptyState,
   ErrorState,
@@ -124,6 +123,9 @@ export function PortalTransactionsPage() {
             const isExpanded = expandedTxnId === txn.id;
             const isRecharge = txn.type === 'RECHARGE' || txn.type === 'RECHARGE_CASH' || txn.type === 'RECHARGE_UPI' || String(txn.type).includes('RECHARGE');
             const isRefund = txn.type === 'REFUND' || txn.type === 'REFUND_RETURN' || String(txn.type).includes('REFUND');
+            const purchaseTitle = txn.items && txn.items.length > 0
+              ? txn.items.map((it) => (it.quantity > 1 ? `${it.quantity}x ${it.itemName}` : it.itemName)).join(', ')
+              : 'Purchase';
 
             return (
               <Card key={txn.id} padding="sm" className="space-y-3">
@@ -157,19 +159,13 @@ export function PortalTransactionsPage() {
 
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-slate-900">
+                        <span className="text-sm font-semibold text-slate-900 line-clamp-1">
                           {isRecharge
                             ? 'Recharge successful'
                             : isRefund
                               ? 'Session Refund Settlement'
-                              : 'Purchase item'}
+                              : purchaseTitle}
                         </span>
-                        <Badge
-                          variant={txn.status === 'SUCCESS' ? 'success' : 'outline'}
-                          className="text-[10px]"
-                        >
-                          {txn.status}
-                        </Badge>
                       </div>
                       <p className="text-xs text-slate-500">{formatDateTime(txn.timestamp)}</p>
                     </div>

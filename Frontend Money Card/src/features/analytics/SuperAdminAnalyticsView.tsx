@@ -229,7 +229,7 @@ export function SuperAdminAnalyticsView() {
     if (!options) return;
     const dateStr = new Date().toISOString().split('T')[0];
     downloadCardAnalyticsPdf(options, `MoneyCard_SuperAdmin_Card_Analytics_${dateStr}.pdf`);
-    notify.success('Card Analytics PDF downloaded.');
+    notify.success('Wallet Analytics PDF downloaded.');
   };
 
   const handleDownloadBothPdf = () => {
@@ -366,7 +366,7 @@ export function SuperAdminAnalyticsView() {
           }`}
         >
           <CreditCard className="h-4 w-4 text-indigo-600" />
-          <span>Card Analytics</span>
+          <span>Wallet Analytics</span>
         </button>
       </div>
 

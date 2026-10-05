@@ -153,6 +153,7 @@ export async function getBranches(req: Request, res: Response) {
               name: true,
               phone: true,
               email: true,
+              initialPassword: true,
               permissions: {
                 select: {
                   permission: true,
@@ -197,7 +198,7 @@ export async function getBranches(req: Request, res: Response) {
         ? {
             name: b.name,
             phone: managerUser.phone || '',
-            password: '12345678',
+            password: managerUser.initialPassword || '',
           }
         : undefined,
       createdAt: b.createdAt,
@@ -310,6 +311,7 @@ export async function createBranch(req: Request, res: Response) {
             name: trimmedName,
             phone: cleanPhone,
             passwordHash,
+            initialPassword: effectivePassword,
             role: Role.STAFF,
             isCounterAccount: true,
             organizationId: orgId,
@@ -323,6 +325,7 @@ export async function createBranch(req: Request, res: Response) {
             name: trimmedName,
             phone: cleanPhone,
             passwordHash,
+            initialPassword: effectivePassword,
             isCounterAccount: true,
             status: UserStatus.ACTIVE,
           },
@@ -508,6 +511,7 @@ export async function getBranchById(req: Request, res: Response) {
               name: true,
               phone: true,
               email: true,
+              initialPassword: true,
               permissions: {
                 select: {
                   permission: true,
@@ -546,7 +550,7 @@ export async function getBranchById(req: Request, res: Response) {
       ? {
           name: branch.name,
           phone: manager.phone || '',
-          password: '12345678',
+          password: manager.initialPassword || '',
         }
       : undefined,
   });
@@ -637,13 +641,14 @@ export async function updateBranch(req: Request, res: Response) {
     existingManager = managerAssignment?.user;
 
     if (existingManager) {
-      if (cleanPhone || passwordHash) {
+      if (cleanPhone || passwordHash || password) {
         await tx.user.update({
           where: { id: existingManager.id },
           data: {
             name: updated.name,
             ...(cleanPhone ? { phone: cleanPhone } : {}),
             ...(passwordHash ? { passwordHash } : {}),
+            ...(password && password.trim() ? { initialPassword: password.trim() } : {}),
             isCounterAccount: true,
             status: UserStatus.ACTIVE,
           },
@@ -668,6 +673,7 @@ export async function updateBranch(req: Request, res: Response) {
             name: updated.name,
             phone: cleanPhone,
             passwordHash: effectivePasswordHash,
+            initialPassword: password && password.trim() ? password.trim() : (existingManager?.initialPassword || null),
             role: Role.STAFF,
             isCounterAccount: true,
             organizationId: orgId,
@@ -681,6 +687,7 @@ export async function updateBranch(req: Request, res: Response) {
             name: updated.name,
             phone: cleanPhone,
             passwordHash: effectivePasswordHash,
+            ...(password && password.trim() ? { initialPassword: password.trim() } : {}),
             isCounterAccount: true,
             status: UserStatus.ACTIVE,
           },
@@ -708,6 +715,7 @@ export async function updateBranch(req: Request, res: Response) {
   });
 
   const finalPhone = cleanPhone || existingManager?.phone;
+  const finalPassword = password && password.trim() ? password.trim() : (existingManager?.initialPassword || '');
 
   return sendSuccess(res, {
     ...updatedBranch,
@@ -721,7 +729,7 @@ export async function updateBranch(req: Request, res: Response) {
       ? {
           name: updatedBranch.name,
           phone: finalPhone,
-          password: effectivePassword || '12345678',
+          password: finalPassword,
         }
       : undefined,
   });

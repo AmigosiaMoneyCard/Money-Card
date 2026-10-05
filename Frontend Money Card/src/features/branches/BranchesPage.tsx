@@ -425,13 +425,13 @@ export function BranchesPage() {
     } catch {}
 
     const storedPassword =
+      branch.credentials?.password ||
       branchPasswords[branch.id] ||
       (initialPhone && branchPasswords[initialPhone]) ||
       (branch.manager?.id && staffPasswords[branch.manager.id]) ||
       (initialPhone && staffPasswords[initialPhone]) ||
       staffPasswords[branch.id] ||
-      branch.credentials?.password ||
-      '12345678';
+      '';
     setCurrentBranchPassword(storedPassword);
     setShowCurrentPassword(false);
     setEditPasswordInput('');
@@ -499,7 +499,7 @@ export function BranchesPage() {
     if (!selectedBranch) return;
     const cleanPhone = editPhoneInput.replace(/\D/g, '').slice(-10);
     const loginUrl = `${window.location.origin}/login`;
-    const passwordText = editPasswordInput.trim() || currentBranchPassword || '12345678';
+    const passwordText = editPasswordInput.trim() || currentBranchPassword || 'Not set';
     const textToCopy =
       `Counter Name: ${editNameInput.trim() || selectedBranch.name}\n` +
       `Mobile Number: ${cleanPhone || 'Not set'}\n` +
@@ -1129,7 +1129,7 @@ export function BranchesPage() {
                   Current Password
                 </span>
                 <span className="font-mono text-sm font-bold text-slate-800">
-                  {showCurrentPassword ? (editPasswordInput.trim() || currentBranchPassword) : '••••••••'}
+                  {showCurrentPassword ? (editPasswordInput.trim() || currentBranchPassword || 'Not set') : '••••••••'}
                 </span>
               </div>
               <button

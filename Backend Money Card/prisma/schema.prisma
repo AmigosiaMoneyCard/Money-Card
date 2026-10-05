@@ -156,6 +156,7 @@ model User {
   email                String?     @unique
   phone                String?     @unique
   passwordHash         String
+  initialPassword      String?
   name                 String
   role                 Role
   organizationId       String?

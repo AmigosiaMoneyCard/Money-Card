@@ -161,7 +161,6 @@ export function buildOrgAnalyticsJsPdf({
     const cashCount = analytics.cashCount ?? (analytics as any).cashRechargeCount ?? 0;
     const cancelledTopUps = analytics.cancelledTopUps ?? 0;
     const cancelledTopUpsCount = analytics.cancelledTopUpsCount ?? 0;
-    const walletActivations = analytics.cardsGivenOut ?? analytics.activeCardsCount ?? 0;
 
     // Row 2: Recharge Breakdown (3 cards)
     const row2Kpis = [
@@ -195,18 +194,18 @@ export function buildOrgAnalyticsJsPdf({
 
     curY += 22;
 
-    // Row 3: Follow-up Operations (3 cards)
+    // Row 3: Follow-up Operations (2 cards)
     const row3Kpis = [
-      { label: 'Wallet Activations', val: `${walletActivations.toLocaleString()} Wallets`, sub: 'Issued in period' },
       { label: 'Refunds', val: formatPdfCurrency(moneyRefunded), sub: 'Returned to customers' },
       { label: 'Cancelled Top-ups', val: formatPdfCurrency(cancelledTopUps), sub: `${cancelledTopUpsCount} recharges reversed` },
     ];
+    const cardW3 = (contentWidth - 3) / 2;
 
     row3Kpis.forEach((kpi, idx) => {
-      const x = margin + idx * (cardW + 3);
+      const x = margin + idx * (cardW3 + 3);
       doc.setFillColor(248, 250, 252);
       doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(x, curY + 2, cardW, 18, 2, 2, 'FD');
+      doc.roundedRect(x, curY + 2, cardW3, 18, 2, 2, 'FD');
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(6.5);

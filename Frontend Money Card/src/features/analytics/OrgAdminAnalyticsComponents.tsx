@@ -64,7 +64,6 @@ export function OrgAdminFinancialSection({
 
   const upiMoney = analytics.upiMoney ?? upiRecharge;
   const cashMoney = analytics.cashMoney ?? cashRecharge;
-  const walletActivations = analytics.cardsGivenOut ?? analytics.activeCardsCount ?? 0;
 
   return (
     <div className="space-y-4">
@@ -150,24 +149,7 @@ export function OrgAdminFinancialSection({
       </Card>
 
       {/* 3. Follow-up Metric Cards Below */}
-      <div className={`grid gap-4 sm:grid-cols-2 ${leadingCard ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
-        {/* Wallet Activations */}
-        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Wallet Activations
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
-              <CreditCard className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <p className="font-mono text-2xl font-bold text-slate-900">
-              {walletActivations.toLocaleString()} Wallets
-            </p>
-          </div>
-        </Card>
-
+      <div className={`grid gap-4 sm:grid-cols-2 ${leadingCard ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
         {/* Optional Leading Card (e.g. Cafeterias in Super Admin) */}
         {leadingCard}
 
@@ -732,7 +714,7 @@ export function OrgAdminPdfModal({
                 selected.cards ? 'text-emerald-950' : 'text-slate-600'
               }`}
             >
-              Card Analytics
+              Wallet Analytics
             </span>
             <div
               className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${
@@ -776,7 +758,7 @@ export function OrgAdminPdfModal({
                 : selected.financial
                 ? 'Download Financial Overview'
                 : selected.cards
-                ? 'Download Card Analytics'
+                ? 'Download Wallet Analytics'
                 : 'Select a Section'}
             </Button>
           </div>

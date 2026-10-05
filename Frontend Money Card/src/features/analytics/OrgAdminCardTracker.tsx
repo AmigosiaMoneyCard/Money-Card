@@ -34,11 +34,11 @@ export function OrgAdminCardTracker({
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-      {/* Card 1: Active Cards */}
+      {/* Card 1: Active Wallets */}
       <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Active Cards
+            Active Wallets
           </span>
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
             <CreditCard className="h-4 w-4" />
@@ -51,11 +51,11 @@ export function OrgAdminCardTracker({
         </div>
       </Card>
 
-      {/* Card 2: Settled Cards */}
+      {/* Card 2: Settled Wallets */}
       <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Settled Cards
+            Settled Wallets
           </span>
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
             <CheckCircle2 className="h-4 w-4" />
@@ -68,11 +68,11 @@ export function OrgAdminCardTracker({
         </div>
       </Card>
 
-      {/* Card 3: Blocked Cards */}
+      {/* Card 3: Blocked Wallets */}
       <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Blocked Cards
+            Blocked Wallets
           </span>
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
             <ShieldAlert className="h-4 w-4" />
@@ -102,11 +102,11 @@ export function OrgAdminCardTracker({
         </div>
       </Card>
 
-      {/* Card 5: Zero Balance Cards */}
+      {/* Card 5: Zero Balance Wallets */}
       <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Zero Balance
+            Zero Balance Wallets
           </span>
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
             <AlertCircle className="h-4 w-4" />
@@ -119,11 +119,11 @@ export function OrgAdminCardTracker({
         </div>
       </Card>
 
-      {/* Card 6: Inactive Cards */}
+      {/* Card 6: Inactive Wallets */}
       <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Inactive Cards
+            Inactive Wallets
           </span>
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
             <Clock className="h-4 w-4" />
