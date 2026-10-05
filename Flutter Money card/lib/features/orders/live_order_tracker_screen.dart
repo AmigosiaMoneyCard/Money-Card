@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
+import '../../models/card_session.dart';
 import '../../models/kitchen_order.dart';
 import '../../providers/kitchen_orders_provider.dart';
+import '../../widgets/scanner/qr_scanner_view.dart';
 
 class LiveOrderTrackerScreen extends ConsumerStatefulWidget {
   const LiveOrderTrackerScreen({super.key});
@@ -15,6 +17,8 @@ class LiveOrderTrackerScreen extends ConsumerStatefulWidget {
 class _LiveOrderTrackerScreenState extends ConsumerState<LiveOrderTrackerScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -29,7 +33,64 @@ class _LiveOrderTrackerScreenState extends ConsumerState<LiveOrderTrackerScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  void _openQrScanner() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return SizedBox(
+          height: MediaQuery.of(ctx).size.height * 0.75,
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            child: Scaffold(
+              appBar: AppBar(
+                title: const Text('Scan Wallet QR', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                leading: IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.of(ctx).pop(),
+                ),
+              ),
+              body: QrScannerView(
+                title: 'Scan Wallet QR',
+                prompt: 'Scan customer wallet QR to filter order',
+                onQrScanned: (token) {
+                  Navigator.of(ctx).pop();
+                  var clean = cleanDisplayCardNumber(token);
+                  final upper = clean.toUpperCase();
+                  if (upper.startsWith('MC-') || upper.startsWith('MC ')) {
+                    clean = clean.substring(3).trim();
+                  } else if (upper.startsWith('CARD-') || upper.startsWith('CARD ')) {
+                    clean = clean.substring(5).trim();
+                  } else if (upper.startsWith('WALLET-') || upper.startsWith('WALLET ')) {
+                    clean = clean.substring(7).trim();
+                  }
+                  final finalQuery = clean.isNotEmpty ? clean : token.trim();
+                  _searchController.text = finalQuery;
+                  setState(() {
+                    _searchQuery = finalQuery;
+                  });
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  bool _matchesSearch(KitchenOrder order) {
+    if (_searchQuery.isEmpty) return true;
+    final q = _searchQuery.toLowerCase();
+    if (order.cardDisplayNumber.toLowerCase().contains(q)) return true;
+    if (order.orderNumber.toString().contains(q)) return true;
+    if (order.customerName != null && order.customerName!.toLowerCase().contains(q)) return true;
+    if (order.items.any((item) => item.itemName.toLowerCase().contains(q))) return true;
+    return false;
   }
 
   @override
@@ -37,8 +98,8 @@ class _LiveOrderTrackerScreenState extends ConsumerState<LiveOrderTrackerScreen>
     final state = ref.watch(kitchenOrdersNotifierProvider);
     final notifier = ref.read(kitchenOrdersNotifierProvider.notifier);
 
-    final inProgressOrders = state.orders.where((o) => o.isPreparing || o.isPending).toList();
-    final readyOrders = state.orders.where((o) => o.isReady).toList();
+    final inProgressOrders = state.orders.where((o) => (o.isPreparing || o.isPending) && _matchesSearch(o)).toList();
+    final readyOrders = state.orders.where((o) => o.isReady && _matchesSearch(o)).toList();
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
@@ -69,11 +130,76 @@ class _LiveOrderTrackerScreenState extends ConsumerState<LiveOrderTrackerScreen>
         ),
       ),
       body: SafeArea(
-        child: TabBarView(
-          controller: _tabController,
+        child: Column(
           children: [
-            _buildList(inProgressOrders, 'No Orders In Progress', 'Orders being cooked in the kitchen will show here.', notifier, false),
-            _buildList(readyOrders, 'No Orders Ready', 'Orders plated and ready for pickup will appear here.', notifier, true),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (val) {
+                        setState(() {
+                          _searchQuery = val.trim();
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Search wallet ID, ticket #...',
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 18),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {
+                                    _searchQuery = '';
+                                  });
+                                },
+                              )
+                            : null,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: AppColors.primary),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
+                      tooltip: 'Scan Wallet QR',
+                      onPressed: _openQrScanner,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildList(inProgressOrders, 'No Orders In Progress', 'Orders being cooked in the kitchen will show here.', notifier, false),
+                  _buildList(readyOrders, 'No Orders Ready', 'Orders plated and ready for pickup will appear here.', notifier, true),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -88,6 +214,10 @@ class _LiveOrderTrackerScreenState extends ConsumerState<LiveOrderTrackerScreen>
     bool isReadyTab,
   ) {
     if (orders.isEmpty) {
+      final title = _searchQuery.isNotEmpty ? 'No Matching Orders' : emptyTitle;
+      final desc = _searchQuery.isNotEmpty
+          ? 'No orders found matching "$_searchQuery". Try searching a different wallet ID or ticket number.'
+          : emptyDesc;
       return Center(
         child: Padding(
           padding: AppSpacing.paddingXl,
@@ -97,7 +227,7 @@ class _LiveOrderTrackerScreenState extends ConsumerState<LiveOrderTrackerScreen>
               Icon(Icons.inventory_2_outlined, size: 48, color: Colors.grey.shade400),
               const SizedBox(height: AppSpacing.md),
               Text(
-                emptyTitle,
+                title,
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -106,7 +236,7 @@ class _LiveOrderTrackerScreenState extends ConsumerState<LiveOrderTrackerScreen>
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
-                emptyDesc,
+                desc,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 13,

@@ -15,6 +15,8 @@ class KitchenOrdersScreen extends ConsumerStatefulWidget {
 class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -29,7 +31,16 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  bool _matchesSearch(KitchenOrder order) {
+    if (_searchQuery.isEmpty) return true;
+    final q = _searchQuery.toLowerCase();
+    if (order.cardDisplayNumber.toLowerCase().contains(q)) return true;
+    if (order.orderNumber.toString().contains(q)) return true;
+    return false;
   }
 
   @override
@@ -37,8 +48,8 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
     final state = ref.watch(kitchenOrdersNotifierProvider);
     final notifier = ref.read(kitchenOrdersNotifierProvider.notifier);
 
-    final activeOrders = state.orders.where((o) => o.isPending || o.isPreparing).toList();
-    final readyOrders = state.orders.where((o) => o.isReady).toList();
+    final activeOrders = state.orders.where((o) => (o.isPending || o.isPreparing) && _matchesSearch(o)).toList();
+    final readyOrders = state.orders.where((o) => o.isReady && _matchesSearch(o)).toList();
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
@@ -71,6 +82,47 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
       body: SafeArea(
         child: Column(
           children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (val) {
+                  setState(() {
+                    _searchQuery = val.trim();
+                  });
+                },
+                decoration: InputDecoration(
+                  hintText: 'Search wallet ID, ticket #...',
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {
+                              _searchQuery = '';
+                            });
+                          },
+                        )
+                      : null,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.primary),
+                  ),
+                ),
+              ),
+            ),
             if (state.hasNewOrderPulse)
               Container(
                 width: double.infinity,
@@ -205,7 +257,7 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
             ),
             const SizedBox(height: AppSpacing.md),
             Text(
-              emptyTitle,
+              _searchQuery.isNotEmpty ? 'No Matching Tickets' : emptyTitle,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 18,
@@ -215,7 +267,9 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              emptyDescription,
+              _searchQuery.isNotEmpty
+                  ? 'No kitchen orders found matching "$_searchQuery".'
+                  : emptyDescription,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 14,

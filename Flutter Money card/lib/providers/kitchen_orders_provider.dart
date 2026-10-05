@@ -57,7 +57,6 @@ class KitchenOrdersState {
 class KitchenOrdersNotifier extends StateNotifier<KitchenOrdersState> {
   final KitchenService _kitchenService;
   final Ref _ref;
-  Timer? _pollingTimer;
   Timer? _pulseTimer;
   final Set<String> _knownOrderIds = {};
   final Set<String> _knownReadyOrderIds = {};
@@ -65,24 +64,13 @@ class KitchenOrdersNotifier extends StateNotifier<KitchenOrdersState> {
 
   KitchenOrdersNotifier(this._kitchenService, this._ref)
       : super(const KitchenOrdersState()) {
-    // Initial load
+    // Initial load into cache/state
     loadOrders(silent: true);
     loadSummary(silent: true);
-    // Background polling every 30 seconds to prevent network and server congestion
-    _startPolling();
-  }
-
-  void _startPolling() {
-    _pollingTimer?.cancel();
-    _pollingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      loadOrders(silent: true);
-      loadSummary(silent: true);
-    });
   }
 
   @override
   void dispose() {
-    _pollingTimer?.cancel();
     _pulseTimer?.cancel();
     super.dispose();
   }

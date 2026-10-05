@@ -56,7 +56,6 @@ class _StaffAppShellState extends ConsumerState<StaffAppShell> with WidgetsBindi
   int _calculateSelectedIndex(bool isKitchen, bool isManager) {
     if (isKitchen) {
       if (widget.currentPath.startsWith('/app/products')) return 1;
-      if (widget.currentPath.startsWith('/app/profile')) return 2;
       return 0; // /app/kitchen
     }
     if (widget.currentPath.startsWith('/app/cards')) return 1;
@@ -73,9 +72,6 @@ class _StaffAppShellState extends ConsumerState<StaffAppShell> with WidgetsBindi
           break;
         case 1:
           context.go('/app/products');
-          break;
-        case 2:
-          context.go('/app/profile');
           break;
       }
       return;
@@ -162,11 +158,6 @@ class _StaffAppShellState extends ConsumerState<StaffAppShell> with WidgetsBindi
                   icon: Icon(Icons.restaurant_menu_outlined),
                   selectedIcon: Icon(Icons.restaurant_menu),
                   label: 'Menu',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.person_outline),
-                  selectedIcon: Icon(Icons.person),
-                  label: 'Profile',
                 ),
               ]
             : [

@@ -306,7 +306,6 @@ export function SuperAdminDashboard() {
           <Card className="border-slate-200 bg-white shadow-xs">
             <CardHeader
               title="Overview"
-              description="Platform scale and operational wallet analytics under a unified organization and time window filter."
             />
 
             <CardContent className="space-y-6">
@@ -377,22 +376,11 @@ export function SuperAdminDashboard() {
                       >
                         Today
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setStartDate('');
-                          setEndDate('');
-                        }}
-                        className="h-7 px-2 text-xs font-semibold border-slate-200 bg-white text-slate-600 hover:text-slate-900 cursor-pointer"
-                      >
-                        All Time
-                      </Button>
                     </div>
                   </div>
                 </div>
 
-                {/* Refresh Metrics */}
+                {/* Refresh Action */}
                 <div className="pt-1 lg:pt-0">
                   <Button
                     variant="outline"
@@ -402,7 +390,7 @@ export function SuperAdminDashboard() {
                     leftIcon={<RefreshCw className={`h-3.5 w-3.5 text-slate-600 ${isRefreshing || isAnalyticsLoading ? 'animate-spin' : ''}`} />}
                     className="w-full sm:w-auto"
                   >
-                    Refresh Metrics
+                    Refresh
                   </Button>
                 </div>
               </div>
