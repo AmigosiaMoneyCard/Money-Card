@@ -67,26 +67,6 @@ export async function getStaffList(req: Request, res: Response) {
     },
   });
 
-  // Exclude all branch counter names across the organization
-  const orgBranches = await prisma.branch.findMany({
-    where: { organizationId: orgId },
-    select: { name: true },
-  });
-  const orgBranchNames = orgBranches.map((b) => b.name);
-  if (orgBranchNames.length > 0) {
-    andConditions.push({
-      NOT: {
-        name: { in: orgBranchNames },
-      },
-    });
-  }
-
-  // Always exclude the requesting user themselves from the staff list
-  if (req.user?.id) {
-    andConditions.push({
-      id: { not: req.user.id },
-    });
-  }
 
   // If the user is STAFF (counter manager), restrict to staff assigned to their branch(es)
   if (req.user?.role === Role.STAFF) {

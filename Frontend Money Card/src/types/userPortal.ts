@@ -15,6 +15,7 @@ export interface PublicSessionDetail {
 }
 
 export interface PublicTransactionItem {
+  itemId?: string;
   itemName: string;
   quantity: number;
   unitPrice: number;

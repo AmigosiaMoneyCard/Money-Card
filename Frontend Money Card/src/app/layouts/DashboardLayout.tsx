@@ -77,13 +77,6 @@ export function DashboardLayout() {
     });
   }, [userRole, hasPermission]);
 
-  // ── Organization Context Label ────────────────────────────
-  const orgContextLabel = useMemo(() => {
-    if (userRole === 'SUPER_ADMIN') {
-      return 'Platform Super Admin';
-    }
-    return user?.organizationName || 'Cafeteria Admin';
-  }, [userRole, user?.organizationName]);
 
   if (isLoading && !user) {
     return <LoadingState message="Initializing session..." />;
@@ -243,14 +236,6 @@ export function DashboardLayout() {
 
           <div className="flex-1" />
 
-          {/* Organization Context Badge */}
-          <div className="hidden md:flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700">
-            <Shield className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-            <span className="text-slate-500">Cafeteria:</span>
-            <span className="font-semibold text-slate-800 truncate max-w-[140px]">
-              {orgContextLabel}
-            </span>
-          </div>
 
           {/* User Profile Menu */}
           <ProfileMenu />
