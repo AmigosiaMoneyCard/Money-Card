@@ -4,20 +4,26 @@ Provide streamlined analytics naming across Super Admin, Org Admin, and Counter 
 
 ![Analytics, Counter Credentials, and Customer Portal UI](C:\Users\damie\.gemini\antigravity-ide\brain\5d95263b-cd5f-4577-8545-14c5773f5f9e\analytics_credentials_portal_sketch_1791182658247.jpg)
 
-## User Review Required
-
-> [!IMPORTANT]
-> Implementation will begin only after explicit user approval of this plan.
-
-Key changes to confirm:
-- Analytics Metric Box Removal: Removing the `Wallet Activations / X Wallets` box from Super Admin, Org Admin, and Counter Dashboard financial analytics and PDF export.
-- Analytics Renaming: Renaming all `Card Analytics` occurrences to `Wallet Analytics` (navigation tabs, export dialogs, PDF headers).
-- Card Metric Box Renaming: Renaming metric card labels in the card tracker to `Active Wallets`, `Settled Wallets`, `Blocked Wallets`, `Blocked Balance`, `Zero Balance Wallets`, and `Inactive Wallets`.
-- Authentic Counter Password: Adding `initialPassword` persistence on counter accounts in PostgreSQL/Prisma so `View / Edit Counter Details` displays the actual configured password rather than a hardcoded `12345678`.
-- PWA Direct Access: Removing the blocking PWA installation modal gate so navigating to the Customer Portal directly opens the active customer view.
-- PWA View Menu Removal: Removing the `Today's Menu` ("View items & prices") button and the live menu modal from the Customer Portal PWA.
-- Transaction History Refinements: Showing specific purchased item names instead of generic `Purchase item`, and removing the green `SUCCESS` box.
-- Minimal Food Preparation Status: Condensing the food preparation card into a sleek, compact horizontal status strip.
+## User Requirements & Status
+1. Super Admin Dashboard:
+   - Overview section minimal and compact:
+     - Title: "Overview" (subtitle description removed for clean minimal appearance)
+     - Organization filter dropdown ("All Organizations")
+     - Time Window with date inputs (dd-mm-yyyy to dd-mm-yyyy)
+     - "Today" button and "All Time" button (clears date range)
+     - "Refresh" button (renamed from "Refresh Metrics")
+     - "Platform Scale" section with 4 minimal metrics (Organizations, Active Cardholders, Active Counters, Staff Members)
+     - "Wallet Analytics" section with 4 minimal metrics (Total Sales, Money Added, Active Wallets, Refunds)
+   - Action Needed banner: only show the yellow warning box when pending approval requests exist; do not display the "All caught up" banner when there are 0 pending requests.
+2. Super Admin Analytics:
+   - Removed the "Menu Analytics" tab and page (`OrgAdminMenuAnalyticsSection`) from `SuperAdminAnalyticsView.tsx`, retaining Financial Overview and Wallet Analytics.
+3. Org Admin & Counter Admin Menu Analytics:
+   - In the "All Ordered Menu Items" table, simplified branch breakdown badges under dishes to display just the counter name (e.g. `Counter 1`) without `: X sold`.
+4. Counter Admin and Org Admin Wallets Page:
+   - On the Wallets page (`/cards`), add a "Customer Portal" button positioned directly to the left of the "Customer History" button.
+   - Clicking "Customer Portal" opens the PWA customer portal view (`getPublicCustomerPortalUrl(...)`) in a new browser tab.
+   - Support both Counter Staff view (`CounterStaffCardsView.tsx`), Org Admin view (`OrgAdminCardsView.tsx`), and Blocked Wallets table (`BlockedWalletsTableView.tsx`).
+   - Also add a Customer Portal action in the page header next to Refresh.
 
 ## Proposed Changes
 

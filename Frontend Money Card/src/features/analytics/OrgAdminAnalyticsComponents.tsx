@@ -981,7 +981,7 @@ export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSection
                                 key={bId}
                                 className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200/50"
                               >
-                                {bData.branchName}: {bData.quantitySold} sold
+                                {bData.branchName}
                               </span>
                             ))}
                           </div>

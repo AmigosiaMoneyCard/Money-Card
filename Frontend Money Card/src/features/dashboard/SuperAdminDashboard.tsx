@@ -30,7 +30,6 @@ import {
   Sparkles,
   Store,
   UserCheck,
-  CheckCircle2,
   PlusCircle,
   Bell,
   Layers,
@@ -183,8 +182,8 @@ export function SuperAdminDashboard() {
         </Button>
       </div>
 
-      {/* ── 2. Action Needed (Most Prominent Section) ────────────────────── */}
-      {pendingRequests.length > 0 ? (
+      {/* ── 2. Action Needed (Only shown when pending approval requests exist) ── */}
+      {pendingRequests.length > 0 && (
         <div className="rounded-2xl border-2 border-amber-300 bg-amber-50/90 p-5 shadow-xs">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-start sm:items-center gap-3.5">
@@ -216,16 +215,6 @@ export function SuperAdminDashboard() {
               Review Requests
             </Button>
           </div>
-        </div>
-      ) : (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-            <span className="text-sm font-semibold text-emerald-900">
-              Action Needed: All caught up! No pending approvals right now.
-            </span>
-          </div>
-          <span className="text-xs text-emerald-700 font-medium">All systems normal</span>
         </div>
       )}
 
@@ -305,7 +294,6 @@ export function SuperAdminDashboard() {
           <Card className="border-slate-200 bg-white shadow-xs">
             <CardHeader
               title="Overview"
-              description="Platform scale and operational wallet analytics under a unified organization and time window filter."
             />
 
             <CardContent className="space-y-5">
@@ -401,7 +389,7 @@ export function SuperAdminDashboard() {
                     leftIcon={<RefreshCw className={`h-3.5 w-3.5 text-slate-600 ${isRefreshing || isAnalyticsLoading ? 'animate-spin' : ''}`} />}
                     className="w-full sm:w-auto h-8 text-xs font-semibold"
                   >
-                    Refresh Metrics
+                    Refresh
                   </Button>
                 </div>
               </div>
