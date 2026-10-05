@@ -98,8 +98,7 @@ export function PortalReceiptsPage() {
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Itemized Receipts</h1>
-            <p className="text-xs text-slate-500">Digital receipts for purchases made with this session.</p>
+            <h1 className="text-xl font-bold text-slate-900">Billing Receipt</h1>
           </div>
         </div>
 
@@ -134,7 +133,7 @@ export function PortalReceiptsPage() {
       ) : receipts.length === 0 ? (
         <EmptyState
           icon={<Receipt className="h-8 w-8 text-slate-500" />}
-          title="No purchase receipts"
+          title="No billing receipts"
           description="Receipts will be generated when food or store purchases occur."
         />
       ) : (

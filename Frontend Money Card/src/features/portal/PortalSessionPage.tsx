@@ -482,7 +482,7 @@ export function PortalSessionPage() {
               return (
                 <div
                   key={ord.id}
-                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 rounded-lg border px-3 py-2 text-xs transition-all ${
+                  className={`flex flex-col sm:flex-row sm:items-start justify-between gap-2 rounded-lg border px-3 py-2 text-xs transition-all ${
                     isReady
                       ? 'border-emerald-300 bg-emerald-50/50'
                       : isCooking
@@ -490,16 +490,17 @@ export function PortalSessionPage() {
                         : 'border-slate-200 bg-slate-50/50'
                   }`}
                 >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="px-1.5 py-0.5 text-[11px] font-bold rounded bg-slate-900 text-white font-mono shrink-0">
+                  <div className="flex items-start gap-2 flex-1 min-w-0">
+                    <span className="px-1.5 py-0.5 text-[11px] font-bold rounded bg-slate-900 text-white font-mono shrink-0 mt-0.5">
                       #{ord.orderNumber}
                     </span>
-                    <span className="text-slate-600 font-medium truncate">
-                      {ord.counterName}: {itemSummary}
+                    <span className="text-slate-700 font-medium leading-relaxed break-words">
+                      <span className="font-semibold text-slate-900">{ord.counterName}:</span>{' '}
+                      {itemSummary}
                     </span>
                   </div>
                   <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 w-fit ${
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 w-fit sm:self-start mt-0.5 ${
                       isReady
                         ? 'bg-emerald-600 text-white'
                         : isCooking
@@ -531,8 +532,7 @@ export function PortalSessionPage() {
           className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm transition-all hover:border-emerald-500/50 hover:bg-emerald-50/20"
         >
           <History className="h-6 w-6 text-emerald-600 mb-2" />
-          <span className="text-sm font-semibold text-slate-900">Transaction History</span>
-          <span className="mt-0.5 text-xs text-slate-500">Recharges & purchases</span>
+          <span className="text-sm font-semibold text-slate-900">Recharge History</span>
         </Link>
 
         <Link
@@ -540,8 +540,7 @@ export function PortalSessionPage() {
           className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm transition-all hover:border-emerald-500/50 hover:bg-emerald-50/20"
         >
           <Receipt className="h-6 w-6 text-emerald-600 mb-2" />
-          <span className="text-sm font-semibold text-slate-900">Purchase Receipts</span>
-          <span className="mt-0.5 text-xs text-slate-500">Itemized bills</span>
+          <span className="text-sm font-semibold text-slate-900">Billing Receipt</span>
         </Link>
       </div>
     </div>
