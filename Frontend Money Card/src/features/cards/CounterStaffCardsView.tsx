@@ -1,4 +1,4 @@
-import { formatCurrency, formatDate, formatDateTime, extractTransactionItems, formatLocalDate } from '@/utils';
+import { formatCurrency, formatDate, formatDateTime, extractTransactionItems, formatLocalDate, getPublicCustomerPortalUrl } from '@/utils';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiService } from '@/services/api';
 import { usePermissions, useAuth, useBranch } from '@/hooks';
@@ -32,6 +32,7 @@ import {
   Phone,
   Wallet,
   DollarSign,
+  ExternalLink,
 } from 'lucide-react';
 
 function getTransactionTitle(tx: Transaction): string {
@@ -368,6 +369,16 @@ export function CounterStaffCardsView() {
             variant="outline"
             size="sm"
             className="text-xs h-8 px-3 rounded-xl border-slate-200 text-slate-700 hover:border-emerald-500 font-medium cursor-pointer"
+            onClick={() => window.open(getPublicCustomerPortalUrl(), '_blank', 'noopener,noreferrer')}
+            leftIcon={<ExternalLink className="h-3.5 w-3.5 text-emerald-600" />}
+          >
+            Customer Portal
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs h-8 px-3 rounded-xl border-slate-200 text-slate-700 hover:border-emerald-500 font-medium cursor-pointer"
             onClick={fetchCardsData}
             leftIcon={<RefreshCw className="h-3.5 w-3.5 text-slate-500" />}
           >
@@ -530,9 +541,24 @@ export function CounterStaffCardsView() {
                         </span>
                       </td>
 
-                      {/* 3. Actions: Customer History | Wallet Analytics | Wallet Details */}
+                      {/* 3. Actions: Customer Portal | Customer History | Wallet Analytics | Wallet Details */}
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
                         <div className="inline-flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const portalUrl = card.qrToken
+                                ? getPublicCustomerPortalUrl(card.qrToken)
+                                : getPublicCustomerPortalUrl();
+                              window.open(portalUrl, '_blank', 'noopener,noreferrer');
+                            }}
+                            className="text-xs h-8 px-3 rounded-lg border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
+                            leftIcon={<ExternalLink className="h-3.5 w-3.5 text-emerald-600" />}
+                          >
+                            Customer Portal
+                          </Button>
+
                           <Button
                             variant="outline"
                             size="sm"

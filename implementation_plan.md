@@ -1,141 +1,126 @@
-# Implementation Plan - Web Super Admin Overview Refinements & Mobile POS Order Search, Bill & Shell Enhancements
+# Implementation Plan: Super Admin Minimal Overview, Analytics Menu Tab Removal, and Customer Portal PWA Button
 
-## Overview & Scope of Work
-This comprehensive implementation plan unites all pending and newly requested enhancements across the Web Dashboard and Flutter Mobile App:
+## User Requirements
+1. Super Admin Dashboard:
+   - Make the Overview section minimal and compact while including:
+     - Title: "Overview"
+     - Subtitle description: "Platform scale and operational wallet analytics under a unified organization and time window filter."
+     - Organization filter dropdown ("All Organizations")
+     - Time Window with date inputs (dd-mm-yyyy to dd-mm-yyyy)
+     - "Today" button and "All Time" button (clears date range)
+     - "Refresh Metrics" button
+     - "Platform Scale" section with 4 minimal metrics:
+       - Organizations (count + "Active platforms")
+       - Active Cardholders (count + "Across all organizations")
+       - Active Counters (count + "Active POS counters")
+       - Staff Members (count + "Registered staff")
+     - "Wallet Analytics" section with 4 minimal metrics:
+       - Total Sales (currency + "X orders")
+       - Money Added (currency + "X recharges")
+       - Active Wallets (count + "In use")
+       - Refunds (currency + "X refunds")
+2. Super Admin Analytics:
+   - Remove the "Menu Analytics" tab and page (`OrgAdminMenuAnalyticsSection`) from `SuperAdminAnalyticsView.tsx`, retaining Financial Overview and Card Analytics.
+3. Counter Admin and Org Admin Wallets Page:
+   - On the Wallets page (`/cards`), add a "Customer Portal" button positioned directly to the left of the "Customer History" button.
+   - Clicking "Customer Portal" opens the PWA customer portal view (`getPublicCustomerPortalUrl(...)`) in a new browser tab.
+   - Support both Counter Staff view (`CounterStaffCardsView.tsx`), Org Admin view (`OrgAdminCardsView.tsx`), and Blocked Wallets table (`BlockedWalletsTableView.tsx`).
+   - Also add a Customer Portal action in the page header next to Refresh.
 
-Part 1: Web App - Super Admin Dashboard Header & Filter Refinements
-- Overview CardHeader: Remove description subtitle text ("Platform scale and operational wallet analytics under a unified organization and time window filter."), leaving the clean header title "Overview".
-- Filter Button: Rename action button in Overview filter toolbar from "Refresh Metrics" to "Refresh".
-- Time Window Filter: Remove the "All Time" button from the date filter box, keeping the start/end date inputs and "Today" button.
+## Proposed Changes
 
-Part 2: Mobile App - Bill Page Wallet Prefix Removal & Label Update
-- Rename Label: In `bill_receipt_screen.dart`, change `Card:` row label to `Wallet:`.
-- Remove Prefix: In `receipt_bill.dart`, update `displayCardId` getter to strip any `MC-`, `MC `, `CARD-`, or `WALLET-` prefixes, displaying only the clean wallet ID (e.g. `KD1IRUG9`).
-
-Part 3: Mobile App - Manager Food Progress Screen Search Bar & QR Scan Button
-- In `live_order_tracker_screen.dart`, add a search bar at the top with a dedicated QR scanner icon button.
-- Tapping the QR scanner opens `QrScannerView` to scan the customer's wallet QR code, populating the search bar with the scanned wallet ID.
-- Manually typing or scanning filters both In Progress and Ready tabs by wallet ID, ticket number, customer name, or food items.
-- Clear button (X) inside search bar to reset search immediately.
-
-Part 4: Mobile App - Kitchen Staff Orders Screen Wallet ID Search Bar
-- In `kitchen_orders_screen.dart`, add a search bar at the top to filter active preparation and ready tickets by wallet ID or ticket number.
-- Clear button (X) to quickly reset search filter.
-
-Part 5: Mobile App - Remove Background Auto-Fetching (Cache & Manual Reload)
-- In `kitchen_orders_provider.dart`, remove background `_pollingTimer` and `_startPolling()` interval.
-- Orders stay cached in state until the staff member explicitly triggers a reload via the AppBar refresh button or pull-to-refresh.
-
-Part 6: Mobile App - Kitchen Staff Shell Profile Button Removal
-- In `staff_app_shell.dart`, remove the `Profile` navigation destination from `destinations` for kitchen staff (`isKitchen`), leaving only `Kitchen Orders` and `Menu`.
-- Update `_calculateSelectedIndex` and `_onItemTapped` navigation logic to match the 2-destination bar.
-
-![Mobile POS Order Search and Bill Updates](C:\Users\damie\.gemini\antigravity-ide\brain\5d95263b-cd5f-4577-8545-14c5773f5f9e\mobile_pos_order_search_and_bill_1791177313177.jpg)
-
-## Technical Design & Scope
-
-1. Web App SuperAdmin Dashboard
+### 1. Super Admin Dashboard Minimal Overview
 File: `Frontend Money Card/src/features/dashboard/SuperAdminDashboard.tsx`
-- `<CardHeader title="Overview" />` without description.
-- Remove `<Button ...>All Time</Button>`.
-- Change button text to `Refresh`.
+- Restore CardHeader description: "Platform scale and operational wallet analytics under a unified organization and time window filter."
+- In the filter toolbar, ensure clean compact layout with:
+  - Organization Select
+  - Time Window date inputs
+  - "Today" preset button
+  - "All Time" preset button (resets `startDate` and `endDate` to empty string)
+  - Action button renamed back to "Refresh Metrics"
+- Refactor the 8 stat cards into a lightweight, minimal card style:
+  - Compact padding (`p-3.5 sm:p-4`)
+  - Crisp typography (`font-mono text-xl sm:text-2xl font-bold`)
+  - Sleek icon container (`h-8 w-8` rounded-lg)
+  - Muted secondary labels ("Active platforms", "Across all organizations", "Active POS counters", "Registered staff", "X orders", "X recharges", "In use", "X refunds")
+- Update unit tests in `Frontend Money Card/src/__tests__/superAdminDashboardUnifiedFilters.test.ts` to assert "All Time" button and "Refresh Metrics" label.
 
-2. Mobile App Receipt Bill Model & Bill Screen
+### 2. Super Admin Analytics Menu Tab Removal
+File: `Frontend Money Card/src/features/analytics/SuperAdminAnalyticsView.tsx`
+- Change active tab type from `'overview' | 'cards' | 'menu'` to `'overview' | 'cards'`.
+- Remove the "Menu Analytics" button from the tab navigation.
+- Remove the conditional rendering of `OrgAdminMenuAnalyticsSection`.
+- Remove unused imports (`UtensilsCrossed`, `OrgAdminMenuAnalyticsSection`).
+
+### 3. Customer Portal Button in Wallets Page
 Files:
-- `Flutter Money card/lib/models/receipt_bill.dart`
-- `Flutter Money card/lib/features/receipt/bill_receipt_screen.dart`
-Logic:
-- In `receipt_bill.dart`: strip `MC-`, `MC `, `CARD-`, `CARD `, `WALLET-`, `WALLET ` in `displayCardId`.
-- In `bill_receipt_screen.dart`: `_buildReceiptRow('Wallet:', bill.displayCardId)`.
-
-3. Mobile App Food Progress Screen
-File: `Flutter Money card/lib/features/orders/live_order_tracker_screen.dart`
-- Add `TextEditingController _searchController`.
-- Search container with search input, clear button, and QR scan `IconButton(icon: Icon(Icons.qr_code_scanner))`.
-- When QR scan pressed, display modal sheet or dialog with `QrScannerView`. On scan, set controller text to clean scanned token.
-- Filter lists: `inProgressOrders.where(...)` and `readyOrders.where(...)` matching query against `cardDisplayNumber`, `orderNumber`, `customerName`, and item names.
-
-4. Mobile App Kitchen Orders Screen
-File: `Flutter Money card/lib/features/kitchen/kitchen_orders_screen.dart`
-- Add `TextEditingController _searchController`.
-- Search bar filtering `activeOrders` and `readyOrders` by `order.cardDisplayNumber` or `order.orderNumber`.
-
-5. Mobile App Disable Polling
-File: `Flutter Money card/lib/providers/kitchen_orders_provider.dart`
-- Remove `_startPolling()` and `_pollingTimer`.
-
-6. Mobile App Shell Navigation
-File: `Flutter Money card/lib/widgets/shell/staff_app_shell.dart`
-- In `destinations: isKitchen`, remove `Profile` item.
-- Update `_calculateSelectedIndex` (0 for `/app/kitchen`, 1 for `/app/products`).
-- Update `_onItemTapped` (0 for `/app/kitchen`, 1 for `/app/products`).
+- `Frontend Money Card/src/utils/formatters.ts`: Update `getPublicCustomerPortalUrl(token?: string)` so that when no token is provided, it returns `${origin}/portal` (or staging domain equivalent).
+- `Frontend Money Card/src/features/cards/CounterStaffCardsView.tsx`:
+  - In each active card row action buttons, add `Customer Portal` button to the left of `Customer History`.
+  - In the page header next to Refresh, add `Customer Portal` button.
+  - Clicking opens `getPublicCustomerPortalUrl(card.qrToken)` in a new tab.
+- `Frontend Money Card/src/features/cards/OrgAdminCardsView.tsx`:
+  - In each counter row action buttons, add `Customer Portal` button to the left of `Customer History`.
+  - In the page header next to Refresh, add `Customer Portal` button.
+  - Clicking opens `getPublicCustomerPortalUrl()` (or active card token for that branch) in a new tab.
+- `Frontend Money Card/src/features/cards/BlockedWalletsTableView.tsx`:
+  - In each blocked card row action buttons, add `Customer Portal` button to the left of `Customer History`.
 
 ## ASCII Wireframes
 
-### Mobile Food Progress Screen (Manager)
+### Super Admin Dashboard Minimal Overview
 ```
-+-------------------------------------------------------+
-| Food Progress                               [Refresh] |
-+-------------------------------------------------------+
-| [ Search wallet ID, ticket #...     [X] ] [Scan QR]   |  <- Search bar + QR scan button
-+-------------------------------------------------------+
-|  In Progress (2)        |   Ready (1)                 |
-+-------------------------------------------------------+
-| +---------------------------------------------------+ |
-| | Ticket #102                               COOKING | |
-| | Wallet: KD1IRUG9 • 4m elapsed • Rs.180            | |
-| | - 2x Veg Burger                                   | |
-| +---------------------------------------------------+ |
-+-------------------------------------------------------+
-```
-
-### Mobile Kitchen Orders Screen (Kitchen Staff)
-```
-+-------------------------------------------------------+
-| Kitchen Orders                              [Refresh] |
-+-------------------------------------------------------+
-| [ Search wallet ID, ticket #...                 [X] ] |  <- Search bar
-+-------------------------------------------------------+
-|  Active Prep (2)        |   Ready for Pickup (1)      |
-+-------------------------------------------------------+
-| +---------------------------------------------------+ |
-| | Ticket #102                               COOKING | |
-| | Wallet: KD1IRUG9                                  | |
-| | - 2x Veg Burger                                   | |
-| |                                     [Mark Ready]  | |
-| +---------------------------------------------------+ |
-+-------------------------------------------------------+
-| [ Kitchen Orders ]                    [ Menu ]        |  <- Only 2 buttons (No Profile)
-+-------------------------------------------------------+
++-------------------------------------------------------------------------------------------------------------------------+
+| Welcome back, Super Admin                                                                                     [Refresh] |
++-------------------------------------------------------------------------------------------------------------------------+
+| Quick Actions: [ + Add Organization ]   [ Bell Review Requests ]   [ Layers Manage Plans ]   [ BarChart View Reports ]  |
++-------------------------------------------------------------------------------------------------------------------------+
+|                                                                                                                         |
+| +-- OVERVIEW ---------------------------------------------------------------------------------------------------------+ |
+| | Overview                                                                                                            | |
+| | Platform scale and operational wallet analytics under a unified organization and time window filter.                | |
+| |                                                                                                                     | |
+| | [ Organization: [ All Organizations       v] ]  [ Time Window: [dd-mm-yyyy] to [dd-mm-yyyy] [Today] [All Time] ]   | |
+| |                                                                                                   [Refresh Metrics] | |
+| | ------------------------------------------------------------------------------------------------------------------- | |
+| | PLATFORM SCALE                                                                                                      | |
+| | +---------------------+ +---------------------+ +---------------------+ +---------------------+                 | |
+| | | [Building]          | | [Users]             | | [Store]             | | [UserCheck]         |                 | |
+| | | Organizations       | | Active Cardholders  | | Active Counters     | | Staff Members       |                 | |
+| | | 1                   | | 1                   | | 1                   | | 3                   |                 | |
+| | | Active platforms    | | Across all orgs     | | Active POS counters | | Registered staff    |                 | |
+| | +---------------------+ +---------------------+ +---------------------+ +---------------------+                 | |
+| |                                                                                                                     | |
+| | WALLET ANALYTICS                                                                                                    | |
+| | +---------------------+ +---------------------+ +---------------------+ +---------------------+                 | |
+| | | [ShoppingBag]       | | [TrendingUp]        | | [CreditCard]        | | [RefreshCw]         |                 | |
+| | | Total Sales         | | Money Added         | | Active Wallets      | | Refunds             |                 | |
+| | | Rs.3,466            | | Rs.3,650            | | 1                   | | Rs.0                |                 | |
+| | | 3 orders            | | 2 recharges         | | In use              | | 0 refunds           |                 | |
+| | +---------------------+ +---------------------+ +---------------------+ +---------------------+                 | |
+| +---------------------------------------------------------------------------------------------------------------------+ |
++-------------------------------------------------------------------------------------------------------------------------+
 ```
 
-### Mobile Bill Receipt Screen
+### Counter Admin & Org Admin Wallets Table (Action Buttons)
 ```
-+-------------------------------------------------------+
-|                          Bill                     [v] |
-+-------------------------------------------------------+
-|                    MONEY CARD                         |
-|                  MAIN CAFETERIA                       |
-|                   SALES RECEIPT                       |
-| ----------------------------------------------------- |
-| Bill Number:                           BILL-#A1B2C3D4 |
-| Wallet:                                      KD1IRUG9 |  <- Renamed to Wallet, No "MC-" prefix
-| Date:                               05 Oct 2026 10:45 |
-| Cashier:                                         Eros |
-| ----------------------------------------------------- |
-| ITEM                         QTY x RATE        AMOUNT |
-| ----------------------------------------------------- |
-| Veg Burger                     2 x Rs.90    Rs.180.00 |
-| Cold Coffee                    1 x Rs.60     Rs.60.00 |
-| ----------------------------------------------------- |
-| TOTAL:                                      Rs.240.00 |
-+-------------------------------------------------------+
++-------------------------------------------------------------------------------------------------------------------------+
+| Wallets & Customer History                                                  [ Customer Portal (PWA) ]   [ Refresh ]     |
++-------------------------------------------------------------------------------------------------------------------------+
+| [ Search wallet ID or customer...           [X] ]                                                                       |
++-------------------------------------------------------------------------------------------------------------------------+
+| [ Live Active Wallets (1) ]   [ Blocked Wallets (0) ]                                                                   |
++-------------------------------------------------------------------------------------------------------------------------+
+| WALLET ID            LIVE BALANCE   ACTIONS                                                                             |
+| ----------------------------------------------------------------------------------------------------------------------- |
+| [Card] KD1IRUG9      Rs.450.00      [ Customer Portal ] [ Customer History ] [ Wallet Analytics ] [ Wallet Details ]    |
+|                                     ^-- NEW BUTTON TO THE LEFT OF CUSTOMER HISTORY                                      |
++-------------------------------------------------------------------------------------------------------------------------+
 ```
 
 ## Verification Plan
 
 ### Automated Tests
-1. Frontend Tests: Run `npm test -- --run` in `Frontend Money Card` (verify all 303+ tests pass).
+1. Frontend Tests: Run `npm test -- --run` in `Frontend Money Card` (verify all test suites pass, including updated `superAdminDashboardUnifiedFilters.test.ts`).
 2. Frontend Type Check: Run `npx tsc --noEmit` in `Frontend Money Card` (verify 0 errors).
-3. Flutter Unit Tests: Run `flutter test` in `Flutter Money card` (verify all passing).
-4. Flutter Static Analysis: Run `flutter analyze --no-pub` in `Flutter Money card` (verify 0 issues).
+3. Mobile Parity Check: Verify no regressions across Mobile POS (`flutter analyze --no-pub`).

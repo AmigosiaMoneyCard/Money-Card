@@ -18,7 +18,6 @@ import {
   CardHeader,
   CardContent,
   Select,
-  StatCard,
   LoadingState,
   ErrorState,
 } from '@/components/ui';
@@ -306,14 +305,15 @@ export function SuperAdminDashboard() {
           <Card className="border-slate-200 bg-white shadow-xs">
             <CardHeader
               title="Overview"
+              description="Platform scale and operational wallet analytics under a unified organization and time window filter."
             />
 
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-5">
               {/* Filter Toolbar (Organization Selector, Custom Time Range, Action Buttons) */}
-              <div className="flex flex-col gap-3.5 rounded-xl border border-slate-200 bg-slate-50/80 p-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-col gap-3 rounded-xl border border-slate-200/90 bg-slate-50/70 p-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-wrap items-center gap-2.5">
                   {/* Organization Scope Filter */}
-                  <div className="w-full sm:w-56">
+                  <div className="w-full sm:w-52">
                     <label htmlFor="superadmin-org-filter" className="mb-1 block text-[11px] font-semibold text-slate-600">
                       Organization
                     </label>
@@ -325,7 +325,7 @@ export function SuperAdminDashboard() {
                         { value: '', label: 'All Organizations' },
                         ...activeOrgs.map((o) => ({ value: o.id, label: o.name })),
                       ]}
-                      className="h-9 py-1.5 pl-3 pr-8 text-xs font-medium bg-white"
+                      className="h-8 py-1 pl-2.5 pr-7 text-xs font-medium bg-white"
                     />
                   </div>
 
@@ -334,7 +334,7 @@ export function SuperAdminDashboard() {
                     <label className="mb-1 block text-[11px] font-semibold text-slate-600">
                       Time Window
                     </label>
-                    <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 shadow-2xs">
+                    <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1 shadow-2xs">
                       <input
                         id="superadmin-start-date"
                         type="date"
@@ -346,7 +346,7 @@ export function SuperAdminDashboard() {
                             setEndDate(val);
                           }
                         }}
-                        className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-800 focus:border-emerald-500 focus:bg-white focus:outline-none font-medium"
+                        className="rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-800 focus:border-emerald-500 focus:bg-white focus:outline-none font-medium"
                         aria-label="Start date"
                       />
                       <span className="text-xs text-slate-400 font-medium">to</span>
@@ -361,7 +361,7 @@ export function SuperAdminDashboard() {
                             setStartDate(val);
                           }
                         }}
-                        className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-800 focus:border-emerald-500 focus:bg-white focus:outline-none font-medium"
+                        className="rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-800 focus:border-emerald-500 focus:bg-white focus:outline-none font-medium"
                         aria-label="End date"
                       />
                       <Button
@@ -372,15 +372,26 @@ export function SuperAdminDashboard() {
                           setStartDate(today);
                           setEndDate(today);
                         }}
-                        className="h-7 px-2 text-xs font-semibold border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer"
+                        className="h-6 px-2 text-[11px] font-semibold border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer"
                       >
                         Today
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setStartDate('');
+                          setEndDate('');
+                        }}
+                        className="h-6 px-2 text-[11px] font-semibold border-slate-200 bg-white text-slate-600 hover:text-slate-900 cursor-pointer"
+                      >
+                        All Time
                       </Button>
                     </div>
                   </div>
                 </div>
 
-                {/* Refresh Action */}
+                {/* Refresh Metrics Action */}
                 <div className="pt-1 lg:pt-0">
                   <Button
                     variant="outline"
@@ -388,96 +399,176 @@ export function SuperAdminDashboard() {
                     onClick={() => fetchPlatformData(true)}
                     isLoading={isRefreshing || isAnalyticsLoading}
                     leftIcon={<RefreshCw className={`h-3.5 w-3.5 text-slate-600 ${isRefreshing || isAnalyticsLoading ? 'animate-spin' : ''}`} />}
-                    className="w-full sm:w-auto"
+                    className="w-full sm:w-auto h-8 text-xs font-semibold"
                   >
-                    Refresh
+                    Refresh Metrics
                   </Button>
                 </div>
               </div>
 
               {/* Row 1: SaaS Platform Metrics (Organizations, Active Cardholders, Active Counters, Staff Members) */}
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                     Platform Scale
                   </span>
                   {selectedOrg && (
-                    <Badge variant="default" className="text-[11px] font-semibold">
+                    <Badge variant="default" className="text-[10px] font-semibold">
                       Filtered: {selectedOrg.name}
                     </Badge>
                   )}
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <StatCard
-                    label="Organizations"
-                    value={displayOrgsCount}
-                    description={selectedOrg ? 'Selected organization' : 'Active platforms'}
-                    icon={<Building2 className="h-5 w-5 text-emerald-600" />}
-                  />
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-slate-600">Organizations</span>
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                        <Building2 className="h-4 w-4" />
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <div className="font-mono text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+                        {displayOrgsCount}
+                      </div>
+                      <p className="mt-0.5 text-[11px] font-medium text-slate-400">
+                        {selectedOrg ? 'Selected organization' : 'Active platforms'}
+                      </p>
+                    </div>
+                  </div>
 
-                  <StatCard
-                    label="Active Cardholders"
-                    value={activeCardholdersCount}
-                    description={selectedOrg ? `${selectedOrg.name} cards` : 'Across all organizations'}
-                    icon={<Users className="h-5 w-5 text-teal-600" />}
-                  />
+                  <div className="flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-slate-600">Active Cardholders</span>
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 text-teal-600">
+                        <Users className="h-4 w-4" />
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <div className="font-mono text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+                        {activeCardholdersCount}
+                      </div>
+                      <p className="mt-0.5 text-[11px] font-medium text-slate-400">
+                        {selectedOrg ? `${selectedOrg.name} cards` : 'Across all organizations'}
+                      </p>
+                    </div>
+                  </div>
 
-                  <StatCard
-                    label="Active Counters"
-                    value={activeCountersCount}
-                    description="Active POS counters"
-                    icon={<Store className="h-5 w-5 text-sky-600" />}
-                  />
+                  <div className="flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-slate-600">Active Counters</span>
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
+                        <Store className="h-4 w-4" />
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <div className="font-mono text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+                        {activeCountersCount}
+                      </div>
+                      <p className="mt-0.5 text-[11px] font-medium text-slate-400">
+                        Active POS counters
+                      </p>
+                    </div>
+                  </div>
 
-                  <StatCard
-                    label="Staff Members"
-                    value={activeStaffCount}
-                    description="Registered staff"
-                    icon={<UserCheck className="h-5 w-5 text-amber-600" />}
-                  />
+                  <div className="flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-slate-600">Staff Members</span>
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                        <UserCheck className="h-4 w-4" />
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <div className="font-mono text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+                        {activeStaffCount}
+                      </div>
+                      <p className="mt-0.5 text-[11px] font-medium text-slate-400">
+                        Registered staff
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {/* Row 2: Platform Financial & Operational Metrics (Wallet Analytics) */}
-              <div className="space-y-2.5 border-t border-slate-100 pt-5">
+              <div className="space-y-2 border-t border-slate-100 pt-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                     Wallet Analytics
                   </span>
                   {(startDate || endDate) && (
-                    <span className="text-xs font-medium text-slate-400">
+                    <span className="text-[11px] font-medium text-slate-400">
                       {startDate && endDate ? `${startDate} to ${endDate}` : startDate ? `From ${startDate}` : `Until ${endDate}`}
                     </span>
                   )}
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <StatCard
-                    label="Total Sales"
-                    value={formatCurrency(analytics?.totalPurchaseVolume ?? analytics?.salesVolume ?? 0)}
-                    description={`${analytics?.foodOrdersCount || analytics?.purchaseCount || 0} orders`}
-                    icon={<ShoppingBag className="h-5 w-5 text-emerald-600" />}
-                  />
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-slate-600">Total Sales</span>
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                        <ShoppingBag className="h-4 w-4" />
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <div className="font-mono text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+                        {formatCurrency(analytics?.totalPurchaseVolume ?? analytics?.salesVolume ?? 0)}
+                      </div>
+                      <p className="mt-0.5 text-[11px] font-medium text-slate-400">
+                        {`${analytics?.foodOrdersCount || analytics?.purchaseCount || 0} orders`}
+                      </p>
+                    </div>
+                  </div>
 
-                  <StatCard
-                    label="Money Added"
-                    value={formatCurrency(analytics?.moneyAdded ?? analytics?.totalRechargeVolume ?? analytics?.rechargeVolume ?? 0)}
-                    description={`${analytics?.rechargeCount ?? 0} recharges`}
-                    icon={<TrendingUp className="h-5 w-5 text-emerald-600" />}
-                  />
+                  <div className="flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-slate-600">Money Added</span>
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                        <TrendingUp className="h-4 w-4" />
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <div className="font-mono text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+                        {formatCurrency(analytics?.moneyAdded ?? analytics?.totalRechargeVolume ?? analytics?.rechargeVolume ?? 0)}
+                      </div>
+                      <p className="mt-0.5 text-[11px] font-medium text-slate-400">
+                        {`${analytics?.rechargeCount ?? 0} recharges`}
+                      </p>
+                    </div>
+                  </div>
 
-                  <StatCard
-                    label="Active Wallets"
-                    value={analytics?.activeCardsCount ?? (selectedOrg ? (selectedOrg.usage?.activeCardCount ?? 0) : activeCardholdersCount)}
-                    description="In use"
-                    icon={<CreditCard className="h-5 w-5 text-sky-600" />}
-                  />
+                  <div className="flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-slate-600">Active Wallets</span>
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
+                        <CreditCard className="h-4 w-4" />
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <div className="font-mono text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+                        {analytics?.activeCardsCount ?? (selectedOrg ? (selectedOrg.usage?.activeCardCount ?? 0) : activeCardholdersCount)}
+                      </div>
+                      <p className="mt-0.5 text-[11px] font-medium text-slate-400">
+                        In use
+                      </p>
+                    </div>
+                  </div>
 
-                  <StatCard
-                    label="Refunds"
-                    value={formatCurrency(analytics?.totalRefundVolume ?? analytics?.moneyRefunded ?? 0)}
-                    description={`${analytics?.refundCount ?? 0} refunds`}
-                    icon={<RefreshCw className="h-5 w-5 text-slate-600" />}
-                  />
+                  <div className="flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-slate-600">Refunds</span>
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                        <RefreshCw className="h-4 w-4" />
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <div className="font-mono text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+                        {formatCurrency(analytics?.totalRefundVolume ?? analytics?.moneyRefunded ?? 0)}
+                      </div>
+                      <p className="mt-0.5 text-[11px] font-medium text-slate-400">
+                        {`${analytics?.refundCount ?? 0} refunds`}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>

@@ -8,7 +8,7 @@ import {
   LoadingState,
   EmptyState,
 } from '@/components/ui';
-import { formatCurrency, formatDate, notify } from '@/utils';
+import { formatCurrency, formatDate, notify, getPublicCustomerPortalUrl } from '@/utils';
 import { apiService } from '@/services/api';
 import {
   Search,
@@ -18,6 +18,7 @@ import {
   History,
   CheckCircle2,
   AlertTriangle,
+  ExternalLink,
 } from 'lucide-react';
 
 interface BlockedWalletsTableViewProps {
@@ -258,6 +259,21 @@ export function BlockedWalletsTableView({
                       {/* 7. Actions */}
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
                         <div className="inline-flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const portalUrl = card.qrToken
+                                ? getPublicCustomerPortalUrl(card.qrToken)
+                                : getPublicCustomerPortalUrl();
+                              window.open(portalUrl, '_blank', 'noopener,noreferrer');
+                            }}
+                            className="text-xs h-8 px-3 rounded-lg border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
+                            leftIcon={<ExternalLink className="h-3.5 w-3.5 text-emerald-600" />}
+                          >
+                            Customer Portal
+                          </Button>
+
                           {onOpenCustomerHistory && (
                             <Button
                               variant="outline"

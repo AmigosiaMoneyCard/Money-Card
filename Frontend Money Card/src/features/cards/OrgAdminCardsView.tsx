@@ -1,4 +1,4 @@
-import { formatCurrency, formatDateTime, extractTransactionItems, formatLocalDate } from '@/utils';
+import { formatCurrency, formatDateTime, extractTransactionItems, formatLocalDate, getPublicCustomerPortalUrl } from '@/utils';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiService } from '@/services/api';
 import { usePermissions } from '@/hooks';
@@ -34,6 +34,7 @@ import {
   User,
   Phone,
   ArrowDownLeft,
+  ExternalLink,
 } from 'lucide-react';
 
 function getTransactionTitle(tx: Transaction): string {
@@ -312,6 +313,16 @@ export function OrgAdminCardsView() {
             variant="outline"
             size="sm"
             className="text-xs h-8 px-3 rounded-xl border-slate-200 text-slate-700 hover:border-emerald-500 font-medium cursor-pointer"
+            onClick={() => window.open(getPublicCustomerPortalUrl(), '_blank', 'noopener,noreferrer')}
+            leftIcon={<ExternalLink className="h-3.5 w-3.5 text-emerald-600" />}
+          >
+            Customer Portal
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs h-8 px-3 rounded-xl border-slate-200 text-slate-700 hover:border-emerald-500 font-medium cursor-pointer"
             onClick={fetchCardsData}
             leftIcon={<RefreshCw className="h-3.5 w-3.5 text-slate-500" />}
           >
@@ -438,10 +449,28 @@ export function OrgAdminCardsView() {
                             </div>
                           </td>
 
-                          {/* 3 Action Buttons on Far Right: [ Customer History ] [ Wallet Analytics ] [ Wallet Details (N) ] */}
+                          {/* 4 Action Buttons on Far Right: [ Customer Portal ] [ Customer History ] [ Wallet Analytics ] [ Wallet Details (N) ] */}
                           <td className="py-3.5 px-4 text-right whitespace-nowrap">
                             <div className="inline-flex items-center gap-2">
-                              {/* 1. Customer History (to the left of Wallet Analytics) */}
+                              {/* 1. Customer Portal (PWA View for Customer) */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const branchCards = getBranchCards(branch.id);
+                                  const activeWithToken = branchCards.find((c) => c.activeSession && c.qrToken);
+                                  const portalUrl = activeWithToken?.qrToken
+                                    ? getPublicCustomerPortalUrl(activeWithToken.qrToken)
+                                    : getPublicCustomerPortalUrl();
+                                  window.open(portalUrl, '_blank', 'noopener,noreferrer');
+                                }}
+                                className="text-xs h-8 px-3 rounded-lg border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
+                                leftIcon={<ExternalLink className="h-3.5 w-3.5 text-emerald-600" />}
+                              >
+                                Customer Portal
+                              </Button>
+
+                              {/* 2. Customer History */}
                               <Button
                                 variant="outline"
                                 size="sm"

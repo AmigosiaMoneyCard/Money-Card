@@ -196,25 +196,26 @@ export function extractTransactionItems(items: any): FormattedTransactionItem[] 
  * Prevents Vercel preview deployment SSO authentication redirects by ensuring
  * that any Vercel environment targets the publicly accessible staging domain.
  */
-export function getPublicCustomerPortalUrl(token: string): string {
+export function getPublicCustomerPortalUrl(token?: string): string {
+  const path = token ? `/c/${token}` : '/portal';
   if (typeof window === 'undefined') {
-    return `https://money-card-frontend.vercel.app/c/${token}`;
+    return `https://money-card-frontend.vercel.app${path}`;
   }
 
   const { hostname, origin } = window.location;
 
   // Local development testing
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return `${origin}/c/${token}`;
+    return `${origin}${path}`;
   }
 
   // If on staging environment, route to staging domain
   if (hostname.includes('staging')) {
-    return `https://money-card-frontend-staging.vercel.app/c/${token}`;
+    return `https://money-card-frontend-staging.vercel.app${path}`;
   }
 
   // In production (money-card-frontend.vercel.app or custom domain), route to current production origin
-  return `${origin}/c/${token}`;
+  return `${origin}${path}`;
 }
 
 /**
