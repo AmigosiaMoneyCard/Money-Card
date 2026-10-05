@@ -1,174 +1,79 @@
-# Implementation Plan - Web Org Admin Staff Table & Mobile Kitchen POS Enhancements
+# Implementation Plan - Super Admin Dashboard Unified Overview with Organization & Custom Date Range Filters
 
 ## Overview & Scope of Work
+Unify the Super Admin Dashboard platform metrics (Organizations, Active Cardholders, Active Counters, Staff Members) and operational metrics (Wallet Analytics: Total Sales, Money Added, Active Wallets, Refunds) under one roof inside a single cohesive Overview card container.
+Equip this unified container with:
+1. Organization Filter: Dropdown to filter across all organizations or a specific active organization.
+2. Custom Time Range Filter: Start date, End date, Reset to Today button, and All Time clear button.
+3. Refresh Data button: Dedicated refresh trigger for filtered metrics.
 
-This comprehensive implementation plan unites all pending and newly requested enhancements across the Web Dashboard and Flutter Mobile App:
+![Super Admin Unified Overview Dashboard](C:\Users\damie\.gemini\antigravity-ide\brain\5d95263b-cd5f-4577-8545-14c5773f5f9e\superadmin_dashboard_overview_1791174697682.jpg)
 
-### Part 1: Web App - Mirror Menu Management in Org Admin Staff Management & Isolate Counter Dashboard
-- Mirror 3-Column Layout: In `StaffPage.tsx`, format the table identical to `ProductsPage.tsx`:
-  - Column 1: `Counter Name` displaying `Staff - {branch.name}` (e.g. `Staff - COUNTER 1`) with building icon.
-  - Column 2: `Add Staff` button with plus icon, opening modal pre-scoped to that counter.
-  - Column 3: `View / Edit` button with eye icon, opening counter staff list modal.
-  - Modal Title: Renders `Staff - {selectedCounterGroup.counterName}`.
-- Isolation: Remove legacy counter-view conditionals from `StaffPage.tsx` so Org Admin and Counter Dashboard (`CounterStaffPage.tsx`) remain 100% isolated.
-- Tests: Update `staffMinimalTable.test.ts` and `counterStaffIsolation.test.ts`.
+## Proposed Changes
 
-### Part 2: Mobile App - Kitchen Staff KDS Refinements
-- Shorten AppBar Title: Change `Kitchen Display System` to `Kitchen Orders` so it is fully visible without being truncated to `Kitchen Display ...`.
-- Remove Blue Avg Time Box: Remove the blue `Avg Xm` metric container from AppBar actions to declutter the header.
-- Hide Audio Button: Remove the audio mute/unmute button from the kitchen orders AppBar to keep the screen minimal and focused.
-- Remove Batch Preparation Summary: Remove the `Batch Preparation Summary` card from the top of the active orders list so active tickets are immediately visible.
-- Clean Status Labels:
-  - In Active Prep: Change `COOKING / IN PROGRESS` to `COOKING`.
-  - In Ready for Pickup: Change `FINISHED / READY` to `READY`.
+File: `Frontend Money Card/src/features/dashboard/SuperAdminDashboard.tsx`
+- Add filter state: `selectedOrgId` (string, default `''`), `startDate` (string, default `''`), and `endDate` (string, default `''`).
+- Update analytics loading logic: re-fetch analytics data whenever `selectedOrgId`, `startDate`, or `endDate` change via `apiService.analytics.getOverview({ organizationId: selectedOrgId || undefined, startDate: startDate || undefined, endDate: endDate || undefined })`.
+- Compute dynamic platform stats:
+  - Organizations: `selectedOrgId ? 1 : activeOrgsCount`
+  - Active Cardholders: when an org is selected, show that org's active cardholders; when All Organizations is selected, aggregate across all active organizations.
+  - Active Counters: when an org is selected, show that org's counter count; when All Organizations is selected, aggregate across all active organizations.
+  - Staff Members: when an org is selected, show that org's staff count; when All Organizations is selected, aggregate across all active organizations.
+- Compute dynamic wallet analytics:
+  - Total Sales: formatted `totalPurchaseVolume` or `salesVolume` with order count description.
+  - Money Added: formatted `moneyAdded` or `totalRechargeVolume` with recharge count description.
+  - Active Wallets: `activeCardsCount` with "In use" description.
+  - Refunds: formatted `totalRefundVolume` or `moneyRefunded` with refund count description.
+- Wrap both rows inside a single unified `Card` container with a top filter toolbar containing Organization Select, Date Range pickers, Reset to Today button, All Time button, and Refresh button.
+- Ensure full mobile viewport responsiveness (zero horizontal overflow, flexible wrap controls).
 
-### Part 3: Mobile App - Staff Profile Screen
-- Back Navigation: In `more_screen.dart` (`/app/profile`), add an explicit `Icons.arrow_back` button to the AppBar leading position with safe pop and fallback routing (`/app/kitchen` for kitchen staff, `/app/home` for standard staff).
+File: `Frontend Money Card/src/__tests__/superAdminDashboardUnifiedFilters.test.ts`
+- Unit test suite validating:
+  - API query parameter construction with org filter and custom date range.
+  - Platform metric calculations for all organizations vs single organization.
+  - Wallet analytics metric mapping.
 
-### Part 4: Mobile App - Counter Manager Food Progress Screen
-- Rename Screen: In `live_order_tracker_screen.dart`, rename AppBar title from `Live Food Progress Tracker` to `Food Progress`.
-- Two Clean Tabs:
-  - Remove the `All` tab.
-  - Keep exactly two tabs: `In Progress` and `Ready` (renamed from `Finished / Ready`).
-  - Update `TabController` length from 3 to 2.
-  - Status labels inside cards: Use `COOKING` and `READY`.
+## Parity Checks
+- Web App to Mobile POS Parity: Super Admin dashboard is exclusive to the Web Admin portal. The Flutter POS app is for counter staff and kitchen operations; no Flutter models or screens require modification.
+- PDF Export Parity: Super Admin analytics reporting is handled on `/analytics` via `SuperAdminAnalyticsView.tsx` which already supports organization and date filtering. No PDF export changes required.
 
-### Part 5: Mobile App - Billing Orders Cancel & Edit Guard for Finished / Served Orders
-- In `pos_scan_purchase_screen.dart` and `pos_checkout_screen.dart`:
-  - In the Food Orders bottom sheet, inspect the kitchen status of each order transaction.
-  - If the order is in finished or served state (`READY` or `COMPLETED`), hide the `Edit` and `Cancel Order` buttons and display a green `READY` or `SERVED` badge instead.
-  - Ensure orders that are already cooked or handed over cannot be cancelled or edited by cashiers.
-  - In `mock_api_interceptor.dart`: reject `/cancel-order` if the order is already in `READY` or `COMPLETED` state.
+## ASCII Wireframe
 
----
-
-## Technical Design & Scope
-
-### 1. Web App StaffPage Layout
-File: `Frontend Money Card/src/features/staff/StaffPage.tsx`
-- Replace `orgAdminColumns`:
-  - `counterName`: Icon + `Staff - {group.counterName}`
-  - `addStaff`: Outlined button labeled `Add Staff`
-  - `staffDetails`: Button labeled `View / Edit`
-- Update modal title: `Staff - {selectedCounterGroup.counterName}`
-- Remove dead `isCounterView` conditionals from `StaffPage.tsx`.
-
-### 2. Flutter Kitchen Orders Screen
-File: `Flutter Money card/lib/features/kitchen/kitchen_orders_screen.dart`
-- AppBar title: `'Kitchen Orders'`
-- Remove `Consumer` with `averagePrepMinutesProvider`
-- Remove audio mute `IconButton`
-- Remove `_buildBatchSummaryCard` and its insertion at index 0 of the active orders list
-- Card status strings:
-  - When `isPreparing`: `'COOKING'`
-  - When `isReady`: `'READY'`
-
-### 3. Flutter Staff Profile Screen
-File: `Flutter Money card/lib/features/more/more_screen.dart`
-- Add `leading` IconButton in `AppBar` with `Icons.arrow_back`.
-- Handles `context.pop()` if canPop, else redirects to kitchen dashboard or home dashboard based on staff role.
-
-### 4. Flutter Food Progress Screen
-File: `Flutter Money card/lib/features/orders/live_order_tracker_screen.dart`
-- Change title to `'Food Progress'`.
-- Set `TabController` length to 2.
-- Tab 1: `In Progress (${inProgressOrders.length})`
-- Tab 2: `Ready (${readyOrders.length})`
-- Remove `All` tab and its `_buildList` view.
-- Card status labels: change `COOKING / IN PROGRESS` to `COOKING` and `FINISHED / READY` to `READY`.
-
-### 5. Flutter Billing Orders Edit & Cancel Guard
-Files:
-- `Flutter Money card/lib/features/pos/pos_scan_purchase_screen.dart`
-- `Flutter Money card/lib/features/pos/pos_checkout_screen.dart`
-- `Flutter Money card/lib/core/network/interceptors/mock_api_interceptor.dart`
-- Logic:
-  - Check transaction kitchen status against `kitchenOrdersNotifierProvider`.
-  - If status is `READY` or `COMPLETED`, replace `Edit` and `Cancel Order` buttons with a status badge (`READY` or `SERVED`).
-  - Backend/Mock interceptor enforces validation error `CANNOT_CANCEL_SERVED` if cancellation is attempted on a cooked/served order.
-
----
-
-## ASCII Wireframes
-
-### Org Admin Staff Management (Web App)
 ```
-+-----------------------------------------------------------------------------------------------+
-| Staff Management                                                                  [Add Staff] |
-| Staff Usage: 3 / 25 staff accounts created                                                    |
-|                                                                                               |
-| [Search counters or staff by name, phone...                ]   [All Roles v]   [ Refresh ]    |
-|                                                                                               |
-| +-------------------------------------------------------------------------------------------+ |
-| | COUNTER NAME                                  |     ADD STAFF      |          VIEW / EDIT | |
-| +-------------------------------------------------------------------------------------------+ |
-| | [Icon] Staff - MAIN CAFETERIA                 |   [+ Add Staff]    |        [Eye View / Edit] | |
-| | [Icon] Staff - COUNTER 1                      |   [+ Add Staff]    |        [Eye View / Edit] | |
-| | [Icon] Staff - COUNTER 2                      |   [+ Add Staff]    |        [Eye View / Edit] | |
-| | [Icon] Staff - EXECUTIVE LOUNGE               |   [+ Add Staff]    |        [Eye View / Edit] | |
-| +-------------------------------------------------------------------------------------------+ |
-+-----------------------------------------------------------------------------------------------+
++-------------------------------------------------------------------------------------------------------------------------+
+| Welcome back, Super Admin                                                                                     [Refresh] |
++-------------------------------------------------------------------------------------------------------------------------+
+| [Urgent / Status Banner: Action Needed / All systems normal]                                                            |
++-------------------------------------------------------------------------------------------------------------------------+
+| Quick Actions: [ + Add Organization ]   [ Bell Review Requests ]   [ Layers Manage Plans ]   [ BarChart View Reports ]  |
++-------------------------------------------------------------------------------------------------------------------------+
+|                                                                                                                         |
+| +-- UNIFIED OVERVIEW CONTAINER ("UNDER ONE ROOF") --------------------------------------------------------------------+ |
+| | Overview                                                                                                            | |
+| |                                                                                                                     | |
+| | [ Organization: [ All Organizations       v] ]  [ Date Range: [2026-10-01] to [2026-10-05] [Today] [All Time] ]   | |
+| |                                                                                                   [Refresh Metrics] | |
+| | ------------------------------------------------------------------------------------------------------------------- | |
+| | PLATFORM METRICS                                                                                                    | |
+| | +---------------------+ +---------------------+ +---------------------+ +---------------------+                 | |
+| | | [Building]          | | [Users]             | | [Store]             | | [UserCheck]         |                 | |
+| | | Organizations       | | Active Cardholders  | | Active Counters     | | Staff Members       |                 | |
+| | | 1                   | | 1                   | | 1                   | | 3                   |                 | |
+| | | Active platforms    | | Across cards        | | Active POS counters | | Registered staff    |                 | |
+| | +---------------------+ +---------------------+ +---------------------+ +---------------------+                 | |
+| |                                                                                                                     | |
+| | WALLET ANALYTICS                                                                                                    | |
+| | +---------------------+ +---------------------+ +---------------------+ +---------------------+                 | |
+| | | [ShoppingBag]       | | [TrendingUp]        | | [CreditCard]        | | [RefreshCw]         |                 | |
+| | | Total Sales         | | Money Added         | | Active Wallets      | | Refunds             |                 | |
+| | | Rs.820              | | Rs.2,000            | | 1                   | | Rs.0                |                 | |
+| | | 2 orders            | | 1 recharges         | | In use              | | 0 refunds           |                 | |
+| | +---------------------+ +---------------------+ +---------------------+ +---------------------+                 | |
+| +---------------------------------------------------------------------------------------------------------------------+ |
++-------------------------------------------------------------------------------------------------------------------------+
 ```
-
-### Kitchen Orders Screen (Flutter Mobile App)
-```
-+-------------------------------------------------------+
-| Kitchen Orders                              [Refresh] |  <- No blue box, no audio button, short title
-+-------------------------------------------------------+
-|  Active Prep (3)        |   Ready for Pickup (1)      |
-+-------------------------------------------------------+
-|                                                       |  <- No Batch Prep Summary card
-| +---------------------------------------------------+ |
-| | Ticket #102                               COOKING | |  <- Label is "COOKING"
-| | - 2x Veg Burger                                   | |
-| | - 1x Cold Coffee                                  | |
-| |                                     [Mark Ready]  | |
-| +---------------------------------------------------+ |
-| +---------------------------------------------------+ |
-| | Ticket #103                     QUEUED / PENDING  | |
-| | - 1x Masala Dosa                                  | |
-| |                                     [Start Cook]  | |
-| +---------------------------------------------------+ |
-+-------------------------------------------------------+
-```
-
-### Food Progress Screen (Flutter Mobile App)
-```
-+-------------------------------------------------------+
-| Food Progress                               [Refresh] |  <- Renamed from "Live Food Progress Tracker"
-+-------------------------------------------------------+
-|  In Progress (2)        |   Ready (1)                 |  <- Exactly 2 tabs (All tab removed)
-+-------------------------------------------------------+
-| +---------------------------------------------------+ |
-| | Ticket #102                               COOKING | |  <- Label is "COOKING"
-| | 4m elapsed • ₹180                                 | |
-| | - 2x Veg Burger                                   | |
-| +---------------------------------------------------+ |
-+-------------------------------------------------------+
-```
-
-### Billing Orders Sheet Guard (Flutter Mobile App)
-```
-+-------------------------------------------------------+
-| Food Orders                                           |
-+-------------------------------------------------------+
-| -₹120.00                                  [CANCELLED] |
-| 1x Veg Sandwich                                       |
-+-------------------------------------------------------+
-| -₹180.00                                      [READY] |  <- Ready/Served: No Edit or Cancel buttons!
-| 2x Veg Burger                                         |
-+-------------------------------------------------------+
-| -₹60.00                              [Edit]  [Cancel] |  <- Pending/Cooking: Can Edit or Cancel
-| 1x Cold Coffee                                        |
-+-------------------------------------------------------+
-```
-
----
 
 ## Verification Plan
-
-### Automated Tests
-1. Frontend Tests: `npm test -- --run` in `Frontend Money Card` (verify all 298+ tests pass).
-2. Frontend Type Check: `npx tsc --noEmit` in `Frontend Money Card`.
-3. Flutter Unit Tests: `flutter test` in `Flutter Money card` (verify all 186+ tests pass).
-4. Flutter Static Analysis: `flutter analyze --no-pub` in `Flutter Money card` (verify 0 issues).
+1. Frontend Tests: Run `npm test -- --run` in `Frontend Money Card` to ensure all existing and new tests pass.
+2. Frontend Type Check: Run `npx tsc --noEmit` in `Frontend Money Card` to verify zero TypeScript errors.
+3. Mobile Parity Check: Run `flutter analyze --no-pub` in `Flutter Money card` to verify zero analyzer issues.
