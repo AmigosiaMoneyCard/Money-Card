@@ -199,9 +199,21 @@ function CounterStaffMenuView({
                     className="flex-1 rounded-lg border border-slate-300 px-2 py-1 text-xs"
                   />
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     value={editPrice}
-                    onChange={(e) => setEditPrice(e.target.value)}
+                    maxLength={7}
+                    onKeyDown={(e) => {
+                      if (['e', 'E', '+', '-', '.'].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9]/g, '');
+                      if (val.length <= 7) {
+                        setEditPrice(val);
+                      }
+                    }}
                     className="w-20 rounded-lg border border-slate-300 px-2 py-1 text-xs"
                   />
                   <button

@@ -54,11 +54,7 @@ class DigitalReceiptService {
               ? bill.amountDeducted
               : bill.totalAmount;
           final effectiveRemaining = bill.remainingBalance;
-          final effectivePrevBalance = bill.previousBalance > 0
-              ? bill.previousBalance
-              : (bill.isRecharge
-                  ? (effectiveRemaining - bill.totalAmount).clamp(0.0, double.infinity)
-                  : (effectiveRemaining + effectiveDeducted));
+          final effectivePrevBalance = bill.previousBalance;
 
           if (bill.isRecharge) {
             // Recharge Receipt Layout (CASH & UPI)

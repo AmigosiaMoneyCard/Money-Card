@@ -16,6 +16,7 @@ import {
   ArrowLeft,
   History,
   ArrowDownLeft,
+  RotateCcw,
 } from 'lucide-react';
 
 export function PortalTransactionsPage() {
@@ -121,32 +122,53 @@ export function PortalTransactionsPage() {
         />
       ) : (
         <div className="space-y-3">
-          {rechargeTransactions.map((txn) => (
-            <Card key={txn.id} padding="sm" className="space-y-3">
-              <div className="w-full flex items-center justify-between text-left">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                    <ArrowDownLeft className="h-5 w-5" />
-                  </div>
+          {rechargeTransactions.map((txn) => {
+            const isCancelled = txn.status === 'CANCELLED' || Boolean((txn.items as any)?.isCancelled);
 
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-slate-900">
-                        {txn.paymentMethod ? `Recharge (${txn.paymentMethod})` : 'Recharge successful'}
-                      </span>
+            return (
+              <Card key={txn.id} padding="sm" className="space-y-3">
+                <div className="w-full flex items-center justify-between text-left">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+                        isCancelled
+                          ? 'bg-rose-50 text-rose-600'
+                          : 'bg-emerald-50 text-emerald-600'
+                      }`}
+                    >
+                      {isCancelled ? <RotateCcw className="h-5 w-5" /> : <ArrowDownLeft className="h-5 w-5" />}
                     </div>
-                    <p className="text-xs text-slate-500">{formatDateTime(txn.timestamp)}</p>
+
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-slate-900">
+                          {txn.paymentMethod ? `Recharge (${txn.paymentMethod})` : 'Recharge'}
+                        </span>
+                        {isCancelled && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-rose-100 text-rose-700">
+                            Cancelled
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500">{formatDateTime(txn.timestamp)}</p>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    {isCancelled ? (
+                      <p className="font-mono text-sm font-semibold text-slate-400 line-through">
+                        {formatCurrency(txn.amount)}
+                      </p>
+                    ) : (
+                      <p className="font-mono text-sm font-bold text-emerald-600">
+                        +{formatCurrency(txn.amount)}
+                      </p>
+                    )}
                   </div>
                 </div>
-
-                <div className="text-right">
-                  <p className="font-mono text-sm font-bold text-emerald-600">
-                    +{formatCurrency(txn.amount)}
-                  </p>
-                </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

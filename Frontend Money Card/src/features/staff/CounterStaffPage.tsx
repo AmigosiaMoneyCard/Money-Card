@@ -257,8 +257,8 @@ export function CounterStaffPage() {
     }
 
     const trimmedPassword = formPassword.trim();
-    if (!trimmedPassword || trimmedPassword.length < 8) {
-      errors.password = 'Password must be at least 8 characters long';
+    if (!trimmedPassword || trimmedPassword.length < 4) {
+      errors.password = 'Password must be at least 4 characters long';
     }
 
     if (Object.keys(errors).length > 0) {
@@ -819,7 +819,7 @@ export function CounterStaffPage() {
                   setFormPassword(e.target.value);
                   if (formErrors.password) setFormErrors((prev) => ({ ...prev, password: '' }));
                 }}
-                placeholder="Minimum 8 characters"
+                placeholder="Min 4 characters"
                 error={formErrors.password}
                 required
               />

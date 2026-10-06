@@ -480,8 +480,8 @@ export function StaffPage() {
 
     if (!formPassword.trim()) {
       errors.password = 'Initial password is required for POS login';
-    } else if (formPassword.trim().length < 8) {
-      errors.password = 'Password must be at least 8 characters';
+    } else if (formPassword.trim().length < 4) {
+      errors.password = 'Password must be at least 4 characters';
     }
 
     const trimmedEmail = formEmail.trim().toLowerCase();
@@ -2354,10 +2354,11 @@ export function StaffPage() {
                     id="add-staff-phone"
                     label="Staff Phone Number *"
                     placeholder="10-digit mobile number, e.g. 9876543210"
-                    maxLength={15}
+                    maxLength={10}
                     value={formPhone}
                     onChange={(e) => {
-                      setFormPhone(e.target.value);
+                      const clean = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      setFormPhone(clean);
                       if (formErrors.phone) setFormErrors((prev) => ({ ...prev, phone: '' }));
                     }}
                     error={formErrors.phone}

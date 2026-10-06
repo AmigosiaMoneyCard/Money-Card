@@ -145,11 +145,7 @@ class _DigitalReceiptDialogState extends State<DigitalReceiptDialog> {
                   ? widget.bill.amountDeducted
                   : widget.bill.totalAmount;
               final effectiveRemaining = widget.bill.remainingBalance;
-              final effectivePrevBalance = widget.bill.previousBalance > 0
-                  ? widget.bill.previousBalance
-                  : (isRecharge
-                      ? (effectiveRemaining - widget.bill.totalAmount).clamp(0.0, double.infinity)
-                      : (effectiveRemaining + effectiveDeducted));
+              final effectivePrevBalance = widget.bill.previousBalance;
 
               return AppCard(
                 padding: AppSpacing.paddingMd,

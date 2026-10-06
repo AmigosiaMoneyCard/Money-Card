@@ -154,6 +154,7 @@ export function generateCustomerReceiptPdfBlob(options: CustomerReceiptPdfOption
     }
   } else if (transactions.length > 0) {
     for (const tx of transactions) {
+      if (tx.status === 'CANCELLED' || Boolean((tx.items as any)?.isCancelled)) continue;
       if (tx.items && tx.items.length > 0) {
         for (const it of tx.items) {
           itemsList.push({
@@ -207,6 +208,7 @@ export function generateCustomerReceiptPdfBlob(options: CustomerReceiptPdfOption
   let totalRecharges = 0;
   let totalPurchases = 0;
   for (const t of transactions) {
+    if (t.status === 'CANCELLED' || Boolean((t.items as any)?.isCancelled)) continue;
     const tType = String(t.type);
     if (tType.startsWith('RECHARGE')) {
       totalRecharges += Number(t.amount) || 0;

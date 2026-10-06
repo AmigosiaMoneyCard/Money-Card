@@ -428,7 +428,7 @@ export function OrgAdminDashboard() {
                   />
                 ) : (
                   <StatCard
-                    label="Cancelled Top-ups"
+                    label="Cancelled Recharges"
                     value={formatCurrency(analytics?.cancelledTopUps ?? 0)}
                     description={`${analytics?.cancelledTopUpsCount ?? 0} cancelled`}
                     icon={<RotateCcw className="h-5 w-5 text-rose-600" />}

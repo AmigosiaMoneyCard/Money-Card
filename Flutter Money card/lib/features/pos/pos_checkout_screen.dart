@@ -319,10 +319,10 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
 
     final totalAmount = result.amount > 0 ? result.amount : cart.totalAmount;
     final remainingBalance = result.balance;
-    final previousBalance = (result.balanceBefore != null && result.balanceBefore! > 0)
+    final previousBalance = (result.balanceBefore != null)
         ? result.balanceBefore!
-        : ((session?.balance != null && session!.balance > 0)
-            ? session.balance
+        : (session?.balance != null
+            ? session!.balance
             : (remainingBalance + totalAmount));
     final amountDeducted = totalAmount;
 

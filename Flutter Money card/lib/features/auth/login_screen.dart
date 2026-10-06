@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
@@ -48,6 +49,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
+  void _switchRole(LoginRoleMode mode) {
+    _phoneController.clear();
+    _passwordController.clear();
+    _formKey.currentState?.reset();
+    ref.read(authNotifierProvider.notifier).clearError();
+    setState(() {
+      _roleMode = mode;
+    });
+  }
+
   Future<void> _handleLogin() async {
     FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) return;
@@ -56,10 +67,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final password = _passwordController.text;
 
     final isEmail = input.contains('@');
+    final expectedRole = _roleMode == LoginRoleMode.kitchen ? 'KITCHEN' : 'MANAGER';
+
     await ref.read(authNotifierProvider.notifier).login(
           email: isEmail ? input : null,
           phone: isEmail ? null : input,
           password: password,
+          expectedRole: expectedRole,
         );
   }
 
@@ -145,11 +159,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           icon: Icons.point_of_sale_outlined,
           accentColor: AppColors.primary,
           badgeBg: AppColors.primaryLight,
-          onTap: () {
-            setState(() {
-              _roleMode = LoginRoleMode.manager;
-            });
-          },
+          onTap: () => _switchRole(LoginRoleMode.manager),
         ),
         const SizedBox(height: AppSpacing.md),
 
@@ -159,11 +169,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           icon: Icons.soup_kitchen_outlined,
           accentColor: const Color(0xFF2563EB),
           badgeBg: const Color(0xFFDBEAFE),
-          onTap: () {
-            setState(() {
-              _roleMode = LoginRoleMode.kitchen;
-            });
-          },
+          onTap: () => _switchRole(LoginRoleMode.kitchen),
         ),
       ],
     );
@@ -252,11 +258,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
                 icon: const Icon(Icons.arrow_back, size: 20),
-                onPressed: () {
-                  setState(() {
-                    _roleMode = LoginRoleMode.selectRole;
-                  });
-                },
+                onPressed: () => _switchRole(LoginRoleMode.selectRole),
               ),
             ],
           ),
@@ -328,6 +330,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             controller: _phoneController,
             keyboardType: TextInputType.phone,
             textInputAction: TextInputAction.next,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(10),
+            ],
             decoration: const InputDecoration(
               hintText: '10-digit mobile number',
               prefixIcon: Icon(Icons.phone_android_outlined, size: 20),

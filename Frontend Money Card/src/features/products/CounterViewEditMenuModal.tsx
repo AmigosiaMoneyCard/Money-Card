@@ -266,11 +266,21 @@ export function CounterViewEditMenuModal({
                           Price (₹)
                         </label>
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="numeric"
                           value={editingItem.price}
-                          onChange={(e) =>
-                            setEditingItem({ ...editingItem, price: e.target.value })
-                          }
+                          maxLength={7}
+                          onKeyDown={(e) => {
+                            if (['e', 'E', '+', '-', '.'].includes(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            if (val.length <= 7) {
+                              setEditingItem({ ...editingItem, price: val });
+                            }
+                          }}
                           className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-900 focus:border-emerald-600 focus:outline-hidden"
                         />
                       </div>

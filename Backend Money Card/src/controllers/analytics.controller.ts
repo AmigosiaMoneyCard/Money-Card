@@ -554,6 +554,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
   const branchHourlyBuckets = new Map<string, Map<number, { count: number; volume: number }>>();
 
   transactions.forEach((tx) => {
+    const isThisBranch = !effectiveBranchId || tx.branchId === effectiveBranchId;
     const targetBranchId = tx.branchId || tx.session?.branchId || effectiveBranchId;
     const bm = targetBranchId ? branchMetricsMap.get(targetBranchId) : branchMetricsMap.get(tx.branchId);
     const txType = String(tx.type || '');
@@ -563,19 +564,23 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     // Track cancelled transactions
     if (isCancelled) {
       if (txType === 'PURCHASE') {
-        cancelledOrdersCount++;
-        cancelledOrdersVolume += tx.amount;
+        if (isThisBranch) {
+          cancelledOrdersCount++;
+          cancelledOrdersVolume += tx.amount;
+        }
         if (bm) {
           bm.cancelledOrdersCount++;
           bm.cancelledOrdersVolume += tx.amount;
         }
       } else if (txType.includes('RECHARGE') || txType === 'CASH' || txType === 'UPI') {
-        cancelledTopUpsCount++;
-        cancelledTopUpsVolume += tx.amount;
-        if (paymentMethod === 'UPI' || txType === 'RECHARGE_UPI') {
-          cancelledUpiTopUpsVolume += tx.amount;
-        } else {
-          cancelledCashTopUpsVolume += tx.amount;
+        if (isThisBranch) {
+          cancelledTopUpsCount++;
+          cancelledTopUpsVolume += tx.amount;
+          if (paymentMethod === 'UPI' || txType === 'RECHARGE_UPI') {
+            cancelledUpiTopUpsVolume += tx.amount;
+          } else {
+            cancelledCashTopUpsVolume += tx.amount;
+          }
         }
         if (bm) {
           bm.cancelledTopUpsCount++;
@@ -606,8 +611,10 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     }
 
     if (txType === 'PURCHASE') {
-      totalPurchaseVolume += tx.amount;
-      foodOrdersCount++;
+      if (isThisBranch) {
+        totalPurchaseVolume += tx.amount;
+        foodOrdersCount++;
+      }
       if (bm) {
         bm.transactionCount++;
         bm.purchaseCount++;
@@ -661,7 +668,9 @@ export async function getOrgAnalytics(req: Request, res: Response) {
             unitPrice,
             subtotal: rev,
           });
-          rootProductsSoldCount += qty;
+          if (isThisBranch) {
+            rootProductsSoldCount += qty;
+          }
           if (bm) {
             bm.productsSoldCount += qty;
           }
@@ -671,38 +680,40 @@ export async function getOrgAnalytics(req: Request, res: Response) {
             curr.totalRevenue = Number((curr.totalRevenue + rev).toFixed(2));
             pMap.set(pId, curr);
           }
-          const overall = allProductDemandMap.get(pId) || {
-            productId: pId,
-            productName: pName,
-            unitPrice: unitPrice > 0 ? unitPrice : (qty > 0 && rev > 0 ? Number((rev / qty).toFixed(2)) : 0),
-            quantitySold: 0,
-            totalRevenue: 0,
-            orderCount: 0,
-            branchBreakdown: {} as Record<string, { branchName: string; quantitySold: number; totalRevenue: number }>,
-          };
-          overall.quantitySold += qty;
-          overall.totalRevenue = Number((overall.totalRevenue + rev).toFixed(2));
-          overall.orderCount += 1;
-          if (!overall.unitPrice && unitPrice > 0) {
-            overall.unitPrice = unitPrice;
-          }
-          if (purchasingBId) {
-            if (!overall.branchBreakdown) {
-              overall.branchBreakdown = {};
+          if (isThisBranch) {
+            const overall = allProductDemandMap.get(pId) || {
+              productId: pId,
+              productName: pName,
+              unitPrice: unitPrice > 0 ? unitPrice : (qty > 0 && rev > 0 ? Number((rev / qty).toFixed(2)) : 0),
+              quantitySold: 0,
+              totalRevenue: 0,
+              orderCount: 0,
+              branchBreakdown: {} as Record<string, { branchName: string; quantitySold: number; totalRevenue: number }>,
+            };
+            overall.quantitySold += qty;
+            overall.totalRevenue = Number((overall.totalRevenue + rev).toFixed(2));
+            overall.orderCount += 1;
+            if (!overall.unitPrice && unitPrice > 0) {
+              overall.unitPrice = unitPrice;
             }
-            if (!overall.branchBreakdown[purchasingBId]) {
-              overall.branchBreakdown[purchasingBId] = {
-                branchName: purchasingBName,
-                quantitySold: 0,
-                totalRevenue: 0,
-              };
+            if (purchasingBId) {
+              if (!overall.branchBreakdown) {
+                overall.branchBreakdown = {};
+              }
+              if (!overall.branchBreakdown[purchasingBId]) {
+                overall.branchBreakdown[purchasingBId] = {
+                  branchName: purchasingBName,
+                  quantitySold: 0,
+                  totalRevenue: 0,
+                };
+              }
+              overall.branchBreakdown[purchasingBId].quantitySold += qty;
+              overall.branchBreakdown[purchasingBId].totalRevenue = Number(
+                (overall.branchBreakdown[purchasingBId].totalRevenue + rev).toFixed(2)
+              );
             }
-            overall.branchBreakdown[purchasingBId].quantitySold += qty;
-            overall.branchBreakdown[purchasingBId].totalRevenue = Number(
-              (overall.branchBreakdown[purchasingBId].totalRevenue + rev).toFixed(2)
-            );
+            allProductDemandMap.set(pId, overall);
           }
-          allProductDemandMap.set(pId, overall);
         });
 
         foodPurchasesByCounter.push({
@@ -718,7 +729,9 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           totalAmount: Number(tx.amount.toFixed(2)),
         });
       } else {
-        rootProductsSoldCount++;
+        if (isThisBranch) {
+          rootProductsSoldCount++;
+        }
         if (bm) {
           bm.productsSoldCount++;
         }
@@ -742,10 +755,12 @@ export async function getOrgAnalytics(req: Request, res: Response) {
         });
       }
     } else if (txType === 'RECHARGE_CASH' || paymentMethod === 'CASH' || paymentMethod === 'CARD' || txType === 'CASH') {
-      totalRechargeVolume += tx.amount;
-      totalRechargeCount++;
-      cashRechargeVolume += tx.amount;
-      cashRechargeCount++;
+      if (isThisBranch) {
+        totalRechargeVolume += tx.amount;
+        totalRechargeCount++;
+        cashRechargeVolume += tx.amount;
+        cashRechargeCount++;
+      }
       if (bm) {
         bm.transactionCount++;
         bm.rechargeCount++;
@@ -759,10 +774,12 @@ export async function getOrgAnalytics(req: Request, res: Response) {
         bm.cashCount++;
       }
     } else if (txType === 'RECHARGE_UPI' || paymentMethod === 'UPI' || txType === 'UPI') {
-      totalRechargeVolume += tx.amount;
-      totalRechargeCount++;
-      upiRechargeVolume += tx.amount;
-      upiRechargeCount++;
+      if (isThisBranch) {
+        totalRechargeVolume += tx.amount;
+        totalRechargeCount++;
+        upiRechargeVolume += tx.amount;
+        upiRechargeCount++;
+      }
       if (bm) {
         bm.transactionCount++;
         bm.rechargeCount++;
@@ -774,28 +791,28 @@ export async function getOrgAnalytics(req: Request, res: Response) {
         bm.upiCount++;
       }
     } else if (txType.includes('RECHARGE') || txType === 'ISSUANCE') {
-      totalRechargeVolume += tx.amount;
-      totalRechargeCount++;
-      if (paymentMethod === 'UPI') {
-        upiRechargeVolume += tx.amount;
-        upiRechargeCount++;
-        if (bm) {
-          bm.transactionCount++;
-          bm.rechargeCount++;
-          bm.rechargeVolume += tx.amount;
+      if (isThisBranch) {
+        totalRechargeVolume += tx.amount;
+        totalRechargeCount++;
+        if (paymentMethod === 'UPI') {
+          upiRechargeVolume += tx.amount;
+          upiRechargeCount++;
+        } else {
+          cashRechargeVolume += tx.amount;
+          cashRechargeCount++;
+        }
+      }
+      if (bm) {
+        bm.transactionCount++;
+        bm.rechargeCount++;
+        bm.rechargeVolume += tx.amount;
+        if (paymentMethod === 'UPI') {
           bm.upiRechargeCount++;
           bm.upiRechargeVolume += tx.amount;
           bm.moneyAdded += tx.amount;
           bm.upiMoney += tx.amount;
           bm.upiCount++;
-        }
-      } else {
-        cashRechargeVolume += tx.amount;
-        cashRechargeCount++;
-        if (bm) {
-          bm.transactionCount++;
-          bm.rechargeCount++;
-          bm.rechargeVolume += tx.amount;
+        } else {
           bm.cardRechargeCount++;
           bm.cardRechargeVolume += tx.amount;
           bm.cashRechargeCount++;
@@ -806,15 +823,17 @@ export async function getOrgAnalytics(req: Request, res: Response) {
         }
       }
     } else if (txType.includes('REFUND') || txType.includes('RETURN') || txType.includes('SETTLE')) {
-      totalRefundVolume += tx.amount;
-      totalRefundCount++;
       const pMethod = String(tx.paymentMethod || '').toUpperCase();
-      if (pMethod === 'UPI') {
-        upiRefunds += tx.amount;
-        upiRefundCount++;
-      } else {
-        cashRefunds += tx.amount;
-        cashRefundCount++;
+      if (isThisBranch) {
+        totalRefundVolume += tx.amount;
+        totalRefundCount++;
+        if (pMethod === 'UPI') {
+          upiRefunds += tx.amount;
+          upiRefundCount++;
+        } else {
+          cashRefunds += tx.amount;
+          cashRefundCount++;
+        }
       }
       if (bm) {
         bm.transactionCount++;
@@ -1172,7 +1191,9 @@ export async function getOrgAnalytics(req: Request, res: Response) {
   });
 
   const analyticsPayload = {
-    totalTransactions: transactions.length,
+    totalTransactions: effectiveBranchId
+      ? transactions.filter((tx) => tx.branchId === effectiveBranchId).length
+      : transactions.length,
     totalRechargeVolume: Number(totalRechargeVolume.toFixed(2)),
     cashRechargeVolume: Number(cashRechargeVolume.toFixed(2)),
     cashRechargeCount,
