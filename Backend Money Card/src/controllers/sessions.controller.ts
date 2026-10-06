@@ -583,8 +583,6 @@ export async function purchaseSession(req: Request, res: Response) {
 
 export async function returnSession(req: Request, res: Response) {
   const { id } = req.params;
-  const { paymentMethod } = req.body || {};
-  const selectedPaymentMethod = paymentMethod === 'UPI' ? 'UPI' : 'CASH';
   const orgId = req.user?.organizationId;
 
   const session = await prisma.cardSession.findFirst({

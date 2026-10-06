@@ -4,7 +4,7 @@ import EventEmitter from 'node:events';
 export interface BalanceUpdatePayload {
   balance?: number;
   status?: string;
-  type?: 'RECHARGE' | 'PURCHASE' | 'REFUND' | 'INIT' | 'RECHARGE_CANCELLED' | 'PURCHASE_CANCELLED' | 'ORDER_STATUS_UPDATE';
+  type?: 'RECHARGE' | 'PURCHASE' | 'REFUND' | 'INIT' | 'RECHARGE_CANCELLED' | 'PURCHASE_CANCELLED' | 'ORDER_STATUS_UPDATE' | 'RETURN_NO_REFUND';
   amount?: number;
   timestamp?: string;
   cardDisplayNumber?: string;
