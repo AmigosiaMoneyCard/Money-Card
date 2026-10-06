@@ -81,7 +81,11 @@ class PurchaseItem {
     return PurchaseItem(
       productId: json['productId'] as String? ?? '',
       quantity: (json['quantity'] as num?)?.toInt() ?? 1,
-      itemName: (json['itemName'] ?? json['name'] ?? json['productName']) as String?,
+      itemName: (json['itemName'] ??
+              json['name'] ??
+              json['productName'] ??
+              (json['product'] is Map ? json['product']['name'] : null) ??
+              json['dishName']) as String?,
       unitPrice: (json['unitPrice'] as num?)?.toDouble() ?? (json['price'] as num?)?.toDouble(),
       totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? (json['subtotal'] as num?)?.toDouble(),
     );
@@ -162,12 +166,17 @@ class Transaction {
     List<PurchaseItem>? parsedItems;
     if (itemsRaw is List) {
       parsedItems = itemsRaw
-          .map((item) => PurchaseItem.fromJson(item as Map<String, dynamic>))
+          .whereType<Map<String, dynamic>>()
+          .map((item) => PurchaseItem.fromJson(item))
           .toList();
-    } else if (itemsRaw is Map<String, dynamic> && itemsRaw['orderItems'] is List) {
-      parsedItems = (itemsRaw['orderItems'] as List)
-          .map((item) => PurchaseItem.fromJson(item as Map<String, dynamic>))
-          .toList();
+    } else if (itemsRaw is Map<String, dynamic>) {
+      final subList = itemsRaw['items'] ?? itemsRaw['orderItems'] ?? itemsRaw['detailedItems'];
+      if (subList is List) {
+        parsedItems = subList
+            .whereType<Map<String, dynamic>>()
+            .map((item) => PurchaseItem.fromJson(item))
+            .toList();
+      }
     }
 
     final staff = json['staff'];

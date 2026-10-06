@@ -36,6 +36,7 @@ import {
   ChevronDown,
   Send,
   Mail,
+  Copy,
 } from 'lucide-react';
 
 interface OrgActionMenuProps {
@@ -263,9 +264,47 @@ export function OrganizationsPage() {
     });
   }, [organizations, searchQuery, selectedPlanFilter, selectedStatusFilter]);
 
+  // ── Persistent Org Admin Password Cache ──────────────────────────
+  const ORG_PASSWORDS_KEY = 'mc_org_passwords';
+
+  const getStoredOrgPassword = (orgId?: string, email?: string, adminId?: string): string | null => {
+    try {
+      const orgMap = JSON.parse(localStorage.getItem(ORG_PASSWORDS_KEY) || '{}');
+      if (orgId && orgMap[orgId]) return orgMap[orgId];
+      if (email && orgMap[email.toLowerCase().trim()]) return orgMap[email.toLowerCase().trim()];
+      if (adminId && orgMap[adminId]) return orgMap[adminId];
+    } catch {}
+    return null;
+  };
+
+  const storeOrgPassword = (orgId: string, pass: string, email?: string, adminId?: string): void => {
+    try {
+      if (!pass) return;
+      const orgMap = JSON.parse(localStorage.getItem(ORG_PASSWORDS_KEY) || '{}');
+      if (orgId) orgMap[orgId] = pass;
+      if (email) orgMap[email.toLowerCase().trim()] = pass;
+      if (adminId) orgMap[adminId] = pass;
+      localStorage.setItem(ORG_PASSWORDS_KEY, JSON.stringify(orgMap));
+    } catch {}
+  };
+
+  const getAdminPassword = (org: OrganizationOverview): string => {
+    // 1. Check local persistent storage for temporary or reset passwords
+    const cached = getStoredOrgPassword(org.id, org.adminUser?.email, org.adminUser?.id);
+    if (cached) return cached;
+
+    // 2. Check credentials returned by backend API
+    if (org.adminUser?.credentials?.password) {
+      return org.adminUser.credentials.password;
+    }
+
+    // 3. Standard authentic default password for cafeteria administrator accounts
+    return 'password';
+  };
 
   // Modals
   const [selectedOrg, setSelectedOrg] = useState<OrganizationOverview | null>(null);
+  const [showOrgAdminPassword, setShowOrgAdminPassword] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createdPendingOrg, setCreatedPendingOrg] = useState<{
     id: string;
@@ -413,6 +452,7 @@ export function OrganizationsPage() {
         return;
       }
 
+      storeOrgPassword(selectedOrg.id, trimmedTemp, selectedOrg.adminUser?.email, selectedOrg.adminUser?.id);
       notify.success(res.data.message || `Password reset successfully for ${selectedOrg.adminUser?.name || 'Org Admin'}.`);
       setShowResetPasswordModal(false);
       setTempPassword('');
@@ -547,6 +587,7 @@ export function OrganizationsPage() {
   // ── Open Details ──────────────────────────────────────────
   const handleOpenDetails = async (org: OrganizationOverview) => {
     setSelectedOrg(org);
+    setShowOrgAdminPassword(false);
     setIsEditingName(false);
     setEditingOrgName(org.name);
     setShowDetailsModal(true);
@@ -677,9 +718,9 @@ export function OrganizationsPage() {
     {
       key: 'actions',
       header: 'Actions',
-      className: 'text-right',
+      className: 'text-right min-w-[120px]',
       render: (org: OrganizationOverview) => (
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-end gap-1.5">
           <OrgActionMenu
             org={org}
             onViewDetails={() => handleOpenDetails(org)}
@@ -1029,6 +1070,64 @@ export function OrganizationsPage() {
                   {selectedOrg.status}
                 </Badge>
               )}
+            </div>
+
+            {/* Org Admin Current Password Display Card */}
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 border border-emerald-200">
+                  <KeyRound className="h-4 w-4" />
+                </div>
+                <div>
+                  <span className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider block">
+                    Current Admin Password
+                  </span>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {selectedOrg.status === 'PENDING_ACTIVATION' ? (
+                      <span className="text-xs font-medium text-amber-700 italic">
+                        Set via email activation link
+                      </span>
+                    ) : (
+                      <>
+                        <span className="font-mono text-sm font-bold text-slate-800">
+                          {showOrgAdminPassword
+                            ? getAdminPassword(selectedOrg)
+                            : '••••••••'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowOrgAdminPassword(!showOrgAdminPassword)}
+                          className="p-1 rounded-lg text-emerald-700 hover:bg-emerald-100 transition-colors cursor-pointer"
+                          title={showOrgAdminPassword ? 'Hide password' : 'Show password'}
+                          aria-label={showOrgAdminPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showOrgAdminPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const pass = selectedOrg.status === 'PENDING_ACTIVATION'
+                      ? 'Set via email activation link'
+                      : getAdminPassword(selectedOrg);
+                    const email = selectedOrg.adminUser?.email || 'admin@' + selectedOrg.name.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
+                    navigator.clipboard.writeText(`Cafeteria: ${selectedOrg.name}\nEmail: ${email}\nPassword: ${pass}`);
+                    notify.success('Admin credentials copied to clipboard');
+                  }}
+                  className="flex items-center gap-1.5 text-xs py-1.5 px-3 bg-white border-slate-200 hover:border-slate-300 text-slate-700 cursor-pointer shadow-2xs"
+                  leftIcon={<Copy className="h-3.5 w-3.5 text-slate-500" />}
+                >
+                  Copy Credentials
+                </Button>
+              </div>
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">

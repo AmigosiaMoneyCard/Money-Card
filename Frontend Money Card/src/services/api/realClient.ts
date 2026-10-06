@@ -50,6 +50,8 @@ import type {
   PublicSessionDetail,
   PublicReceipt,
   PublicTransaction,
+  PublicSessionOrder,
+  PublicMenuItem,
   CheckoutRequest,
   CheckoutResponseData,
   RechargeRequest,
@@ -241,6 +243,24 @@ export const realClient: typeof mockClient = {
       return handleApiCall(() =>
         apiClient.post<{ message: string }>(`/v1/admin/organizations/${id}/resend-admin-invite`),
       );
+    },
+
+    async getAuditLogs(params?: {
+      organizationId?: string;
+      action?: string;
+      severity?: string;
+      search?: string;
+      page?: number;
+      limit?: number;
+    }): Promise<ApiResult<any>> {
+      return handleApiCall(() => apiClient.get('/v1/admin/audit-logs', { params }));
+    },
+
+    async exportOrganizationData(organizationId?: string): Promise<ApiResult<any>> {
+      const endpoint = organizationId
+        ? `/v1/admin/organizations/${organizationId}/export`
+        : '/v1/organization/export';
+      return handleApiCall(() => apiClient.get(endpoint));
     },
   },
 
@@ -737,6 +757,12 @@ export const realClient: typeof mockClient = {
     },
     async getPublicSessionReceipts(sessionToken: string): Promise<ApiResult<PublicReceipt[]>> {
       return handleApiCall(() => apiClient.get<PublicReceipt[]>(`/v1/public/sessions/${sessionToken}/receipts`));
+    },
+    async getPublicSessionOrders(sessionToken: string): Promise<ApiResult<PublicSessionOrder[]>> {
+      return handleApiCall(() => apiClient.get<PublicSessionOrder[]>(`/v1/public/sessions/${sessionToken}/orders`));
+    },
+    async getPublicSessionMenu(sessionToken: string): Promise<ApiResult<PublicMenuItem[]>> {
+      return handleApiCall(() => apiClient.get<PublicMenuItem[]>(`/v1/public/sessions/${sessionToken}/menu`));
     },
   },
 

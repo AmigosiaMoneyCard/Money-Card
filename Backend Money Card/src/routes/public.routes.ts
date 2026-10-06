@@ -5,6 +5,8 @@ import {
   getPublicSessionTransactions,
   getPublicSessionReceipts,
   streamPublicSessionBalance,
+  getPublicSessionOrders,
+  getPublicSessionMenu,
 } from '../controllers/public.controller.js';
 import { publicQrRateLimiter } from '../middlewares/rateLimiter.middleware.js';
 
@@ -25,6 +27,8 @@ router.get('/c/:token', (req, res) => {
 router.get('/sessions/:sessionToken', getPublicSessionBalance);
 router.get('/sessions/:sessionToken/transactions', getPublicSessionTransactions);
 router.get('/sessions/:sessionToken/receipts', getPublicSessionReceipts);
+router.get('/sessions/:sessionToken/orders', getPublicSessionOrders);
+router.get('/sessions/:sessionToken/menu', getPublicSessionMenu);
 
 // Real-Time Server-Sent Events (SSE) Balance Stream
 router.get('/sessions/:sessionToken/balance-stream', streamPublicSessionBalance);

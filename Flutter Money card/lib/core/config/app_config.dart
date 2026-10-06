@@ -24,7 +24,7 @@ class AppConfig {
   static String? _overrideEnvironment;
   static String? get overrideEnvironment => _overrideEnvironment;
 
-  static const String appVersion = '1.0.1';
+  static const String appVersion = '1.0.7';
 
   /// Environment: 'production', 'staging', or 'development'
   static String get environment {
@@ -128,10 +128,10 @@ class AppConfig {
   /// Helper flag for backward compatibility
   static bool get useMockApi => apiMode.isMock;
 
-  /// Network timeouts (optimized for local POS operation with quick failover)
-  static const Duration connectTimeout = Duration(seconds: 4);
-  static const Duration receiveTimeout = Duration(seconds: 8);
-  static const Duration sendTimeout = Duration(seconds: 8);
+  /// Network timeouts (resilient for cloud staging/production and local POS)
+  static const Duration connectTimeout = Duration(seconds: 30);
+  static const Duration receiveTimeout = Duration(seconds: 30);
+  static const Duration sendTimeout = Duration(seconds: 30);
 
   static String get baseUrl => _activeBaseUrl;
 

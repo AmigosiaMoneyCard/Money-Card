@@ -95,6 +95,12 @@ class BranchPerformanceMetric {
   final int cardsReturned;
   final int cancelledOrdersCount;
   final double cancelledOrdersVolume;
+  final double cashRefunds;
+  final double upiRefunds;
+  final double salesVolume;
+  final int salesCount;
+  final double retainedCardProfit;
+  final int retainedProfitCount;
 
   const BranchPerformanceMetric({
     required this.branchId,
@@ -132,6 +138,12 @@ class BranchPerformanceMetric {
     this.cardsReturned = 0,
     this.cancelledOrdersCount = 0,
     this.cancelledOrdersVolume = 0.0,
+    this.cashRefunds = 0.0,
+    this.upiRefunds = 0.0,
+    this.salesVolume = 0.0,
+    this.salesCount = 0,
+    this.retainedCardProfit = 0.0,
+    this.retainedProfitCount = 0,
   });
 
   factory BranchPerformanceMetric.fromJson(Map<String, dynamic> json) {
@@ -142,6 +154,12 @@ class BranchPerformanceMetric {
         0.0;
     final cancelTopUps = (json['cancelledTopUps'] as num?)?.toDouble() ??
         (json['cancelledTopUpsVolume'] as num?)?.toDouble() ??
+        0.0;
+    final cashRefundVal = (json['cashRefunds'] as num?)?.toDouble() ??
+        (json['cashRefundVolume'] as num?)?.toDouble() ??
+        refVol;
+    final upiRefundVal = (json['upiRefunds'] as num?)?.toDouble() ??
+        (json['upiRefundVolume'] as num?)?.toDouble() ??
         0.0;
 
     return BranchPerformanceMetric(
@@ -184,6 +202,12 @@ class BranchPerformanceMetric {
       cardsReturned: (json['cardsReturned'] as num?)?.toInt() ?? (json['settledSessionsCount'] as num?)?.toInt() ?? 0,
       cancelledOrdersCount: (json['cancelledOrdersCount'] as num?)?.toInt() ?? 0,
       cancelledOrdersVolume: (json['cancelledOrdersVolume'] as num?)?.toDouble() ?? 0.0,
+      cashRefunds: cashRefundVal,
+      upiRefunds: upiRefundVal,
+      salesVolume: (json['salesVolume'] as num?)?.toDouble() ?? (json['purchaseVolume'] as num?)?.toDouble() ?? 0.0,
+      salesCount: (json['salesCount'] as num?)?.toInt() ?? (json['purchaseCount'] as num?)?.toInt() ?? 0,
+      retainedCardProfit: (json['retainedCardProfit'] as num?)?.toDouble() ?? 0.0,
+      retainedProfitCount: (json['retainedProfitCount'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -198,6 +222,8 @@ class BranchPerformanceMetric {
         'rechargeVolume': rechargeVolume,
         'refundCount': refundCount,
         'refundVolume': refundVolume,
+        'cashRefunds': cashRefunds,
+        'upiRefunds': upiRefunds,
         'totalRevenue': totalRevenue,
         'sessionCount': sessionCount,
         'activeSessionsCount': activeSessionsCount,

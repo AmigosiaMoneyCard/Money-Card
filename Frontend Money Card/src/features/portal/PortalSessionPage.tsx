@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiService } from '@/services/api';
-import type { PublicSessionDetail } from '@/types';
+import type { PublicSessionDetail, PublicSessionOrder } from '@/types';
 import {
   Card,
   Badge,
@@ -25,18 +25,11 @@ import {
   ShieldAlert,
   User,
   Sparkles,
+  AlertTriangle,
+  ChefHat,
+  Download,
 } from 'lucide-react';
-
-
-function checkIsStandalone(): boolean {
-  if (typeof window === 'undefined') return false;
-  return (
-    window.matchMedia('(display-mode: standalone)').matches ||
-    (window.navigator as unknown as { standalone?: boolean }).standalone === true ||
-    document.referrer.includes('android-app://') ||
-    window.location.search.includes('source=pwa')
-  );
-}
+import { downloadCustomerReceiptPdf } from './portalReceiptPdfExport';
 
 export function PortalSessionPage() {
   const navigate = useNavigate();
@@ -46,10 +39,32 @@ export function PortalSessionPage() {
   });
 
   const [sessionDetail, setSessionDetail] = useState<PublicSessionDetail | null>(null);
+  const [orders, setOrders] = useState<PublicSessionOrder[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isStandalone, setIsStandalone] = useState(checkIsStandalone);
-  const [bypassInstall, setBypassInstall] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  const handleDownloadReceipt = async () => {
+    if (!sessionDetail || !sessionToken) return;
+    setIsGeneratingPdf(true);
+    try {
+      const res = await apiService.userPortal.getPublicSessionReceipts(sessionToken);
+      const receiptsList = res.success && Array.isArray(res.data) ? res.data : [];
+      downloadCustomerReceiptPdf({
+        sessionDetail,
+        receipts: receiptsList,
+        organizationName: sessionDetail.branchDisplayName || 'Cafeteria Dining',
+      });
+    } catch {
+      // Fallback with session details only
+      downloadCustomerReceiptPdf({
+        sessionDetail,
+        organizationName: sessionDetail.branchDisplayName || 'Cafeteria Dining',
+      });
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
 
   useEffect(() => {
     // Clear any persistent localStorage tokens so every PWA launch prompts to scan QR code
@@ -61,22 +76,22 @@ export function PortalSessionPage() {
     }
   }, []);
 
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(display-mode: standalone)');
-    const handleChange = (e: MediaQueryListEvent) => {
-      if (e.matches) {
-        setIsStandalone(true);
-      }
-    };
-    mediaQuery.addEventListener?.('change', handleChange);
-    return () => {
-      mediaQuery.removeEventListener?.('change', handleChange);
-    };
-  }, []);
-
   // In-browser scanner states
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+
+  const fetchOrders = useCallback(async (tokenOverride?: string) => {
+    const activeToken = tokenOverride || sessionToken;
+    if (!activeToken) return;
+    try {
+      const res = await apiService.userPortal.getPublicSessionOrders(activeToken);
+      if (res.success && Array.isArray(res.data)) {
+        setOrders(res.data);
+      }
+    } catch {
+      // silent poll failure
+    }
+  }, [sessionToken]);
 
   const fetchSessionDetail = useCallback(async (tokenOverride?: string, isSilent = false) => {
     const activeToken = tokenOverride || sessionToken;
@@ -98,6 +113,7 @@ export function PortalSessionPage() {
           localStorage.removeItem('moneycard_portal_card_number');
           setSessionToken(null);
           setSessionDetail(null);
+          setOrders([]);
           setError('Portal session expired or invalid. Please scan your wallet QR code again.');
         } else {
           if (!isSilent) setError(res.error.message || 'Failed to load wallet session detail');
@@ -155,6 +171,7 @@ export function PortalSessionPage() {
       setSessionToken(res.data.sessionToken);
       setIsScanning(false);
       await fetchSessionDetail(res.data.sessionToken);
+      fetchOrders(res.data.sessionToken);
     } catch {
       setLookupError('Unable to connect to server. Please check your network and try again.');
     }
@@ -165,17 +182,20 @@ export function PortalSessionPage() {
 
     // Initial load
     fetchSessionDetail(sessionToken);
+    fetchOrders(sessionToken);
 
     // 2-second real-time polling while app/tab is active and visible
     const pollInterval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         fetchSessionDetail(sessionToken, true);
+        fetchOrders(sessionToken);
       }
     }, 2000);
 
     const handleVisibilityOrFocus = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         fetchSessionDetail(sessionToken, true);
+        fetchOrders(sessionToken);
       }
     };
 
@@ -187,7 +207,7 @@ export function PortalSessionPage() {
       document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
       window.removeEventListener('focus', handleVisibilityOrFocus);
     };
-  }, [sessionToken, fetchSessionDetail]);
+  }, [sessionToken, fetchSessionDetail, fetchOrders]);
 
   const handleExitSession = () => {
     sessionStorage.removeItem('moneycard_portal_session_token');
@@ -200,23 +220,11 @@ export function PortalSessionPage() {
     }
     setSessionToken(null);
     setSessionDetail(null);
+    setOrders([]);
     setLookupError(null);
     setIsScanning(false);
     navigate('/portal', { replace: true });
   };
-
-  // When viewed in mobile browser (not standalone PWA) and customer has not clicked bypass "Not now":
-  // Render ONLY the PWA Install prompt screen as requested.
-  if (!isStandalone && !bypassInstall) {
-    return (
-      <div className="py-6 space-y-6 max-w-lg mx-auto">
-        <PwaInstallBanner
-          isStandaloneGate={true}
-          onDismiss={() => setBypassInstall(true)}
-        />
-      </div>
-    );
-  }
 
   if (!sessionToken && !sessionDetail) {
     return (
@@ -393,6 +401,19 @@ export function PortalSessionPage() {
           </p>
         </div>
 
+        {/* Low Balance Warning Banner */}
+        {!isClosed && sessionDetail.currentBalance < 100 && (
+          <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 flex items-start gap-2.5">
+            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="flex-1 text-left">
+              <p className="font-bold text-amber-900">Low Balance Notice</p>
+              <p className="mt-0.5 text-amber-800">
+                Your wallet balance is {formatCurrency(sessionDetail.currentBalance)}. Top up at the counter to keep ordering without interruptions.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Closed Session Warning Banner */}
         {isClosed && (
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 space-y-1">
@@ -405,6 +426,20 @@ export function PortalSessionPage() {
             </p>
           </div>
         )}
+
+        {/* Download PDF Receipt Action */}
+        <div className="mt-4 pt-3 border-t border-slate-100">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadReceipt}
+            isLoading={isGeneratingPdf}
+            className="w-full text-xs font-semibold py-2 rounded-xl border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 shadow-2xs cursor-pointer"
+            leftIcon={<Download className="h-4 w-4 text-emerald-600" />}
+          >
+            Download PDF Receipt
+          </Button>
+        </div>
 
         {/* Footer info & Exit action */}
         <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4 text-xs text-slate-500">
@@ -424,15 +459,80 @@ export function PortalSessionPage() {
         </div>
       </Card>
 
+      {/* Live Order & Food Preparation Status (Minimal) */}
+      {orders.length > 0 && (
+        <Card padding="sm" className="border-slate-200 bg-white shadow-xs space-y-2">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 text-xs">
+            <div className="flex items-center gap-1.5 font-bold text-slate-800">
+              <ChefHat className="h-4 w-4 text-emerald-600" />
+              <span>Food Preparation</span>
+            </div>
+            <span className="text-[11px] font-semibold text-slate-500">
+              {orders.filter((o) => o.orderStatus !== 'COMPLETED').length} Active
+            </span>
+          </div>
+
+          <div className="space-y-1.5">
+            {orders.map((ord) => {
+              const isReady = ord.orderStatus === 'READY';
+              const isCooking = ord.orderStatus === 'PREPARING';
+              const isQueued = ord.orderStatus === 'PENDING';
+              const itemSummary = ord.items.map((it) => `${it.quantity}x ${it.itemName}`).join(', ');
+
+              return (
+                <div
+                  key={ord.id}
+                  className={`flex flex-col sm:flex-row sm:items-start justify-between gap-2 rounded-lg border px-3 py-2 text-xs transition-all ${
+                    isReady
+                      ? 'border-emerald-300 bg-emerald-50/50'
+                      : isCooking
+                        ? 'border-blue-200 bg-blue-50/30'
+                        : 'border-slate-200 bg-slate-50/50'
+                  }`}
+                >
+                  <div className="flex items-start gap-2 flex-1 min-w-0">
+                    <span className="px-1.5 py-0.5 text-[11px] font-bold rounded bg-slate-900 text-white font-mono shrink-0 mt-0.5">
+                      #{ord.orderNumber}
+                    </span>
+                    <span className="text-slate-700 font-medium leading-relaxed break-words">
+                      <span className="font-semibold text-slate-900">{ord.counterName}:</span>{' '}
+                      {itemSummary}
+                    </span>
+                  </div>
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 w-fit sm:self-start mt-0.5 ${
+                      isReady
+                        ? 'bg-emerald-600 text-white'
+                        : isCooking
+                          ? 'bg-blue-100 text-blue-800'
+                          : isQueued
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-slate-100 text-slate-700'
+                    }`}
+                  >
+                    {isReady
+                      ? 'Ready for Pickup'
+                      : isCooking
+                        ? 'Preparing'
+                        : isQueued
+                          ? 'In Queue'
+                          : 'Completed'}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
       {/* Navigation Quick Actions */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Link
           to="/portal/transactions"
           className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm transition-all hover:border-emerald-500/50 hover:bg-emerald-50/20"
         >
           <History className="h-6 w-6 text-emerald-600 mb-2" />
-          <span className="text-sm font-semibold text-slate-900">Transaction History</span>
-          <span className="mt-0.5 text-xs text-slate-500">View recharges & purchases</span>
+          <span className="text-sm font-semibold text-slate-900">Recharge History</span>
         </Link>
 
         <Link
@@ -440,8 +540,7 @@ export function PortalSessionPage() {
           className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-4 text-center shadow-sm transition-all hover:border-emerald-500/50 hover:bg-emerald-50/20"
         >
           <Receipt className="h-6 w-6 text-emerald-600 mb-2" />
-          <span className="text-sm font-semibold text-slate-900">Purchase Receipts</span>
-          <span className="mt-0.5 text-xs text-slate-500">Itemized purchase details</span>
+          <span className="text-sm font-semibold text-slate-900">Billing Receipt</span>
         </Link>
       </div>
     </div>

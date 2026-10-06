@@ -76,7 +76,7 @@ class TestAuthNotifier extends AuthNotifier {
 void main() {
   AppConfig.apiMode = ApiMode.mock;
   group('LoginScreen Widget Tests', () {
-    testWidgets('renders all login UI elements (Brand, Title, Phone Number, Password, Button)', (tester) async {
+    testWidgets('renders role selection UI elements (Brand, Title, Counter Manager, Kitchen Staff)', (tester) async {
       final fakeRepo = FakeAuthRepository();
 
       await tester.pumpWidget(
@@ -91,12 +91,59 @@ void main() {
       );
 
       expect(find.text('MONEY CARD'), findsOneWidget);
-      expect(find.text('Staff Login'), findsOneWidget);
+      expect(find.text('Staff Login'), findsNothing);
+      expect(find.text('Select your operational role to proceed'), findsNothing);
+      expect(find.text('Counter Manager'), findsOneWidget);
+      expect(find.text('Kitchen Staff'), findsOneWidget);
+      expect(find.textContaining('Server:'), findsNothing);
+    });
+
+    testWidgets('navigates to Counter Manager login box and renders form elements', (tester) async {
+      final fakeRepo = FakeAuthRepository();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authNotifierProvider.overrideWith((ref) => TestAuthNotifier(fakeRepo)),
+          ],
+          child: const MaterialApp(
+            home: LoginScreen(),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Counter Manager'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Counter Manager'), findsOneWidget);
       expect(find.text('Phone Number'), findsOneWidget);
       expect(find.text('Password'), findsOneWidget);
       expect(find.text('Login'), findsOneWidget);
       expect(find.byType(TextFormField), findsNWidgets(2));
-      expect(find.textContaining('Server:'), findsNothing);
+    });
+
+    testWidgets('navigates to Kitchen Staff login box and renders form elements', (tester) async {
+      final fakeRepo = FakeAuthRepository();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authNotifierProvider.overrideWith((ref) => TestAuthNotifier(fakeRepo)),
+          ],
+          child: const MaterialApp(
+            home: LoginScreen(),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Kitchen Staff'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Kitchen Staff'), findsOneWidget);
+      expect(find.text('Phone Number'), findsOneWidget);
+      expect(find.text('Password'), findsOneWidget);
+      expect(find.text('Login'), findsOneWidget);
+      expect(find.byType(TextFormField), findsNWidgets(2));
     });
 
     testWidgets('shows validation errors when fields are empty or phone is invalid', (tester) async {
@@ -108,7 +155,7 @@ void main() {
             authNotifierProvider.overrideWith((ref) => TestAuthNotifier(fakeRepo)),
           ],
           child: const MaterialApp(
-            home: LoginScreen(),
+            home: LoginScreen(initialRole: LoginRoleMode.manager),
           ),
         ),
       );
@@ -139,7 +186,7 @@ void main() {
             authNotifierProvider.overrideWith((ref) => TestAuthNotifier(fakeRepo)),
           ],
           child: const MaterialApp(
-            home: LoginScreen(),
+            home: LoginScreen(initialRole: LoginRoleMode.manager),
           ),
         ),
       );
@@ -178,5 +225,80 @@ void main() {
 
       expect(find.text('Your session has expired. Please log in again.'), findsOneWidget);
     });
+
+    testWidgets('displays Account does not exist banner when login fails with missing account', (tester) async {
+      final fakeRepo = FakeAuthRepository();
+      final notifier = TestAuthNotifier(
+        fakeRepo,
+        initialState: const AuthState(
+          status: AuthStatus.error,
+          errorMessage: 'Account does not exist.',
+        ),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authNotifierProvider.overrideWith((ref) => notifier),
+          ],
+          child: const MaterialApp(
+            home: LoginScreen(),
+          ),
+        ),
+      );
+
+      expect(find.text('Account does not exist.'), findsOneWidget);
+    });
+
+    testWidgets('displays Password is incorrect banner when password check fails', (tester) async {
+      final fakeRepo = FakeAuthRepository();
+      final notifier = TestAuthNotifier(
+        fakeRepo,
+        initialState: const AuthState(
+          status: AuthStatus.error,
+          errorMessage: 'Password is incorrect.',
+        ),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authNotifierProvider.overrideWith((ref) => notifier),
+          ],
+          child: const MaterialApp(
+            home: LoginScreen(),
+          ),
+        ),
+      );
+
+      expect(find.text('Password is incorrect.'), findsOneWidget);
+    });
+
+    testWidgets('does not display any error or session expired banner when status is unauthenticated on logout', (tester) async {
+      final fakeRepo = FakeAuthRepository();
+      final notifier = TestAuthNotifier(
+        fakeRepo,
+        initialState: const AuthState(
+          status: AuthStatus.unauthenticated,
+          errorMessage: null,
+        ),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authNotifierProvider.overrideWith((ref) => notifier),
+          ],
+          child: const MaterialApp(
+            home: LoginScreen(),
+          ),
+        ),
+      );
+
+      expect(find.text('Your session has expired. Please log in again.'), findsNothing);
+      expect(find.text('Account does not exist.'), findsNothing);
+      expect(find.text('Password is incorrect.'), findsNothing);
+    });
   });
 }
+

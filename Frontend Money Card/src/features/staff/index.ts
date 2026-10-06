@@ -1,3 +1,3 @@
 export { StaffPage } from './StaffPage';
-export { PermissionMatrix } from './PermissionMatrix';
+export { CounterStaffPage } from './CounterStaffPage';
 export { PERMISSION_GROUPS } from './constants';

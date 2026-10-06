@@ -577,10 +577,10 @@ export function useOrgAdminAnalytics() {
         return;
       }
       const dateStr = formatLocalDate(new Date());
-      downloadCardAnalyticsPdf(options, `MoneyCard_Card_Analytics_${dateStr}.pdf`);
-      notify.success('Card Analytics PDF downloaded.');
+      downloadCardAnalyticsPdf(options, `MoneyCard_Wallet_Analytics_${dateStr}.pdf`);
+      notify.success('Wallet Analytics PDF downloaded.');
     } catch {
-      notify.error('Failed to download Card Analytics PDF.');
+      notify.error('Failed to download Wallet Analytics PDF.');
     }
   };
 

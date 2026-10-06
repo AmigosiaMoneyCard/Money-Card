@@ -82,16 +82,18 @@ class ReceiptBill {
 
   String get displayCardId {
     final raw = cardIdentifier.trim();
-    if (raw.isEmpty) return 'MC-CARD';
+    if (raw.isEmpty) return 'Wallet';
     final cleaned = cleanDisplayCardNumber(raw);
-    if (cleaned.toUpperCase().startsWith('MC-') || cleaned.toUpperCase().startsWith('MC ')) {
-      return cleaned.toUpperCase();
+    var result = cleaned;
+    final upper = result.toUpperCase();
+    if (upper.startsWith('MC-') || upper.startsWith('MC ')) {
+      result = result.substring(3).trim();
+    } else if (upper.startsWith('CARD-') || upper.startsWith('CARD ')) {
+      result = result.substring(5).trim();
+    } else if (upper.startsWith('WALLET-') || upper.startsWith('WALLET ')) {
+      result = result.substring(7).trim();
     }
-    if (cleaned.contains('-') && cleaned.length > 20) {
-      final clean = cleaned.replaceAll('-', '');
-      return 'MC-${clean.length > 6 ? clean.substring(0, 6).toUpperCase() : clean.toUpperCase()}';
-    }
-    return cleaned.toUpperCase().startsWith('MC') ? cleaned.toUpperCase() : 'MC-$cleaned';
+    return result.isEmpty ? cleaned : result;
   }
 
   String get displayBillNo {

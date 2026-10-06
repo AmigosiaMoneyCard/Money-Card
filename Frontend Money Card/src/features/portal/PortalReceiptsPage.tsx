@@ -8,12 +8,14 @@ import type { PublicReceipt } from '@/types';
 import {
   Card,
   Badge,
+  Button,
   LoadingState,
   EmptyState,
   ErrorState,
 } from '@/components/ui';
 import { formatDateTime, formatCurrency } from '@/utils';
-import { ArrowLeft, Receipt, Clock } from 'lucide-react';
+import { ArrowLeft, Receipt, Clock, Download } from 'lucide-react';
+import { downloadCustomerReceiptPdf } from './portalReceiptPdfExport';
 
 export function PortalReceiptsPage() {
   const navigate = useNavigate();
@@ -23,6 +25,7 @@ export function PortalReceiptsPage() {
 
   const [receipts, setReceipts] = useState<PublicReceipt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchReceipts = useCallback(async (isSilent = false) => {
@@ -86,17 +89,41 @@ export function PortalReceiptsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Link
-          to="/portal/session"
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:text-slate-900 shadow-sm"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Itemized Receipts</h1>
-          <p className="text-xs text-slate-500">Digital receipts for purchases made with this session.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Link
+            to="/portal/session"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:text-slate-900 shadow-sm"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">Billing Receipt</h1>
+          </div>
         </div>
+
+        {receipts.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setIsDownloading(true);
+              try {
+                downloadCustomerReceiptPdf({
+                  receipts,
+                  organizationName: 'Cafeteria Dining',
+                });
+              } finally {
+                setIsDownloading(false);
+              }
+            }}
+            isLoading={isDownloading}
+            className="text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400 self-start sm:self-auto cursor-pointer"
+            leftIcon={<Download className="h-3.5 w-3.5 text-emerald-600" />}
+          >
+            Download PDF Receipt
+          </Button>
+        )}
       </div>
 
       {isLoading ? (
@@ -106,7 +133,7 @@ export function PortalReceiptsPage() {
       ) : receipts.length === 0 ? (
         <EmptyState
           icon={<Receipt className="h-8 w-8 text-slate-500" />}
-          title="No purchase receipts"
+          title="No billing receipts"
           description="Receipts will be generated when food or store purchases occur."
         />
       ) : (
@@ -115,9 +142,19 @@ export function PortalReceiptsPage() {
             <Card key={rcpt.receiptId} padding="md" className="space-y-3.5 border-slate-200 bg-white shadow-sm">
               {/* Receipt Header with Timestamp & Status (Receipt ID hidden) */}
               <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600 flex-wrap">
                   <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                   <span>{formatDateTime(rcpt.date)}</span>
+                  {rcpt.orderNumber && (
+                    <span className="font-mono text-[11px] text-slate-500">
+                      • Order #{rcpt.orderNumber}
+                    </span>
+                  )}
+                  {rcpt.counterName && (
+                    <span className="text-[11px] text-slate-400">
+                      ({rcpt.counterName})
+                    </span>
+                  )}
                 </div>
                 <Badge variant="success" className="text-[10px]">
                   PAID
@@ -126,26 +163,38 @@ export function PortalReceiptsPage() {
 
               {/* Items List (Single whole box layout) */}
               <div className="space-y-2 text-xs divide-y divide-slate-100">
-                {rcpt.items.map((item, idx) => (
-                  <div key={idx} className="flex justify-between items-center text-slate-700 pt-2 first:pt-0">
+                {rcpt.items && rcpt.items.length > 0 ? (
+                  rcpt.items.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center text-slate-700 pt-2 first:pt-0">
+                      <div className="pr-2">
+                        <p className="font-semibold text-slate-900">{item.itemName}</p>
+                        <p className="text-[11px] text-slate-500 font-mono">
+                          {item.quantity} × {formatCurrency(item.unitPrice)}
+                        </p>
+                      </div>
+                      <span className="font-mono font-semibold text-slate-900 whitespace-nowrap">
+                        {formatCurrency(item.totalPrice)}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex justify-between items-center text-slate-700 pt-2 first:pt-0">
                     <div className="pr-2">
-                      <p className="font-medium text-slate-900">{item.itemName}</p>
-                      <p className="text-[11px] text-slate-500 font-mono">
-                        {item.quantity} × {formatCurrency(item.unitPrice)}
-                      </p>
+                      <p className="font-semibold text-slate-900">Food Purchase</p>
+                      <p className="text-[11px] text-slate-500 font-mono">1 × {formatCurrency(rcpt.totalAmount)}</p>
                     </div>
                     <span className="font-mono font-semibold text-slate-900 whitespace-nowrap">
-                      {formatCurrency(item.totalPrice)}
+                      {formatCurrency(rcpt.totalAmount)}
                     </span>
                   </div>
-                ))}
+                )}
               </div>
 
               {/* Receipt Total */}
               <div className="flex justify-between border-t border-slate-100 pt-3 text-xs">
-                <span className="font-semibold text-slate-900">Total Deducted</span>
+                <span className="font-semibold text-slate-900">Total Bill</span>
                 <span className="font-mono text-base font-bold text-slate-900">
-                  -{formatCurrency(rcpt.totalAmount)}
+                  {formatCurrency(rcpt.totalAmount)}
                 </span>
               </div>
             </Card>

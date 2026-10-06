@@ -22,7 +22,6 @@ import { notify, formatLocalDate } from '@/utils';
 import {
   OrgAdminFinancialSection,
   OrgAdminPdfModal,
-  OrgAdminMenuAnalyticsSection,
 } from './OrgAdminAnalyticsComponents';
 import { OrgAdminCardTracker } from './OrgAdminCardTracker';
 import {
@@ -39,7 +38,6 @@ import {
   Eye,
   CreditCard,
   BarChart3,
-  UtensilsCrossed,
 } from 'lucide-react';
 
 export function SuperAdminAnalyticsView() {
@@ -49,15 +47,14 @@ export function SuperAdminAnalyticsView() {
   const [branches, setBranches] = useState<Branch[]>([]);
 
   const [searchParams, setSearchParams] = useSearchParams();
-  // Active Tab: Financial Overview vs Card Analytics vs Menu Analytics
-  const [activeTab, setActiveTab] = useState<'overview' | 'cards' | 'menu'>(() => {
+  // Active Tab: Financial Overview vs Card Analytics
+  const [activeTab, setActiveTab] = useState<'overview' | 'cards'>(() => {
     const t = searchParams.get('tab');
     if (t === 'cards') return 'cards';
-    if (t === 'menu') return 'menu';
     return 'overview';
   });
 
-  const handleTabChange = (tab: 'overview' | 'cards' | 'menu') => {
+  const handleTabChange = (tab: 'overview' | 'cards') => {
     setActiveTab(tab);
     const newParams = new URLSearchParams(searchParams);
     if (tab === 'overview') {
@@ -232,7 +229,7 @@ export function SuperAdminAnalyticsView() {
     if (!options) return;
     const dateStr = new Date().toISOString().split('T')[0];
     downloadCardAnalyticsPdf(options, `MoneyCard_SuperAdmin_Card_Analytics_${dateStr}.pdf`);
-    notify.success('Card Analytics PDF downloaded.');
+    notify.success('Wallet Analytics PDF downloaded.');
   };
 
   const handleDownloadBothPdf = () => {
@@ -369,20 +366,7 @@ export function SuperAdminAnalyticsView() {
           }`}
         >
           <CreditCard className="h-4 w-4 text-indigo-600" />
-          <span>Card Analytics</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleTabChange('menu')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b-2 transition-all cursor-pointer ${
-            activeTab === 'menu'
-              ? 'border-emerald-600 text-emerald-700 bg-emerald-50/50 rounded-t-lg'
-              : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
-          }`}
-        >
-          <UtensilsCrossed className="h-4 w-4 text-emerald-600" />
-          <span>Menu Analytics</span>
+          <span>Wallet Analytics</span>
         </button>
       </div>
 
@@ -416,16 +400,16 @@ export function SuperAdminAnalyticsView() {
             }
           />
         )
-      ) : activeTab === 'cards' ? (
+      ) : (
         <OrgAdminCardTracker
           cardFleet={analytics?.cardFleetAnalytics}
+          blockedCardsCount={analytics?.blockedCardsCount ?? analytics?.cardFleetAnalytics?.blockedCardsCount ?? 0}
+          blockedBalance={analytics?.blockedBalance ?? analytics?.cardFleetAnalytics?.blockedBalance ?? 0}
           closedCardsCount={analytics?.closedCardsCount}
           zeroBalanceActiveCardsCount={analytics?.zeroBalanceActiveCardsCount}
           activeCardsRechargeCount={analytics?.activeCardsRechargeCount}
           reRechargedCardsCount={analytics?.reRechargedCardsCount}
         />
-      ) : (
-        analytics && <OrgAdminMenuAnalyticsSection analytics={analytics} />
       )}
 
       {/* ── PDF Viewer Modal (OrgAdminPdfModal with Financial and Card tiles) ── */}

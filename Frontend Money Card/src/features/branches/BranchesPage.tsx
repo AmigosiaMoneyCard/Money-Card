@@ -30,9 +30,9 @@ import {
   X,
   MessageSquare,
   Copy,
-  Check,
   Eye,
   EyeOff,
+  Check,
 } from 'lucide-react';
 
 // ─── Slide Switch Component (Far Right End) ─────────────────
@@ -160,7 +160,7 @@ export function BranchesPage() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [modalApiError, setModalApiError] = useState<string | null>(null);
 
-  // WhatsApp Credentials Modal state
+  // WhatsApp Credentials Modal State
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [createdBranchCredentials, setCreatedBranchCredentials] = useState<{
     name: string;
@@ -176,7 +176,7 @@ export function BranchesPage() {
   const [editPhoneInput, setEditPhoneInput] = useState('');
   const [editPasswordInput, setEditPasswordInput] = useState('');
   const [showEditPassword, setShowEditPassword] = useState(false);
-  const [currentBranchPassword, setCurrentBranchPassword] = useState('123456');
+  const [currentBranchPassword, setCurrentBranchPassword] = useState('12345678');
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [editNameError, setEditNameError] = useState<string | null>(null);
   const [editPhoneError, setEditPhoneError] = useState<string | null>(null);
@@ -322,10 +322,12 @@ export function BranchesPage() {
     const nameErr = validateCounterName(branchNameInput);
     setNameError(nameErr);
 
-    const phoneErr = validateMobileNumber(branchPhoneInput);
+    const cleanPhone = branchPhoneInput.replace(/\D/g, '').slice(-10);
+    const phoneErr = validateMobileNumber(cleanPhone);
     setPhoneError(phoneErr);
 
-    const passwordErr = validatePassword(branchPasswordInput);
+    const effectivePassword = branchPasswordInput.trim() || '12345678';
+    const passwordErr = validatePassword(effectivePassword);
     setPasswordError(passwordErr);
 
     if (nameErr || phoneErr || passwordErr) return;
@@ -333,11 +335,10 @@ export function BranchesPage() {
     setModalApiError(null);
     setIsSubmitting(true);
     try {
-      const cleanPhone = branchPhoneInput.replace(/\D/g, '').slice(-10);
       const result: ApiResult<Branch> = await apiService.branches.createBranch({
         name: branchNameInput.trim(),
         phone: cleanPhone,
-        password: branchPasswordInput,
+        password: effectivePassword,
       });
 
       if (!result.success) {
@@ -352,18 +353,19 @@ export function BranchesPage() {
         return;
       }
 
-      notify.success('Counter created successfully');
+      storePassword(result.data.id, effectivePassword, cleanPhone, result.data.manager?.id);
+
+      notify.success('Counter created successfully.');
       setShowCreateModal(false);
+      setBranchNameInput('');
+      setBranchPhoneInput('');
+      setBranchPasswordInput('');
       fetchBranches();
 
-      // Persist password in localStorage for this branch
-      storePassword(result.data.id, branchPasswordInput, cleanPhone);
-
-      // Open WhatsApp Dispatch Modal
       setCreatedBranchCredentials({
         name: result.data.name,
         phone: result.data.credentials?.phone || cleanPhone,
-        password: result.data.credentials?.password || branchPasswordInput,
+        password: effectivePassword,
         branchId: result.data.id,
       });
       setCopied(false);
@@ -408,6 +410,8 @@ export function BranchesPage() {
 
 
 
+
+
   // ── Consolidated View / Edit Counter Details ──────────────
   const handleOpenViewEdit = (branch: Branch) => {
     setSelectedBranch(branch);
@@ -421,12 +425,12 @@ export function BranchesPage() {
     } catch {}
 
     const storedPassword =
+      branch.credentials?.password ||
       branchPasswords[branch.id] ||
       (initialPhone && branchPasswords[initialPhone]) ||
       (branch.manager?.id && staffPasswords[branch.manager.id]) ||
       (initialPhone && staffPasswords[initialPhone]) ||
       staffPasswords[branch.id] ||
-      branch.credentials?.password ||
       '';
     setCurrentBranchPassword(storedPassword);
     setShowCurrentPassword(false);
@@ -476,17 +480,16 @@ export function BranchesPage() {
         return;
       }
 
-      if (editPasswordInput.trim()) {
-        const pass = editPasswordInput.trim();
-        setCurrentBranchPassword(pass);
-        storePassword(selectedBranch.id, pass, editPhoneInput, selectedBranch.manager?.id);
-      }
+      const pass = editPasswordInput.trim() || currentBranchPassword || '12345678';
+      setCurrentBranchPassword(pass);
+      storePassword(selectedBranch.id, pass, editPhoneInput.trim(), selectedBranch.manager?.id);
+
       notify.success('Counter details updated successfully');
       setShowViewEditModal(false);
       fetchBranches();
     } catch {
-      notify.error('Bulk import failed');
-      return { success: false, message: 'Bulk import failed' };
+      notify.error('Failed to update counter details');
+      return { success: false, message: 'Failed to update counter details' };
     } finally {
       setIsSubmitting(false);
     }
@@ -496,7 +499,7 @@ export function BranchesPage() {
     if (!selectedBranch) return;
     const cleanPhone = editPhoneInput.replace(/\D/g, '').slice(-10);
     const loginUrl = `${window.location.origin}/login`;
-    const passwordText = editPasswordInput.trim() || currentBranchPassword || '12345678';
+    const passwordText = editPasswordInput.trim() || currentBranchPassword || 'Not set';
     const textToCopy =
       `Counter Name: ${editNameInput.trim() || selectedBranch.name}\n` +
       `Mobile Number: ${cleanPhone || 'Not set'}\n` +
@@ -1018,6 +1021,8 @@ export function BranchesPage() {
 
 
 
+
+
       {/* ── Consolidated View / Edit Counter Details Modal ─────────── */}
       <Modal
         isOpen={showViewEditModal}
@@ -1124,7 +1129,7 @@ export function BranchesPage() {
                   Current Password
                 </span>
                 <span className="font-mono text-sm font-bold text-slate-800">
-                  {showCurrentPassword ? (editPasswordInput.trim() || currentBranchPassword) : '••••••••'}
+                  {showCurrentPassword ? (editPasswordInput.trim() || currentBranchPassword || 'Not set') : '••••••••'}
                 </span>
               </div>
               <button

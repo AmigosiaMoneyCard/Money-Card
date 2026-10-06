@@ -86,6 +86,32 @@ class ApiService {
     }
   }
 
+  Future<T> patch<T>(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+    required T Function(dynamic data) fromJson,
+  }) async {
+    try {
+      final response = await _dio.patch(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+        options: options,
+      );
+      return _handleResponse<T>(response, fromJson);
+    } on DioException catch (e) {
+      throw _unwrapDioException(e);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(
+        code: ApiErrorCode.unknownError,
+        message: e.toString(),
+      );
+    }
+  }
+
   Future<T> delete<T>(
     String path, {
     dynamic data,

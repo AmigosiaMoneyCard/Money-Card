@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../config/database.js';
 import { sendError, sendSuccess } from '../utils/response.js';
 import { balanceStreamService } from '../services/balanceStream.service.js';
+import { ProductStatus } from '@prisma/client';
 
 export async function resolvePublicQrToken(req: Request, res: Response) {
   let { qrToken } = req.body;
@@ -145,6 +146,7 @@ export async function getPublicSessionReceipts(req: Request, res: Response) {
   const session = await prisma.cardSession.findUnique({
     where: { sessionToken },
     include: {
+      branch: { select: { name: true } },
       transactions: {
         where: { type: 'PURCHASE' },
         orderBy: { createdAt: 'desc' },
@@ -157,15 +159,40 @@ export async function getPublicSessionReceipts(req: Request, res: Response) {
   }
 
   const receipts = session.transactions.map((tx) => {
-    let items: any[] = [];
-    if (Array.isArray(tx.items)) {
-      items = tx.items;
-    } else if (typeof tx.items === 'string') {
+    let rawMeta = tx.items as any;
+    if (typeof rawMeta === 'string') {
       try {
-        items = JSON.parse(tx.items);
+        rawMeta = JSON.parse(rawMeta);
       } catch {
-        items = [];
+        rawMeta = {};
       }
+    }
+
+    let items: any[] = [];
+    if (Array.isArray(rawMeta)) {
+      items = rawMeta;
+    } else if (rawMeta && Array.isArray(rawMeta.items)) {
+      items = rawMeta.items;
+    }
+
+    const mappedItems = items.map((i: any) => ({
+      itemName: i.itemName || i.name || 'Food Item',
+      quantity: Number(i.quantity) || 1,
+      unitPrice: Number(i.unitPrice ?? i.price ?? 0),
+      totalPrice: Number(
+        i.subtotal ??
+          i.totalPrice ??
+          (Number(i.quantity || 1) * Number(i.unitPrice ?? i.price ?? 0))
+      ),
+    }));
+
+    if (mappedItems.length === 0 && tx.amount > 0) {
+      mappedItems.push({
+        itemName: 'Food Purchase',
+        quantity: 1,
+        unitPrice: tx.amount,
+        totalPrice: tx.amount,
+      });
     }
 
     return {
@@ -174,12 +201,9 @@ export async function getPublicSessionReceipts(req: Request, res: Response) {
       date: tx.createdAt,
       totalAmount: tx.amount,
       paymentMethod: tx.paymentMethod || 'SMART_CARD',
-      items: items.map((i: any) => ({
-        itemName: i.name || i.itemName || 'Item',
-        quantity: i.quantity || 1,
-        unitPrice: i.price || i.unitPrice || 0,
-        totalPrice: (i.quantity || 1) * (i.price || i.unitPrice || 0),
-      })),
+      orderNumber: rawMeta?.orderNumber || undefined,
+      counterName: rawMeta?.counterName || session.branch?.name || undefined,
+      items: mappedItems,
     };
   });
 
@@ -228,5 +252,98 @@ export async function streamPublicSessionBalance(req: Request, res: Response) {
   } catch (err: any) {
     return sendError(res, 500, 'INTERNAL_ERROR', err?.message || 'Failed to establish balance stream');
   }
+}
+
+export async function getPublicSessionOrders(req: Request, res: Response) {
+  const { sessionToken } = req.params;
+
+  const session = await prisma.cardSession.findUnique({
+    where: { sessionToken },
+    include: {
+      branch: { select: { name: true } },
+      transactions: {
+        where: { type: 'PURCHASE' },
+        orderBy: { createdAt: 'desc' },
+      },
+    },
+  });
+
+  if (!session) {
+    return sendError(res, 404, 'NOT_FOUND', 'Session not found');
+  }
+
+  const orders = session.transactions
+    .map((tx) => {
+      const rawMeta = (tx.items as any) || {};
+      const isCancelled = Boolean(rawMeta?.isCancelled);
+      if (isCancelled) return null;
+
+      const orderItems = Array.isArray(rawMeta?.items)
+        ? rawMeta.items
+        : Array.isArray(tx.items)
+        ? tx.items
+        : [];
+
+      const currentStatus = (rawMeta.orderStatus || 'PENDING').toUpperCase();
+
+      return {
+        id: tx.id,
+        orderNumber: rawMeta.orderNumber || 101,
+        orderStatus: currentStatus,
+        orderedAt: rawMeta.orderedAt || tx.createdAt,
+        preparingAt: rawMeta.preparingAt || null,
+        readyAt: rawMeta.readyAt || null,
+        completedAt: rawMeta.completedAt || null,
+        items: orderItems.map((i: any) => ({
+          itemName: i.name || i.itemName || 'Item',
+          quantity: i.quantity || 1,
+          unitPrice: i.price || i.unitPrice || 0,
+        })),
+        counterName: rawMeta.counterName || session.branch.name || 'Counter',
+        amount: tx.amount,
+      };
+    })
+    .filter(Boolean);
+
+  return sendSuccess(res, orders);
+}
+
+export async function getPublicSessionMenu(req: Request, res: Response) {
+  const { sessionToken } = req.params;
+
+  const session = await prisma.cardSession.findUnique({
+    where: { sessionToken },
+    select: { organizationId: true, branchId: true },
+  });
+
+  if (!session) {
+    return sendError(res, 404, 'NOT_FOUND', 'Session not found');
+  }
+
+  const products = await prisma.product.findMany({
+    where: {
+      organizationId: session.organizationId,
+      status: ProductStatus.ACTIVE,
+      OR: [
+        { branchId: session.branchId },
+        { branchId: null },
+      ],
+    },
+    orderBy: { itemName: 'asc' },
+  });
+
+  const menu = products.map((p) => {
+    const isVeg = p.category?.some((c: string) => c.toLowerCase().includes('veg') && !c.toLowerCase().includes('non'));
+    return {
+      id: p.id,
+      name: p.itemName,
+      price: p.price,
+      categories: p.category || [],
+      isVeg: Boolean(isVeg),
+      status: p.status,
+    };
+  });
+
+  return sendSuccess(res, menu);
 }
 

@@ -4,6 +4,7 @@ export type {
   Permission,
   AuthUser,
   AuthState,
+  ImpersonatedOrg,
   LoginCredentials,
   AuthResponseData,
   ForgotPasswordRequest,
@@ -112,6 +113,8 @@ export type {
   CardFleetAnalytics,
   CardFleetTrackItem,
   ProductDemandItem,
+  FoodPurchaseItem,
+  FoodPurchaseRecord,
 } from './analytics';
 
 export type {
@@ -119,6 +122,9 @@ export type {
   PublicTransactionItem,
   PublicTransaction,
   PublicReceipt,
+  PublicSessionOrder,
+  PublicSessionOrderItem,
+  PublicMenuItem,
 } from './userPortal';
 
 export type {

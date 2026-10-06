@@ -21,6 +21,16 @@ class MoreScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Staff Profile'),
+        leading: BackButton(
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              final isKitchen = user?.isKitchenStaff ?? false;
+              context.go(isKitchen ? '/app/kitchen' : '/app/home');
+            }
+          },
+        ),
       ),
       body: SafeArea(
         child: RefreshIndicator(

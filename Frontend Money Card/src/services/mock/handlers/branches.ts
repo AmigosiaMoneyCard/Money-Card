@@ -102,7 +102,7 @@ export const mockBranchesHandlers = {
       credentials: data.phone ? {
         name: data.name,
         phone: data.phone,
-        password: data.password,
+        password: data.password || '12345678',
       } : undefined,
       createdAt: mockStore.getTimestamp(),
       updatedAt: mockStore.getTimestamp(),
@@ -128,7 +128,7 @@ export const mockBranchesHandlers = {
           id: res.data.id,
           name: res.data.name,
           phone: b.phone || '',
-          password: b.password || '123456',
+          password: b.password || '12345678',
         });
       } else {
         errors.push({ message: res.error.message || 'Failed to create branch' });
@@ -153,7 +153,7 @@ export const mockBranchesHandlers = {
 
     const existing = mockStore.branches[branchIndex];
     const newPhone = data.phone !== undefined ? data.phone : existing.credentials?.phone;
-    const newPassword = data.password !== undefined ? data.password : existing.credentials?.password;
+    const newPassword = data.password ? data.password : (existing.credentials?.password || '12345678');
 
     const updated: Branch = {
       ...existing,

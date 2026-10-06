@@ -125,6 +125,8 @@ function extractItemName(it: any): string {
   if (it.name) return it.name;
   if (it.productName) return it.productName;
   if (it.title) return it.title;
+  if (it.product?.name) return it.product.name;
+  if (it.dishName) return it.dishName;
   if (it.productId) return `Product (${String(it.productId).slice(0, 6)})`;
   return 'Item';
 }
@@ -154,7 +156,15 @@ export function extractTransactionItems(items: any): FormattedTransactionItem[] 
   }
   if (!Array.isArray(items)) {
     if (typeof items === 'object' && items !== null) {
-      items = [items];
+      if (Array.isArray(items.items)) {
+        items = items.items;
+      } else if (Array.isArray(items.orderItems)) {
+        items = items.orderItems;
+      } else if (Array.isArray(items.detailedItems)) {
+        items = items.detailedItems;
+      } else {
+        items = [items];
+      }
     } else {
       return [];
     }
@@ -186,25 +196,26 @@ export function extractTransactionItems(items: any): FormattedTransactionItem[] 
  * Prevents Vercel preview deployment SSO authentication redirects by ensuring
  * that any Vercel environment targets the publicly accessible staging domain.
  */
-export function getPublicCustomerPortalUrl(token: string): string {
+export function getPublicCustomerPortalUrl(token?: string): string {
+  const path = token ? `/c/${token}` : '/portal';
   if (typeof window === 'undefined') {
-    return `https://money-card-frontend.vercel.app/c/${token}`;
+    return `https://money-card-frontend.vercel.app${path}`;
   }
 
   const { hostname, origin } = window.location;
 
   // Local development testing
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return `${origin}/c/${token}`;
+    return `${origin}${path}`;
   }
 
   // If on staging environment, route to staging domain
   if (hostname.includes('staging')) {
-    return `https://money-card-frontend-staging.vercel.app/c/${token}`;
+    return `https://money-card-frontend-staging.vercel.app${path}`;
   }
 
   // In production (money-card-frontend.vercel.app or custom domain), route to current production origin
-  return `${origin}/c/${token}`;
+  return `${origin}${path}`;
 }
 
 /**

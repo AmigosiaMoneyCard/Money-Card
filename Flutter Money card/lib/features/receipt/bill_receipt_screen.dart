@@ -158,7 +158,7 @@ class _BillReceiptScreenState extends ConsumerState<BillReceiptScreen> {
 
                     // Bill Metadata
                     _buildReceiptRow('Bill Number:', bill.displayBillNo, isBold: true),
-                    _buildReceiptRow('Card:', bill.displayCardId),
+                    _buildReceiptRow('Wallet:', bill.displayCardId),
                     _buildReceiptRow('Date:', '$dateStr  $timeStr'),
                     if (bill.staffName != null && bill.staffName!.isNotEmpty)
                       _buildReceiptRow('Cashier:', bill.staffName!),

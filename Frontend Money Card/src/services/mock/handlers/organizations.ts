@@ -394,4 +394,49 @@ export const mockOrganizationsHandlers = {
       data: { message: 'Activation invitation resent successfully to Org Admin.' },
     };
   },
+
+  async getAuditLogs(_params?: any): Promise<ApiResult<any>> {
+    await mockDelay();
+    return createMockSuccess({
+      logs: [
+        {
+          id: 'log-1',
+          action: 'AUTH_LOGIN_SUCCESS',
+          severity: 'INFO',
+          userName: 'Super Admin',
+          organization: { name: 'Main Campus Dining' },
+          ipAddress: '192.168.1.10',
+          createdAt: new Date().toISOString(),
+          details: { portal: 'SUPER_ADMIN' },
+        },
+        {
+          id: 'log-2',
+          action: 'CARD_BLOCKED',
+          severity: 'WARNING',
+          userName: 'Counter Lead',
+          organization: { name: 'Main Campus Dining' },
+          ipAddress: '192.168.1.42',
+          createdAt: new Date(Date.now() - 3600000).toISOString(),
+          details: { cardId: 'card-101', physicalCardNumber: 'MC-101', reason: 'Customer reported lost' },
+        },
+      ],
+      total: 2,
+      page: 1,
+      totalPages: 1,
+    });
+  },
+
+  async exportOrganizationData(orgId?: string): Promise<ApiResult<any>> {
+    await mockDelay();
+    return createMockSuccess({
+      exportMetadata: { generatedAt: new Date().toISOString(), counts: {} },
+      organization: { id: orgId || 'org-1', name: 'Mock Org' },
+      branches: [],
+      users: [],
+      cards: [],
+      sessions: [],
+      products: [],
+      transactions: [],
+    });
+  },
 };

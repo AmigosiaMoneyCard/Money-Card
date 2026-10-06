@@ -41,6 +41,8 @@ export interface BranchPerformanceMetric {
   cardsReturned?: number;
   cancelledOrdersCount?: number;
   cancelledOrdersVolume?: number;
+  retainedCardProfit?: number;
+  retainedProfitCount?: number;
 }
 
 export interface StaffActivityItem {
@@ -127,6 +129,8 @@ export interface AnalyticsOverview {
   cardsReturned?: number;
   cancelledOrdersCount?: number;
   cancelledOrdersVolume?: number;
+  retainedCardProfit?: number;
+  retainedProfitCount?: number;
 
   // Menu Analytics & Food Order Metrics
   foodOrdersCount?: number;
@@ -134,6 +138,9 @@ export interface AnalyticsOverview {
   productsSoldCount?: number;
   dishesOrderedCount?: number;
   allProductDemand?: ProductDemandItem[];
+  crossCounterPurchasesCount?: number;
+  crossCounterRevenue?: number;
+  foodPurchasesByCounter?: FoodPurchaseRecord[];
   rechargeVolume?: number;
   salesVolume?: number;
   salesCount?: number;
@@ -143,6 +150,28 @@ export interface AnalyticsOverview {
   refundCount?: number;
   totalFloatBalance?: number;
   blockedCardsCount?: number;
+  blockedBalance?: number;
+}
+
+export interface FoodPurchaseItem {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+}
+
+export interface FoodPurchaseRecord {
+  id: string;
+  createdAt: string;
+  sessionCardNumber: string;
+  issuingBranchId: string;
+  issuingBranchName: string;
+  purchasingBranchId: string;
+  purchasingBranchName: string;
+  isCrossCounter: boolean;
+  items: FoodPurchaseItem[];
+  totalAmount: number;
 }
 
 export interface ProductDemandItem {
@@ -152,6 +181,7 @@ export interface ProductDemandItem {
   quantitySold: number;
   totalRevenue: number;
   orderCount?: number;
+  branchBreakdown?: Record<string, { branchName: string; quantitySold: number; totalRevenue: number }>;
 }
 
 export interface CardFleetTrackItem {
@@ -173,6 +203,7 @@ export interface CardFleetAnalytics {
   totalFloatBalance: number;
   dormantCardsCount: number;
   blockedCardsCount: number;
+  blockedBalance?: number;
   availableCardsCount: number;
   topActiveCards: CardFleetTrackItem[];
   dormantCards: CardFleetTrackItem[];

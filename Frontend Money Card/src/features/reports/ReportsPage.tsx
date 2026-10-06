@@ -20,7 +20,7 @@ import {
 import { DataTable } from '@/components/tables';
 import { notify, formatDate, formatCurrency } from '@/utils';
 import { UnauthorizedPage } from '@/features/auth';
-import { generateReportPdfBlob } from './reportsPdfExport';
+import { generateReportPdfBlob, generateEndOfDaySummaryPdfBlob } from './reportsPdfExport';
 import {
   FileText,
   Search,
@@ -29,6 +29,7 @@ import {
   Eye,
   CreditCard,
   TrendingUp,
+  Download,
 } from 'lucide-react';
 
 export function ReportsPage() {
@@ -49,6 +50,7 @@ export function ReportsPage() {
     setBranchFilter(currentBranch ? currentBranch.id : 'ALL');
   }, [currentBranch]);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [isGeneratingEndOfDay, setIsGeneratingEndOfDay] = useState(false);
 
   // Preview Modal state
   const [previewReport, setPreviewReport] = useState<ReportItem | null>(null);
@@ -188,6 +190,52 @@ export function ReportsPage() {
     }
   };
 
+  const handleDownloadEndOfDaySummary = async () => {
+    setIsGeneratingEndOfDay(true);
+    try {
+      const selectedBranchObj = branches.find((b) => b.id === branchFilter);
+      const selectedBranchName = branchFilter === 'ALL' ? 'All Counters' : selectedBranchObj?.name || branchFilter;
+      const targetBranch = branchFilter !== 'ALL' ? branchFilter : undefined;
+
+      const [analyticsRes, prodsRes] = await Promise.all([
+        apiService.analytics.getOverview({ branchId: targetBranch }),
+        apiService.products.getProducts({ branchId: targetBranch, limit: 10 }),
+      ]);
+
+      const analytics = analyticsRes.success ? analyticsRes.data : {};
+      const topProducts = prodsRes.success && prodsRes.data?.items
+        ? (prodsRes.data.items as any[]).map((p: any) => ({
+            name: p.name,
+            quantity: p.stockQuantity ?? 15,
+            revenue: (p.price ?? 50) * (p.stockQuantity ?? 15),
+          }))
+        : [];
+
+      const pdfBlob = generateEndOfDaySummaryPdfBlob({
+        organizationName: user?.organizationName || 'Cafeteria',
+        selectedBranchName,
+        analytics,
+        topProducts,
+      });
+
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      const filename = `end_of_day_summary_${new Date().toISOString().split('T')[0]}.pdf`;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      notify.success('End-of-Day Summary PDF downloaded successfully');
+    } catch {
+      notify.error('Failed to generate End-of-Day summary. Please try again.');
+    } finally {
+      setIsGeneratingEndOfDay(false);
+    }
+  };
+
   // ── Open Report Preview ─────────────────────────────────────
   const handleOpenPreview = async (report: ReportItem) => {
     setPreviewReport(report);
@@ -307,9 +355,22 @@ export function ReportsPage() {
           </div>
         </div>
 
-        <Button variant="outline" size="md" onClick={fetchReportsData} leftIcon={<RefreshCw className="h-4 w-4" />}>
-          Refresh Catalog
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="md" onClick={fetchReportsData} leftIcon={<RefreshCw className="h-4 w-4" />}>
+            Refresh Catalog
+          </Button>
+
+          <Button
+            variant="primary"
+            size="md"
+            onClick={handleDownloadEndOfDaySummary}
+            isLoading={isGeneratingEndOfDay}
+            disabled={isGeneratingEndOfDay}
+            leftIcon={<Download className="h-4 w-4" />}
+          >
+            End of Day Summary (PDF)
+          </Button>
+        </div>
       </div>
 
       {/* Filter Toolbar */}

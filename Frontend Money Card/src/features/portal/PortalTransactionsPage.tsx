@@ -1,5 +1,5 @@
-// ─── User Portal Transactions Page (M11) ───────────────────
-// Displays permitted transaction history (Recharges, Purchases, Refunds) for current session.
+// ─── User Portal Recharge History Page (M11) ───────────────────
+// Displays recharge history for the current session.
 
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -7,7 +7,6 @@ import { apiService } from '@/services/api';
 import type { PublicTransaction } from '@/types';
 import {
   Card,
-  Badge,
   LoadingState,
   EmptyState,
   ErrorState,
@@ -17,10 +16,6 @@ import {
   ArrowLeft,
   History,
   ArrowDownLeft,
-  RotateCcw,
-  ChevronDown,
-  ChevronUp,
-  ShoppingBag,
 } from 'lucide-react';
 
 export function PortalTransactionsPage() {
@@ -32,7 +27,6 @@ export function PortalTransactionsPage() {
   const [transactions, setTransactions] = useState<PublicTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedTxnId, setExpandedTxnId] = useState<string | null>(null);
 
   const fetchTransactions = useCallback(async (isSilent = false) => {
     if (!sessionToken) {
@@ -46,7 +40,7 @@ export function PortalTransactionsPage() {
       const res = await apiService.userPortal.getPublicSessionTransactions(sessionToken);
 
       if (!res.success) {
-        if (!isSilent) setError(res.error.message || 'Failed to load transaction history');
+        if (!isSilent) setError(res.error.message || 'Failed to load recharge history');
         return;
       }
 
@@ -92,6 +86,14 @@ export function PortalTransactionsPage() {
     return null;
   }
 
+  const rechargeTransactions = transactions.filter(
+    (txn) =>
+      txn.type === 'RECHARGE' ||
+      txn.type === 'RECHARGE_CASH' ||
+      txn.type === 'RECHARGE_UPI' ||
+      String(txn.type).includes('RECHARGE')
+  );
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -103,125 +105,48 @@ export function PortalTransactionsPage() {
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Transaction History</h1>
-          <p className="text-xs text-slate-500">Recharges, purchases, and session settlements.</p>
+          <h1 className="text-xl font-bold text-slate-900">Recharge History</h1>
         </div>
       </div>
 
       {isLoading ? (
-        <LoadingState message="Loading transactions..." />
+        <LoadingState message="Loading recharge history..." />
       ) : error ? (
         <ErrorState title="Failed to load history" message={error} onRetry={fetchTransactions} />
-      ) : transactions.length === 0 ? (
+      ) : rechargeTransactions.length === 0 ? (
         <EmptyState
           icon={<History className="h-8 w-8 text-slate-500" />}
-          title="No transactions recorded"
-          description="Your session activity will appear here when recharges or purchases occur."
+          title="No recharges recorded"
+          description="Your wallet recharge top-ups will appear here."
         />
       ) : (
         <div className="space-y-3">
-          {transactions.map((txn) => {
-            const isExpanded = expandedTxnId === txn.id;
-            const isRecharge = txn.type === 'RECHARGE' || txn.type === 'RECHARGE_CASH' || txn.type === 'RECHARGE_UPI' || String(txn.type).includes('RECHARGE');
-            const isRefund = txn.type === 'REFUND' || txn.type === 'REFUND_RETURN' || String(txn.type).includes('REFUND');
-
-            return (
-              <Card key={txn.id} padding="sm" className="space-y-3">
-                <button
-                  type="button"
-                  className="w-full flex items-center justify-between text-left cursor-pointer"
-                  onClick={() =>
-                    txn.items && txn.items.length > 0
-                      ? setExpandedTxnId(isExpanded ? null : txn.id)
-                      : null
-                  }
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-                        isRecharge
-                          ? 'bg-emerald-50 text-emerald-600'
-                          : isRefund
-                            ? 'bg-rose-50 text-rose-600'
-                            : 'bg-amber-50 text-amber-600'
-                      }`}
-                    >
-                      {isRecharge ? (
-                        <ArrowDownLeft className="h-5 w-5" />
-                      ) : isRefund ? (
-                        <RotateCcw className="h-5 w-5" />
-                      ) : (
-                        <ShoppingBag className="h-5 w-5" />
-                      )}
-                    </div>
-
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-slate-900">
-                          {isRecharge
-                            ? 'Recharge successful'
-                            : isRefund
-                              ? 'Session Refund Settlement'
-                              : 'Purchase item'}
-                        </span>
-                        <Badge
-                          variant={txn.status === 'SUCCESS' ? 'success' : 'outline'}
-                          className="text-[10px]"
-                        >
-                          {txn.status}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-slate-500">{formatDateTime(txn.timestamp)}</p>
-                    </div>
+          {rechargeTransactions.map((txn) => (
+            <Card key={txn.id} padding="sm" className="space-y-3">
+              <div className="w-full flex items-center justify-between text-left">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                    <ArrowDownLeft className="h-5 w-5" />
                   </div>
 
-                  <div className="text-right">
-                    <p
-                      className={`font-mono text-sm font-bold ${
-                        isRecharge
-                          ? 'text-emerald-600'
-                          : isRefund
-                            ? 'text-rose-600'
-                            : 'text-slate-900'
-                      }`}
-                    >
-                      {isRecharge ? '+' : '-'}{formatCurrency(txn.amount)}
-                    </p>
-                    {txn.items && txn.items.length > 0 && (
-                      <div className="mt-1 flex items-center justify-end text-[11px] text-emerald-600 font-medium">
-                        <span>{txn.items.length} items</span>
-                        {isExpanded ? (
-                          <ChevronUp className="h-3 w-3 ml-0.5" />
-                        ) : (
-                          <ChevronDown className="h-3 w-3 ml-0.5" />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </button>
-
-                {/* Expanded Itemized Purchase Breakdown */}
-                {isExpanded && txn.items && (
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2 text-xs">
-                    <div className="flex items-center gap-1.5 font-semibold text-slate-900 pb-1 border-b border-slate-200">
-                      <ShoppingBag className="h-3.5 w-3.5 text-emerald-600" />
-                      <span>Purchased Items Breakdown</span>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-slate-900">
+                        {txn.paymentMethod ? `Recharge (${txn.paymentMethod})` : 'Recharge successful'}
+                      </span>
                     </div>
-                    {txn.items.map((item, idx) => (
-                      <div key={idx} className="flex justify-between text-slate-700">
-                        <span>
-                          {item.itemName} x{item.quantity}
-                        </span>
-                        <span className="font-mono text-slate-900 font-semibold">
-                          {formatCurrency(item.totalPrice)}
-                        </span>
-                      </div>
-                    ))}
+                    <p className="text-xs text-slate-500">{formatDateTime(txn.timestamp)}</p>
                   </div>
-                )}
-              </Card>
-            );
-          })}
+                </div>
+
+                <div className="text-right">
+                  <p className="font-mono text-sm font-bold text-emerald-600">
+                    +{formatCurrency(txn.amount)}
+                  </p>
+                </div>
+              </div>
+            </Card>
+          ))}
         </div>
       )}
     </div>

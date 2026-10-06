@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import type { ReactNode } from 'react';
-import type { AuthUser, AuthState, ApiResult } from '@/types';
+import type { AuthUser, AuthState, ApiResult, ImpersonatedOrg, UserRole } from '@/types';
 import { AuthContext } from './AuthContext';
 import { apiClient } from '@/services/api';
 import { apiService } from '@/services/api';
@@ -55,6 +55,9 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [state, setState] = useState<AuthState>(createInitialState);
+  const [impersonatedOrg, setImpersonatedOrg] = useState<ImpersonatedOrg | null>(() => {
+    return storage.get<ImpersonatedOrg>('moneycard_impersonated_org');
+  });
   const isRefreshing = useRef(false);
   const hasInitialized = useRef(false);
 
@@ -66,6 +69,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     storage.remove(STORAGE_KEYS.REFRESH_TOKEN);
     storage.remove(STORAGE_KEYS.USER);
     storage.remove(STORAGE_KEYS.SELECTED_BRANCH_ID);
+    storage.remove('moneycard_impersonated_org');
+    setImpersonatedOrg(null);
     setState({
       user: null,
       accessToken: null,
@@ -122,6 +127,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const setLoading = useCallback((isLoading: boolean) => {
     setState((prev) => ({ ...prev, isLoading }));
   }, []);
+
+  // ── Support Impersonation Actions ─────────────────────────
+  const startImpersonation = useCallback((org: ImpersonatedOrg) => {
+    storage.set('moneycard_impersonated_org', org);
+    setImpersonatedOrg(org);
+  }, []);
+
+  const exitImpersonation = useCallback(() => {
+    storage.remove('moneycard_impersonated_org');
+    setImpersonatedOrg(null);
+  }, []);
+
+  const effectiveUser = useMemo(() => {
+    if (!state.user) return null;
+    if (impersonatedOrg && state.user.role === 'SUPER_ADMIN') {
+      return {
+        ...state.user,
+        role: 'ORG_ADMIN' as UserRole,
+        organizationId: impersonatedOrg.id,
+        organizationName: impersonatedOrg.name,
+      };
+    }
+    return state.user;
+  }, [state.user, impersonatedOrg]);
 
   // ── Token Refresh ─────────────────────────────────────────
   const handleTokenRefresh = useCallback(() => {
@@ -221,6 +250,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     <AuthContext.Provider
       value={{
         ...state,
+        user: effectiveUser,
+        impersonatedOrg,
+        startImpersonation,
+        exitImpersonation,
         login,
         logout,
         updateUser,

@@ -39,6 +39,7 @@ export async function getOrganizationProfile(req: Request, res: Response) {
       where: {
         organizationId: orgId,
         role: Role.STAFF,
+        isCounterAccount: false,
         status: { not: UserStatus.DEACTIVATED },
       },
     }),
@@ -152,6 +153,7 @@ export async function getBranches(req: Request, res: Response) {
               name: true,
               phone: true,
               email: true,
+              initialPassword: true,
               permissions: {
                 select: {
                   permission: true,
@@ -196,7 +198,7 @@ export async function getBranches(req: Request, res: Response) {
         ? {
             name: b.name,
             phone: managerUser.phone || '',
-            password: '12345678',
+            password: managerUser.initialPassword || '',
           }
         : undefined,
       createdAt: b.createdAt,
@@ -306,10 +308,12 @@ export async function createBranch(req: Request, res: Response) {
       if (!counterUser) {
         counterUser = await tx.user.create({
           data: {
-            name: `Staff - ${trimmedName}`,
+            name: trimmedName,
             phone: cleanPhone,
             passwordHash,
+            initialPassword: effectivePassword,
             role: Role.STAFF,
+            isCounterAccount: true,
             organizationId: orgId,
             status: UserStatus.ACTIVE,
           },
@@ -318,8 +322,11 @@ export async function createBranch(req: Request, res: Response) {
         await tx.user.update({
           where: { id: counterUser.id },
           data: {
+            name: trimmedName,
             phone: cleanPhone,
             passwordHash,
+            initialPassword: effectivePassword,
+            isCounterAccount: true,
             status: UserStatus.ACTIVE,
           },
         });
@@ -504,6 +511,7 @@ export async function getBranchById(req: Request, res: Response) {
               name: true,
               phone: true,
               email: true,
+              initialPassword: true,
               permissions: {
                 select: {
                   permission: true,
@@ -542,7 +550,7 @@ export async function getBranchById(req: Request, res: Response) {
       ? {
           name: branch.name,
           phone: manager.phone || '',
-          password: '12345678',
+          password: manager.initialPassword || '',
         }
       : undefined,
   });
@@ -612,6 +620,8 @@ export async function updateBranch(req: Request, res: Response) {
     passwordHash = await hashPassword(effectivePassword);
   }
 
+  let existingManager: any = null;
+
   const updatedBranch = await prisma.$transaction(async (tx) => {
     const updated = await tx.branch.update({
       where: { id },
@@ -628,21 +638,23 @@ export async function updateBranch(req: Request, res: Response) {
           (p) => p.permission === PermissionCode.STAFF_MANAGE || p.permission === PermissionCode.BRANCH_MANAGE,
         ),
       ) || branch.staffAssignments?.[0];
-    let existingManager = managerAssignment?.user;
+    existingManager = managerAssignment?.user;
 
     if (existingManager) {
-      if (cleanPhone || passwordHash) {
+      if (cleanPhone || passwordHash || password) {
         await tx.user.update({
           where: { id: existingManager.id },
           data: {
+            name: updated.name,
             ...(cleanPhone ? { phone: cleanPhone } : {}),
             ...(passwordHash ? { passwordHash } : {}),
+            ...(password && password.trim() ? { initialPassword: password.trim() } : {}),
+            isCounterAccount: true,
             status: UserStatus.ACTIVE,
           },
         });
       }
     } else if (cleanPhone) {
-      // Find or provision counter manager user if none was assigned to this branch
       let user = await tx.user.findFirst({
         where: {
           OR: [
@@ -658,10 +670,12 @@ export async function updateBranch(req: Request, res: Response) {
       if (!user) {
         user = await tx.user.create({
           data: {
-            name: `Staff - ${updated.name}`,
+            name: updated.name,
             phone: cleanPhone,
             passwordHash: effectivePasswordHash,
+            initialPassword: password && password.trim() ? password.trim() : (existingManager?.initialPassword || null),
             role: Role.STAFF,
+            isCounterAccount: true,
             organizationId: orgId,
             status: UserStatus.ACTIVE,
           },
@@ -670,51 +684,16 @@ export async function updateBranch(req: Request, res: Response) {
         await tx.user.update({
           where: { id: user.id },
           data: {
+            name: updated.name,
             phone: cleanPhone,
             passwordHash: effectivePasswordHash,
+            ...(password && password.trim() ? { initialPassword: password.trim() } : {}),
+            isCounterAccount: true,
             status: UserStatus.ACTIVE,
           },
         });
       }
 
-      // Assign default counter manager permissions
-      const defaultPermissions: PermissionCode[] = [
-        PermissionCode.CARD_VIEW,
-        PermissionCode.CARD_ISSUE,
-        PermissionCode.CARD_RETURN,
-        PermissionCode.CARD_BLOCK,
-        PermissionCode.CARD_UNBLOCK,
-        PermissionCode.SESSION_VIEW,
-        PermissionCode.RECHARGE,
-        PermissionCode.PURCHASE,
-        PermissionCode.REFUND,
-        PermissionCode.PRODUCT_VIEW,
-        PermissionCode.PRODUCT_MANAGE,
-        PermissionCode.INVENTORY_VIEW,
-        PermissionCode.INVENTORY_MANAGE,
-        PermissionCode.VIEW_ANALYTICS,
-        PermissionCode.VIEW_REPORTS,
-        PermissionCode.STAFF_VIEW,
-        PermissionCode.STAFF_MANAGE,
-      ];
-
-      for (const perm of defaultPermissions) {
-        await tx.userPermission.upsert({
-          where: {
-            userId_permission: {
-              userId: user.id,
-              permission: perm,
-            },
-          },
-          create: {
-            userId: user.id,
-            permission: perm,
-          },
-          update: {},
-        }).catch(() => {});
-      }
-
-      // Link counter user with this branch
       await tx.userBranch.upsert({
         where: {
           userId_branchId: {
@@ -735,19 +714,24 @@ export async function updateBranch(req: Request, res: Response) {
     return updated;
   });
 
-  const finalManagerPhone = cleanPhone || branch.staffAssignments?.[0]?.user?.phone;
+  const finalPhone = cleanPhone || existingManager?.phone;
+  const finalPassword = password && password.trim() ? password.trim() : (existingManager?.initialPassword || '');
 
   return sendSuccess(res, {
     ...updatedBranch,
-    manager: {
-      name: updatedBranch.name,
-      phone: finalManagerPhone || '',
-    },
-    credentials: {
-      name: updatedBranch.name,
-      phone: finalManagerPhone || '',
-      password: effectivePassword,
-    },
+    manager: existingManager
+      ? {
+          name: existingManager.name,
+          phone: existingManager.phone || '',
+        }
+      : null,
+    credentials: finalPhone
+      ? {
+          name: updatedBranch.name,
+          phone: finalPhone,
+          password: finalPassword,
+        }
+      : undefined,
   });
 }
 
@@ -803,9 +787,26 @@ export async function deleteBranch(req: Request, res: Response) {
   }
 
   await prisma.$transaction(async (tx) => {
+    const counterUsers = await tx.userBranch.findMany({
+      where: { branchId: id },
+      include: { user: true },
+    });
+
     await tx.branchInventory.deleteMany({ where: { branchId: id } });
     await tx.userBranch.deleteMany({ where: { branchId: id } });
     await tx.branch.delete({ where: { id } });
+
+    for (const assignment of counterUsers) {
+      if (assignment.user.isCounterAccount) {
+        const remaining = await tx.userBranch.count({
+          where: { userId: assignment.userId },
+        });
+        if (remaining === 0) {
+          await tx.userPermission.deleteMany({ where: { userId: assignment.userId } });
+          await tx.user.delete({ where: { id: assignment.userId } }).catch(() => {});
+        }
+      }
+    }
   });
 
   return sendSuccess(res, { deleted: true, message: 'Branch deleted successfully.' });

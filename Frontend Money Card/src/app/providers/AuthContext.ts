@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import type { AuthUser, AuthState } from '@/types';
+import type { AuthUser, AuthState, ImpersonatedOrg } from '@/types';
 
 // ─── Auth Context (separate file for React Fast Refresh) ───
 
@@ -8,6 +8,9 @@ export interface AuthContextValue extends AuthState {
   logout: () => void;
   updateUser: (user: AuthUser) => void;
   setLoading: (isLoading: boolean) => void;
+  impersonatedOrg: ImpersonatedOrg | null;
+  startImpersonation: (org: ImpersonatedOrg) => void;
+  exitImpersonation: () => void;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

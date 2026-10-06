@@ -27,13 +27,7 @@ class AuthRepository {
       refreshToken: response.refreshToken,
     );
 
-    // Fetch authoritative staff identity from /auth/me
-    try {
-      final me = await authService.getMe();
-      return me;
-    } catch (_) {
-      return response.user;
-    }
+    return response.user;
   }
 
   /// Retrieve current authenticated user, attempting refresh if access token expired

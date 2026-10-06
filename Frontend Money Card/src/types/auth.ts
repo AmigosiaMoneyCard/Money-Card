@@ -46,11 +46,18 @@ export interface AuthUser {
   assignedBranchIds: string[];
 }
 
+export interface ImpersonatedOrg {
+  id: string;
+  name: string;
+  slug?: string;
+}
+
 export interface AuthState {
   user: AuthUser | null;
   accessToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  impersonatedOrg?: ImpersonatedOrg | null;
 }
 
 export interface LoginCredentials {

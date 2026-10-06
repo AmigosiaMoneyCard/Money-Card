@@ -4,6 +4,8 @@ import 'token_storage.dart';
 /// Secure token storage implementation backed by [FlutterSecureStorage] with fallback for older Android devices.
 class SecureTokenStorage implements TokenStorage {
   final FlutterSecureStorage _storage;
+  String? _cachedAccess;
+  String? _cachedRefresh;
   String? _fallbackAccess;
   String? _fallbackRefresh;
 
@@ -26,6 +28,10 @@ class SecureTokenStorage implements TokenStorage {
     required String accessToken,
     String? refreshToken,
   }) async {
+    _cachedAccess = accessToken;
+    if (refreshToken != null) {
+      _cachedRefresh = refreshToken;
+    }
     try {
       await _storage.write(key: _keyAccessToken, value: accessToken);
       if (refreshToken != null) {
@@ -39,8 +45,15 @@ class SecureTokenStorage implements TokenStorage {
 
   @override
   Future<String?> getAccessToken() async {
+    if (_cachedAccess != null && _cachedAccess!.isNotEmpty) {
+      return _cachedAccess;
+    }
     try {
-      return await _storage.read(key: _keyAccessToken);
+      final token = await _storage.read(key: _keyAccessToken);
+      if (token != null && token.isNotEmpty) {
+        _cachedAccess = token;
+      }
+      return token;
     } catch (_) {
       return _fallbackAccess;
     }
@@ -48,8 +61,15 @@ class SecureTokenStorage implements TokenStorage {
 
   @override
   Future<String?> getRefreshToken() async {
+    if (_cachedRefresh != null && _cachedRefresh!.isNotEmpty) {
+      return _cachedRefresh;
+    }
     try {
-      return await _storage.read(key: _keyRefreshToken);
+      final token = await _storage.read(key: _keyRefreshToken);
+      if (token != null && token.isNotEmpty) {
+        _cachedRefresh = token;
+      }
+      return token;
     } catch (_) {
       return _fallbackRefresh;
     }
@@ -57,12 +77,15 @@ class SecureTokenStorage implements TokenStorage {
 
   @override
   Future<void> clearTokens() async {
+    _cachedAccess = null;
+    _cachedRefresh = null;
+    _fallbackAccess = null;
+    _fallbackRefresh = null;
     try {
       await _storage.delete(key: _keyAccessToken);
       await _storage.delete(key: _keyRefreshToken);
     } catch (_) {
-      _fallbackAccess = null;
-      _fallbackRefresh = null;
+      // Ignored
     }
   }
 

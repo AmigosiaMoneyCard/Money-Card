@@ -154,7 +154,46 @@ void main() {
 
       expect(notifier.state.status, AuthStatus.unauthenticated);
       expect(notifier.state.user, isNull);
+      expect(notifier.state.errorMessage, isNull);
       expect(await tokenStorage.hasAccessToken(), isFalse);
+    });
+
+    test('logout suppresses subsequent setSessionExpired calls and keeps unauthenticated state', () async {
+      final tokenStorage = InMemoryTokenStorage();
+      final authRepo = AuthRepository(
+        authService: FakeAuthServiceSuccess(),
+        tokenStorage: tokenStorage,
+      );
+
+      final notifier = AuthNotifier(authRepo);
+      await notifier.login(email: 'a@b.com', password: 'p');
+      await notifier.logout();
+
+      expect(notifier.state.status, AuthStatus.unauthenticated);
+
+      // Trailing 401 callback attempting to trigger setSessionExpired
+      notifier.setSessionExpired();
+
+      expect(notifier.state.status, AuthStatus.unauthenticated);
+      expect(notifier.state.isSessionExpired, isFalse);
+      expect(notifier.state.errorMessage, isNull);
+    });
+
+    test('login preserves specific Account does not exist and Password is incorrect messages', () async {
+      final tokenStorage = InMemoryTokenStorage();
+      final authRepo = AuthRepository(
+        authService: FakeAuthServiceFailure(),
+        tokenStorage: tokenStorage,
+      );
+
+      final notifier = AuthNotifier(authRepo);
+
+      // Verify custom message pass-through
+      final result = await notifier.login(email: 'wrong@test.com', password: 'p');
+      expect(result, isFalse);
+      expect(notifier.state.status, AuthStatus.error);
+      expect(notifier.state.errorMessage, 'Invalid credentials');
     });
   });
 }
+

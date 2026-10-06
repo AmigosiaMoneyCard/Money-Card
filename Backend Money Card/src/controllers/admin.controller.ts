@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { sendAccountActivationEmail } from '../services/email.service.js';
+import { recordAuditLog, listAuditLogs } from '../services/auditLog.service.js';
 import { Request, Response } from 'express';
 import { prisma } from '../config/database.js';
 import { sendError, sendSuccess } from '../utils/response.js';
@@ -112,7 +113,15 @@ export async function getOrganizations(req: Request, res: Response) {
       status: org.status,
       planId: org.planId,
       plan: org.plan,
-      adminUser: orgAdmin,
+      adminUser: orgAdmin
+        ? {
+            ...orgAdmin,
+            credentials: {
+              email: orgAdmin.email,
+              password: 'password',
+            },
+          }
+        : null,
       subscription: subFormatted,
       usage: {
         branchCount: org._count.branches,
@@ -448,7 +457,15 @@ export async function getOrganizationById(req: Request, res: Response) {
     status: org.status,
     planId: org.planId,
     plan: org.plan,
-    adminUser: orgAdmin,
+    adminUser: orgAdmin
+      ? {
+          ...orgAdmin,
+          credentials: {
+            email: orgAdmin.email,
+            password: 'password',
+          },
+        }
+      : null,
     subscription: formatSubscription(org.subscription),
     usage: {
       branchCount: org._count.branches,
@@ -538,6 +555,20 @@ export async function updateOrganizationSubscription(req: Request, res: Response
         data: { planId },
       });
     }
+
+    await recordAuditLog({
+      organizationId: id,
+      userId: req.user?.id,
+      userName: req.user?.name || 'Super Admin',
+      action: 'PLAN_OVERRIDE_UPDATED',
+      severity: 'CRITICAL',
+      ipAddress: req.ip,
+      details: {
+        planId,
+        status,
+        overrides,
+      },
+    });
 
     return sendSuccess(res, formatSubscription(sub));
   } catch (error: any) {
@@ -987,6 +1018,10 @@ export async function resetOrgAdminPassword(req: Request, res: Response) {
       name: orgAdmin.name,
       email: orgAdmin.email,
       mustChangePassword: true,
+      credentials: {
+        email: orgAdmin.email,
+        password: temporaryPassword,
+      },
     },
   });
 }
@@ -1057,3 +1092,112 @@ export async function resendOrgAdminInvite(req: Request, res: Response) {
     message: `Activation invitation re-sent successfully to ${orgAdmin.email}.`,
   });
 }
+
+export async function getAuditLogsHandler(req: Request, res: Response) {
+  const { organizationId, action, severity, search, page, limit } = req.query;
+  const result = await listAuditLogs({
+    organizationId: organizationId as string | undefined,
+    action: action as string | undefined,
+    severity: severity as string | undefined,
+    search: search as string | undefined,
+    page: page ? parseInt(page as string, 10) : 1,
+    limit: limit ? parseInt(limit as string, 10) : 50,
+  });
+  return sendSuccess(res, result);
+}
+
+export async function exportOrganizationDataHandler(req: Request, res: Response) {
+  let orgId = req.user?.organizationId;
+  if (req.user?.role === Role.SUPER_ADMIN && req.params.id) {
+    orgId = req.params.id;
+  }
+  if (!orgId) {
+    return sendError(res, 400, 'VALIDATION_ERROR', 'Organization ID required');
+  }
+
+  const [org, branches, users, cards, sessions, products, transactions] = await Promise.all([
+    prisma.organization.findUnique({
+      where: { id: orgId },
+      include: { plan: true, subscription: { include: { plan: true } } },
+    }),
+    prisma.branch.findMany({ where: { organizationId: orgId } }),
+    prisma.user.findMany({
+      where: { organizationId: orgId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        status: true,
+        isCounterAccount: true,
+        createdAt: true,
+      },
+    }),
+    prisma.card.findMany({ where: { organizationId: orgId } }),
+    prisma.cardSession.findMany({
+      where: { organizationId: orgId },
+      include: {
+        card: { select: { physicalCardNumber: true, qrToken: true } },
+      },
+    }),
+    prisma.product.findMany({ where: { organizationId: orgId } }),
+    prisma.transaction.findMany({
+      where: { session: { organizationId: orgId } },
+      take: 10000,
+      orderBy: { createdAt: 'desc' },
+    }),
+  ]);
+
+  if (!org) {
+    return sendError(res, 404, 'NOT_FOUND', 'Organization not found');
+  }
+
+  await recordAuditLog({
+    organizationId: org.id,
+    userId: req.user?.id,
+    userName: req.user?.name || req.user?.email || 'User',
+    action: 'ORGANIZATION_DATA_EXPORTED',
+    severity: 'INFO',
+    ipAddress: req.ip,
+    details: {
+      exportedByRole: req.user?.role,
+    },
+  });
+
+  const exportPayload = {
+    exportMetadata: {
+      generatedAt: new Date().toISOString(),
+      platform: 'Money Card Enterprise Management',
+      counts: {
+        branches: branches.length,
+        users: users.length,
+        cards: cards.length,
+        sessions: sessions.length,
+        products: products.length,
+        transactions: transactions.length,
+      },
+    },
+    organization: {
+      id: org.id,
+      name: org.name,
+      email: org.email,
+      phone: org.phone,
+      address: org.address,
+      status: org.status,
+      plan: org.subscription?.plan?.name || org.plan?.name || 'Standard',
+      createdAt: org.createdAt,
+    },
+    branches,
+    users,
+    cards,
+    sessions,
+    products,
+    transactions,
+  };
+
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Disposition', `attachment; filename="${org.name.replace(/[^a-zA-Z0-9_-]/g, '_')}_export_${new Date().toISOString().split('T')[0]}.json"`);
+  return res.status(200).json(exportPayload);
+}
+

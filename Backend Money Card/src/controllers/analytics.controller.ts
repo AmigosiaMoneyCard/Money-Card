@@ -3,6 +3,13 @@ import { prisma } from '../config/database.js';
 import { sendError, sendSuccess } from '../utils/response.js';
 import { Role, OrgStatus } from '@prisma/client';
 
+interface AnalyticsCacheEntry {
+  data: any;
+  timestamp: number;
+}
+const analyticsMemoryCache = new Map<string, AnalyticsCacheEntry>();
+const ANALYTICS_CACHE_TTL_MS = 20 * 1000;
+
 function normalizeTimezone(tz?: string): string {
   if (!tz || typeof tz !== 'string' || tz.trim() === '') return 'Asia/Kolkata';
   const clean = tz.trim();
@@ -100,6 +107,12 @@ export async function getOrgAnalytics(req: Request, res: Response) {
   const { branchId, startDate, endDate, range, timezone } = req.query as Record<string, string>;
   const clientTimezone = normalizeTimezone(timezone || (req.headers['x-timezone'] as string) || process.env.APP_TIMEZONE);
 
+  const cacheKey = `${orgId || 'all'}:${branchId || 'all'}:${range || 'none'}:${startDate || ''}:${endDate || ''}:${clientTimezone}:${req.user?.role || 'user'}:${req.user?.id || 'id'}`;
+  const cached = analyticsMemoryCache.get(cacheKey);
+  if (cached && (Date.now() - cached.timestamp < ANALYTICS_CACHE_TTL_MS)) {
+    return sendSuccess(res, cached.data);
+  }
+
   let fromDate: Date | undefined;
   let toDate: Date | undefined;
 
@@ -167,30 +180,37 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     ? { branch: { organizationId: orgId } }
     : { branch: { organization: { status: OrgStatus.ACTIVE } } };
 
-  const txWhere: any = {
-    ...(orgId
-      ? {
-          OR: [
-            { session: { organizationId: orgId } },
-            { branch: { organizationId: orgId } },
-          ],
-        }
-      : {
-          OR: [
-            { session: { organization: { status: OrgStatus.ACTIVE } } },
-            { branch: { organization: { status: OrgStatus.ACTIVE } } },
-          ],
-        }),
-    ...(effectiveBranchId
-      ? {
-          OR: [
-            { branchId: effectiveBranchId },
-            { session: { branchId: effectiveBranchId } },
-          ],
-        }
-      : {}),
-    ...(fromDate || toDate ? { createdAt: dateFilter } : {}),
-  };
+  const andClauses: any[] = [];
+  if (orgId) {
+    andClauses.push({
+      OR: [
+        { session: { organizationId: orgId } },
+        { branch: { organizationId: orgId } },
+      ],
+    });
+  } else {
+    andClauses.push({
+      OR: [
+        { session: { organization: { status: OrgStatus.ACTIVE } } },
+        { branch: { organization: { status: OrgStatus.ACTIVE } } },
+      ],
+    });
+  }
+
+  if (effectiveBranchId) {
+    andClauses.push({
+      OR: [
+        { branchId: effectiveBranchId },
+        { session: { branchId: effectiveBranchId } },
+      ],
+    });
+  }
+
+  if (fromDate || toDate) {
+    andClauses.push({ createdAt: dateFilter });
+  }
+
+  const txWhere: any = andClauses.length > 0 ? { AND: andClauses } : {};
 
   const [
     transactions,
@@ -205,6 +225,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     staffUsers,
     historyEvents,
     allSessions,
+    retainedProfitAggregate,
   ] = await Promise.all([
     prisma.transaction.findMany({
       where: txWhere,
@@ -213,6 +234,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
         session: {
           include: {
             card: true,
+            branch: true,
           },
         },
       },
@@ -336,11 +358,29 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       orderBy: { issuedAt: 'desc' },
       take: 300,
     }),
+    prisma.cardSession.aggregate({
+      where: {
+        ...orgScope,
+        ...(effectiveBranchId ? { branchId: effectiveBranchId } : {}),
+        ...(fromDate || toDate ? { settledAt: dateFilter } : {}),
+        retainedProfit: { gt: 0 },
+      },
+      _sum: {
+        retainedProfit: true,
+      },
+      _count: {
+        _all: true,
+      },
+    }),
   ]);
 
   let totalRechargeVolume = 0;
   let totalPurchaseVolume = 0;
   let totalRefundVolume = 0;
+  let cashRefunds = 0;
+  let upiRefunds = 0;
+  let cashRefundCount = 0;
+  let upiRefundCount = 0;
   let totalRechargeCount = 0;
   let totalRefundCount = 0;
   let cashRechargeCount = 0;
@@ -360,7 +400,30 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     quantitySold: number;
     totalRevenue: number;
     orderCount: number;
+    branchBreakdown?: Record<string, { branchName: string; quantitySold: number; totalRevenue: number }>;
   }>();
+
+  const foodPurchasesByCounter: Array<{
+    id: string;
+    createdAt: string;
+    sessionCardNumber: string;
+    issuingBranchId: string;
+    issuingBranchName: string;
+    purchasingBranchId: string;
+    purchasingBranchName: string;
+    isCrossCounter: boolean;
+    items: Array<{
+      productId: string;
+      productName: string;
+      quantity: number;
+      unitPrice: number;
+      subtotal: number;
+    }>;
+    totalAmount: number;
+  }> = [];
+
+  let crossCounterPurchasesCount = 0;
+  let crossCounterRevenue = 0;
 
   const branchMetricsMap = new Map<string, {
     branchId: string;
@@ -379,6 +442,10 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     upiRechargeVolume: number;
     refundCount: number;
     refundVolume: number;
+    cashRefunds: number;
+    upiRefunds: number;
+    cashRefundCount: number;
+    upiRefundCount: number;
     salesVolume: number;
     salesCount: number;
     cancelledTopUpsCount: number;
@@ -408,13 +475,23 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     cashCount: number;
     cardsGivenOut: number;
     cardsReturned: number;
+    retainedCardProfit: number;
+    retainedProfitCount: number;
   }>();
 
   const branchProductDemandMap = new Map<string, Map<string, { productId: string; productName: string; quantitySold: number; totalRevenue: number }>>();
 
   branches.forEach((b) => {
-    const activeSess = b.cardSessions.filter((s) => s.status === 'ACTIVE').length;
-    const settledSess = b.cardSessions.filter((s) => s.status === 'SETTLED').length;
+    const branchSessions = fromDate || toDate
+      ? b.cardSessions.filter((s) => (!fromDate || s.issuedAt >= fromDate) && (!toDate || s.issuedAt <= toDate))
+      : b.cardSessions;
+    const branchGivenOut = branchSessions.length;
+    const branchActiveSess = fromDate || toDate
+      ? branchSessions.filter((s) => s.status === 'ACTIVE').length
+      : b.cardSessions.filter((s) => s.status === 'ACTIVE').length;
+    const branchSettledSess = fromDate || toDate
+      ? b.cardSessions.filter((s) => s.status === 'SETTLED' && s.settledAt && (!fromDate || s.settledAt >= fromDate) && (!toDate || s.settledAt <= toDate)).length
+      : b.cardSessions.filter((s) => s.status === 'SETTLED').length;
     const lowStock = b.inventoryItems.filter((i) => i.quantity <= 5).length;
 
     branchMetricsMap.set(b.id, {
@@ -434,6 +511,10 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       upiRechargeVolume: 0,
       refundCount: 0,
       refundVolume: 0,
+      cashRefunds: 0,
+      upiRefunds: 0,
+      cashRefundCount: 0,
+      upiRefundCount: 0,
       salesVolume: 0,
       salesCount: 0,
       cancelledTopUpsCount: 0,
@@ -442,9 +523,9 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       cancelledOrdersCount: 0,
       cancelledOrdersVolume: 0,
       totalRevenue: 0,
-      sessionCount: b.cardSessions.length,
-      activeSessionsCount: activeSess,
-      settledSessionsCount: settledSess,
+      sessionCount: branchGivenOut,
+      activeSessionsCount: branchActiveSess,
+      settledSessionsCount: branchSettledSess,
       avgTransactionValue: 0,
       avgPurchaseValue: 0,
       productsSoldCount: 0,
@@ -461,8 +542,10 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       upiCount: 0,
       cashMoney: 0,
       cashCount: 0,
-      cardsGivenOut: b.cardSessions.length,
-      cardsReturned: settledSess,
+      cardsGivenOut: branchGivenOut,
+      cardsReturned: branchSettledSess,
+      retainedCardProfit: 0,
+      retainedProfitCount: 0,
     });
   });
 
@@ -546,18 +629,38 @@ export async function getOrgAnalytics(req: Request, res: Response) {
         : Array.isArray((rawItems as any)?.orderItems)
         ? (rawItems as any).orderItems
         : [];
+      const cardNum = tx.session?.card?.physicalCardNumber || tx.session?.sessionCardNumber || 'MC-Card';
+      const issuingBId = tx.session?.branchId || tx.branchId;
+      const issuingBName = (tx.session as any)?.branch?.name || tx.branch?.name || 'Counter';
+      const purchasingBId = tx.branchId;
+      const purchasingBName = tx.branch?.name || issuingBName;
+      const isCrossCounter = Boolean(tx.session?.branchId && tx.branchId && tx.session.branchId !== tx.branchId);
+
+      if (isCrossCounter) {
+        crossCounterPurchasesCount++;
+        crossCounterRevenue += tx.amount;
+      }
+
       if (orderList.length > 0) {
         let pMap = branchKey ? branchProductDemandMap.get(branchKey) : undefined;
         if (!pMap && branchKey) {
           pMap = new Map();
           branchProductDemandMap.set(branchKey, pMap);
         }
+        const parsedItems: any[] = [];
         orderList.forEach((it) => {
           const pId = String(it.productId || it.id || it.product_id || 'unknown');
           const pName = String(it.itemName || it.productName || it.name || it.item_name || 'Food Item');
           const qty = Math.max(1, Number(it.quantity || it.qty || 1));
           const unitPrice = Number(it.unitPrice || it.price || 0);
           const rev = Number(it.subtotal || it.total || (unitPrice ? unitPrice * qty : 0));
+          parsedItems.push({
+            productId: pId,
+            productName: pName,
+            quantity: qty,
+            unitPrice,
+            subtotal: rev,
+          });
           rootProductsSoldCount += qty;
           if (bm) {
             bm.productsSoldCount += qty;
@@ -575,6 +678,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
             quantitySold: 0,
             totalRevenue: 0,
             orderCount: 0,
+            branchBreakdown: {} as Record<string, { branchName: string; quantitySold: number; totalRevenue: number }>,
           };
           overall.quantitySold += qty;
           overall.totalRevenue = Number((overall.totalRevenue + rev).toFixed(2));
@@ -582,13 +686,60 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           if (!overall.unitPrice && unitPrice > 0) {
             overall.unitPrice = unitPrice;
           }
+          if (purchasingBId) {
+            if (!overall.branchBreakdown) {
+              overall.branchBreakdown = {};
+            }
+            if (!overall.branchBreakdown[purchasingBId]) {
+              overall.branchBreakdown[purchasingBId] = {
+                branchName: purchasingBName,
+                quantitySold: 0,
+                totalRevenue: 0,
+              };
+            }
+            overall.branchBreakdown[purchasingBId].quantitySold += qty;
+            overall.branchBreakdown[purchasingBId].totalRevenue = Number(
+              (overall.branchBreakdown[purchasingBId].totalRevenue + rev).toFixed(2)
+            );
+          }
           allProductDemandMap.set(pId, overall);
+        });
+
+        foodPurchasesByCounter.push({
+          id: tx.id,
+          createdAt: tx.createdAt.toISOString(),
+          sessionCardNumber: cardNum,
+          issuingBranchId: issuingBId,
+          issuingBranchName: issuingBName,
+          purchasingBranchId: purchasingBId,
+          purchasingBranchName: purchasingBName,
+          isCrossCounter,
+          items: parsedItems,
+          totalAmount: Number(tx.amount.toFixed(2)),
         });
       } else {
         rootProductsSoldCount++;
         if (bm) {
           bm.productsSoldCount++;
         }
+        foodPurchasesByCounter.push({
+          id: tx.id,
+          createdAt: tx.createdAt.toISOString(),
+          sessionCardNumber: cardNum,
+          issuingBranchId: issuingBId,
+          issuingBranchName: issuingBName,
+          purchasingBranchId: purchasingBId,
+          purchasingBranchName: purchasingBName,
+          isCrossCounter,
+          items: [{
+            productId: 'custom',
+            productName: 'POS Order',
+            quantity: 1,
+            unitPrice: tx.amount,
+            subtotal: tx.amount,
+          }],
+          totalAmount: Number(tx.amount.toFixed(2)),
+        });
       }
     } else if (txType === 'RECHARGE_CASH' || paymentMethod === 'CASH' || paymentMethod === 'CARD' || txType === 'CASH') {
       totalRechargeVolume += tx.amount;
@@ -603,6 +754,9 @@ export async function getOrgAnalytics(req: Request, res: Response) {
         bm.cardRechargeVolume += tx.amount;
         bm.cashRechargeCount++;
         bm.cashRechargeVolume += tx.amount;
+        bm.moneyAdded += tx.amount;
+        bm.cashMoney += tx.amount;
+        bm.cashCount++;
       }
     } else if (txType === 'RECHARGE_UPI' || paymentMethod === 'UPI' || txType === 'UPI') {
       totalRechargeVolume += tx.amount;
@@ -615,6 +769,9 @@ export async function getOrgAnalytics(req: Request, res: Response) {
         bm.rechargeVolume += tx.amount;
         bm.upiRechargeCount++;
         bm.upiRechargeVolume += tx.amount;
+        bm.moneyAdded += tx.amount;
+        bm.upiMoney += tx.amount;
+        bm.upiCount++;
       }
     } else if (txType.includes('RECHARGE') || txType === 'ISSUANCE') {
       totalRechargeVolume += tx.amount;
@@ -628,6 +785,9 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           bm.rechargeVolume += tx.amount;
           bm.upiRechargeCount++;
           bm.upiRechargeVolume += tx.amount;
+          bm.moneyAdded += tx.amount;
+          bm.upiMoney += tx.amount;
+          bm.upiCount++;
         }
       } else {
         cashRechargeVolume += tx.amount;
@@ -640,15 +800,33 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           bm.cardRechargeVolume += tx.amount;
           bm.cashRechargeCount++;
           bm.cashRechargeVolume += tx.amount;
+          bm.moneyAdded += tx.amount;
+          bm.cashMoney += tx.amount;
+          bm.cashCount++;
         }
       }
     } else if (txType.includes('REFUND') || txType.includes('RETURN') || txType.includes('SETTLE')) {
       totalRefundVolume += tx.amount;
       totalRefundCount++;
+      const pMethod = String(tx.paymentMethod || '').toUpperCase();
+      if (pMethod === 'UPI') {
+        upiRefunds += tx.amount;
+        upiRefundCount++;
+      } else {
+        cashRefunds += tx.amount;
+        cashRefundCount++;
+      }
       if (bm) {
         bm.transactionCount++;
         bm.refundCount++;
         bm.refundVolume += tx.amount;
+        if (pMethod === 'UPI') {
+          bm.upiRefunds += tx.amount;
+          bm.upiRefundCount++;
+        } else {
+          bm.cashRefunds += tx.amount;
+          bm.cashRefundCount++;
+        }
       }
     }
   });
@@ -668,6 +846,8 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     bm.cashRechargeVolume = Number((bm.cashRechargeVolume || 0).toFixed(2));
     bm.upiRechargeVolume = Number((bm.upiRechargeVolume || 0).toFixed(2));
     bm.refundVolume = Number(bm.refundVolume.toFixed(2));
+    bm.cashRefunds = Number(bm.cashRefunds.toFixed(2));
+    bm.upiRefunds = Number(bm.upiRefunds.toFixed(2));
     bm.totalRevenue = Number(bm.totalRevenue.toFixed(2));
     bm.cancelledTopUpsVolume = Number(bm.cancelledTopUpsVolume.toFixed(2));
     bm.cancelledOrdersVolume = Number(bm.cancelledOrdersVolume.toFixed(2));
@@ -684,6 +864,12 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     bm.cashCount = bm.cashRechargeCount;
     bm.cardsGivenOut = bm.sessionCount;
     bm.cardsReturned = bm.settledSessionsCount;
+    const branchSessionsList = branches.find((b) => b.id === bm.branchId)?.cardSessions || [];
+    const bRetained = branchSessionsList.filter(
+      (s) => s.status === 'SETTLED' && (s.retainedProfit || 0) > 0 && (!fromDate || (s.settledAt && s.settledAt >= fromDate)) && (!toDate || (s.settledAt && s.settledAt <= toDate))
+    );
+    bm.retainedCardProfit = Number(bRetained.reduce((sum, s) => sum + (s.retainedProfit || 0), 0).toFixed(2));
+    bm.retainedProfitCount = bRetained.length;
     bm.purchaseVolume = Number(bm.purchaseVolume.toFixed(2));
     bm.rechargeVolume = Number(bm.rechargeVolume.toFixed(2));
     bm.cardRechargeVolume = Number((bm.cardRechargeVolume || 0).toFixed(2));
@@ -742,6 +928,12 @@ export async function getOrgAnalytics(req: Request, res: Response) {
   const totalFloatBalance = Number(
     activeSessionsList.reduce((acc, s) => acc + (s.balance || 0), 0).toFixed(2),
   );
+  const blockedBalance = Number(
+    activeSessionsList
+      .filter((s) => s.card?.status === 'BLOCKED')
+      .reduce((acc, s) => acc + (s.balance || 0), 0)
+      .toFixed(2),
+  );
   const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
 
   const cardItems = activeSessionsList.map((s) => {
@@ -793,6 +985,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
   const cardFleetAnalytics = {
     totalCardsInCirculation: activeSessionsCount,
     totalFloatBalance,
+    blockedBalance,
     dormantCardsCount: dormantCardsList.length,
     blockedCardsCount,
     availableCardsCount,
@@ -978,7 +1171,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     };
   });
 
-  return sendSuccess(res, {
+  const analyticsPayload = {
     totalTransactions: transactions.length,
     totalRechargeVolume: Number(totalRechargeVolume.toFixed(2)),
     cashRechargeVolume: Number(cashRechargeVolume.toFixed(2)),
@@ -987,6 +1180,10 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     upiRechargeCount,
     totalPurchaseVolume: Number(totalPurchaseVolume.toFixed(2)),
     totalRefundVolume: Number(totalRefundVolume.toFixed(2)),
+    cashRefunds: Number(cashRefunds.toFixed(2)),
+    upiRefunds: Number(upiRefunds.toFixed(2)),
+    cashRefundCount,
+    upiRefundCount,
     activeSessionsCount,
     activeCardsCount,
     lowStockItemsCount: lowStockCount,
@@ -1013,6 +1210,8 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     cashCount: cashRechargeCount,
     cardsGivenOut: allSessions.length,
     cardsReturned: settledSessionsCount,
+    retainedCardProfit: Number((retainedProfitAggregate._sum.retainedProfit || 0).toFixed(2)),
+    retainedProfitCount: retainedProfitAggregate._count._all || 0,
     cancelledOrdersCount,
     cancelledOrdersVolume: Number(cancelledOrdersVolume.toFixed(2)),
     rechargeCount: totalRechargeCount,
@@ -1025,6 +1224,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     refundVolume: Number(totalRefundVolume.toFixed(2)),
     totalFloatBalance,
     blockedCardsCount,
+    blockedBalance,
 
     // Menu Analytics & Food Order Metrics
     foodOrdersCount,
@@ -1033,7 +1233,18 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     allProductDemand: Array.from(allProductDemandMap.values()).sort(
       (a, b) => b.quantitySold - a.quantitySold || b.totalRevenue - a.totalRevenue,
     ),
-  });
+
+    // Cross-Counter and Food Purchases by Counter
+    crossCounterPurchasesCount,
+    crossCounterRevenue: Number(crossCounterRevenue.toFixed(2)),
+    foodPurchasesByCounter: foodPurchasesByCounter.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    ),
+  };
+
+  analyticsMemoryCache.set(cacheKey, { data: analyticsPayload, timestamp: Date.now() });
+
+  return sendSuccess(res, analyticsPayload);
 }
 
 export async function getSuperAdminAnalytics(req: Request, res: Response) {

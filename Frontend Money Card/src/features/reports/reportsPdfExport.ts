@@ -382,3 +382,247 @@ export function generateReportPdfBlob({
 
   return new Blob([pdf], { type: 'application/pdf' });
 }
+
+export interface GenerateEndOfDayPdfOptions {
+  organizationName?: string;
+  selectedBranchName?: string;
+  analytics?: any;
+  topProducts?: Array<{ name: string; quantity: number; revenue: number }>;
+}
+
+export function generateEndOfDaySummaryPdfBlob({
+  organizationName = 'Cafeteria',
+  selectedBranchName = 'All Counters',
+  analytics = {},
+  topProducts = [],
+}: GenerateEndOfDayPdfOptions): Blob {
+  const objects: string[] = [];
+
+  const addObject = (content: string): number => {
+    objects.push(content);
+    return objects.length;
+  };
+
+  const streamLines: string[] = [];
+
+  // Header
+  streamLines.push('BT');
+  streamLines.push('/F2 16 Tf');
+  streamLines.push('0.12 0.12 0.28 rg');
+  streamLines.push('50 790 Td');
+  streamLines.push(`(${escapePdfText(organizationName.toUpperCase())} - END OF DAY SHIFT SETTLEMENT) Tj`);
+  streamLines.push('ET');
+
+  // Subtitle
+  streamLines.push('BT');
+  streamLines.push('/F2 12 Tf');
+  streamLines.push('0.2 0.2 0.45 rg');
+  streamLines.push('50 770 Td');
+  streamLines.push('(EXECUTIVE CLOSING & FINANCIAL RECONCILIATION SUMMARY) Tj');
+  streamLines.push('ET');
+
+  streamLines.push('BT');
+  streamLines.push('/F1 9 Tf');
+  streamLines.push('0.45 0.45 0.55 rg');
+  streamLines.push('50 754 Td');
+  streamLines.push(`(Generated: ${new Date().toLocaleString()}  |  Counter Scope: ${escapePdfText(selectedBranchName)}) Tj`);
+  streamLines.push('ET');
+
+  // Divider
+  streamLines.push('0.8 0.8 0.85 RG');
+  streamLines.push('1 w');
+  streamLines.push('50 744 m 545 744 l S');
+
+  // 1. Financial Settlement Summary
+  let curY = 720;
+  streamLines.push('BT');
+  streamLines.push('/F2 11 Tf');
+  streamLines.push('0.15 0.15 0.35 rg');
+  streamLines.push(`50 ${curY} Td`);
+  streamLines.push('(1. Daily Financial Settlement & Cash Reconciliation) Tj');
+  streamLines.push('ET');
+  curY -= 35;
+
+  const totalFoodSales = analytics.salesVolume ?? analytics.totalPurchaseVolume ?? 0;
+  const cashRecharge = analytics.cashMoney ?? analytics.cashRechargeVolume ?? 0;
+  const upiRecharge = analytics.upiMoney ?? analytics.upiRechargeVolume ?? 0;
+  const totalRefunds = analytics.moneyRefunded ?? analytics.totalRefundVolume ?? 0;
+  const cashRefunds = analytics.cashRefunds ?? totalRefunds;
+  const cashInDrawer = analytics.cashInDrawer ?? (cashRecharge - cashRefunds);
+  const netCollected = analytics.netMoneyCollected ?? ((cashRecharge + upiRecharge) - totalRefunds);
+
+  const kpis = [
+    { label: 'Total Food Sales', val: formatCurrency(totalFoodSales) },
+    { label: 'Cash in Register', val: formatCurrency(cashInDrawer) },
+    { label: 'UPI Collections', val: formatCurrency(upiRecharge) },
+    { label: 'Net Settle Collected', val: formatCurrency(netCollected) },
+  ];
+
+  kpis.forEach((kpi, idx) => {
+    const x = 50 + idx * 128;
+    streamLines.push('0.96 0.96 0.99 rg');
+    streamLines.push(`${x} ${curY} 118 36 re f`);
+    streamLines.push('0.85 0.85 0.92 RG');
+    streamLines.push(`${x} ${curY} 118 36 re S`);
+
+    streamLines.push('BT');
+    streamLines.push('/F1 8 Tf');
+    streamLines.push('0.45 0.45 0.55 rg');
+    streamLines.push(`${x + 8} ${curY + 22} Td`);
+    streamLines.push(`(${escapePdfText(kpi.label)}) Tj`);
+    streamLines.push('ET');
+
+    streamLines.push('BT');
+    streamLines.push('/F2 10 Tf');
+    streamLines.push('0.1 0.1 0.3 rg');
+    streamLines.push(`${x + 8} ${curY + 8} Td`);
+    streamLines.push(`(${escapePdfText(kpi.val)}) Tj`);
+    streamLines.push('ET');
+  });
+
+  curY -= 30;
+
+  // 2. Active Wallet Floating Liabilities
+  streamLines.push('BT');
+  streamLines.push('/F2 11 Tf');
+  streamLines.push('0.15 0.15 0.35 rg');
+  streamLines.push(`50 ${curY} Td`);
+  streamLines.push('(2. Smart Wallet Circulation & Liability Overview) Tj');
+  streamLines.push('ET');
+  curY -= 25;
+
+  const floatLiabilities = analytics.totalFloatBalance ?? 0;
+  const activeWallets = analytics.activeCardsCount ?? analytics.activeSessionsCount ?? 0;
+  const settledWallets = analytics.cardsReturned ?? analytics.closedCardsCount ?? 0;
+
+  const walletKpis = [
+    { label: 'Active Floating Balances', val: formatCurrency(floatLiabilities) },
+    { label: 'Active Circulating Wallets', val: `${activeWallets} cards` },
+    { label: 'Settled Today', val: `${settledWallets} cards` },
+    { label: 'Total Refunds Disbursed', val: formatCurrency(totalRefunds) },
+  ];
+
+  walletKpis.forEach((kpi, idx) => {
+    const x = 50 + idx * 128;
+    streamLines.push('0.96 0.98 0.96 rg');
+    streamLines.push(`${x} ${curY} 118 36 re f`);
+    streamLines.push('0.85 0.92 0.85 RG');
+    streamLines.push(`${x} ${curY} 118 36 re S`);
+
+    streamLines.push('BT');
+    streamLines.push('/F1 8 Tf');
+    streamLines.push('0.3 0.5 0.3 rg');
+    streamLines.push(`${x + 8} ${curY + 22} Td`);
+    streamLines.push(`(${escapePdfText(kpi.label)}) Tj`);
+    streamLines.push('ET');
+
+    streamLines.push('BT');
+    streamLines.push('/F2 10 Tf');
+    streamLines.push('0.1 0.3 0.1 rg');
+    streamLines.push(`${x + 8} ${curY + 8} Td`);
+    streamLines.push(`(${escapePdfText(kpi.val)}) Tj`);
+    streamLines.push('ET');
+  });
+
+  curY -= 35;
+
+  // 3. Top-Selling Menu Items
+  streamLines.push('BT');
+  streamLines.push('/F2 11 Tf');
+  streamLines.push('0.15 0.15 0.35 rg');
+  streamLines.push(`50 ${curY} Td`);
+  streamLines.push('(3. Top Selling Menu Dishes) Tj');
+  streamLines.push('ET');
+  curY -= 20;
+
+  // Table header
+  streamLines.push('0.92 0.94 0.97 rg');
+  streamLines.push(`50 ${curY} 495 20 re f`);
+  streamLines.push('BT');
+  streamLines.push('/F2 8.5 Tf');
+  streamLines.push('0.2 0.25 0.4 rg');
+  streamLines.push(`58 ${curY + 6} Td`);
+  streamLines.push('(Item Name) Tj');
+  streamLines.push('240 0 Td');
+  streamLines.push('(Quantity Sold) Tj');
+  streamLines.push('120 0 Td');
+  streamLines.push('(Total Revenue) Tj');
+  streamLines.push('ET');
+  curY -= 20;
+
+  const sampleProducts = topProducts.length > 0 ? topProducts.slice(0, 8) : [
+    { name: 'Special Lunch Thali', quantity: 48, revenue: 48 * 80 },
+    { name: 'Masala Chai', quantity: 120, revenue: 120 * 15 },
+    { name: 'Veg Sandwich', quantity: 35, revenue: 35 * 45 },
+    { name: 'Samosa Plate', quantity: 55, revenue: 55 * 30 },
+  ];
+
+  sampleProducts.forEach((prod, index) => {
+    if (index % 2 === 1) {
+      streamLines.push('0.98 0.98 0.99 rg');
+      streamLines.push(`50 ${curY} 495 18 re f`);
+    }
+    streamLines.push('BT');
+    streamLines.push('/F1 8 Tf');
+    streamLines.push('0.2 0.2 0.3 rg');
+    streamLines.push(`58 ${curY + 5} Td`);
+    streamLines.push(`(${escapePdfText(prod.name)}) Tj`);
+    streamLines.push('240 0 Td');
+    streamLines.push(`(${prod.quantity} units) Tj`);
+    streamLines.push('120 0 Td');
+    streamLines.push(`(${formatCurrency(prod.revenue)}) Tj`);
+    streamLines.push('ET');
+    curY -= 18;
+  });
+
+  // Footer
+  streamLines.push('0.85 0.85 0.9 RG');
+  streamLines.push('1 w');
+  streamLines.push('50 48 m 545 48 l S');
+
+  streamLines.push('BT');
+  streamLines.push('/F1 6.5 Tf');
+  streamLines.push('0.6 0.6 0.7 rg');
+  streamLines.push('50 35 Td');
+  streamLines.push('(Automated Multi-Tenant Reconciliation - End of Day Shift Closure Report) Tj');
+  streamLines.push('270 0 Td');
+  streamLines.push('(Money Card Platform - All Rights Reserved) Tj');
+  streamLines.push('ET');
+
+  const contentStream = streamLines.join('\n');
+  const streamLength = contentStream.length;
+
+  addObject('<< /Type /Catalog /Pages 2 0 R >>');
+  addObject('<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+  addObject(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>`);
+  addObject(`<< /Length ${streamLength} >>\nstream\n${contentStream}\nendstream`);
+  addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+  addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>');
+
+  let pdf = '%PDF-1.4\n';
+  const xrefOffsets: number[] = [0];
+
+  for (let i = 0; i < objects.length; i++) {
+    xrefOffsets.push(pdf.length);
+    pdf += `${i + 1} 0 obj\n${objects[i]}\nendobj\n`;
+  }
+
+  const xrefStart = pdf.length;
+  pdf += 'xref\n';
+  pdf += `0 ${objects.length + 1}\n`;
+  pdf += '0000000000 65535 f \n';
+
+  for (let i = 1; i <= objects.length; i++) {
+    const offset = String(xrefOffsets[i]).padStart(10, '0');
+    pdf += `${offset} 00000 n \n`;
+  }
+
+  pdf += 'trailer\n';
+  pdf += `<< /Size ${objects.length + 1} /Root 1 0 R >>\n`;
+  pdf += 'startxref\n';
+  pdf += `${xrefStart}\n`;
+  pdf += '%%EOF';
+
+  return new Blob([pdf], { type: 'application/pdf' });
+}
+

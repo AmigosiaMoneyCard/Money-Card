@@ -133,5 +133,43 @@ void main() {
       expect(notifier.state.currentBranch?.id, 'b2');
       expect(notifier.state.currentBranch?.name, 'North Wing Branch');
     });
+
+    testWidgets('ReturnCardScreen shows warning and disables return when counter does not match issuing branch', (tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          sessionRepositoryProvider.overrideWithValue(FakeSessionRepo()),
+          branchRepositoryProvider.overrideWithValue(FakeBranchRepo()),
+          currentBranchProvider.overrideWith((ref) => const Branch(
+                id: 'b2', // Staff is at Counter B (b2), but session was issued at b1
+                organizationId: 'org_001',
+                name: 'North Wing Branch',
+                status: 'ACTIVE',
+              )),
+        ],
+      );
+
+      final router = container.read(appRouterProvider);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(
+            routerConfig: router,
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      router.go('/app/return-card/sess_123?card=MC-101');
+      await tester.pumpAndSettle();
+
+      // Warning banner must be visible
+      expect(find.textContaining('This wallet was issued at another counter'), findsOneWidget);
+
+      // Return button should be disabled
+      final returnButton = tester.widget<ElevatedButton>(find.widgetWithText(ElevatedButton, 'Return'));
+      expect(returnButton.onPressed, isNull);
+    });
   });
 }

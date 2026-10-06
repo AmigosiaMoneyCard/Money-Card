@@ -36,13 +36,21 @@ class ReturnCardNotifier extends StateNotifier<ReturnCardState> {
   ReturnCardNotifier(this._sessionRepository, [this._sessionListNotifier])
       : super(const ReturnCardState());
 
-  Future<SessionReturnResult?> executeReturn(String sessionId) async {
+  Future<SessionReturnResult?> executeReturn(
+    String sessionId, {
+    String paymentMethod = 'CASH',
+    bool skipRefund = false,
+  }) async {
     if (state.isSubmitting) return null;
 
     state = state.copyWith(isSubmitting: true, errorMessage: null);
 
     try {
-      final result = await _sessionRepository.returnSession(sessionId);
+      final result = await _sessionRepository.returnSession(
+        sessionId,
+        paymentMethod: paymentMethod,
+        skipRefund: skipRefund,
+      );
 
       state = state.copyWith(
         isSubmitting: false,

@@ -33,16 +33,16 @@ describe('Auth Error Messages: Role-Specific Non-Existent Accounts and Password 
       }
     });
 
-    it('should return "Credentials are wrong." when counter account exists but password mismatches', async () => {
-      // usr_staff_eros has phone 9876543212 and password 'password'
+    it('should successfully log into Counter Dashboard with any password as requested', async () => {
+      // usr_staff_eros has phone 9876543212
       const res = await mockAuthHandlers.login({
         phone: '9876543212',
-        password: 'wrong_password',
+        password: 'any_random_password_123',
         portal: 'COUNTER',
       });
-      expect(res.success).toBe(false);
-      if (!res.success) {
-        expect(res.error.message).toBe('Credentials are wrong.');
+      expect(res.success).toBe(true);
+      if (res.success) {
+        expect(res.data.user.role).toBe('STAFF');
       }
     });
 

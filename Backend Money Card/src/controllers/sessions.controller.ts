@@ -420,7 +420,7 @@ export async function rechargeSession(req: Request, res: Response) {
 
 export async function purchaseSession(req: Request, res: Response) {
   const { id } = req.params;
-  const { items } = req.body;
+  const { items, branchId: requestedBranchId } = req.body;
   const orgId = req.user?.organizationId;
 
   if (!Array.isArray(items) || items.length === 0) {
@@ -444,8 +444,26 @@ export async function purchaseSession(req: Request, res: Response) {
     return sendError(res, 400, 'CARD_BLOCKED', 'Card is blocked');
   }
 
-  if (req.user?.role === 'STAFF' && !req.user.assignedBranchIds.includes(session.branchId)) {
-    return sendError(res, 403, 'BRANCH_ACCESS_DENIED', 'You are not authorized to make purchases on a session belonging to another branch');
+  // Determine effective purchasing branch (supports cross-counter purchase within same org):
+  let effectiveBranchId = requestedBranchId || (req.headers['x-branch-id'] as string) || session.branchId;
+
+  if (req.user?.role === 'STAFF') {
+    if (requestedBranchId && !req.user.assignedBranchIds.includes(requestedBranchId)) {
+      return sendError(res, 403, 'BRANCH_ACCESS_DENIED', 'You are not authorized to make purchases for another branch');
+    }
+    if (!requestedBranchId && req.user.assignedBranchIds.length > 0) {
+      effectiveBranchId = req.user.assignedBranchIds.includes(effectiveBranchId)
+        ? effectiveBranchId
+        : req.user.assignedBranchIds[0];
+    }
+  }
+
+  const purchasingBranch = await prisma.branch.findFirst({
+    where: { id: effectiveBranchId, organizationId: orgId || session.organizationId },
+  });
+
+  if (!purchasingBranch || purchasingBranch.status !== 'ACTIVE') {
+    return sendError(res, 403, 'BRANCH_INACTIVE', 'This branch location is currently disabled or inactive');
   }
 
   // Calculate total and validate stock inside atomic transaction
@@ -455,8 +473,11 @@ export async function purchaseSession(req: Request, res: Response) {
       const detailedItems: any[] = [];
 
       for (const it of items) {
-        const product = await tx.product.findUnique({
-          where: { id: it.productId },
+        const product = await tx.product.findFirst({
+          where: {
+            id: it.productId,
+            organizationId: session.organizationId,
+          },
         });
 
         if (!product) {
@@ -498,17 +519,39 @@ export async function purchaseSession(req: Request, res: Response) {
         data: { balance: balanceAfter },
       });
 
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const todayOrderCount = await tx.transaction.count({
+        where: {
+          branchId: effectiveBranchId,
+          type: TransactionType.PURCHASE,
+          createdAt: { gte: startOfDay },
+        },
+      });
+      const orderNumber = todayOrderCount + 101;
+
+      const orderPayload = {
+        orderNumber,
+        orderStatus: 'PENDING',
+        orderedAt: new Date().toISOString(),
+        items: detailedItems,
+        cardDisplayNumber: session.card?.physicalCardNumber || session.sessionToken?.slice(-4) || 'CARD',
+        customerName: (session as any).customerName || null,
+        counterName: purchasingBranch.name,
+        counterId: purchasingBranch.id,
+      };
+
       const txRecord = await tx.transaction.create({
         data: {
           sessionId: session.id,
-          branchId: session.branchId,
+          branchId: effectiveBranchId,
           staffUserId: req.user?.id,
           type: TransactionType.PURCHASE,
           amount: totalCost,
           balanceBefore,
           balanceAfter,
           paymentMethod: 'CARD_BALANCE',
-          items: detailedItems,
+          items: orderPayload,
         },
       });
 
@@ -551,11 +594,20 @@ export async function returnSession(req: Request, res: Response) {
     return sendError(res, 404, 'NOT_FOUND', 'Session not found');
   }
 
+  if (req.user?.role === 'STAFF' && !req.user.assignedBranchIds.includes(session.branchId)) {
+    return sendError(res, 403, 'RETURN_COUNTER_MISMATCH', 'This card must be returned at the counter where it was issued');
+  }
+
   if (session.status === SessionStatus.SETTLED) {
     return sendError(res, 400, 'ALREADY_SETTLED', 'Session is already settled and refunded');
   }
 
-  const refundAmount = session.balance;
+  const { paymentMethod, skipRefund } = req.body || {};
+  const isSkipRefund = Boolean(skipRefund);
+  const selectedPaymentMethod = paymentMethod === 'UPI' ? 'UPI' : 'CASH';
+
+  const refundAmount = isSkipRefund ? 0.0 : session.balance;
+  const retainedProfit = isSkipRefund ? session.balance : 0.0;
 
   const result = await prisma.$transaction(async (tx) => {
     const settledSession = await tx.cardSession.update({
@@ -566,6 +618,7 @@ export async function returnSession(req: Request, res: Response) {
         settledAt: new Date(),
         settledByUserId: req.user?.id,
         refundAmount,
+        retainedProfit,
       },
     });
 
@@ -577,9 +630,9 @@ export async function returnSession(req: Request, res: Response) {
           staffUserId: req.user?.id,
           type: TransactionType.REFUND_RETURN,
           amount: refundAmount,
-          balanceBefore: refundAmount,
+          balanceBefore: session.balance,
           balanceAfter: 0.0,
-          paymentMethod: 'DIRECT_REFUND',
+          paymentMethod: selectedPaymentMethod,
         },
       });
     }
@@ -592,13 +645,13 @@ export async function returnSession(req: Request, res: Response) {
       });
     }
 
-    return { session: settledSession, refundAmount };
+    return { session: settledSession, refundAmount, retainedProfit };
   });
 
   balanceStreamService.broadcastBalanceUpdate(session.id, {
     balance: 0.0,
     status: SessionStatus.SETTLED,
-    type: 'REFUND',
+    type: isSkipRefund ? 'RETURN_NO_REFUND' : 'REFUND',
     amount: refundAmount,
     sessionId: session.id,
   });
@@ -608,6 +661,8 @@ export async function returnSession(req: Request, res: Response) {
 
 export async function refundSessionBalance(req: Request, res: Response) {
   const { id } = req.params;
+  const { paymentMethod } = req.body || {};
+  const selectedPaymentMethod = paymentMethod === 'UPI' ? 'UPI' : 'CASH';
   const orgId = req.user?.organizationId;
 
   const session = await prisma.cardSession.findFirst({
@@ -628,7 +683,7 @@ export async function refundSessionBalance(req: Request, res: Response) {
   }
 
   if (req.user?.role === 'STAFF' && !req.user.assignedBranchIds.includes(session.branchId)) {
-    return sendError(res, 403, 'BRANCH_ACCESS_DENIED', 'You are not authorized to refund a session belonging to another branch');
+    return sendError(res, 403, 'RETURN_COUNTER_MISMATCH', 'This card must be returned at the counter where it was issued');
   }
 
   const refundAmount = session.balance;
@@ -650,7 +705,7 @@ export async function refundSessionBalance(req: Request, res: Response) {
         amount: refundAmount,
         balanceBefore: refundAmount,
         balanceAfter: 0.0,
-        paymentMethod: 'DIRECT_REFUND',
+        paymentMethod: selectedPaymentMethod,
       },
     });
 
@@ -704,6 +759,25 @@ export async function cancelRecharge(req: Request, res: Response) {
   const session = txRecord.session;
   if (session.status !== SessionStatus.ACTIVE) {
     return sendError(res, 400, 'SESSION_INACTIVE', 'Cannot cancel top-up on an inactive or settled session');
+  }
+
+  const sessionTxs = await prisma.transaction.findMany({
+    where: { sessionId: session.id },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  const allRecharges = sessionTxs.filter((t) => {
+    const tType = String(t.type || '');
+    return tType.includes('RECHARGE') || tType === 'CASH' || tType === 'UPI';
+  });
+
+  if (allRecharges.length > 0 && allRecharges[allRecharges.length - 1].id !== txRecord.id) {
+    return sendError(
+      res,
+      400,
+      'CANNOT_CANCEL_PREVIOUS_RECHARGE',
+      'Cannot cancel recharge because a subsequent recharge exists on this wallet',
+    );
   }
 
   if (session.balance < txRecord.amount) {
@@ -787,6 +861,11 @@ export async function cancelOrder(req: Request, res: Response) {
   const existingMeta = (txRecord.items as any) || {};
   if (existingMeta?.isCancelled) {
     return sendError(res, 400, 'ALREADY_CANCELLED', 'This order has already been cancelled');
+  }
+
+  const kitchenStatus = (existingMeta?.orderStatus || 'PENDING').toUpperCase();
+  if (kitchenStatus === 'READY' || kitchenStatus === 'COMPLETED') {
+    return sendError(res, 400, 'CANNOT_CANCEL_SERVED', 'Cannot cancel order that has already been prepared or served');
   }
 
   const session = txRecord.session;

@@ -47,12 +47,15 @@ export function globalErrorHandler(
     }
   }
 
+  const errRecord = err as unknown as Record<string, unknown>;
+  if (err instanceof SyntaxError && errRecord && errRecord.status === 400) {
+    return sendError(res, 400, 'BAD_REQUEST', 'Invalid JSON payload received');
+  }
+
   const isDev = env.NODE_ENV === 'development';
   const message = err instanceof Error ? err.message : 'An unexpected server error occurred';
 
-  if (isDev) {
-    console.error('💥 Unhandled Server Error:', err);
-  }
+  console.error('Unhandled Server Error:', err);
 
   return sendError(
     res,

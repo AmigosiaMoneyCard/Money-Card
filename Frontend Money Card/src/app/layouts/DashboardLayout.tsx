@@ -30,6 +30,8 @@ import {
   PanelLeftOpen,
   Shield,
   ArrowLeft,
+  ShoppingBag,
+  UtensilsCrossed,
 } from 'lucide-react';
 
 // Icon Map for dynamic lookup from config
@@ -48,11 +50,14 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   FileText: <FileText className="h-5 w-5 shrink-0" />,
   Settings: <Settings className="h-5 w-5 shrink-0" />,
   Layers: <Layers className="h-5 w-5 shrink-0" />,
+  Shield: <Shield className="h-5 w-5 shrink-0" />,
+  ShoppingBag: <ShoppingBag className="h-5 w-5 shrink-0" />,
+  UtensilsCrossed: <UtensilsCrossed className="h-5 w-5 shrink-0" />,
 };
 
 export function DashboardLayout() {
   const navigate = useNavigate();
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, impersonatedOrg, exitImpersonation } = useAuth();
   const { hasPermission } = usePermissions();
 
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
@@ -72,13 +77,6 @@ export function DashboardLayout() {
     });
   }, [userRole, hasPermission]);
 
-  // ── Organization Context Label ────────────────────────────
-  const orgContextLabel = useMemo(() => {
-    if (userRole === 'SUPER_ADMIN') {
-      return 'Platform Super Admin';
-    }
-    return user?.organizationName || 'Cafeteria Admin';
-  }, [userRole, user?.organizationName]);
 
   if (isLoading && !user) {
     return <LoadingState message="Initializing session..." />;
@@ -180,6 +178,28 @@ export function DashboardLayout() {
 
       {/* ── Main Workspace Area ── */}
       <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Support Impersonation Read-Only Banner */}
+        {impersonatedOrg && (
+          <div className="bg-amber-500 text-slate-950 px-4 py-2 flex items-center justify-between text-xs font-semibold shadow-sm shrink-0 z-40">
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-slate-950 shrink-0" />
+              <span>
+                Viewing as Org Admin: <strong>{impersonatedOrg.name}</strong> (Read-Only Mode)
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                exitImpersonation();
+                navigate('/dashboard');
+              }}
+              className="bg-slate-950 text-white hover:bg-slate-800 px-3 py-1 rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer"
+            >
+              Exit Impersonation
+            </button>
+          </div>
+        )}
+
         {/* Top Bar */}
         <header className="relative z-30 flex h-16 shrink-0 items-center gap-3 border-b border-slate-200 bg-white/80 px-4 backdrop-blur-md lg:px-6">
           {/* Mobile Drawer Trigger */}
@@ -216,14 +236,6 @@ export function DashboardLayout() {
 
           <div className="flex-1" />
 
-          {/* Organization Context Badge */}
-          <div className="hidden md:flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700">
-            <Shield className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-            <span className="text-slate-500">Cafeteria:</span>
-            <span className="font-semibold text-slate-800 truncate max-w-[140px]">
-              {orgContextLabel}
-            </span>
-          </div>
 
           {/* User Profile Menu */}
           <ProfileMenu />

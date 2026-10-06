@@ -19,6 +19,8 @@ import {
   reviewPlanChangeRequest,
   resetOrgAdminPassword,
   resendOrgAdminInvite,
+  getAuditLogsHandler,
+  exportOrganizationDataHandler,
 } from '../controllers/admin.controller.js';
 import { requireAuth } from '../middlewares/auth.middleware.js';
 import { requireRole } from '../middlewares/role.middleware.js';
@@ -53,6 +55,8 @@ router.post('/subscription-payments', recordSubscriptionPayment);
 router.get('/plan-change-requests', getPlanChangeRequests);
 router.patch('/plan-change-requests/:id', reviewPlanChangeRequest);
 
-export default router;
-
+router.get('/audit-logs', getAuditLogsHandler);
+router.get('/organizations/:id/export', exportOrganizationDataHandler);
 router.post('/organizations/:id/resend-admin-invite', resendOrgAdminInvite);
+
+export default router;

@@ -2,17 +2,49 @@
 
 > **MANDATORY PROTOCOL FOR EVERY NEW CHAT SESSION**:
 > 1. In **ANY and EVERY new chat session**, the AI agent **MUST immediately and strictly read this file (`AGENTS.md`) in its entirety FIRST** before inspecting any other file, planning, or executing any commands.
-> 2. This file is the **single permanent source of truth**. All pre-authorized permissions (auto-approved tests, auto-approved Shorebird CodePush, auto-approved local Git, and the strict guard requiring confirmation ONLY for `git push`), naming rules (zero emojis, everyday easy words), strict scope control (change ONLY what was explicitly requested — zero unrequested changes), cumulative plan retention for incomplete work, and architectural boundaries defined here are strictly binding across all sessions.
+> 2. This file is the **single permanent source of truth**. All operational actions across Flutter, Backend, and Frontend are pre-authorized and execute autonomously **once the implementation plan is explicitly approved by the user** (auto-approved commands, auto-approved code edits, auto-approved package installations, auto-approved tests, auto-approved builds, auto-approved database operations, auto-approved git commands including `git log`, `git show`, `git diff`, and all local operations, auto-approved shell utilities and operators including `copy`, `select` / `Select-String` / `Select-Object`, `&` call operator, and `.` dot-sourcing/relative paths, auto-approved local Shorebird inspection and diagnostic commands, with explicit user confirmation strictly required for ONLY: **1) Implementation Plan Approval: the user MUST approve the implementation plan before code execution begins**, **2) Remote Git Push Guard: confirmation is strictly required for `git push` (do NOT approve pushing git commands)**, and **3) Shorebird Push Guard: confirmation is strictly required for pushing Shorebird commands (`shorebird patch`, `shorebird release`) (do NOT approve pushing Shorebird commands)**), naming rules (zero emojis, everyday easy words), strict scope control (change ONLY what was explicitly requested — zero unrequested changes), cumulative plan retention for incomplete work, and architectural boundaries defined here are strictly binding across all sessions.
+
+---
+
+## Universal Pre-Authorization Policy — Auto-Approve Every Permission Post-Plan Approval
+
+**Once the user reviews and approves the implementation plan, every operational action, command, build, test, and code edit across all three sub-projects (Flutter, Backend, and Frontend) is strictly pre-authorized, pre-approved, and auto-executed with ZERO additional prompts or confirmation required from the user.**
+
+**The Mandatory User Approval Checkpoints**:
+1. **Implementation Plan Approval Gate**: The agent creates the implementation plan, visual UI sketch, and ASCII wireframes, mirrors to `D:\Money Card Project\implementation_plan.md`, and **MUST pause and wait for the user to explicitly approve the plan before touching any code or executing tasks**.
+2. **Remote Git Push Guard**: Remote `git push` to GitHub strictly requires explicit user confirmation / instruction. Do NOT approve pushing git commands without user instruction.
+3. **Shorebird Push Guard**: Pushing Shorebird commands (`shorebird patch`, `shorebird release`) strictly requires explicit user confirmation / instruction. Do NOT approve pushing Shorebird commands without user instruction.
+
+**Auto-Approved Operational Actions During Plan Execution (Zero Prompts Required Once Plan is Approved)**:
+1. **Flutter Mobile POS (`Flutter Money card`)**:
+   - **Terminal Commands Auto-Approved**: `flutter run`, `flutter build`, `flutter test`, `flutter analyze`, `flutter pub get`, `flutter pub add`, `dart`, `gradlew`, and Android build commands.
+   - **Shorebird Inspection Auto-Approved**: `shorebird releases list`, `shorebird patches list`, `shorebird doctor`, `shorebird info`, and all status/inspection commands.
+   - **Shorebird Push Guard (Confirmation Strictly Required)**: Do NOT approve pushing Shorebird commands (`shorebird patch`, `shorebird release`) without explicit user instruction.
+   - **Source Code Edits Auto-Approved**: Creating, modifying, deleting, and refactoring screens, widgets, providers, repositories, services, and models.
+
+2. **Backend Engine (`Backend Money Card`)**:
+   - **Terminal Commands Auto-Approved**: `npm run dev`, `npm test`, `npm install`, `npm add`, `node`, `npx tsx`, and build scripts.
+   - **Database & Prisma Auto-Approved**: `npx prisma migrate dev`, `npx prisma generate`, `npx prisma db push`, `npx prisma studio`, and database seed scripts.
+   - **Source Code Edits Auto-Approved**: Creating, editing, and deleting controllers, routes, middlewares, services, Prisma schemas, and migrations.
+
+3. **Web Frontend (`Frontend Money Card`)**:
+   - **Terminal Commands Auto-Approved**: `npm run dev`, `npm test`, `npm install`, `npm add`, `npx tsc`, `vite build`, and bundle validation.
+   - **Source Code Edits Auto-Approved**: Creating, editing, and deleting React components, pages, hooks, CSS stylesheets, API services, and types.
+
+4. **Workspace, Shell Commands & Git**:
+   - **Auto-Approved Shell & Utility Commands**: File copy operations (`copy`, `cp`, `Copy-Item`), selection operations (`select`, `Select-String`, `Select-Object`), execution operators (`&` call operator, `.` dot-sourcing, `.\` relative paths), PowerShell/batch scripts (`start_all.ps1`), and all local ADB/diagnostic tools are **strictly pre-authorized and auto-approved**.
+   - **Auto-Approved Git Operations**: Permissions for `copy`, `select`, `git log`, `git diff`, `git show`, `&`, `.`, and all local Git operations (`git status`, `git log`, `git add`, `git commit`, `git checkout`, `git branch`, `git stash`, etc.) are **strictly pre-authorized and auto-approved** with zero prompts.
+   - **Remote Push Exception**: Remote `git push` to GitHub strictly requires user confirmation. Never push to `main`. Push to `staging` only when explicitly told. Do NOT approve pushing git commands.
 
 ---
 
 ## Git & GitHub Operations Policy
 
-1. **Local Git Operations are Strictly Auto-Approved (Zero Consent Required)**:
-   - All local Git commands (`git status`, `git diff`, `git log`, `git add`, `git commit`, `git checkout`, `git branch`, etc.) are **strictly pre-authorized and auto-approved**.
-   - Execute local Git checks and commits proactively without prompting or asking for permission.
+1. **Git Operations, `git log`, `git diff`, `git show`, and Terminal Commands are Strictly Auto-Approved (Zero Consent Required)**:
+   - Permissions for `copy`, `select` (`Select-String`, `Select-Object`), `git log`, `git diff`, `git show`, `&` call operator, `.` dot-sourcing/relative paths, and all local Git operations (`git status`, `git log`, `git add`, `git commit`, `git checkout`, `git branch`, `git stash`, etc.) are **strictly pre-authorized and auto-approved**.
+   - Execute Git checks, diffs, inspections, and local operations proactively without prompting or asking for permission.
 2. **Remote Push to GitHub ONLY Requires User Confirmation / Instruction**:
-   - **ONLY ask the user when you are actually going to PUSH to remote / GitHub (`git push`)**.
+   - **ONLY ask the user when you are actually going to PUSH to remote / GitHub (`git push`)**. Do NOT approve pushing git commands without explicit user instruction.
    - **NEVER push to `main`** — strictly prohibited at all times.
    - **Push to `staging` ONLY when explicitly told** — user must say "push to staging" or "add to staging git".
    - **Default Remote**: When pushing is confirmed, push only to the active feature branch on remote (`origin/<feature-branch>`).
@@ -39,11 +71,14 @@ When merging `staging` into `main` (Production), zero errors and zero URL/domain
 
 ## Mandatory Agent Workflow Rules
 
-1. **Automatic Implementation Plan & Visual Image Sketch**:
+1. **Automatic Implementation Plan, Visual Image Sketch & Mandatory User Approval Gate**:
    - Whenever the user requests **ANY changes in the project**, the agent **MUST automatically create an implementation plan** containing:
      - Clear technical design, component breakdown, exact file paths, function names, and step-by-step changes across the worktree.
      - **Visual Image Sketch** generated via `generate_image` tool (high-fidelity, realistic SaaS UI design).
      - Clean, detailed **ASCII wireframes** of the UI layout, tables, modals, and buttons.
+   - **Mandatory User Approval Gate (STOP and Wait for User Approval)**:
+     - When an implementation plan is created or updated, the agent **MUST present the plan to the user and STOP to wait for explicit user approval**.
+     - The agent **MUST NOT execute any code edits, modify any files, run any build commands, or start implementation until the user explicitly reviews and approves the plan** (e.g. user says "proceed", "approved", "looks good", "continue", or provides modifications).
    - **Workspace Root File Sync (`D:\Money Card Project\implementation_plan.md`)**:
      - The implementation plan **MUST always be saved/mirrored directly to `D:\Money Card Project\implementation_plan.md`** in the workspace root in addition to the artifact directory.
      - This ensures external coding agents (such as Cline or Kilo Code) can immediately read the full specification and worktree changes without missing any requirements.
@@ -51,7 +86,8 @@ When merging `staging` into `main` (Production), zero errors and zero URL/domain
      - When the user asks to update the plan or gives additional tasks to do:
        - Update the implementation plan to a new one **ONLY if the previous work is already completed**.
        - If the previous work is **NOT done**, the agent **MUST include that previous plan and its pending tasks** in the implementation plan. Never overwrite or drop uncompleted work.
-   - **Obtain user approval** before executing any source code edits.
+   - **Autonomous Execution Once Approved**:
+     - Once the user explicitly approves the implementation plan, the universal pre-authorization policy activates: all source code edits, terminal commands, builds, package installs, and test runs within the approved plan proceed autonomously without pausing for further permission.
 
 2. **Web App <-> Mobile App Parity Check**:
    - Whenever changes are made to the **Web App (`Frontend Money Card`)**, the agent **MUST actively check whether the Mobile POS App (`Flutter Money card`) also requires corresponding updates**.
@@ -79,17 +115,13 @@ When merging `staging` into `main` (Production), zero errors and zero URL/domain
    - **Backend (`Backend Money Card`)**: Proactively execute `npm test` whenever backend routes, controllers, or logic are modified.
    - **Zero Prompts**: Never pause, ask "May I run tests?", wait for confirmation, or prompt for approval before running tests. Just execute them automatically and report the results.
 
-6. **Autonomous Shorebird CodePush & Patch Execution (Zero Consent Required — Strictly Auto-Approved)**:
-   - Whenever Shorebird actions, OTA patches, release listings, or updates are requested or required after Flutter mobile app changes, the agent **MUST immediately and autonomously execute them without asking for user consent, approval, or confirmation**. All Shorebird operations are strictly pre-authorized and auto-approved.
-   - **Auto-Approved Commands**:
-     - Pushing OTA Patches: `"y" | shorebird patch android --target lib/main_staging.dart --flavor staging --release-version <ver> --allow-asset-diffs`
-     - Inspecting releases: `shorebird releases list --flavor <flavor>`
-     - Checking patch status: `shorebird patches list --flavor <flavor> --release-version <ver>`
-   - **Zero Prompts**: Never pause, ask "May I push to Shorebird?", wait for confirmation, or prompt for approval before executing Shorebird commands. Just execute them automatically and report the resulting patch details.
+6. **Shorebird Operations Policy (Auto-Approve Inspection vs Push Guard)**:
+   - **Auto-Approved Commands**: All Shorebird inspection, listing, and diagnostic commands (`shorebird releases list`, `shorebird patches list`, `shorebird doctor`, `shorebird info`, etc.) are **strictly pre-authorized and auto-approved** with zero prompts.
+   - **Shorebird Push Guard (Confirmation Strictly Required)**: Do NOT approve pushing Shorebird commands. Pushing OTA patches or releases (`shorebird patch`, `shorebird release`) strictly requires explicit user confirmation / instruction before executing. Never push Shorebird updates without user instruction.
 
-7. **Local Git Auto-Approved vs Remote Push Guard (Ask ONLY for Git Push)**:
-   - All local Git commands (`git status`, `git diff`, `git log`, `git add`, `git commit`, `git checkout`, `git branch`, etc.) are **strictly pre-authorized and auto-approved**. Execute them autonomously without asking.
-   - **ONLY ask user confirmation when actually pushing to remote / GitHub (`git push`)**.
+7. **Auto-Approved Permissions for `copy`, `select`, `git log`, `git diff`, `&`, `.`, and Local Git vs Remote Push Guard**:
+   - Permissions for `copy` (copying files/directories, `Copy-Item`), `select` (`Select-String`, `Select-Object`, filtering output), `git log`, `git diff` (inspecting changes), `git show`, `&` (PowerShell call operator invoking executables), `.` (dot sourcing and relative path execution), and all other local Git operations (`git status`, `git log`, `git add`, `git commit`, `git checkout`, `git branch`, `git stash`, etc.) are **strictly pre-authorized and auto-approved** with zero prompts. Execute them autonomously without asking.
+   - **Remote Push Guard**: Just do NOT approve pushing git commands (`git push`). Remote push strictly requires explicit user confirmation / instruction.
    - **Strict Push Guard**: NEVER push to `main`. Push to `staging` ONLY when explicitly told ("push to staging"). When pushing is approved, default to pushing to `origin/<active-feature-branch>`.
 
 8. **Strict Prohibition on Emojis (Zero Emojis Anywhere)**:

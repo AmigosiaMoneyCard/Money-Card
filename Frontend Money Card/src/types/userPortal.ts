@@ -15,6 +15,7 @@ export interface PublicSessionDetail {
 }
 
 export interface PublicTransactionItem {
+  itemId?: string;
   itemName: string;
   quantity: number;
   unitPrice: number;
@@ -38,5 +39,35 @@ export interface PublicReceipt {
   date: string;
   totalAmount: number;
   paymentMethod?: string;
+  orderNumber?: number;
+  counterName?: string;
   items: PublicTransactionItem[];
+}
+
+export interface PublicSessionOrderItem {
+  itemName: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+export interface PublicSessionOrder {
+  id: string;
+  orderNumber: number;
+  orderStatus: 'PENDING' | 'PREPARING' | 'READY' | 'COMPLETED';
+  orderedAt: string;
+  preparingAt?: string | null;
+  readyAt?: string | null;
+  completedAt?: string | null;
+  items: PublicSessionOrderItem[];
+  counterName: string;
+  amount: number;
+}
+
+export interface PublicMenuItem {
+  id: string;
+  name: string;
+  price: number;
+  categories: string[];
+  isVeg: boolean;
+  status: string;
 }

@@ -27,7 +27,11 @@ class FakeReturnSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<SessionReturnResult> returnSession(String sessionId) async {
+  Future<SessionReturnResult> returnSession(
+    String sessionId, {
+    String paymentMethod = 'CASH',
+    bool skipRefund = false,
+  }) async {
     final refunded = session.balance;
     session = session.copyWith(status: SessionStatus.settled, balance: 0.0);
     return SessionReturnResult(

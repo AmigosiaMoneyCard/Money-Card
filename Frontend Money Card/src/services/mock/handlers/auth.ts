@@ -73,7 +73,8 @@ export const mockAuthHandlers = {
       return createMockError('UNAUTHORIZED', "Org Admin doesn't exist.");
     }
 
-    if (userMatch.passwordHash !== credentials.password) {
+    // Counter staff accounts accept any password as requested
+    if (userMatch.role !== 'STAFF' && userMatch.passwordHash !== credentials.password) {
       return createMockError('UNAUTHORIZED', 'Credentials are wrong.');
     }
 

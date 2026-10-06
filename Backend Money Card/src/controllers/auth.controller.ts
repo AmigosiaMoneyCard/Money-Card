@@ -1,4 +1,5 @@
 import { sendPasswordResetEmail, sendAccountActivationEmail } from '../services/email.service.js';
+import { recordAuditLog } from '../services/auditLog.service.js';
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
@@ -17,7 +18,8 @@ export const loginSchema = z.object({
 });
 
 export async function login(req: Request, res: Response) {
-  let { email, phone, password, portal, role } = req.body;
+  try {
+    let { email, phone, password, portal, role } = req.body;
   const requestedPortal = String(portal || role || '').toUpperCase();
 
   if (!password || (!email && !phone)) {
@@ -67,27 +69,24 @@ export async function login(req: Request, res: Response) {
   }
 
   if (!user) {
-    if (requestedPortal === 'COUNTER') {
-      return sendError(res, 401, 'INVALID_CREDENTIALS', "Counter doesn't exist.");
-    }
-    if (requestedPortal === 'ORG_ADMIN') {
-      return sendError(res, 401, 'INVALID_CREDENTIALS', "Org Admin doesn't exist.");
-    }
-    if (requestedPortal === 'STAFF') {
-      return sendError(res, 401, 'INVALID_CREDENTIALS', "Staff doesn't exist.");
-    }
-    return sendError(res, 401, 'INVALID_CREDENTIALS', 'Invalid credentials');
+    await recordAuditLog({
+      action: 'AUTH_LOGIN_FAILED',
+      severity: 'WARNING',
+      ipAddress: req.ip,
+      details: { reason: 'USER_NOT_FOUND', identifier: email || phone, portal: requestedPortal },
+    });
+    return sendError(res, 401, 'INVALID_CREDENTIALS', 'Account does not exist.');
   }
 
   // If portal was specified, verify role matches portal
   if (requestedPortal === 'COUNTER' && user.role !== Role.STAFF) {
-    return sendError(res, 401, 'INVALID_CREDENTIALS', "Counter doesn't exist.");
+    return sendError(res, 401, 'INVALID_CREDENTIALS', 'Account does not exist.');
   }
   if (requestedPortal === 'ORG_ADMIN' && user.role !== Role.ORG_ADMIN) {
-    return sendError(res, 401, 'INVALID_CREDENTIALS', "Org Admin doesn't exist.");
+    return sendError(res, 401, 'INVALID_CREDENTIALS', 'Account does not exist.');
   }
   if (requestedPortal === 'STAFF' && user.role !== Role.STAFF) {
-    return sendError(res, 401, 'INVALID_CREDENTIALS', "Staff doesn't exist.");
+    return sendError(res, 401, 'INVALID_CREDENTIALS', 'Account does not exist.');
   }
 
   if (user.status !== UserStatus.ACTIVE) {
@@ -132,6 +131,7 @@ export async function login(req: Request, res: Response) {
   let isPasswordValid =
     (await comparePassword(rawPassword, user.passwordHash)) ||
     (await comparePassword(trimmedPassword, user.passwordHash));
+
   if (!isPasswordValid) {
     if (['password', 'SuperAdmin@123', 'OrgAdmin@123', 'Staff@123', '123456', '12345678'].includes(rawPassword) ||
         ['password', 'SuperAdmin@123', 'OrgAdmin@123', 'Staff@123', '123456', '12345678'].includes(trimmedPassword)) {
@@ -148,7 +148,16 @@ export async function login(req: Request, res: Response) {
   }
 
   if (!isPasswordValid) {
-    return sendError(res, 401, 'INVALID_CREDENTIALS', 'Credentials are wrong.');
+    await recordAuditLog({
+      organizationId: user.organizationId,
+      userId: user.id,
+      userName: user.name,
+      action: 'AUTH_LOGIN_FAILED',
+      severity: 'WARNING',
+      ipAddress: req.ip,
+      details: { reason: 'INVALID_PASSWORD', portal: requestedPortal },
+    });
+    return sendError(res, 401, 'INVALID_CREDENTIALS', 'Password is incorrect.');
   }
 
   const tokenPayload = {
@@ -199,6 +208,16 @@ export async function login(req: Request, res: Response) {
   }
   const assignedBranchIds = activeAssignedBranches.map((b) => b.id);
 
+  await recordAuditLog({
+    organizationId: user.organizationId,
+    userId: user.id,
+    userName: user.name,
+    action: 'AUTH_LOGIN_SUCCESS',
+    severity: 'INFO',
+    ipAddress: req.ip,
+    details: { portal: requestedPortal || user.role },
+  });
+
   return sendSuccess(res, {
     token: accessToken,
     accessToken,
@@ -218,6 +237,10 @@ export async function login(req: Request, res: Response) {
       assignedBranches: activeAssignedBranches,
     },
   });
+  } catch (error) {
+    console.error('Unhandled login error:', error);
+    return sendError(res, 500, 'INTERNAL_ERROR', 'Login failed due to a server error. Please try again.');
+  }
 }
 
 export async function refresh(req: Request, res: Response) {

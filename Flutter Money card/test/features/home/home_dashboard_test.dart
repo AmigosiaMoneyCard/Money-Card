@@ -77,7 +77,11 @@ class FakeSessionRepository implements SessionRepository {
   }
 
   @override
-  Future<SessionReturnResult> returnSession(String sessionId) async {
+  Future<SessionReturnResult> returnSession(
+    String sessionId, {
+    String paymentMethod = 'CASH',
+    bool skipRefund = false,
+  }) async {
     final idx = sessions.indexWhere((s) => s.id == sessionId);
     if (idx != -1) {
       final old = sessions[idx];

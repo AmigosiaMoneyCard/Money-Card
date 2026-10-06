@@ -23,6 +23,14 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
     roles: ['SUPER_ADMIN', 'ORG_ADMIN', 'STAFF'],
   },
   {
+    id: 'food-purchases',
+    label: 'Food Purchases',
+    path: '/food-purchases',
+    iconName: 'ShoppingBag',
+    roles: ['ORG_ADMIN', 'STAFF'],
+    permission: 'VIEW_ANALYTICS',
+  },
+  {
     id: 'organizations',
     label: 'Organizations',
     path: '/organizations',

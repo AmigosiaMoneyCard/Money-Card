@@ -110,11 +110,7 @@ class _RechargeScreenState extends ConsumerState<RechargeScreen> {
 
     final rechargeAmt = result.amount > 0 ? result.amount : rechargeState.amount;
     final newBal = result.balance;
-    final prevBal = (result.balanceBefore != null && result.balanceBefore! > 0)
-        ? result.balanceBefore!
-        : ((session?.balance != null && session!.balance > 0)
-            ? session.balance
-            : (newBal - rechargeAmt).clamp(0.0, double.infinity));
+    final prevBal = result.balanceBefore ?? (newBal - rechargeAmt).clamp(0.0, double.infinity);
 
     DigitalReceiptDialog.show(
       context,
@@ -152,6 +148,17 @@ class _RechargeScreenState extends ConsumerState<RechargeScreen> {
   void _showTopUpHistorySheet(BuildContext context, CardSession session) {
     final allTx = session.transactions ?? [];
     final topUps = allTx.where((t) => t.type == TransactionType.recharge).toList();
+
+    // Chronologically sort all recharges (earliest first)
+    final sortedTopUps = List<Transaction>.from(topUps)
+      ..sort((a, b) {
+        final aDate = a.createdAt != null ? DateTime.tryParse(a.createdAt!) : null;
+        final bDate = b.createdAt != null ? DateTime.tryParse(b.createdAt!) : null;
+        if (aDate == null || bDate == null) return 0;
+        return aDate.compareTo(bDate);
+      });
+
+    final String? latestRechargeId = sortedTopUps.isNotEmpty ? sortedTopUps.last.id : null;
 
     showModalBottomSheet(
       context: context,
@@ -225,6 +232,11 @@ class _RechargeScreenState extends ConsumerState<RechargeScreen> {
                       itemBuilder: (ctx, idx) {
                         final t = topUps[idx];
                         final isCash = t.paymentMethod == PaymentMethod.cash;
+                        final bool hasSubsequentRecharge = sortedTopUps.isNotEmpty && (t.id != latestRechargeId);
+                        final bool canCancelRecharge = t.canCancel &&
+                            session.balance >= t.amount &&
+                            session.isActive &&
+                            !hasSubsequentRecharge;
 
                         return Container(
                           padding: const EdgeInsets.all(12),
@@ -259,7 +271,7 @@ class _RechargeScreenState extends ConsumerState<RechargeScreen> {
                                       ),
                                       child: const Text('CANCELLED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
                                     )
-                                  else if (!t.canCancel || session.balance < t.amount || !session.isActive)
+                                  else if (!canCancelRecharge)
                                     OutlinedButton.icon(
                                       style: OutlinedButton.styleFrom(
                                         foregroundColor: AppColors.textTertiaryLight,
@@ -288,6 +300,13 @@ class _RechargeScreenState extends ConsumerState<RechargeScreen> {
                                     ),
                                 ],
                               ),
+                              if (hasSubsequentRecharge && !t.isCancelled) ...[
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'Cannot cancel: wallet was recharged again',
+                                  style: TextStyle(fontSize: 11, color: AppColors.textTertiaryLight, fontStyle: FontStyle.italic),
+                                ),
+                              ],
                               const SizedBox(height: 4),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -332,6 +351,27 @@ class _RechargeScreenState extends ConsumerState<RechargeScreen> {
   }
 
   Future<void> _handleCancelRecharge(String txId, double amount, CardSession session) async {
+    final allRecharges = (session.transactions ?? [])
+        .where((t) => t.type == TransactionType.recharge)
+        .toList()
+      ..sort((a, b) {
+        final aDate = a.createdAt != null ? DateTime.tryParse(a.createdAt!) : null;
+        final bDate = b.createdAt != null ? DateTime.tryParse(b.createdAt!) : null;
+        if (aDate == null || bDate == null) return 0;
+        return aDate.compareTo(bDate);
+      });
+
+    final String? latestRechargeId = allRecharges.isNotEmpty ? allRecharges.last.id : null;
+    if (allRecharges.isNotEmpty && txId != latestRechargeId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot cancel recharge because the wallet was recharged again afterwards.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
     final currentBal = session.balance;
     if (currentBal < amount) {
       ScaffoldMessenger.of(context).showSnackBar(

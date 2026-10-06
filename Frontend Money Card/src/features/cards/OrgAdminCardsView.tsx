@@ -1,4 +1,4 @@
-import { formatCurrency, formatDate, extractTransactionItems, formatLocalDate } from '@/utils';
+import { formatCurrency, formatDateTime, extractTransactionItems, formatLocalDate, getPublicCustomerPortalUrl } from '@/utils';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiService } from '@/services/api';
 import { usePermissions } from '@/hooks';
@@ -17,6 +17,7 @@ import {
   ErrorState,
 } from '@/components/ui';
 import { UnauthorizedPage } from '@/features/auth';
+import { BlockedWalletsTableView } from './BlockedWalletsTableView';
 import {
   CreditCard,
   Search,
@@ -33,6 +34,7 @@ import {
   User,
   Phone,
   ArrowDownLeft,
+  ExternalLink,
 } from 'lucide-react';
 
 function getTransactionTitle(tx: Transaction): string {
@@ -60,12 +62,19 @@ function getTransactionTitle(tx: Transaction): string {
 export function OrgAdminCardsView() {
   const { hasPermission } = usePermissions();
   const canView = hasPermission('CARD_VIEW');
+  const canUnblock = hasPermission('CARD_UNBLOCK');
 
+  const [cardsTab, setCardsTab] = useState<'COUNTERS' | 'BLOCKED'>('COUNTERS');
   const [allCards, setAllCards] = useState<CardEntity[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Blocked Cards Count for segmented tab
+  const blockedCardsCount = useMemo(() => {
+    return allCards.filter((c) => c.status === 'BLOCKED').length;
+  }, [allCards]);
 
   // ─── Counter Pattern & Modal States ──────────────────────────────
   const [counterSearchQuery, setCounterSearchQuery] = useState('');
@@ -171,6 +180,28 @@ export function OrgAdminCardsView() {
       setIsLoadingSessions(false);
     }
   }, []);
+
+  // ─── Open Customer History per Card (for Blocked Wallets view) ───
+  const handleOpenCardCustomerHistory = useCallback(async (card: CardEntity) => {
+    const branchId = card.activeSession?.branchId || card.currentBranchId;
+    const branch = branches.find((b) => b.id === branchId) || ({ id: branchId || '', name: 'Cafeteria Counter' } as Branch);
+    setSelectedBranchForHistory(branch);
+    setHistorySearchQuery(card.physicalCardNumber || card.qrToken || '');
+    setIsLoadingSessions(true);
+    try {
+      const res = await apiService.sessions.getSessions({ branchId: branch.id, limit: 100 });
+      if (res.success) {
+        const items = Array.isArray(res.data) ? res.data : (res.data?.items || []);
+        setCounterSessions(items);
+      } else {
+        setCounterSessions([]);
+      }
+    } catch {
+      setCounterSessions([]);
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  }, [branches]);
 
   // ─── Open Session Transactions Detail Inspection ──────────────────
   const handleOpenSessionDetail = useCallback(async (session: any) => {
@@ -282,6 +313,16 @@ export function OrgAdminCardsView() {
             variant="outline"
             size="sm"
             className="text-xs h-8 px-3 rounded-xl border-slate-200 text-slate-700 hover:border-emerald-500 font-medium cursor-pointer"
+            onClick={() => window.open(getPublicCustomerPortalUrl(), '_blank', 'noopener,noreferrer')}
+            leftIcon={<ExternalLink className="h-3.5 w-3.5 text-emerald-600" />}
+          >
+            Customer Portal
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs h-8 px-3 rounded-xl border-slate-200 text-slate-700 hover:border-emerald-500 font-medium cursor-pointer"
             onClick={fetchCardsData}
             leftIcon={<RefreshCw className="h-3.5 w-3.5 text-slate-500" />}
           >
@@ -290,122 +331,191 @@ export function OrgAdminCardsView() {
         </div>
       </div>
 
-      {/* ─── ONLY Search Bar: Search by counter name ─────────────────── */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-        <input
-          type="text"
-          placeholder="Search by counter name..."
-          value={counterSearchQuery}
-          onChange={(e) => setCounterSearchQuery(e.target.value)}
-          className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-8 py-2 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none"
-        />
-        {counterSearchQuery && (
-          <button
-            type="button"
-            onClick={() => setCounterSearchQuery('')}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-            title="Clear search"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        )}
+      {/* ─── Segmented Filter Tabs: Cafeteria Counters vs Blocked Wallets ─── */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-1">
+        <button
+          type="button"
+          onClick={() => setCardsTab('COUNTERS')}
+          className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+            cardsTab === 'COUNTERS'
+              ? 'bg-emerald-600 text-white shadow-2xs'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <span>Cafeteria Counters</span>
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+            cardsTab === 'COUNTERS' ? 'bg-emerald-700 text-white' : 'bg-slate-200 text-slate-700'
+          }`}>
+            {branches.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setCardsTab('BLOCKED')}
+          className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+            cardsTab === 'BLOCKED'
+              ? 'bg-rose-600 text-white shadow-2xs'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <span>Blocked Wallets</span>
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+            cardsTab === 'BLOCKED' ? 'bg-rose-700 text-white' : 'bg-slate-200 text-slate-700'
+          }`}>
+            {blockedCardsCount}
+          </span>
+        </button>
       </div>
 
-      {/* ─── Counter-Wise Table ─────────────────────────────────────── */}
-      {error ? (
-        <div className="py-12 bg-white rounded-2xl border border-rose-200">
-          <ErrorState message={error} onRetry={fetchCardsData} />
-        </div>
-      ) : isLoading ? (
-        <div className="py-12 bg-white rounded-2xl border border-slate-200/80">
-          <LoadingState message="Loading cafeteria counters..." />
-        </div>
-      ) : filteredBranches.length === 0 ? (
-        <div className="py-12 bg-white rounded-2xl border border-slate-200/80">
-          <EmptyState
-            title={counterSearchQuery ? 'No matching counters' : 'No counters found'}
-            description={
-              counterSearchQuery
-                ? 'Try adjusting your search query.'
-                : 'Counters configured in your organization will appear here.'
-            }
-          />
-        </div>
+      {cardsTab === 'BLOCKED' ? (
+        <BlockedWalletsTableView
+          cards={allCards}
+          branches={branches}
+          isLoading={isLoading}
+          error={error}
+          onRefresh={fetchCardsData}
+          onOpenCustomerHistory={handleOpenCardCustomerHistory}
+          canUnblock={canUnblock}
+        />
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  <th className="py-3 px-4 w-1/2 min-w-[240px]">Counter Name</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredBranches.map((branch) => {
-                  const count = getBranchCards(branch.id).length;
-                  return (
-                    <tr key={branch.id} className="hover:bg-slate-50/60 transition-colors">
-                      {/* Counter Name */}
-                      <td className="py-3.5 px-4 w-1/2 min-w-[240px]">
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
-                            <Building2 className="h-4 w-4" />
-                          </div>
-                          <span className="font-semibold text-sm text-slate-900">
-                            Wallets - {branch.name}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* 3 Action Buttons on Far Right: [ Customer History ] [ Wallet Analytics ] [ Wallet Details (N) ] */}
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                        <div className="inline-flex items-center gap-2">
-                          {/* 1. Customer History (to the left of Wallet Analytics) */}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleOpenCustomerHistory(branch)}
-                            className="text-xs h-8 px-3 rounded-lg border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
-                            leftIcon={<History className="h-3.5 w-3.5 text-emerald-600" />}
-                          >
-                            Customer History
-                          </Button>
-
-                          {/* 2. Wallet Analytics */}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleOpenAnalytics(branch)}
-                            className="text-xs h-8 px-3 rounded-lg border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
-                            leftIcon={<BarChart2 className="h-3.5 w-3.5 text-emerald-600" />}
-                          >
-                            Wallet Analytics
-                          </Button>
-
-                          {/* 3. Wallet Details */}
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedBranchForDetails(branch);
-                              setModalSearchQuery('');
-                            }}
-                            className="text-xs h-8 px-3.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold cursor-pointer"
-                            leftIcon={<CreditCard className="h-3.5 w-3.5" />}
-                          >
-                            Wallet Details ({count})
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        <>
+          {/* ─── ONLY Search Bar: Search by counter name ─────────────────── */}
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search by counter name..."
+              value={counterSearchQuery}
+              onChange={(e) => setCounterSearchQuery(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-8 py-2 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none"
+            />
+            {counterSearchQuery && (
+              <button
+                type="button"
+                onClick={() => setCounterSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                title="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
-        </div>
+
+          {/* ─── Counter-Wise Table ─────────────────────────────────────── */}
+          {error ? (
+            <div className="py-12 bg-white rounded-2xl border border-rose-200">
+              <ErrorState message={error} onRetry={fetchCardsData} />
+            </div>
+          ) : isLoading ? (
+            <div className="py-12 bg-white rounded-2xl border border-slate-200/80">
+              <LoadingState message="Loading cafeteria counters..." />
+            </div>
+          ) : filteredBranches.length === 0 ? (
+            <div className="py-12 bg-white rounded-2xl border border-slate-200/80">
+              <EmptyState
+                title={counterSearchQuery ? 'No matching counters' : 'No counters found'}
+                description={
+                  counterSearchQuery
+                    ? 'Try adjusting your search query.'
+                    : 'Counters configured in your organization will appear here.'
+                }
+              />
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      <th className="py-3 px-4 w-1/2 min-w-[240px]">Counter Name</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredBranches.map((branch) => {
+                      const count = getBranchCards(branch.id).length;
+                      return (
+                        <tr key={branch.id} className="hover:bg-slate-50/60 transition-colors">
+                          {/* Counter Name */}
+                          <td className="py-3.5 px-4 w-1/2 min-w-[240px]">
+                            <div className="flex items-center gap-3">
+                              <div className="h-8 w-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
+                                <Building2 className="h-4 w-4" />
+                              </div>
+                              <span className="font-semibold text-sm text-slate-900">
+                                Wallets - {branch.name}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* 4 Action Buttons on Far Right: [ Customer Portal ] [ Customer History ] [ Wallet Analytics ] [ Wallet Details (N) ] */}
+                          <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                            <div className="inline-flex items-center gap-2">
+                              {/* 1. Customer Portal (PWA View for Customer) */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const branchCards = getBranchCards(branch.id);
+                                  const activeWithToken = branchCards.find((c) => c.activeSession && c.qrToken);
+                                  const portalUrl = activeWithToken?.qrToken
+                                    ? getPublicCustomerPortalUrl(activeWithToken.qrToken)
+                                    : getPublicCustomerPortalUrl();
+                                  window.open(portalUrl, '_blank', 'noopener,noreferrer');
+                                }}
+                                className="text-xs h-8 px-3 rounded-lg border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
+                                leftIcon={<ExternalLink className="h-3.5 w-3.5 text-emerald-600" />}
+                              >
+                                Customer Portal
+                              </Button>
+
+                              {/* 2. Customer History */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenCustomerHistory(branch)}
+                                className="text-xs h-8 px-3 rounded-lg border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
+                                leftIcon={<History className="h-3.5 w-3.5 text-emerald-600" />}
+                              >
+                                Customer History
+                              </Button>
+
+                              {/* 2. Wallet Analytics */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenAnalytics(branch)}
+                                className="text-xs h-8 px-3 rounded-lg border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
+                                leftIcon={<BarChart2 className="h-3.5 w-3.5 text-emerald-600" />}
+                              >
+                                Wallet Analytics
+                              </Button>
+
+                              {/* 3. Wallet Details */}
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedBranchForDetails(branch);
+                                  setModalSearchQuery('');
+                                }}
+                                className="text-xs h-8 px-3.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold cursor-pointer"
+                                leftIcon={<CreditCard className="h-3.5 w-3.5" />}
+                              >
+                                Wallet Details ({count})
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* ─── MODAL 1: Customer History Modal (Counter Scoped) ─────────── */}
@@ -568,11 +678,11 @@ export function OrgAdminCardsView() {
               </div>
             </div>
 
-            {/* Activity Breakdown */}
+            {/* Activity */}
             <div className="space-y-2 pt-1">
               <div className="flex items-center justify-between px-0.5">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Breakdown
+                  Activity
                 </h4>
               </div>
 
@@ -611,7 +721,7 @@ export function OrgAdminCardsView() {
                             <p className="font-semibold text-slate-900 leading-tight">
                               {getTransactionTitle(tx)}
                             </p>
-                            <p className="text-[11px] text-slate-400 mt-0.5">{formatDate(tx.createdAt)}</p>
+                            <p className="text-[11px] text-slate-400 mt-0.5">{formatDateTime(tx.createdAt)}</p>
                           </div>
                         </div>
                         <span
@@ -841,18 +951,18 @@ export function OrgAdminCardsView() {
                 );
 
                 const moneyAdded =
-                  bp?.rechargeVolume ??
-                  bp?.moneyAdded ??
-                  counterAnalyticsData?.moneyAdded ??
-                  counterAnalyticsData?.rechargeVolume ??
-                  counterAnalyticsData?.totalRechargeVolume ??
-                  0;
+                  (bp?.rechargeVolume ?? 0) > 0
+                    ? bp.rechargeVolume
+                    : (bp?.moneyAdded ?? 0) > 0
+                    ? bp.moneyAdded
+                    : (counterAnalyticsData?.moneyAdded ?? 0) > 0
+                    ? counterAnalyticsData.moneyAdded
+                    : (counterAnalyticsData?.totalRechargeVolume ?? counterAnalyticsData?.rechargeVolume ?? 0);
 
                 const rechargeOrders =
-                  bp?.rechargeCount ??
-                  counterAnalyticsData?.rechargeCount ??
-                  counterAnalyticsData?.totalRechargeCount ??
-                  0;
+                  (bp?.rechargeCount ?? 0) > 0
+                    ? bp.rechargeCount
+                    : (counterAnalyticsData?.rechargeCount ?? counterAnalyticsData?.totalRechargeCount ?? 0);
 
                 const foodSales =
                   bp?.purchaseVolume ??

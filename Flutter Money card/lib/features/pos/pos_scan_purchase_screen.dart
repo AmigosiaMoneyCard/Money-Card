@@ -13,6 +13,7 @@ import '../../models/product.dart';
 import '../../models/transaction.dart';
 import '../../providers/analytics_provider.dart';
 import '../../providers/api_providers.dart';
+import '../../providers/kitchen_orders_provider.dart';
 import '../../providers/branch_provider.dart';
 import '../../providers/card_operations_provider.dart';
 import '../../providers/permission_provider.dart';
@@ -23,6 +24,7 @@ import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_card.dart';
 import '../../widgets/common/app_dialog.dart';
 import '../../widgets/common/section_header.dart';
+import '../../widgets/dialogs/refund_payment_dialog.dart';
 import '../../widgets/scanner/qr_scanner_view.dart';
 import '../../widgets/states/app_loading_view.dart';
 import '../../core/utils/formatters.dart';
@@ -354,17 +356,27 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     final card = _resolvedCard;
     if (session == null || card == null) return;
 
-    final confirm = await AppDialog.show(
+    final currentBranch = ref.read(currentBranchProvider);
+    if (currentBranch != null && session.branchId.isNotEmpty && session.branchId != currentBranch.id) {
+      await AppDialog.show(
+        context,
+        title: 'Return Not Allowed at this Counter',
+        message: 'This wallet was issued at another counter. Wallets can only be returned and settled at the counter where they were issued.',
+        confirmLabel: 'Understood',
+      );
+      return;
+    }
+
+    final paymentMethod = await RefundPaymentSelectionDialog.show(
       context,
+      refundAmount: session.balance,
       title: 'Confirm Wallet Return & Settlement',
-      message: session.balance > 0
-          ? 'Refund remaining balance of ₹${session.balance.toStringAsFixed(2)} to customer and settle this wallet session?'
-          : 'Settle this wallet session and return wallet ${card.displayCardNumber} to AVAILABLE state?',
-      confirmLabel: 'Confirm & Settle',
-      isDestructive: session.balance > 0,
+      subtitle: session.balance > 0
+          ? 'Refund remaining balance of ₹${session.balance.toStringAsFixed(2)} to customer and settle wallet'
+          : 'Settle wallet session and reset to Available',
     );
 
-    if (confirm != true) return;
+    if (paymentMethod == null) return;
 
     setState(() {
       _isResolving = true;
@@ -372,7 +384,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
 
     try {
       final sessionRepo = ref.read(sessionRepositoryProvider);
-      final result = await sessionRepo.returnSession(session.id);
+      final result = await sessionRepo.returnSession(session.id, paymentMethod: paymentMethod);
 
       // Refresh global stores
       ref.read(sessionListNotifierProvider.notifier).loadSessions();
@@ -397,9 +409,15 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
         setState(() {
           _isResolving = false;
         });
+        final isMismatch = e.toString().contains('RETURN_COUNTER_MISMATCH') ||
+            e.toString().contains('where it was issued');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Settlement failed: $e'),
+            content: Text(
+              isMismatch
+                  ? 'This wallet must be returned at the counter where it was issued.'
+                  : 'Settlement failed: $e',
+            ),
             backgroundColor: AppColors.error,
           ),
         );
@@ -884,6 +902,17 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     final allTx = session.transactions ?? [];
     final topUps = allTx.where((t) => t.type == TransactionType.recharge).toList();
 
+    // Chronologically sort all recharges (earliest first)
+    final sortedTopUps = List<Transaction>.from(topUps)
+      ..sort((a, b) {
+        final aDate = a.createdAt != null ? DateTime.tryParse(a.createdAt!) : null;
+        final bDate = b.createdAt != null ? DateTime.tryParse(b.createdAt!) : null;
+        if (aDate == null || bDate == null) return 0;
+        return aDate.compareTo(bDate);
+      });
+
+    final String? latestRechargeId = sortedTopUps.isNotEmpty ? sortedTopUps.last.id : null;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -981,6 +1010,11 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                       itemBuilder: (ctx, idx) {
                         final t = topUps[idx];
                         final isCash = t.paymentMethod == PaymentMethod.cash;
+                        final bool hasSubsequentRecharge = sortedTopUps.isNotEmpty && (t.id != latestRechargeId);
+                        final bool canCancelRecharge = t.canCancel &&
+                            session.balance >= t.amount &&
+                            session.isActive &&
+                            !hasSubsequentRecharge;
 
                         return Container(
                           padding: const EdgeInsets.all(12),
@@ -1033,7 +1067,19 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                                         color: Colors.grey.shade200,
                                         borderRadius: BorderRadius.circular(4),
                                       ),
-                                      child: const Text('VOIDED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                                      child: const Text('CANCELLED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                                    )
+                                  else if (!canCancelRecharge)
+                                    OutlinedButton.icon(
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppColors.textTertiaryLight,
+                                        side: BorderSide(color: Colors.grey.shade300, width: 1),
+                                        visualDensity: VisualDensity.compact,
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                      ),
+                                      icon: const Icon(Icons.cancel_outlined, size: 14, color: AppColors.textTertiaryLight),
+                                      label: const Text('Cancel', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                      onPressed: null,
                                     )
                                   else
                                     OutlinedButton.icon(
@@ -1052,6 +1098,13 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                                     ),
                                 ],
                               ),
+                              if (hasSubsequentRecharge && !t.isCancelled) ...[
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'Cannot cancel: wallet was recharged again',
+                                  style: TextStyle(fontSize: 11, color: AppColors.textTertiaryLight, fontStyle: FontStyle.italic),
+                                ),
+                              ],
                               const SizedBox(height: 4),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1091,6 +1144,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
 
   // ignore: unused_element
   void _showBillingHubSheet(BuildContext context, CardSession session, Card card) {
+    ref.read(kitchenOrdersNotifierProvider.notifier).loadOrders();
     final allTx = session.transactions ?? [];
     final orders = allTx.where((t) => t.type == TransactionType.purchase).toList();
 
@@ -1191,6 +1245,11 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                       itemBuilder: (ctx, idx) {
                         final t = orders[idx];
                         final items = t.items ?? [];
+                        final kitchenOrders = ref.watch(kitchenOrdersNotifierProvider).orders;
+                        final matchingKo = kitchenOrders.where(
+                          (ko) => ko.transactionId == t.id || (t.id.isNotEmpty && ko.transactionId.contains(t.id)),
+                        ).firstOrNull;
+                        final isFinishServed = matchingKo != null && (matchingKo.isReady || matchingKo.isCompleted);
 
                         return Container(
                           padding: const EdgeInsets.all(12),
@@ -1224,6 +1283,19 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: const Text('CANCELLED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                                    )
+                                  else if (isFinishServed)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green.shade50,
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(color: Colors.green.shade200),
+                                      ),
+                                      child: Text(
+                                        matchingKo.isCompleted ? 'SERVED' : 'READY',
+                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green.shade800),
+                                      ),
                                     )
                                   else
                                     Row(
@@ -1447,6 +1519,26 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                             ),
                           ],
                         ),
+                        if (ref.watch(currentBranchProvider) != null &&
+                            session.branchId.isNotEmpty &&
+                            session.branchId != ref.watch(currentBranchProvider)!.id) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppColors.warningLight,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'Issued at another counter. Return/refund only at issuing counter.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.warning,
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 14),
                         Row(
                           children: [
@@ -1455,17 +1547,31 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                                 icon: const Icon(Icons.payments_outlined, size: 16),
                                 label: const Text('Refund', style: TextStyle(fontWeight: FontWeight.bold)),
                                 style: OutlinedButton.styleFrom(
-                                  foregroundColor: session.balance > 0 ? AppColors.warning : Colors.grey,
+                                  foregroundColor: session.balance > 0 &&
+                                          (ref.watch(currentBranchProvider) == null ||
+                                              session.branchId.isEmpty ||
+                                              session.branchId == ref.watch(currentBranchProvider)!.id)
+                                      ? AppColors.warning
+                                      : Colors.grey,
                                   side: BorderSide(
-                                    color: session.balance > 0 ? AppColors.warning : Colors.grey.shade300,
+                                    color: session.balance > 0 &&
+                                            (ref.watch(currentBranchProvider) == null ||
+                                                session.branchId.isEmpty ||
+                                                session.branchId == ref.watch(currentBranchProvider)!.id)
+                                        ? AppColors.warning
+                                        : Colors.grey.shade300,
                                   ),
                                   padding: const EdgeInsets.symmetric(vertical: 10),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                 ),
-                                onPressed: () {
-                                  Navigator.of(sheetCtx).pop();
-                                  _handleRefundOnly(session);
-                                },
+                                onPressed: (ref.watch(currentBranchProvider) != null &&
+                                        session.branchId.isNotEmpty &&
+                                        session.branchId != ref.watch(currentBranchProvider)!.id)
+                                    ? null
+                                    : () {
+                                        Navigator.of(sheetCtx).pop();
+                                        _handleRefundOnly(session);
+                                      },
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -1474,16 +1580,24 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                                 icon: const Icon(Icons.assignment_return_outlined, size: 16),
                                 label: const Text('Return', style: TextStyle(fontWeight: FontWeight.bold)),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.error,
+                                  backgroundColor: (ref.watch(currentBranchProvider) != null &&
+                                          session.branchId.isNotEmpty &&
+                                          session.branchId != ref.watch(currentBranchProvider)!.id)
+                                      ? Colors.grey.shade400
+                                      : AppColors.error,
                                   foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(vertical: 10),
                                   elevation: 0,
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                 ),
-                                onPressed: () {
-                                  Navigator.of(sheetCtx).pop();
-                                  _handleSettleReturn();
-                                },
+                                onPressed: (ref.watch(currentBranchProvider) != null &&
+                                        session.branchId.isNotEmpty &&
+                                        session.branchId != ref.watch(currentBranchProvider)!.id)
+                                    ? null
+                                    : () {
+                                        Navigator.of(sheetCtx).pop();
+                                        _handleSettleReturn();
+                                      },
                               ),
                             ),
                           ],
@@ -1610,6 +1724,17 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
   }
 
   Future<void> _handleRefundOnly(CardSession session) async {
+    final currentBranch = ref.read(currentBranchProvider);
+    if (currentBranch != null && session.branchId.isNotEmpty && session.branchId != currentBranch.id) {
+      await AppDialog.show(
+        context,
+        title: 'Refund Not Allowed at this Counter',
+        message: 'This wallet was issued at another counter. Refunds can only be processed at the counter where the wallet was issued.',
+        confirmLabel: 'Understood',
+      );
+      return;
+    }
+
     if (session.balance <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -1661,9 +1786,15 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
         setState(() {
           _isResolving = false;
         });
+        final isMismatch = e.toString().contains('RETURN_COUNTER_MISMATCH') ||
+            e.toString().contains('where it was issued');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Refund failed: $e'),
+            content: Text(
+              isMismatch
+                  ? 'This wallet must be returned at the counter where it was issued.'
+                  : 'Refund failed: $e',
+            ),
             backgroundColor: AppColors.error,
           ),
         );
@@ -1676,6 +1807,27 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
   // ==========================================
 
   Future<void> _handleCancelRecharge(String txId, double amount, CardSession session) async {
+    final allRecharges = (session.transactions ?? [])
+        .where((t) => t.type == TransactionType.recharge)
+        .toList()
+      ..sort((a, b) {
+        final aDate = a.createdAt != null ? DateTime.tryParse(a.createdAt!) : null;
+        final bDate = b.createdAt != null ? DateTime.tryParse(b.createdAt!) : null;
+        if (aDate == null || bDate == null) return 0;
+        return aDate.compareTo(bDate);
+      });
+
+    final String? latestRechargeId = allRecharges.isNotEmpty ? allRecharges.last.id : null;
+    if (allRecharges.isNotEmpty && txId != latestRechargeId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot cancel recharge because the wallet was recharged again afterwards.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
     final currentBal = _activeSession?.balance ?? session.balance;
     if (currentBal < amount) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1795,6 +1947,22 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
   }
 
   Future<void> _handleCancelOrder(String txId, double amount, CardSession session) async {
+    final kitchenOrders = ref.read(kitchenOrdersNotifierProvider).orders;
+    final matchingKo = kitchenOrders.where(
+      (ko) => ko.transactionId == txId || (txId.isNotEmpty && ko.transactionId.contains(txId)),
+    ).firstOrNull;
+    if (matchingKo != null && (matchingKo.isReady || matchingKo.isCompleted)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cannot cancel order that has already been prepared or served'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+      return;
+    }
+
     String selectedReason = 'Ordered Wrong Item';
     final customReasonCtrl = TextEditingController();
 
@@ -1900,6 +2068,22 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
   }
 
   Future<void> _handleEditOrder(Transaction orderTx, CardSession session) async {
+    final kitchenOrders = ref.read(kitchenOrdersNotifierProvider).orders;
+    final matchingKo = kitchenOrders.where(
+      (ko) => ko.transactionId == orderTx.id || (orderTx.id.isNotEmpty && ko.transactionId.contains(orderTx.id)),
+    ).firstOrNull;
+    if (matchingKo != null && (matchingKo.isReady || matchingKo.isCompleted)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cannot edit order that has already been prepared or served'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+      return;
+    }
+
     final items = orderTx.items ?? [];
     final itemsSummary = items.isNotEmpty
         ? items.map((i) => '${i.quantity}x ${i.itemName ?? "Item"}').join(', ')

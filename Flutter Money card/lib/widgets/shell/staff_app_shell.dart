@@ -53,14 +53,29 @@ class _StaffAppShellState extends ConsumerState<StaffAppShell> with WidgetsBindi
     }
   }
 
-  int _calculateSelectedIndex(bool isManager) {
+  int _calculateSelectedIndex(bool isKitchen, bool isManager) {
+    if (isKitchen) {
+      if (widget.currentPath.startsWith('/app/products')) return 1;
+      return 0; // /app/kitchen
+    }
     if (widget.currentPath.startsWith('/app/cards')) return 1;
     if (widget.currentPath.startsWith('/app/products')) return 2;
     if (isManager && widget.currentPath.startsWith('/app/analytics')) return 3;
     return 0; // Home
   }
 
-  void _onItemTapped(int index, BuildContext context, bool isManager) {
+  void _onItemTapped(int index, BuildContext context, bool isKitchen, bool isManager) {
+    if (isKitchen) {
+      switch (index) {
+        case 0:
+          context.go('/app/kitchen');
+          break;
+        case 1:
+          context.go('/app/products');
+          break;
+      }
+      return;
+    }
     switch (index) {
       case 0:
         context.go('/app/home');
@@ -83,9 +98,11 @@ class _StaffAppShellState extends ConsumerState<StaffAppShell> with WidgetsBindi
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
     final permissionChecker = ref.watch(permissionCheckerProvider);
-    final isManager = user?.role == 'STAFF'
-        ? permissionChecker.hasPermission(AppPermission.recharge)
-        : (user?.role == 'ORG_ADMIN' || user?.role == 'SUPER_ADMIN');
+    final isKitchen = user?.isKitchenStaff ?? false;
+    final isManager = user?.isManager ??
+        (user?.role == 'STAFF'
+            ? permissionChecker.hasPermission(AppPermission.recharge)
+            : (user?.role == 'ORG_ADMIN' || user?.role == 'SUPER_ADMIN'));
 
     final branchState = ref.watch(branchNotifierProvider);
     final currentBranch = branchState.currentBranch;
@@ -128,31 +145,44 @@ class _StaffAppShellState extends ConsumerState<StaffAppShell> with WidgetsBindi
         ],
       ),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _calculateSelectedIndex(isManager),
-        onDestinationSelected: (idx) => _onItemTapped(idx, context, isManager),
-        destinations: [
-          const NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.account_balance_wallet_outlined),
-            selectedIcon: Icon(Icons.account_balance_wallet),
-            label: 'Wallets',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.restaurant_menu_outlined),
-            selectedIcon: Icon(Icons.restaurant_menu),
-            label: 'Menu',
-          ),
-          if (isManager)
-            const NavigationDestination(
-              icon: Icon(Icons.bar_chart_outlined),
-              selectedIcon: Icon(Icons.bar_chart),
-              label: 'Analytics',
-            ),
-        ],
+        selectedIndex: _calculateSelectedIndex(isKitchen, isManager),
+        onDestinationSelected: (idx) => _onItemTapped(idx, context, isKitchen, isManager),
+        destinations: isKitchen
+            ? const [
+                NavigationDestination(
+                  icon: Icon(Icons.soup_kitchen_outlined),
+                  selectedIcon: Icon(Icons.soup_kitchen),
+                  label: 'Kitchen Orders',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.restaurant_menu_outlined),
+                  selectedIcon: Icon(Icons.restaurant_menu),
+                  label: 'Menu',
+                ),
+              ]
+            : [
+                const NavigationDestination(
+                  icon: Icon(Icons.home_outlined),
+                  selectedIcon: Icon(Icons.home),
+                  label: 'Home',
+                ),
+                const NavigationDestination(
+                  icon: Icon(Icons.account_balance_wallet_outlined),
+                  selectedIcon: Icon(Icons.account_balance_wallet),
+                  label: 'Wallets',
+                ),
+                const NavigationDestination(
+                  icon: Icon(Icons.restaurant_menu_outlined),
+                  selectedIcon: Icon(Icons.restaurant_menu),
+                  label: 'Menu',
+                ),
+                if (isManager)
+                  const NavigationDestination(
+                    icon: Icon(Icons.bar_chart_outlined),
+                    selectedIcon: Icon(Icons.bar_chart),
+                    label: 'Analytics',
+                  ),
+              ],
       ),
     );
   }

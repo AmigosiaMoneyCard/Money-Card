@@ -21,6 +21,7 @@ export const createStaffMemberSchema = z
     branchIds: z.array(safeId).optional(),
     permissions: z.array(z.string().max(50)).optional(),
     permissionCodes: z.array(z.string().max(50)).optional(),
+    staffType: z.enum(['MANAGER', 'KITCHEN']).optional(),
   })
   .strict();
 
@@ -34,6 +35,7 @@ export const updateStaffMemberSchema = z
     assignedBranchIds: z.array(safeId).optional(),
     permissions: z.array(z.string().max(50)).optional(),
     permissionCodes: z.array(z.string().max(50)).optional(),
+    staffType: z.enum(['MANAGER', 'KITCHEN']).optional(),
   })
   .strict();
 

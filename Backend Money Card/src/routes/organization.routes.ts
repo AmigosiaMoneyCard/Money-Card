@@ -9,6 +9,7 @@ import {
   updateBranch,
   deleteBranch,
 } from '../controllers/organization.controller.js';
+import { exportOrganizationDataHandler } from '../controllers/admin.controller.js';
 import { requireAuth } from '../middlewares/auth.middleware.js';
 import { requireRole } from '../middlewares/role.middleware.js';
 import { Role } from '@prisma/client';
@@ -16,6 +17,7 @@ import { Role } from '@prisma/client';
 export const organizationRouter = Router();
 organizationRouter.use(requireAuth);
 organizationRouter.get('/', getOrganizationProfile);
+organizationRouter.get('/export', requireRole(Role.SUPER_ADMIN, Role.ORG_ADMIN), exportOrganizationDataHandler);
 organizationRouter.patch('/', requireRole(Role.SUPER_ADMIN, Role.ORG_ADMIN), updateOrganizationProfile);
 
 export const branchesRouter = Router();
