@@ -884,11 +884,15 @@ export async function cancelOrder(req: Request, res: Response) {
 
     const orderItems = Array.isArray(txRecord.items)
       ? txRecord.items
+      : Array.isArray(existingMeta.items)
+      ? existingMeta.items
       : existingMeta.orderItems || [];
 
     const cancelMeta = {
-      orderItems,
+      ...existingMeta,
+      ...(orderItems.length > 0 ? { items: orderItems } : {}),
       isCancelled: true,
+      orderStatus: 'CANCELLED',
       cancelledAt: new Date().toISOString(),
       cancelledByUserId: req.user?.id,
       cancelledByUserName: req.user?.name || 'Staff',

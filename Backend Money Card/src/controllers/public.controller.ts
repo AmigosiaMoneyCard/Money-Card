@@ -125,17 +125,29 @@ export async function getPublicSessionTransactions(req: Request, res: Response) 
     return sendError(res, 404, 'NOT_FOUND', 'Session not found');
   }
 
-  const formatted = session.transactions.map((tx) => ({
-    id: tx.id,
-    type: tx.type,
-    amount: tx.amount,
-    balanceAfter: tx.balanceAfter,
-    paymentMethod: tx.paymentMethod,
-    items: tx.items,
-    createdAt: tx.createdAt,
-    timestamp: tx.createdAt,
-    status: 'SUCCESS',
-  }));
+  const formatted = session.transactions.map((tx) => {
+    let rawMeta = tx.items as any;
+    if (typeof rawMeta === 'string') {
+      try {
+        rawMeta = JSON.parse(rawMeta);
+      } catch {
+        rawMeta = {};
+      }
+    }
+    const isCancelled = Boolean(rawMeta?.isCancelled);
+
+    return {
+      id: tx.id,
+      type: tx.type,
+      amount: tx.amount,
+      balanceAfter: tx.balanceAfter,
+      paymentMethod: tx.paymentMethod,
+      items: tx.items,
+      createdAt: tx.createdAt,
+      timestamp: tx.createdAt,
+      status: isCancelled ? 'CANCELLED' : 'SUCCESS',
+    };
+  });
 
   return sendSuccess(res, formatted);
 }
@@ -158,54 +170,59 @@ export async function getPublicSessionReceipts(req: Request, res: Response) {
     return sendError(res, 404, 'NOT_FOUND', 'Session not found');
   }
 
-  const receipts = session.transactions.map((tx) => {
-    let rawMeta = tx.items as any;
-    if (typeof rawMeta === 'string') {
-      try {
-        rawMeta = JSON.parse(rawMeta);
-      } catch {
-        rawMeta = {};
+  const receipts = session.transactions
+    .map((tx) => {
+      let rawMeta = tx.items as any;
+      if (typeof rawMeta === 'string') {
+        try {
+          rawMeta = JSON.parse(rawMeta);
+        } catch {
+          rawMeta = {};
+        }
       }
-    }
 
-    let items: any[] = [];
-    if (Array.isArray(rawMeta)) {
-      items = rawMeta;
-    } else if (rawMeta && Array.isArray(rawMeta.items)) {
-      items = rawMeta.items;
-    }
+      const isCancelled = Boolean(rawMeta?.isCancelled);
+      if (isCancelled) return null;
 
-    const mappedItems = items.map((i: any) => ({
-      itemName: i.itemName || i.name || 'Food Item',
-      quantity: Number(i.quantity) || 1,
-      unitPrice: Number(i.unitPrice ?? i.price ?? 0),
-      totalPrice: Number(
-        i.subtotal ??
-          i.totalPrice ??
-          (Number(i.quantity || 1) * Number(i.unitPrice ?? i.price ?? 0))
-      ),
-    }));
+      let items: any[] = [];
+      if (Array.isArray(rawMeta)) {
+        items = rawMeta;
+      } else if (rawMeta && Array.isArray(rawMeta.items)) {
+        items = rawMeta.items;
+      }
 
-    if (mappedItems.length === 0 && tx.amount > 0) {
-      mappedItems.push({
-        itemName: 'Food Purchase',
-        quantity: 1,
-        unitPrice: tx.amount,
-        totalPrice: tx.amount,
-      });
-    }
+      const mappedItems = items.map((i: any) => ({
+        itemName: i.itemName || i.name || 'Food Item',
+        quantity: Number(i.quantity) || 1,
+        unitPrice: Number(i.unitPrice ?? i.price ?? 0),
+        totalPrice: Number(
+          i.subtotal ??
+            i.totalPrice ??
+            (Number(i.quantity || 1) * Number(i.unitPrice ?? i.price ?? 0))
+        ),
+      }));
 
-    return {
-      receiptId: `rcpt_${tx.id.substring(0, 8)}`,
-      sessionId: session.id,
-      date: tx.createdAt,
-      totalAmount: tx.amount,
-      paymentMethod: tx.paymentMethod || 'SMART_CARD',
-      orderNumber: rawMeta?.orderNumber || undefined,
-      counterName: rawMeta?.counterName || session.branch?.name || undefined,
-      items: mappedItems,
-    };
-  });
+      if (mappedItems.length === 0 && tx.amount > 0) {
+        mappedItems.push({
+          itemName: 'Food Purchase',
+          quantity: 1,
+          unitPrice: tx.amount,
+          totalPrice: tx.amount,
+        });
+      }
+
+      return {
+        receiptId: `rcpt_${tx.id.substring(0, 8)}`,
+        sessionId: session.id,
+        date: tx.createdAt,
+        totalAmount: tx.amount,
+        paymentMethod: tx.paymentMethod || 'SMART_CARD',
+        orderNumber: rawMeta?.orderNumber || undefined,
+        counterName: rawMeta?.counterName || session.branch?.name || undefined,
+        items: mappedItems,
+      };
+    })
+    .filter(Boolean);
 
   return sendSuccess(res, receipts);
 }

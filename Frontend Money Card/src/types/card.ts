@@ -67,7 +67,7 @@ export type TransactionType =
   | 'RECHARGE_CASH'
   | 'RECHARGE_UPI'
   | 'REFUND_RETURN';
-export type TransactionStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED';
+export type TransactionStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED' | 'CANCELLED';
 export type PaymentMethod = 'CASH' | 'UPI' | 'CARD_BALANCE';
 
 export interface PurchaseItem {

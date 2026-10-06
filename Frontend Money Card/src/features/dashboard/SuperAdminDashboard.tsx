@@ -526,7 +526,7 @@ export function SuperAdminDashboard() {
 
                   <div className="flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition-colors">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-slate-600">Cancelled Top-ups</span>
+                      <span className="text-xs font-semibold text-slate-600">Cancelled Recharges</span>
                       <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
                         <RotateCcw className="h-4 w-4" />
                       </div>
