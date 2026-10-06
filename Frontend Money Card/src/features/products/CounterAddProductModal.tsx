@@ -124,12 +124,22 @@ export function CounterAddProductModal({
           <div className="relative">
             <span className="absolute left-3 top-2 text-sm font-bold text-slate-400">₹</span>
             <input
-              type="number"
-              step="1"
-              min="1"
+              type="text"
+              inputMode="numeric"
               placeholder="150"
               value={price}
-              onChange={(e) => setPrice(e.target.value)}
+              maxLength={7}
+              onKeyDown={(e) => {
+                if (['e', 'E', '+', '-', '.'].includes(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              onChange={(e) => {
+                const val = e.target.value.replace(/[^0-9]/g, '');
+                if (val.length <= 7) {
+                  setPrice(val);
+                }
+              }}
               disabled={isSubmitting}
               className="w-full rounded-xl border border-slate-200 bg-white pl-7 pr-3 py-2 text-sm font-semibold text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
             />
