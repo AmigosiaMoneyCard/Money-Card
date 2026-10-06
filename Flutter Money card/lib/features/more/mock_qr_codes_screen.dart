@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import '../../core/config/app_config.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../widgets/common/app_badge.dart';
@@ -194,7 +195,7 @@ class MockQrCodesScreen extends StatelessWidget {
                 ],
               ),
               child: QrImageView(
-                data: item.qrToken,
+                data: AppConfig.getPublicCustomerPortalUrl(item.qrToken),
                 version: QrVersions.auto,
                 size: 200,
                 backgroundColor: Colors.white,

@@ -1,8 +1,23 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { DashboardLayout } from '@/app/layouts/DashboardLayout';
 import { AuthLayout } from '@/app/layouts/AuthLayout';
 import { PortalLayout } from '@/app/layouts/PortalLayout';
 import { AuthGuard, GuestGuard, PermissionGuard } from '@/app/routes/guards';
+
+function RootWalletRedirect() {
+  const { walletId } = useParams<{ walletId: string }>();
+  if (walletId && /^[a-zA-Z0-9_-]{3,32}$/.test(walletId)) {
+    return <Navigate to={`/c/${walletId}`} replace />;
+  }
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-50">
+      <div className="text-center">
+        <h1 className="text-6xl font-bold text-slate-300">404</h1>
+        <p className="mt-2 text-slate-600">Page not found</p>
+      </div>
+    </div>
+  );
+}
 
 // ── Feature Pages ──────────────────────────────────────────
 import {
@@ -179,6 +194,7 @@ export function AppRoutes() {
       <Route element={<PortalLayout />}>
         <Route path="/c/:qrToken" element={<QrResolutionPage />} />
         <Route path="/c/:token" element={<QrResolutionPage />} />
+        <Route path="/portal/:token" element={<QrResolutionPage />} />
         <Route path="/portal" element={<PortalSessionPage />} />
         <Route path="/portal/session" element={<PortalSessionPage />} />
         <Route path="/portal/transactions" element={<PortalTransactionsPage />} />
@@ -187,6 +203,7 @@ export function AppRoutes() {
 
       {/* ── Redirects ── */}
       <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/:walletId" element={<RootWalletRedirect />} />
       <Route
         path="*"
         element={

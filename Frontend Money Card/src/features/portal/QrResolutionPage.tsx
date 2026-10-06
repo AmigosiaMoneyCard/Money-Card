@@ -9,8 +9,15 @@ import { LoadingState, Card, Button } from '@/components/ui';
 import { ShieldAlert, ArrowLeft, RefreshCw } from 'lucide-react';
 
 export function QrResolutionPage() {
-  const params = useParams<{ qrToken?: string; token?: string }>();
-  const activeToken = params.qrToken || params.token;
+  const params = useParams<{ qrToken?: string; token?: string; walletId?: string }>();
+  const rawToken = params.qrToken || params.token || params.walletId || '';
+  let activeToken = rawToken ? decodeURIComponent(rawToken).trim() : '';
+  if (activeToken.startsWith('mc:')) {
+    activeToken = activeToken.substring(3).trim();
+  }
+  if (activeToken.includes('/c/')) {
+    activeToken = activeToken.split('/c/')[1].split('?')[0].split('#')[0].trim();
+  }
   const navigate = useNavigate();
 
   const [isLoading, setIsLoading] = useState(true);

@@ -24,11 +24,49 @@ export const mockUserPortalHandlers = {
     }>
   > {
     await mockDelay();
-    if (!qrToken) {
+    const clean = String(qrToken || '').trim();
+    if (!clean) {
       return createMockError('VALIDATION_ERROR', 'QR token is required');
     }
 
-    const card = mockStore.cards.find((c) => c.qrToken === qrToken);
+    let token = clean;
+    if (token.startsWith('mc:')) {
+      token = token.substring(3).trim();
+    }
+    if (token.includes('/c/')) {
+      token = token.split('/c/')[1].split('?')[0].split('#')[0].trim();
+    } else if (token.startsWith('http://') || token.startsWith('https://')) {
+      try {
+        const url = new URL(token);
+        const param =
+          url.searchParams.get('wallet') ||
+          url.searchParams.get('card') ||
+          url.searchParams.get('token') ||
+          url.searchParams.get('qr');
+        if (param) {
+          token = param.trim();
+        } else {
+          const segs = url.pathname.split('/').filter(Boolean);
+          if (segs.length > 0) {
+            token = segs[segs.length - 1].trim();
+          }
+        }
+      } catch {
+        // fallback
+      }
+    }
+    try {
+      token = decodeURIComponent(token);
+    } catch {
+      // fallback
+    }
+
+    const card = mockStore.cards.find(
+      (c) =>
+        c.qrToken === token ||
+        c.qrToken.toLowerCase() === token.toLowerCase() ||
+        (c.physicalCardNumber && c.physicalCardNumber.toLowerCase() === token.toLowerCase()),
+    );
     if (!card) {
       return createMockError('CARD_NOT_FOUND', 'Invalid QR code. Card not found.');
     }

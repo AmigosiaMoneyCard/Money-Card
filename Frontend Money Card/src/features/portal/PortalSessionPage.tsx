@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { apiService } from '@/services/api';
 import type { PublicSessionDetail, PublicSessionOrder } from '@/types';
 import {
@@ -31,8 +31,50 @@ import {
 } from 'lucide-react';
 import { downloadCustomerReceiptPdf } from './portalReceiptPdfExport';
 
+function extractWalletToken(raw: string): string {
+  let clean = raw.trim();
+  if (clean.startsWith('mc:')) {
+    clean = clean.substring(3).trim();
+  }
+  if (clean.includes('/c/')) {
+    clean = clean.split('/c/')[1].split('?')[0].split('#')[0].trim();
+  } else if (clean.startsWith('http://') || clean.startsWith('https://')) {
+    try {
+      const url = new URL(clean);
+      const param =
+        url.searchParams.get('wallet') ||
+        url.searchParams.get('card') ||
+        url.searchParams.get('token') ||
+        url.searchParams.get('qr');
+      if (param) {
+        clean = param.trim();
+      } else {
+        const segs = url.pathname.split('/').filter(Boolean);
+        if (segs.length > 0) {
+          clean = segs[segs.length - 1].trim();
+        }
+      }
+    } catch {
+      // fallback
+    }
+  }
+  try {
+    clean = decodeURIComponent(clean);
+  } catch {
+    // fallback
+  }
+  return clean.trim();
+}
+
 export function PortalSessionPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const queryWallet =
+    searchParams.get('wallet') ||
+    searchParams.get('card') ||
+    searchParams.get('token') ||
+    searchParams.get('qr');
+
   const [sessionToken, setSessionToken] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
     return sessionStorage.getItem('moneycard_portal_session_token');
@@ -43,6 +85,15 @@ export function PortalSessionPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  useEffect(() => {
+    if (queryWallet && queryWallet.trim()) {
+      const clean = extractWalletToken(queryWallet);
+      if (clean) {
+        navigate(`/c/${encodeURIComponent(clean)}`, { replace: true });
+      }
+    }
+  }, [queryWallet, navigate]);
 
   const handleDownloadReceipt = async () => {
     if (!sessionDetail || !sessionToken) return;
@@ -144,37 +195,12 @@ export function PortalSessionPage() {
     },
   });
 
-  const handleResolveCard = async (targetInput: string) => {
-    const clean = targetInput.trim();
-    if (!clean) return;
+  const handleResolveCard = (targetInput: string) => {
+    const cleanToken = extractWalletToken(targetInput);
+    if (!cleanToken) return;
 
-    setLookupError(null);
-
-    try {
-      const res = await apiService.userPortal.resolvePublicCard(clean);
-
-      if (!res.success) {
-        if (res.error?.code === 'CARD_BLOCKED') {
-          setLookupError('This physical wallet has been blocked. Please visit the cafeteria desk.');
-        } else if (res.error?.code === 'SESSION_NOT_FOUND') {
-          setLookupError('No active session found for this wallet. Please request staff to issue or recharge a session.');
-        } else if (res.error?.code === 'CARD_NOT_FOUND') {
-          setLookupError('Wallet QR not recognized. Please scan a valid Money Card wallet.');
-        } else {
-          setLookupError(res.error?.message || 'The wallet could not be resolved.');
-        }
-        return;
-      }
-
-      sessionStorage.setItem('moneycard_portal_session_token', res.data.sessionToken);
-      sessionStorage.setItem('moneycard_portal_card_number', res.data.cardDisplayNumber);
-      setSessionToken(res.data.sessionToken);
-      setIsScanning(false);
-      await fetchSessionDetail(res.data.sessionToken);
-      fetchOrders(res.data.sessionToken);
-    } catch {
-      setLookupError('Unable to connect to server. Please check your network and try again.');
-    }
+    setIsScanning(false);
+    navigate(`/c/${encodeURIComponent(cleanToken)}`);
   };
 
   useEffect(() => {
