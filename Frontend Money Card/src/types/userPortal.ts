@@ -39,6 +39,8 @@ export interface PublicReceipt {
   date: string;
   totalAmount: number;
   paymentMethod?: string;
+  orderNumber?: number;
+  counterName?: string;
   items: PublicTransactionItem[];
 }
 

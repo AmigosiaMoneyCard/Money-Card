@@ -142,9 +142,19 @@ export function PortalReceiptsPage() {
             <Card key={rcpt.receiptId} padding="md" className="space-y-3.5 border-slate-200 bg-white shadow-sm">
               {/* Receipt Header with Timestamp & Status (Receipt ID hidden) */}
               <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600 flex-wrap">
                   <Clock className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                   <span>{formatDateTime(rcpt.date)}</span>
+                  {rcpt.orderNumber && (
+                    <span className="font-mono text-[11px] text-slate-500">
+                      • Order #{rcpt.orderNumber}
+                    </span>
+                  )}
+                  {rcpt.counterName && (
+                    <span className="text-[11px] text-slate-400">
+                      ({rcpt.counterName})
+                    </span>
+                  )}
                 </div>
                 <Badge variant="success" className="text-[10px]">
                   PAID
@@ -153,26 +163,38 @@ export function PortalReceiptsPage() {
 
               {/* Items List (Single whole box layout) */}
               <div className="space-y-2 text-xs divide-y divide-slate-100">
-                {rcpt.items.map((item, idx) => (
-                  <div key={idx} className="flex justify-between items-center text-slate-700 pt-2 first:pt-0">
+                {rcpt.items && rcpt.items.length > 0 ? (
+                  rcpt.items.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center text-slate-700 pt-2 first:pt-0">
+                      <div className="pr-2">
+                        <p className="font-semibold text-slate-900">{item.itemName}</p>
+                        <p className="text-[11px] text-slate-500 font-mono">
+                          {item.quantity} × {formatCurrency(item.unitPrice)}
+                        </p>
+                      </div>
+                      <span className="font-mono font-semibold text-slate-900 whitespace-nowrap">
+                        {formatCurrency(item.totalPrice)}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex justify-between items-center text-slate-700 pt-2 first:pt-0">
                     <div className="pr-2">
-                      <p className="font-medium text-slate-900">{item.itemName}</p>
-                      <p className="text-[11px] text-slate-500 font-mono">
-                        {item.quantity} × {formatCurrency(item.unitPrice)}
-                      </p>
+                      <p className="font-semibold text-slate-900">Food Purchase</p>
+                      <p className="text-[11px] text-slate-500 font-mono">1 × {formatCurrency(rcpt.totalAmount)}</p>
                     </div>
                     <span className="font-mono font-semibold text-slate-900 whitespace-nowrap">
-                      {formatCurrency(item.totalPrice)}
+                      {formatCurrency(rcpt.totalAmount)}
                     </span>
                   </div>
-                ))}
+                )}
               </div>
 
               {/* Receipt Total */}
               <div className="flex justify-between border-t border-slate-100 pt-3 text-xs">
-                <span className="font-semibold text-slate-900">Total Deducted</span>
+                <span className="font-semibold text-slate-900">Total Bill</span>
                 <span className="font-mono text-base font-bold text-slate-900">
-                  -{formatCurrency(rcpt.totalAmount)}
+                  {formatCurrency(rcpt.totalAmount)}
                 </span>
               </div>
             </Card>

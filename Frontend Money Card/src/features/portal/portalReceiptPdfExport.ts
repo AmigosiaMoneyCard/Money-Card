@@ -229,7 +229,7 @@ export function generateCustomerReceiptPdfBlob(options: CustomerReceiptPdfOption
 
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 116, 139);
-  doc.text('Total Deductions:', pageWidth - margin - 70, curY + 14);
+  doc.text('Total Food Bills:', pageWidth - margin - 70, curY + 14);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(225, 29, 72);
   doc.text(`-${formatPdfCurrency(totalPurchases)}`, pageWidth - margin - 5, curY + 14, { align: 'right' });

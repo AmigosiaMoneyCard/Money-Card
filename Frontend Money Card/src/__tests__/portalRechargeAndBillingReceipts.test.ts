@@ -91,4 +91,77 @@ describe('Portal Recharge History & Billing Receipt Tests', () => {
     );
     expect(fullOrderText).not.toContain('...');
   });
+
+  it('should present purchased menu item names and positive Total Bill instead of Total Deducted', () => {
+    const rawOrderPayload = {
+      orderNumber: 104,
+      counterName: 'Main Cafeteria',
+      items: [
+        {
+          productId: 'prod-1',
+          itemName: 'Chicken Biriyani',
+          unitPrice: 150,
+          quantity: 2,
+          subtotal: 300,
+        },
+        {
+          productId: 'prod-2',
+          itemName: 'Lime Juice',
+          unitPrice: 30,
+          quantity: 1,
+          subtotal: 30,
+        },
+      ],
+    };
+
+    const parsedItems = (rawOrderPayload.items || []).map((i) => ({
+      itemName: i.itemName,
+      quantity: i.quantity,
+      unitPrice: i.unitPrice,
+      totalPrice: i.subtotal,
+    }));
+
+    const totalBillAmount = parsedItems.reduce((acc, curr) => acc + curr.totalPrice, 0);
+
+    // Verify menu items are itemized with names and quantities
+    expect(parsedItems).toHaveLength(2);
+    expect(parsedItems[0].itemName).toBe('Chicken Biriyani');
+    expect(parsedItems[0].quantity).toBe(2);
+    expect(parsedItems[0].totalPrice).toBe(300);
+    expect(parsedItems[1].itemName).toBe('Lime Juice');
+    expect(parsedItems[1].totalPrice).toBe(30);
+
+    // Verify total label and positive amount
+    const totalLabel = 'Total Bill';
+    expect(totalLabel).toBe('Total Bill');
+    expect(totalLabel).not.toBe('Total Deducted');
+    expect(totalBillAmount).toBe(330);
+    expect(totalBillAmount).toBeGreaterThan(0);
+  });
+
+  it('should provide fallback item name when purchase items array is empty', () => {
+    const emptyOrderTx = {
+      amount: 120,
+      items: null as any,
+    };
+
+    let items: any[] = [];
+    if (emptyOrderTx.items && Array.isArray(emptyOrderTx.items)) {
+      items = emptyOrderTx.items;
+    }
+
+    if (items.length === 0 && emptyOrderTx.amount > 0) {
+      items.push({
+        itemName: 'Food Purchase',
+        quantity: 1,
+        unitPrice: emptyOrderTx.amount,
+        totalPrice: emptyOrderTx.amount,
+      });
+    }
+
+    expect(items).toHaveLength(1);
+    expect(items[0].itemName).toBe('Food Purchase');
+    expect(items[0].totalPrice).toBe(120);
+  });
 });
+

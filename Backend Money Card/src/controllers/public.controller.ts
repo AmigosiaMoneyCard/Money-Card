@@ -146,6 +146,7 @@ export async function getPublicSessionReceipts(req: Request, res: Response) {
   const session = await prisma.cardSession.findUnique({
     where: { sessionToken },
     include: {
+      branch: { select: { name: true } },
       transactions: {
         where: { type: 'PURCHASE' },
         orderBy: { createdAt: 'desc' },
@@ -158,15 +159,40 @@ export async function getPublicSessionReceipts(req: Request, res: Response) {
   }
 
   const receipts = session.transactions.map((tx) => {
-    let items: any[] = [];
-    if (Array.isArray(tx.items)) {
-      items = tx.items;
-    } else if (typeof tx.items === 'string') {
+    let rawMeta = tx.items as any;
+    if (typeof rawMeta === 'string') {
       try {
-        items = JSON.parse(tx.items);
+        rawMeta = JSON.parse(rawMeta);
       } catch {
-        items = [];
+        rawMeta = {};
       }
+    }
+
+    let items: any[] = [];
+    if (Array.isArray(rawMeta)) {
+      items = rawMeta;
+    } else if (rawMeta && Array.isArray(rawMeta.items)) {
+      items = rawMeta.items;
+    }
+
+    const mappedItems = items.map((i: any) => ({
+      itemName: i.itemName || i.name || 'Food Item',
+      quantity: Number(i.quantity) || 1,
+      unitPrice: Number(i.unitPrice ?? i.price ?? 0),
+      totalPrice: Number(
+        i.subtotal ??
+          i.totalPrice ??
+          (Number(i.quantity || 1) * Number(i.unitPrice ?? i.price ?? 0))
+      ),
+    }));
+
+    if (mappedItems.length === 0 && tx.amount > 0) {
+      mappedItems.push({
+        itemName: 'Food Purchase',
+        quantity: 1,
+        unitPrice: tx.amount,
+        totalPrice: tx.amount,
+      });
     }
 
     return {
@@ -175,12 +201,9 @@ export async function getPublicSessionReceipts(req: Request, res: Response) {
       date: tx.createdAt,
       totalAmount: tx.amount,
       paymentMethod: tx.paymentMethod || 'SMART_CARD',
-      items: items.map((i: any) => ({
-        itemName: i.name || i.itemName || 'Item',
-        quantity: i.quantity || 1,
-        unitPrice: i.price || i.unitPrice || 0,
-        totalPrice: (i.quantity || 1) * (i.price || i.unitPrice || 0),
-      })),
+      orderNumber: rawMeta?.orderNumber || undefined,
+      counterName: rawMeta?.counterName || session.branch?.name || undefined,
+      items: mappedItems,
     };
   });
 
