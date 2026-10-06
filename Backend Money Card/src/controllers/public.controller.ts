@@ -10,8 +10,37 @@ export async function resolvePublicQrToken(req: Request, res: Response) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'qrToken is required');
   }
 
-  const cleaned = qrToken.trim();
-  const token = cleaned.includes('/c/') ? cleaned.split('/c/')[1].split('?')[0].split('#')[0] : cleaned;
+  let token = qrToken.trim();
+  if (token.startsWith('mc:')) {
+    token = token.substring(3).trim();
+  }
+  if (token.includes('/c/')) {
+    token = token.split('/c/')[1].split('?')[0].split('#')[0].trim();
+  } else if (token.startsWith('http://') || token.startsWith('https://')) {
+    try {
+      const url = new URL(token);
+      const param =
+        url.searchParams.get('wallet') ||
+        url.searchParams.get('card') ||
+        url.searchParams.get('token') ||
+        url.searchParams.get('qr');
+      if (param) {
+        token = param.trim();
+      } else {
+        const segs = url.pathname.split('/').filter(Boolean);
+        if (segs.length > 0) {
+          token = segs[segs.length - 1].trim();
+        }
+      }
+    } catch {
+      // fallback
+    }
+  }
+  try {
+    token = decodeURIComponent(token);
+  } catch {
+    // fallback
+  }
 
   const card = await prisma.card.findFirst({
     where: {

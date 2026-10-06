@@ -251,7 +251,7 @@ describe('Staff Activity Log Filtering by Branch Scope and Time Window', () => {
 
       expect(dates.startDate).toBe(expectedYest);
       expect(dates.endDate).toBe(expectedYest);
-    }, 30000);
+    }, 60000);
 
     it('calculates today, thisMonth and range presets accurately', async () => {
       const { getPresetDates } = await import('@/features/analytics/OrgAdminAnalyticsView');

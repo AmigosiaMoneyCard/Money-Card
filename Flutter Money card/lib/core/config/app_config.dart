@@ -76,6 +76,20 @@ class AppConfig {
     defaultValue: 'https://money-card-backend-0nx1.onrender.com/api/v1',
   );
 
+  /// Public Customer Portal Web Domain
+  static String get customerPortalBaseUrl {
+    if (isProduction) {
+      return 'https://money-card-frontend.vercel.app';
+    }
+    return 'https://money-card-frontend-staging.vercel.app';
+  }
+
+  /// Resolves the clean public Customer Portal QR scan URL for a given token
+  static String getPublicCustomerPortalUrl(String token) {
+    final clean = token.trim();
+    return '$customerPortalBaseUrl/c/$clean';
+  }
+
   /// Primary USB Reverse / Local Loopback endpoint
   static const String defaultBaseUrl = 'http://127.0.0.1:3000/api/v1';
   static const String defaultLocalBaseUrl = defaultBaseUrl;
