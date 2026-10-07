@@ -38,48 +38,31 @@ class _LiveOrderTrackerScreenState extends ConsumerState<LiveOrderTrackerScreen>
   }
 
   void _openQrScanner() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return SizedBox(
-          height: MediaQuery.of(ctx).size.height * 0.75,
-          child: ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            child: Scaffold(
-              appBar: AppBar(
-                title: const Text('Scan Wallet QR', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                leading: IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.of(ctx).pop(),
-                ),
-              ),
-              body: QrScannerView(
-                title: 'Scan Wallet QR',
-                prompt: 'Scan customer wallet QR to filter order',
-                onQrScanned: (token) {
-                  Navigator.of(ctx).pop();
-                  var clean = cleanDisplayCardNumber(token);
-                  final upper = clean.toUpperCase();
-                  if (upper.startsWith('MC-') || upper.startsWith('MC ')) {
-                    clean = clean.substring(3).trim();
-                  } else if (upper.startsWith('CARD-') || upper.startsWith('CARD ')) {
-                    clean = clean.substring(5).trim();
-                  } else if (upper.startsWith('WALLET-') || upper.startsWith('WALLET ')) {
-                    clean = clean.substring(7).trim();
-                  }
-                  final finalQuery = clean.isNotEmpty ? clean : token.trim();
-                  _searchController.text = finalQuery;
-                  setState(() {
-                    _searchQuery = finalQuery;
-                  });
-                },
-              ),
-            ),
-          ),
-        );
-      },
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (ctx) => QrScannerView(
+          title: 'Scan Wallet QR',
+          prompt: 'Scan customer wallet QR to filter order',
+          onQrScanned: (token) {
+            Navigator.of(ctx).pop();
+            var clean = cleanDisplayCardNumber(token);
+            final upper = clean.toUpperCase();
+            if (upper.startsWith('MC-') || upper.startsWith('MC ')) {
+              clean = clean.substring(3).trim();
+            } else if (upper.startsWith('CARD-') || upper.startsWith('CARD ')) {
+              clean = clean.substring(5).trim();
+            } else if (upper.startsWith('WALLET-') || upper.startsWith('WALLET ')) {
+              clean = clean.substring(7).trim();
+            }
+            final finalQuery = clean.isNotEmpty ? clean : token.trim();
+            _searchController.text = finalQuery;
+            setState(() {
+              _searchQuery = finalQuery;
+            });
+          },
+        ),
+      ),
     );
   }
 

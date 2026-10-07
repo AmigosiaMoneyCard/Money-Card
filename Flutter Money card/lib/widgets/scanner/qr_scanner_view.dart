@@ -169,13 +169,15 @@ class _QrScannerViewState extends State<QrScannerView>
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
-        title: Text(widget.title),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.keyboard_outlined),
-            tooltip: 'Enter Wallet ID Manually',
-            onPressed: _showManualEntryDialog,
+        title: Text(
+          widget.title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
           ),
+        ),
+        actions: [
           IconButton(
             icon: Icon(
               _isTorchOn ? Icons.flash_on : Icons.flash_off,

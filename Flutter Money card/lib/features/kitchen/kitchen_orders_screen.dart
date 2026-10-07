@@ -41,39 +41,26 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
     Navigator.of(context).push(
       MaterialPageRoute(
         fullscreenDialog: true,
-        builder: (ctx) => Scaffold(
-          backgroundColor: Colors.black,
-          appBar: AppBar(
-            backgroundColor: Colors.black,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            title: const Text('Scan Wallet QR', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => Navigator.of(ctx).pop(),
-            ),
-          ),
-          body: QrScannerView(
-            title: 'Scan Wallet QR',
-            prompt: 'Scan customer wallet QR to filter kitchen orders',
-            onQrScanned: (token) {
-              Navigator.of(ctx).pop();
-              var clean = cleanDisplayCardNumber(token);
-              final upper = clean.toUpperCase();
-              if (upper.startsWith('MC-') || upper.startsWith('MC ')) {
-                clean = clean.substring(3).trim();
-              } else if (upper.startsWith('CARD-') || upper.startsWith('CARD ')) {
-                clean = clean.substring(5).trim();
-              } else if (upper.startsWith('WALLET-') || upper.startsWith('WALLET ')) {
-                clean = clean.substring(7).trim();
-              }
-              final finalQuery = clean.isNotEmpty ? clean : token.trim();
-              _searchController.text = finalQuery;
-              setState(() {
-                _searchQuery = finalQuery;
-              });
-            },
-          ),
+        builder: (ctx) => QrScannerView(
+          title: 'Scan Wallet QR',
+          prompt: 'Scan customer wallet QR to filter kitchen orders',
+          onQrScanned: (token) {
+            Navigator.of(ctx).pop();
+            var clean = cleanDisplayCardNumber(token);
+            final upper = clean.toUpperCase();
+            if (upper.startsWith('MC-') || upper.startsWith('MC ')) {
+              clean = clean.substring(3).trim();
+            } else if (upper.startsWith('CARD-') || upper.startsWith('CARD ')) {
+              clean = clean.substring(5).trim();
+            } else if (upper.startsWith('WALLET-') || upper.startsWith('WALLET ')) {
+              clean = clean.substring(7).trim();
+            }
+            final finalQuery = clean.isNotEmpty ? clean : token.trim();
+            _searchController.text = finalQuery;
+            setState(() {
+              _searchQuery = finalQuery;
+            });
+          },
         ),
       ),
     );
