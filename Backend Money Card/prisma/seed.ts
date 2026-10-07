@@ -52,6 +52,12 @@ const STAFF_DEFAULT_PERMISSIONS: PermissionCode[] = [
   PermissionCode.VIEW_ANALYTICS,
 ];
 
+const KITCHEN_DEFAULT_PERMISSIONS: PermissionCode[] = [
+  PermissionCode.PRODUCT_VIEW,
+  PermissionCode.PRODUCT_MANAGE,
+  PermissionCode.SESSION_VIEW,
+];
+
 async function ensureUser(userData: {
   id: string;
   email: string;
@@ -64,8 +70,13 @@ async function ensureUser(userData: {
   phone?: string;
 }) {
   const cleanEmail = userData.email.toLowerCase().replace(/\s+/g, '');
-  const existing = await prisma.user.findUnique({
-    where: { email: cleanEmail },
+  const existing = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { email: cleanEmail },
+        ...(userData.phone ? [{ phone: userData.phone }] : []),
+      ],
+    },
     include: { permissions: true, assignedBranches: true },
   });
 
@@ -314,6 +325,18 @@ async function main() {
     defaultPassword: 'password', // Standard password
     organizationId: org.id,
     permissions: STAFF_DEFAULT_PERMISSIONS,
+    branchIds: [mainBranch.id, branchTwo.id],
+  });
+
+  await ensureUser({
+    id: 'usr_kitchen_localhost',
+    email: 'kitchen@localhost.com',
+    phone: '9876543220',
+    name: 'Localhost Kitchen Staff',
+    role: Role.STAFF,
+    defaultPassword: 'password',
+    organizationId: org.id,
+    permissions: KITCHEN_DEFAULT_PERMISSIONS,
     branchIds: [mainBranch.id, branchTwo.id],
   });
 

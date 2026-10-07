@@ -38,7 +38,7 @@ class _LiveOrderTrackerScreenState extends ConsumerState<LiveOrderTrackerScreen>
   }
 
   void _openQrScanner() {
-    Navigator.of(context).push(
+    Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(
         fullscreenDialog: true,
         builder: (ctx) => QrScannerView(
