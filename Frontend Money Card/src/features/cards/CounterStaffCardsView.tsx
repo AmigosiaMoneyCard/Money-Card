@@ -1,4 +1,4 @@
-import { formatCurrency, formatDate, formatDateTime, extractTransactionItems, formatLocalDate, getPublicCustomerPortalUrl } from '@/utils';
+import { formatCurrency, formatDate, formatDateTime, extractTransactionItems, formatLocalDate } from '@/utils';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiService } from '@/services/api';
 import { usePermissions, useAuth, useBranch } from '@/hooks';
@@ -18,6 +18,7 @@ import {
 } from '@/components/ui';
 import { UnauthorizedPage } from '@/features/auth';
 import { BlockedWalletsTableView } from './BlockedWalletsTableView';
+import { BlockCardModal } from './BlockCardModal';
 import {
   CreditCard,
   Search,
@@ -32,7 +33,7 @@ import {
   Phone,
   Wallet,
   DollarSign,
-  ExternalLink,
+  Ban,
 } from 'lucide-react';
 
 function getTransactionTitle(tx: Transaction): string {
@@ -80,6 +81,7 @@ export function CounterStaffCardsView() {
   // ─── Modal Selection States ──────────────────────────────────────
   const [selectedCardForDetails, setSelectedCardForDetails] = useState<CardEntity | null>(null);
   const [selectedCardForAnalytics, setSelectedCardForAnalytics] = useState<CardEntity | null>(null);
+  const [cardToBlock, setCardToBlock] = useState<CardEntity | null>(null);
 
   // Detail transactions for selected card
   const [sessionTxns, setSessionTxns] = useState<Transaction[]>([]);
@@ -370,16 +372,6 @@ export function CounterStaffCardsView() {
             variant="outline"
             size="sm"
             className="text-xs h-8 px-3 rounded-xl border-slate-200 text-slate-700 hover:border-emerald-500 font-medium cursor-pointer"
-            onClick={() => window.open(getPublicCustomerPortalUrl(), '_blank', 'noopener,noreferrer')}
-            leftIcon={<ExternalLink className="h-3.5 w-3.5 text-emerald-600" />}
-          >
-            Customer Portal
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-xs h-8 px-3 rounded-xl border-slate-200 text-slate-700 hover:border-emerald-500 font-medium cursor-pointer"
             onClick={fetchCardsData}
             leftIcon={<RefreshCw className="h-3.5 w-3.5 text-slate-500" />}
           >
@@ -542,24 +534,9 @@ export function CounterStaffCardsView() {
                         </span>
                       </td>
 
-                      {/* 3. Actions: Customer Portal | Customer History | Wallet Analytics | Wallet Details */}
+                      {/* 3. Actions: Customer History | Wallet Analytics | Wallet Details | Block Wallet */}
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
                         <div className="inline-flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const portalUrl = card.qrToken
-                                ? getPublicCustomerPortalUrl(card.qrToken)
-                                : getPublicCustomerPortalUrl();
-                              window.open(portalUrl, '_blank', 'noopener,noreferrer');
-                            }}
-                            className="text-xs h-8 px-3 rounded-lg border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
-                            leftIcon={<ExternalLink className="h-3.5 w-3.5 text-emerald-600" />}
-                          >
-                            Customer Portal
-                          </Button>
-
                           <Button
                             variant="outline"
                             size="sm"
@@ -588,6 +565,16 @@ export function CounterStaffCardsView() {
                             leftIcon={<CreditCard className="h-3.5 w-3.5" />}
                           >
                             Wallet Details
+                          </Button>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCardToBlock(card)}
+                            className="text-xs h-8 px-3 rounded-lg border-rose-200 text-rose-700 hover:text-rose-800 hover:bg-rose-50 hover:border-rose-300 font-medium cursor-pointer"
+                            leftIcon={<Ban className="h-3.5 w-3.5 text-rose-600" />}
+                          >
+                            Block Wallet
                           </Button>
                         </div>
                       </td>
@@ -727,6 +714,19 @@ export function CounterStaffCardsView() {
               className="text-xs px-4 cursor-pointer"
             >
               Close
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => {
+                const card = selectedCardForDetails;
+                setSelectedCardForDetails(null);
+                setCardToBlock(card);
+              }}
+              leftIcon={<Ban className="h-3.5 w-3.5" />}
+              className="text-xs px-4 bg-rose-600 hover:bg-rose-700 text-white font-semibold cursor-pointer"
+            >
+              Block Wallet
             </Button>
           </ModalFooter>
         </Modal>
@@ -1157,6 +1157,14 @@ export function CounterStaffCardsView() {
         </Modal>
       )}
 
+      {/* ─── MODAL 5: Block Card Confirmation Modal ─────────────────── */}
+      <BlockCardModal
+        isOpen={!!cardToBlock}
+        onClose={() => setCardToBlock(null)}
+        card={cardToBlock}
+        onSuccess={fetchCardsData}
+        currentUserName={user?.name || 'Counter Staff'}
+      />
 
     </div>
   );

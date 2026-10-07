@@ -1,7 +1,7 @@
-import { formatCurrency, formatDateTime, extractTransactionItems, formatLocalDate, getPublicCustomerPortalUrl } from '@/utils';
+import { formatCurrency, formatDateTime, extractTransactionItems, formatLocalDate } from '@/utils';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiService } from '@/services/api';
-import { usePermissions } from '@/hooks';
+import { usePermissions, useAuth } from '@/hooks';
 import type {
   Card as CardEntity,
   Branch,
@@ -18,6 +18,7 @@ import {
 } from '@/components/ui';
 import { UnauthorizedPage } from '@/features/auth';
 import { BlockedWalletsTableView } from './BlockedWalletsTableView';
+import { BlockCardModal } from './BlockCardModal';
 import {
   CreditCard,
   Search,
@@ -34,7 +35,7 @@ import {
   User,
   Phone,
   ArrowDownLeft,
-  ExternalLink,
+  Ban,
 } from 'lucide-react';
 
 function getTransactionTitle(tx: Transaction): string {
@@ -60,6 +61,7 @@ function getTransactionTitle(tx: Transaction): string {
 }
 
 export function OrgAdminCardsView() {
+  const { user } = useAuth();
   const { hasPermission } = usePermissions();
   const canView = hasPermission('CARD_VIEW');
   const canUnblock = hasPermission('CARD_UNBLOCK');
@@ -81,6 +83,7 @@ export function OrgAdminCardsView() {
   const [selectedBranchForDetails, setSelectedBranchForDetails] = useState<Branch | null>(null);
   const [selectedBranchForAnalytics, setSelectedBranchForAnalytics] = useState<Branch | null>(null);
   const [selectedBranchForHistory, setSelectedBranchForHistory] = useState<Branch | null>(null);
+  const [cardToBlock, setCardToBlock] = useState<CardEntity | null>(null);
 
   const [modalSearchQuery, setModalSearchQuery] = useState('');
   const [historySearchQuery, setHistorySearchQuery] = useState('');
@@ -314,16 +317,6 @@ export function OrgAdminCardsView() {
             variant="outline"
             size="sm"
             className="text-xs h-8 px-3 rounded-xl border-slate-200 text-slate-700 hover:border-emerald-500 font-medium cursor-pointer"
-            onClick={() => window.open(getPublicCustomerPortalUrl(), '_blank', 'noopener,noreferrer')}
-            leftIcon={<ExternalLink className="h-3.5 w-3.5 text-emerald-600" />}
-          >
-            Customer Portal
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-xs h-8 px-3 rounded-xl border-slate-200 text-slate-700 hover:border-emerald-500 font-medium cursor-pointer"
             onClick={fetchCardsData}
             leftIcon={<RefreshCw className="h-3.5 w-3.5 text-slate-500" />}
           >
@@ -450,28 +443,10 @@ export function OrgAdminCardsView() {
                             </div>
                           </td>
 
-                          {/* 4 Action Buttons on Far Right: [ Customer Portal ] [ Customer History ] [ Wallet Analytics ] [ Wallet Details (N) ] */}
+                          {/* 3 Action Buttons on Far Right: [ Customer History ] [ Wallet Analytics ] [ Wallet Details (N) ] */}
                           <td className="py-3.5 px-4 text-right whitespace-nowrap">
                             <div className="inline-flex items-center gap-2">
-                              {/* 1. Customer Portal (PWA View for Customer) */}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  const branchCards = getBranchCards(branch.id);
-                                  const activeWithToken = branchCards.find((c) => c.activeSession && c.qrToken);
-                                  const portalUrl = activeWithToken?.qrToken
-                                    ? getPublicCustomerPortalUrl(activeWithToken.qrToken)
-                                    : getPublicCustomerPortalUrl();
-                                  window.open(portalUrl, '_blank', 'noopener,noreferrer');
-                                }}
-                                className="text-xs h-8 px-3 rounded-lg border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
-                                leftIcon={<ExternalLink className="h-3.5 w-3.5 text-emerald-600" />}
-                              >
-                                Customer Portal
-                              </Button>
-
-                              {/* 2. Customer History */}
+                              {/* 1. Customer History */}
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -795,6 +770,7 @@ export function OrgAdminCardsView() {
                       <th className="py-2.5 px-4">Status</th>
                       <th className="py-2.5 px-4">Live Current User</th>
                       <th className="py-2.5 px-4 text-right">Balance</th>
+                      <th className="py-2.5 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -862,6 +838,21 @@ export function OrgAdminCardsView() {
                               <span className="font-mono font-medium text-slate-400 text-xs">
                                 {formatCurrency(0)}
                               </span>
+                            )}
+                          </td>
+
+                          {/* 5. Actions */}
+                          <td className="py-3 px-4 text-right whitespace-nowrap">
+                            {card.status !== 'BLOCKED' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCardToBlock(card)}
+                                className="text-xs h-7 px-2.5 rounded-lg border-rose-200 text-rose-700 hover:text-rose-800 hover:bg-rose-50 hover:border-rose-300 font-medium cursor-pointer"
+                                leftIcon={<Ban className="h-3 w-3 text-rose-600" />}
+                              >
+                                Block Wallet
+                              </Button>
                             )}
                           </td>
                         </tr>
@@ -1091,6 +1082,15 @@ export function OrgAdminCardsView() {
           </ModalFooter>
         </Modal>
       )}
+
+      {/* ─── MODAL 4: Block Card Confirmation Modal ─────────────────── */}
+      <BlockCardModal
+        isOpen={!!cardToBlock}
+        onClose={() => setCardToBlock(null)}
+        card={cardToBlock}
+        onSuccess={fetchCardsData}
+        currentUserName={user?.name || 'Administrator'}
+      />
     </div>
   );
 }

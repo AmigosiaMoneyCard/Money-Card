@@ -1,129 +1,152 @@
-# Implementation Plan - Blocked Wallets Strict Segmentation, Clean Table UI, and PWA Card Blocked Status
+# Implementation Plan — Block Cards Support, Clean Blocked Reason Format, and Customer Portal Removal
 
 ## Overview
-This plan implements three targeted requirements across the Web Admin/Counter Dashboard, Blocked Wallets table, and PWA Customer Portal:
-1. Strict Segmentation: Blocked cards must never appear in the Live Active Wallets list (in Counter Staff or Org Admin dashboards). Blocked cards must strictly appear only in the Blocked Wallets section.
-2. Clean Blocked Wallets Table:
-   - In the Customer column, leave the field blank if no customer details are entered (remove "Unassigned Card").
-   - In the Blocked Reason column, display only the reason text, removing the red "Blocked" badge box.
-3. PWA Customer Portal:
-   - When a blocked card is scanned or opened, display the title "Card Blocked" with a clear message instead of "Invalid QR Code".
-
-## Proposed Changes
-
-### 1. Web Frontend (`Frontend Money Card`)
-
-#### `src/features/cards/CounterStaffCardsView.tsx`
-- In `liveCards` memo:
-  - Add explicit filter `if (c.status === 'BLOCKED') return false;` to guarantee blocked cards are excluded from Live Active Wallets even if an `activeSession` record exists on the card.
-- In `totalBalance` analytics calculation:
-  - Ensure only unblocked active cards are aggregated into remaining wallet balance.
-
-#### `src/features/cards/OrgAdminCardsView.tsx`
-- In `getBranchCards` callback:
-  - Add explicit filter `if (c.status === 'BLOCKED') return false;` so blocked cards are omitted from cafeteria counter card counts and the "Wallet Details" active modal.
-- In `branchCardsForDetails`:
-  - Exclude blocked cards so they only appear under the Blocked Wallets tab.
-
-#### `src/features/dashboard/OrgAdminDashboard.tsx`
-- In `remainingWalletsBalance`:
-  - Filter `cardsList.filter((c) => c.status === 'ACTIVE')` before calculating total remaining balance so locked balances of blocked cards are excluded from active money in wallets.
-
-#### `src/features/cards/BlockedWalletsTableView.tsx`
-- Customer Column:
-  - When `customerName` and `customerPhone` are absent, render empty content (`null`) instead of `<span className="text-slate-400 italic">Unassigned Card</span>`.
-- Blocked Reason Column:
-  - Remove the `<Badge variant="danger">Blocked</Badge>` component.
-  - Render only the clean reason text (`{reasonText}`) directly with tooltip and line-clamp.
-
-#### `src/features/portal/QrResolutionPage.tsx`
-- In `runResolution()` and `handleResolve()` error handlers:
-  - Check if error code is `CARD_BLOCKED` or error message contains "block".
-  - Set `setErrorTitle('Card Blocked')` and display the server message (or fallback: 'This card has been blocked. Please visit the cafeteria desk.') instead of 'Invalid QR Code' or 'Wallet Blocked'.
-
-#### `src/features/portal/PortalSessionPage.tsx`
-- In `fetchSessionDetail()` error handler:
-  - If error indicates blocked status, set error message to 'Card Blocked. Please visit the cafeteria desk.'
+This plan implements three specific user requirements across the Money Card system:
+1. Blocked Reason Display: In Wallets & Customer History (Blocked Wallets table), instead of `[Blocked by Manager (STAFF - Counter 1)] Lost or Stolen Wallet...`, format it cleanly as `Blocked by (counter manager name) - (Reason)` without brackets, without role/branch clutter, and without ellipsis truncation (`...` or `....`).
+2. Customer Portal Removal: In Org Admin Wallets and Counter Admin Wallets & Customer History, remove all Customer Portal buttons (from top header and table row actions) so users go straight to wallet management actions.
+3. Card Blocking for Counter Admin and Org Admin: Add card blocking actions and an intuitive Block Wallet modal to both Counter Admin (`CounterStaffCardsView`) and Org Admin (`OrgAdminCardsView`) with full backend sync and mobile parity.
 
 ---
 
-### 2. Backend Engine (`Backend Money Card`)
-
-#### `src/controllers/public.controller.ts`
-- In `getPublicSessionDetail`:
-  - Check if `session.card?.status === 'BLOCKED'`.
-  - Return `sendError(res, 403, 'CARD_BLOCKED', 'This card has been blocked by store staff. Please visit cafeteria desk.')` so public session lookups for blocked cards consistently return `CARD_BLOCKED`.
+## Visual UI Sketch
+![Wallets and Customer History Blocked Reason and Card Blocking](file:///C:/Users/damie/.gemini/antigravity-ide/brain/40124c13-8182-4da5-8dae-66d3097486e9/block_card_clean_reason_wallets_sketch_1791363462902.jpg)
 
 ---
 
-## Visual Design Reference
-![Blocked Wallets Clean Table and PWA Sketch](file:///C:/Users/damie/.gemini/antigravity-ide/brain/40124c13-8182-4da5-8dae-66d3097486e9/blocked_wallets_clean_table_pwa_sketch_1791358350038.jpg)
+## UI Layout & ASCII Wireframes
 
----
-
-## ASCII Wireframes
-
-### Counter / Org Admin Cards View — Strict Segmentation
+### 1. Org Admin & Counter Admin Header (Customer Portal Removed)
 ```
-+-----------------------------------------------------------------------------------------+
-| [ Live Active Wallets (12) ]    [ Blocked Wallets (2) ]                                  |
-+-----------------------------------------------------------------------------------------+
-|  Active Wallets Table:                                                                  |
-|  (Contains only ACTIVE cards. Blocked cards strictly excluded from this view)           |
-|                                                                                         |
-|  Wallet ID        | Balance | Customer       | Issued Date | Actions                    |
-|  MC-001           | ₹500    | Alex Morgan    | 7 Oct 2026  | [View Details]             |
-|  MC-002           | ₹350    | Priya Sharma   | 7 Oct 2026  | [View Details]             |
-+-----------------------------------------------------------------------------------------+
++--------------------------------------------------------------------------------------------------------+
+| [Card Icon] Wallets & Customer History                                                  [ Refresh ]    |
++--------------------------------------------------------------------------------------------------------+
+| [ Counters Tab ]  [ Blocked Wallets Tab (N) ]                                                          |
++--------------------------------------------------------------------------------------------------------+
 ```
 
-### Clean Blocked Wallets Table (Customer blank if unassigned, clean reason without badge)
+### 2. Counter Admin Live Active Cards Table (Customer Portal Removed, Block Wallet Added)
 ```
-+--------------------------------------------------------------------------------------------------------------------+
-| Wallet ID       | Customer        | Locked Bal | Blocked Reason                        | Blocked By | Date       | ... |
-+-----------------+-----------------+------------+---------------------------------------+------------+------------+-----+
-| KD1NIICJY       |                 | ₹950       | [Blocked by Manager (STAFF)] Lost Card| Manager    | 7 Oct 2026 | ... |
-| (Counter 1)     | (Blank, empty)  |            | (Clean reason, no red badge)          |            |            |     |
-+-----------------+-----------------+------------+---------------------------------------+------------+------------+-----+
-| MC-003          | David Miller    | ₹1,200     | Suspicious multiple recharges flagged | Admin      | 6 Oct 2026 | ... |
-| (Main Counter)  | +91 9988776655  |            |                                       |            |            |     |
-+--------------------------------------------------------------------------------------------------------------------+
++--------------------------------------------------------------------------------------------------------+
+| Coupon/Card ID    Customer          Live Balance     Actions                                           |
++--------------------------------------------------------------------------------------------------------+
+| KD1IRUG9          Alex Rivera       INR 450          [ History ] [ Analytics ] [ Details ] [ Block ]   |
+| KD1NIICJY                           INR 950          [ History ] [ Analytics ] [ Details ] [ Block ]   |
++--------------------------------------------------------------------------------------------------------+
 ```
 
-### PWA Customer Portal — Card Blocked State
+### 3. Org Admin Counter Overview (Customer Portal Removed)
 ```
-+---------------------------------------+
-|             MONEY CARD                |
-|                                       |
-|               ( [ ! ] )               |
-|                                       |
-|             Card Blocked              |
-|                                       |
-|   This card has been blocked by       |
-|   store staff. Please visit the       |
-|   cafeteria desk.                     |
-|                                       |
-|     [ Scan Another Wallet ]           |
-|                                       |
-+---------------------------------------+
-(Zero 'Invalid QR Code' message when card is blocked)
++--------------------------------------------------------------------------------------------------------+
+| Cafeteria Counter    Active Wallets    Total Balance    Actions                                        |
++--------------------------------------------------------------------------------------------------------+
+| Counter 1            12 Wallets        INR 5,400        [ History ] [ Analytics ] [ Details (12) ]     |
++--------------------------------------------------------------------------------------------------------+
+```
+
+### 4. Org Admin Counter Wallet Details Modal (Block Wallet Action Added)
+```
++--------------------------------------------------------------------------------------------------------+
+| Wallet Details — Counter 1                                                                         [X] |
++--------------------------------------------------------------------------------------------------------+
+| Card/Coupon ID    Status       Live Customer      Balance       Actions                                |
++--------------------------------------------------------------------------------------------------------+
+| KD1IRUG9          Active       Alex Rivera        INR 450       [ Block Wallet ]                       |
+| KD1J2K3L          Available    —                  INR 0         [ Block Wallet ]                       |
++--------------------------------------------------------------------------------------------------------+
+|                                                                                              [ Close ] |
++--------------------------------------------------------------------------------------------------------+
+```
+
+### 5. Block Wallet Confirmation Modal
+```
++--------------------------------------------------------------------------------------------------------+
+| [Shield Icon] Block Wallet KD1IRUG9                                                                [X] |
++--------------------------------------------------------------------------------------------------------+
+| Are you sure you want to block this wallet? It will be disabled for purchases and recharges.          |
+|                                                                                                        |
+| Block Reason:                                                                                          |
+| [ Lost or Stolen Wallet                                                                            v ] |
+|                                                                                                        |
+| Additional Notes (Optional):                                                                           |
+| [ Enter optional details...                                                                          ] |
+|                                                                                                        |
+|                                                                     [ Cancel ]  [ Confirm Block ]      |
++--------------------------------------------------------------------------------------------------------+
+```
+
+### 6. Blocked Wallets Table (Customer Portal Removed, Clean Reason, No Ellipsis)
+```
++---------------------------------------------------------------------------------------------------------------------------------------+
+| Wallet ID     Customer    Locked Balance   Blocked Reason                                 Blocked By   Blocked Date   Actions         |
++---------------------------------------------------------------------------------------------------------------------------------------+
+| KD1NIICJY                 INR 950          Blocked by Manager - Lost or Stolen Wallet     Manager      7 Oct 2026     [ History ] [ Unblock ] |
++---------------------------------------------------------------------------------------------------------------------------------------+
 ```
 
 ---
 
-## Verification Plan
+## Technical Design & Component Breakdown
 
-### Automated Tests
-1. Frontend Unit Tests:
-   - Run `npm test -- --run` in `Frontend Money Card` to ensure all tests pass.
-   - Update tests in `staffRoleAndBlockedWallets.test.ts` and `portalQrRedirectAndTokenParsing.test.ts` to reflect the clean reason format, blank customer column, and 'Card Blocked' title.
-2. Frontend Type Checks:
-   - Run `npx tsc --noEmit` to confirm 0 TypeScript compilation errors.
-3. Backend Unit Tests:
-   - Run `npm test` in `Backend Money Card` to verify public controller and session endpoints pass.
+### 1. Frontend: Blocked Reason Parsing & Display
+- File: `Frontend Money Card/src/features/cards/BlockedWalletsTableView.tsx`
+- File: `Frontend Money Card/src/utils/cardBlockMessages.ts`
+- Implementation:
+  - Create `cleanBlockReasonDisplay(rawReason?: string | null, blocker?: string | null): string`:
+    - Regex pattern match for legacy or Flutter bracketed strings: `^\[Blocked by ([^(\]]+)(?:\s*\([^)]*\))?\]\s*(.*)$`.
+    - Extract blocker name (`Manager`) and clean reason (`Lost or Stolen Wallet`).
+    - Format output: `Blocked by ${name} - ${reason}`.
+    - If raw reason does not have brackets:
+      - If already starts with `Blocked by `, clean any extra dots/spaces.
+      - If it is a standalone category (e.g. `Lost or Stolen Wallet`) and blocker is known, format as `Blocked by ${blocker} - ${rawReason}`.
+      - Strip any trailing ellipsis dots (`...` or `....`).
+  - In `BlockedWalletsTableView.tsx`:
+    - Remove `line-clamp-2` and `max-w-xs` from the `Blocked Reason` table cell so reasons are never truncated with dots.
+    - Remove the `Customer Portal` button from table row actions.
 
-### Manual Verification Steps
-1. Block a wallet from Counter Manager or Org Admin.
-2. Verify it vanishes immediately from Live Active Wallets.
-3. Switch to Blocked Wallets tab: verify it appears with blank customer column (if unassigned) and clean reason text without red badge.
-4. Scan the blocked card's QR code in PWA customer portal: verify the modal/page displays "Card Blocked" rather than "Invalid QR Code".
+### 2. Frontend: Remove Customer Portal Buttons
+- File: `Frontend Money Card/src/features/cards/OrgAdminCardsView.tsx`
+  - Remove top header `Customer Portal` button.
+  - Remove counter row action `Customer Portal` button.
+- File: `Frontend Money Card/src/features/cards/CounterStaffCardsView.tsx`
+  - Remove top header `Customer Portal` button.
+  - Remove live active card row action `Customer Portal` button.
+- File: `Frontend Money Card/src/features/cards/BlockedWalletsTableView.tsx`
+  - Remove `Customer Portal` button from action buttons.
+
+### 3. Frontend: Enable Card Blocking for Counter Admin & Org Admin
+- Reusable / Integrated Modal: `BlockCardModal`
+  - State: `cardToBlock: CardEntity | null`, `blockReason: string`, `blockNotes: string`, `isSubmitting: boolean`.
+  - Reason options:
+    - `Lost or Stolen Wallet`
+    - `Damaged Card / Hardware Fault`
+    - `Suspicious Activity / Fraud`
+    - `Customer Request`
+    - `Staff Discretion`
+    - `Other Reason`
+  - Submit logic:
+    - Formats reason as `Blocked by ${userName} - ${blockReason}` (with notes appended if present).
+    - Calls `apiService.cards.blockCard(cardToBlock.id, finalReason)`.
+    - On success: notifies `Wallet ${identifier} blocked successfully.`, closes modal, reloads cards data.
+- Counter Admin Integration (`CounterStaffCardsView.tsx`):
+  - Add `Block Wallet` button to each live card row action list (`variant="outline"`, red hover, ban icon).
+  - Add `Block Wallet` button inside `selectedCardForDetails` (Wallet Details Modal) footer.
+- Org Admin Integration (`OrgAdminCardsView.tsx`):
+  - In `selectedBranchForDetails` modal (when Org Admin clicks `Wallet Details (N)` for any counter):
+    - Add `Actions` column to the table.
+    - Render `Block Wallet` button for active or available cards.
+    - Connect to `BlockCardModal` to block cards counter-wise.
+
+### 4. Mobile POS Parity (Flutter)
+- File: `Flutter Money card/lib/features/cards/card_details_screen.dart`
+  - In `_handleBlockCard()`:
+    - Change combined reason formatting from `[Blocked by $defaultBlockerStr] $selectedReason` to `Blocked by $blockerName - $selectedReason` (and optional notes), removing brackets and role/counter parentheses.
+
+---
+
+## Verification & Testing Plan
+1. Run TypeScript type checks (`npx tsc --noEmit` in `Frontend Money Card`).
+2. Run Frontend Vitest test suite (`npm test -- --run` in `Frontend Money Card`).
+3. Run Backend test suite (`npm test` in `Backend Money Card`).
+4. Run Flutter test suite (`flutter test` in `Flutter Money card`).
+5. Run Flutter analyzer (`flutter analyze --no-pub` in `Flutter Money card`).
+6. Verify zero horizontal overflow and mobile responsiveness on all modified screens.
