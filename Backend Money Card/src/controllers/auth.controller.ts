@@ -492,6 +492,7 @@ export async function changePassword(req: Request, res: Response) {
     where: { id: user.id },
     data: {
       passwordHash: newHash,
+      initialPassword: newPassword,
       mustChangePassword: false,
       tokenVersion: { increment: 1 },
     },
@@ -664,6 +665,7 @@ export async function activateAccount(req: Request, res: Response) {
     where: { id: user.id },
     data: {
       passwordHash,
+      initialPassword: password,
       status: UserStatus.ACTIVE,
       activationToken: null,
       activationTokenExpires: null,
