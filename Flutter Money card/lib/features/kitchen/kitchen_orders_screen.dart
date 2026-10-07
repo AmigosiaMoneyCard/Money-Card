@@ -38,48 +38,44 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
   }
 
   void _openQrScanner() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return SizedBox(
-          height: MediaQuery.of(ctx).size.height * 0.75,
-          child: ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            child: Scaffold(
-              appBar: AppBar(
-                title: const Text('Scan Wallet QR', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                leading: IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.of(ctx).pop(),
-                ),
-              ),
-              body: QrScannerView(
-                title: 'Scan Wallet QR',
-                prompt: 'Scan customer wallet QR to filter kitchen orders',
-                onQrScanned: (token) {
-                  Navigator.of(ctx).pop();
-                  var clean = cleanDisplayCardNumber(token);
-                  final upper = clean.toUpperCase();
-                  if (upper.startsWith('MC-') || upper.startsWith('MC ')) {
-                    clean = clean.substring(3).trim();
-                  } else if (upper.startsWith('CARD-') || upper.startsWith('CARD ')) {
-                    clean = clean.substring(5).trim();
-                  } else if (upper.startsWith('WALLET-') || upper.startsWith('WALLET ')) {
-                    clean = clean.substring(7).trim();
-                  }
-                  final finalQuery = clean.isNotEmpty ? clean : token.trim();
-                  _searchController.text = finalQuery;
-                  setState(() {
-                    _searchQuery = finalQuery;
-                  });
-                },
-              ),
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (ctx) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            title: const Text('Scan Wallet QR', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.of(ctx).pop(),
             ),
           ),
-        );
-      },
+          body: QrScannerView(
+            title: 'Scan Wallet QR',
+            prompt: 'Scan customer wallet QR to filter kitchen orders',
+            onQrScanned: (token) {
+              Navigator.of(ctx).pop();
+              var clean = cleanDisplayCardNumber(token);
+              final upper = clean.toUpperCase();
+              if (upper.startsWith('MC-') || upper.startsWith('MC ')) {
+                clean = clean.substring(3).trim();
+              } else if (upper.startsWith('CARD-') || upper.startsWith('CARD ')) {
+                clean = clean.substring(5).trim();
+              } else if (upper.startsWith('WALLET-') || upper.startsWith('WALLET ')) {
+                clean = clean.substring(7).trim();
+              }
+              final finalQuery = clean.isNotEmpty ? clean : token.trim();
+              _searchController.text = finalQuery;
+              setState(() {
+                _searchQuery = finalQuery;
+              });
+            },
+          ),
+        ),
+      ),
     );
   }
 
@@ -385,7 +381,7 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
     if (order.isPending) {
       statusColor = Colors.orange.shade800;
       statusBg = Colors.orange.shade50;
-      statusText = 'QUEUED / PENDING';
+      statusText = 'PENDING';
     } else if (order.isPreparing) {
       statusColor = Colors.blue.shade800;
       statusBg = Colors.blue.shade50;
@@ -431,17 +427,18 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: AppColors.primary,
+                        color: const Color(0xFFF1F5F9),
                         borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFFCBD5E1), width: 1),
                       ),
                       child: Text(
                         'Ticket #${order.orderNumber}',
                         style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                          color: Color(0xFF334155),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12.5,
                         ),
                       ),
                     ),

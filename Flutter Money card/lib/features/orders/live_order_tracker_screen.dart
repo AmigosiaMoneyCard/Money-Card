@@ -277,7 +277,7 @@ class _LiveOrderTrackerScreenState extends ConsumerState<LiveOrderTrackerScreen>
     if (order.isPending) {
       statusColor = Colors.orange.shade800;
       statusBg = Colors.orange.shade50;
-      statusLabel = 'QUEUED / PENDING';
+      statusLabel = 'PENDING';
     } else if (order.isPreparing) {
       statusColor = Colors.blue.shade800;
       statusBg = Colors.blue.shade50;
