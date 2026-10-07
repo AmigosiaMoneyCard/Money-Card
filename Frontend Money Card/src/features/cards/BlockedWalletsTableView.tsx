@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { Card as CardEntity, Branch } from '@/types';
 import {
-  Badge,
   Button,
   Modal,
   ModalFooter,
@@ -224,9 +223,7 @@ export function BlockedWalletsTableView({
                               </span>
                             )}
                           </div>
-                        ) : (
-                          <span className="text-slate-400 italic">Unassigned Card</span>
-                        )}
+                        ) : null}
                       </td>
 
                       {/* 3. Locked Balance */}
@@ -236,14 +233,9 @@ export function BlockedWalletsTableView({
 
                       {/* 4. Blocked Reason */}
                       <td className="py-3.5 px-4 max-w-xs">
-                        <div className="flex items-start gap-1.5">
-                          <Badge variant="danger" className="text-[10px] font-semibold shrink-0 mt-0.5">
-                            Blocked
-                          </Badge>
-                          <span className="text-slate-700 text-xs leading-relaxed line-clamp-2" title={reasonText}>
-                            {reasonText}
-                          </span>
-                        </div>
+                        <span className="text-slate-700 text-xs leading-relaxed line-clamp-2" title={reasonText}>
+                          {reasonText}
+                        </span>
                       </td>
 
                       {/* 5. Blocked By */}

@@ -157,7 +157,20 @@ export function PortalSessionPage() {
       const res = await apiService.userPortal.getPublicSessionDetail(activeToken);
 
       if (!res.success) {
-        if (res.error.code === 'UNAUTHORIZED' || res.error.code === 'SESSION_NOT_FOUND') {
+        const errCode = (res.error?.code || '').toUpperCase();
+        const errMsg = (res.error?.message || '').toLowerCase();
+        const isBlocked = errCode.includes('BLOCK') || errMsg.includes('block');
+
+        if (isBlocked) {
+          sessionStorage.removeItem('moneycard_portal_session_token');
+          sessionStorage.removeItem('moneycard_portal_card_number');
+          localStorage.removeItem('moneycard_portal_session_token');
+          localStorage.removeItem('moneycard_portal_card_number');
+          setSessionToken(null);
+          setSessionDetail(null);
+          setOrders([]);
+          setError('Card Blocked. Please visit the cafeteria desk.');
+        } else if (res.error.code === 'UNAUTHORIZED' || res.error.code === 'SESSION_NOT_FOUND') {
           sessionStorage.removeItem('moneycard_portal_session_token');
           sessionStorage.removeItem('moneycard_portal_card_number');
           localStorage.removeItem('moneycard_portal_session_token');

@@ -261,6 +261,7 @@ export function OrgAdminCardsView() {
 
   const getBranchCards = useCallback((branchId: string) => {
     return allCards.filter((c) => {
+      if (c.status === 'BLOCKED') return false;
       if (c.activeSession?.branchId === branchId) return true;
       if (c.currentBranchId === branchId) return true;
       if (c.status === 'AVAILABLE' && (!c.currentBranchId || c.currentBranchId === branchId)) return true;

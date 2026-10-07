@@ -166,6 +166,7 @@ export function CounterStaffCardsView() {
   // ─── Live Active Cards Filtering (Scoped to Counter Staff Branch) ─
   const liveCards = useMemo(() => {
     return allCards.filter((c) => {
+      if (c.status === 'BLOCKED') return false;
       const isActive = c.status === 'ACTIVE' || Boolean(c.activeSession);
       if (!isActive) return false;
       if (staffBranchId) {
@@ -805,7 +806,7 @@ export function CounterStaffCardsView() {
 
                 const totalBalance = selectedCardForAnalytics
                   ? (selectedCardForAnalytics.activeSession?.balance || 0)
-                  : branchCards.reduce((acc, c) => acc + (c.activeSession?.balance || 0), 0);
+                  : branchCards.filter((c) => c.status !== 'BLOCKED').reduce((acc, c) => acc + (c.activeSession?.balance || 0), 0);
 
                 const moneyAdded =
                   (bp?.rechargeVolume ?? 0) > 0
