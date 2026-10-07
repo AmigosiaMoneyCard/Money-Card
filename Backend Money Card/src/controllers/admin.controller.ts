@@ -76,7 +76,7 @@ export async function getOrganizations(req: Request, res: Response) {
         subscription: true,
         users: {
           where: { role: Role.ORG_ADMIN },
-          select: { id: true, name: true, email: true, mustChangePassword: true, status: true },
+          select: { id: true, name: true, email: true, mustChangePassword: true, status: true, initialPassword: true },
           take: 1,
         },
         _count: {
@@ -118,7 +118,7 @@ export async function getOrganizations(req: Request, res: Response) {
             ...orgAdmin,
             credentials: {
               email: orgAdmin.email,
-              password: 'password',
+              password: orgAdmin.initialPassword || '',
             },
           }
         : null,
@@ -435,7 +435,7 @@ export async function getOrganizationById(req: Request, res: Response) {
       subscription: true,
       users: {
         where: { role: Role.ORG_ADMIN },
-        select: { id: true, name: true, email: true, mustChangePassword: true },
+        select: { id: true, name: true, email: true, mustChangePassword: true, initialPassword: true },
         take: 1,
       },
       _count: {
@@ -462,7 +462,7 @@ export async function getOrganizationById(req: Request, res: Response) {
           ...orgAdmin,
           credentials: {
             email: orgAdmin.email,
-            password: 'password',
+            password: orgAdmin.initialPassword || '',
           },
         }
       : null,
@@ -1004,6 +1004,7 @@ export async function resetOrgAdminPassword(req: Request, res: Response) {
     where: { id: orgAdmin.id },
     data: {
       passwordHash: tempHash,
+      initialPassword: temporaryPassword,
       mustChangePassword: true,
       tokenVersion: { increment: 1 },
     },

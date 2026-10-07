@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
+import '../../models/card_session.dart';
 import '../../models/kitchen_order.dart';
 import '../../providers/kitchen_orders_provider.dart';
+import '../../widgets/scanner/qr_scanner_view.dart';
 
 class KitchenOrdersScreen extends ConsumerStatefulWidget {
   const KitchenOrdersScreen({super.key});
@@ -35,11 +37,59 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
     super.dispose();
   }
 
+  void _openQrScanner() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return SizedBox(
+          height: MediaQuery.of(ctx).size.height * 0.75,
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            child: Scaffold(
+              appBar: AppBar(
+                title: const Text('Scan Wallet QR', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                leading: IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.of(ctx).pop(),
+                ),
+              ),
+              body: QrScannerView(
+                title: 'Scan Wallet QR',
+                prompt: 'Scan customer wallet QR to filter kitchen orders',
+                onQrScanned: (token) {
+                  Navigator.of(ctx).pop();
+                  var clean = cleanDisplayCardNumber(token);
+                  final upper = clean.toUpperCase();
+                  if (upper.startsWith('MC-') || upper.startsWith('MC ')) {
+                    clean = clean.substring(3).trim();
+                  } else if (upper.startsWith('CARD-') || upper.startsWith('CARD ')) {
+                    clean = clean.substring(5).trim();
+                  } else if (upper.startsWith('WALLET-') || upper.startsWith('WALLET ')) {
+                    clean = clean.substring(7).trim();
+                  }
+                  final finalQuery = clean.isNotEmpty ? clean : token.trim();
+                  _searchController.text = finalQuery;
+                  setState(() {
+                    _searchQuery = finalQuery;
+                  });
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   bool _matchesSearch(KitchenOrder order) {
     if (_searchQuery.isEmpty) return true;
     final q = _searchQuery.toLowerCase();
     if (order.cardDisplayNumber.toLowerCase().contains(q)) return true;
     if (order.orderNumber.toString().contains(q)) return true;
+    if (order.customerName != null && order.customerName!.toLowerCase().contains(q)) return true;
+    if (order.items.any((item) => item.itemName.toLowerCase().contains(q))) return true;
     return false;
   }
 
@@ -86,43 +136,61 @@ class _KitchenOrdersScreenState extends ConsumerState<KitchenOrdersScreen>
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (val) {
-                  setState(() {
-                    _searchQuery = val.trim();
-                  });
-                },
-                decoration: InputDecoration(
-                  hintText: 'Search wallet ID, ticket #...',
-                  prefixIcon: const Icon(Icons.search, size: 20),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, size: 18),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {
-                              _searchQuery = '';
-                            });
-                          },
-                        )
-                      : null,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (val) {
+                        setState(() {
+                          _searchQuery = val.trim();
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Search wallet ID, ticket #...',
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 18),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {
+                                    _searchQuery = '';
+                                  });
+                                },
+                              )
+                            : null,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: AppColors.primary),
+                        ),
+                      ),
+                    ),
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                  const SizedBox(width: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
+                      tooltip: 'Scan Wallet QR',
+                      onPressed: _openQrScanner,
+                    ),
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: AppColors.primary),
-                  ),
-                ),
+                ],
               ),
             ),
             if (state.hasNewOrderPulse)

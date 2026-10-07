@@ -121,8 +121,8 @@ export const validatePassword = (password: string, isRequired = false): string |
     }
     return null;
   }
-  if (password.length < 8 || password.length > 30) {
-    return 'Password must be between 8 and 30 characters';
+  if (password.length < 4 || password.length > 30) {
+    return 'Password must be between 4 and 30 characters';
   }
   return null;
 };
@@ -905,7 +905,7 @@ export function BranchesPage() {
             id="create-branch-password"
             label="Login Password"
             type={showCreatePassword ? 'text' : 'password'}
-            placeholder="Minimum 8 characters (default: 12345678)"
+            placeholder="Minimum 4 characters (default: 1234)"
             value={branchPasswordInput}
             onChange={(e) => {
               setBranchPasswordInput(e.target.value);

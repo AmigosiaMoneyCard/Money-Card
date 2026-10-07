@@ -381,8 +381,8 @@ export function CounterStaffPage() {
     setPasswordChangeError(null);
     setPasswordChangeSuccess(null);
 
-    if (!formNewPassword || formNewPassword.length < 8) {
-      setPasswordChangeError('Password must be at least 8 characters');
+    if (!formNewPassword || formNewPassword.length < 4) {
+      setPasswordChangeError('Password must be at least 4 characters');
       return;
     }
     if (formNewPassword !== formConfirmPassword) {
@@ -1070,7 +1070,7 @@ export function CounterStaffPage() {
                       type={showNewPassword ? 'text' : 'password'}
                       value={formNewPassword}
                       onChange={(e) => setFormNewPassword(e.target.value)}
-                      placeholder="New password (min 8 chars)"
+                      placeholder="New password (min 4 chars)"
                     />
                     <button
                       type="button"

@@ -289,17 +289,16 @@ export function OrganizationsPage() {
   };
 
   const getAdminPassword = (org: OrganizationOverview): string => {
-    // 1. Check local persistent storage for temporary or reset passwords
-    const cached = getStoredOrgPassword(org.id, org.adminUser?.email, org.adminUser?.id);
-    if (cached) return cached;
-
-    // 2. Check credentials returned by backend API
+    // 1. Check authentic credentials returned by backend API from DB
     if (org.adminUser?.credentials?.password) {
       return org.adminUser.credentials.password;
     }
 
-    // 3. Standard authentic default password for cafeteria administrator accounts
-    return 'password';
+    // 2. Check local persistent storage for temporary or reset passwords
+    const cached = getStoredOrgPassword(org.id, org.adminUser?.email, org.adminUser?.id);
+    if (cached) return cached;
+
+    return '';
   };
 
   // Modals
@@ -1091,7 +1090,7 @@ export function OrganizationsPage() {
                       <>
                         <span className="font-mono text-sm font-bold text-slate-800">
                           {showOrgAdminPassword
-                            ? getAdminPassword(selectedOrg)
+                            ? (getAdminPassword(selectedOrg) || 'Not Set')
                             : '••••••••'}
                         </span>
                         <button
@@ -1117,7 +1116,7 @@ export function OrganizationsPage() {
                   onClick={() => {
                     const pass = selectedOrg.status === 'PENDING_ACTIVATION'
                       ? 'Set via email activation link'
-                      : getAdminPassword(selectedOrg);
+                      : (getAdminPassword(selectedOrg) || 'Not Set');
                     const email = selectedOrg.adminUser?.email || 'admin@' + selectedOrg.name.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
                     navigator.clipboard.writeText(`Cafeteria: ${selectedOrg.name}\nEmail: ${email}\nPassword: ${pass}`);
                     notify.success('Admin credentials copied to clipboard');
