@@ -64,7 +64,7 @@ export function OrgAdminAnalyticsView() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-200 pb-5">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-            {isCounterStaff ? 'Counter Analytics' : 'Analytics'}
+            {isCounterStaff ? 'Kitchen Analytics' : 'Analytics'}
           </h1>
         </div>
 

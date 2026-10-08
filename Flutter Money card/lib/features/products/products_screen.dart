@@ -334,7 +334,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     if (currentBranch == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please select an active cafeteria counter first.'),
+          content: Text('Please select an active cafeteria kitchen first.'),
           backgroundColor: AppColors.error,
         ),
       );
@@ -398,7 +398,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            'Counter: ${currentBranch.name}',
+                            'Kitchen: ${currentBranch.name}',
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,

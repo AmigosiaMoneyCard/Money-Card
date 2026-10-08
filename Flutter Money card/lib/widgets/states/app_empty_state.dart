@@ -22,7 +22,7 @@ class AppEmptyState extends StatelessWidget {
     return AppEmptyState(
       icon: Icons.account_balance_wallet_outlined,
       title: 'No Wallets Found',
-      description: 'No physical wallets are assigned to this counter yet.',
+      description: 'No physical wallets are assigned to this kitchen yet.',
       actionLabel: onIssueCard != null ? 'Issue Wallet' : null,
       onAction: onIssueCard,
     );
@@ -40,7 +40,7 @@ class AppEmptyState extends StatelessWidget {
     return const AppEmptyState(
       icon: Icons.fastfood_outlined,
       title: 'No Products Available',
-      description: 'No menu items or products found for the selected counter.',
+      description: 'No menu items or products found for the selected kitchen.',
     );
   }
 

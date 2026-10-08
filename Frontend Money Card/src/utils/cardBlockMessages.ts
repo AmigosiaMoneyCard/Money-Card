@@ -102,7 +102,7 @@ export function validateBlockReasonWordCount(text?: string | null, maxWords: num
 
 /**
  * Formats the blocked reason cleanly for display in tables:
- * "Blocked by (counter manager name) - (Reason)"
+ * "Blocked by (kitchen manager name) - (Reason)"
  * Strips brackets, removes role/branch metadata from the name, and eliminates ellipsis/dots.
  */
 export function cleanBlockReasonDisplay(

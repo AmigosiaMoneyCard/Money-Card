@@ -153,9 +153,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           const SizedBox(height: AppSpacing.md),
         ],
 
-        // 1. Counter Manager Card Button
+        // 1. Kitchen Manager Card Button
         _buildRoleSelectionCard(
-          title: 'Counter Manager',
+          title: 'Kitchen Manager',
           icon: Icons.point_of_sale_outlined,
           accentColor: AppColors.primary,
           badgeBg: AppColors.primaryLight,
@@ -294,7 +294,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
           const SizedBox(height: AppSpacing.xxs),
           Text(
-            isKitchen ? 'Kitchen Staff' : 'Counter Manager',
+            isKitchen ? 'Kitchen Staff' : 'Kitchen Manager',
             style: const TextStyle(
               fontSize: 15,
               color: AppColors.textSecondaryLight,

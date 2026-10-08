@@ -424,7 +424,7 @@ function OrgAdminSubscriptionsView() {
                         Resource Limits & Usage
                       </span>
                       <div className="flex items-center justify-between text-slate-700">
-                        <span>Counters:</span>
+                        <span>Kitchens:</span>
                         <span className="font-mono text-sm font-bold text-slate-900">
                           {branchUsage} / <span className="text-emerald-700 font-extrabold">{branchLimit}</span>
                         </span>
@@ -575,7 +575,7 @@ function OrgAdminSubscriptionsView() {
                               Resource Limits {isCurrent ? '& Usage' : ''}
                             </span>
                             <div className="flex items-center justify-between text-slate-700">
-                              <span>Counters:</span>
+                              <span>Kitchens:</span>
                               {isCurrent ? (
                                 <span className="font-mono text-sm font-bold text-slate-900">
                                   {branchUsage} / <span className="text-emerald-700 font-extrabold">{branchLimit}</span>

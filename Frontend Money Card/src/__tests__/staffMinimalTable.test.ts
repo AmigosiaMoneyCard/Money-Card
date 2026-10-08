@@ -107,15 +107,15 @@ describe('Staff Management Minimal Table & Counter-First Layout Tests', () => {
     expect(getStaffDetailsButtonLabel(groupWithZero)).toBe('Staff Details');
   });
 
-  it('should verify the 3-column table structure matching Menu Management: Counter Name, Add Staff, and View / Edit', () => {
+  it('should verify the 3-column table structure matching Menu Management: Kitchen Name, Add Staff, and View / Edit', () => {
     const tableColumns = [
-      { key: 'counterName', header: 'Counter Name' },
+      { key: 'counterName', header: 'Kitchen Name' },
       { key: 'addStaff', header: 'Add Staff' },
       { key: 'staffDetails', header: 'View / Edit' },
     ];
 
     expect(tableColumns.length).toBe(3);
-    expect(tableColumns[0].header).toBe('Counter Name');
+    expect(tableColumns[0].header).toBe('Kitchen Name');
     expect(tableColumns[1].header).toBe('Add Staff');
     expect(tableColumns[2].header).toBe('View / Edit');
   });

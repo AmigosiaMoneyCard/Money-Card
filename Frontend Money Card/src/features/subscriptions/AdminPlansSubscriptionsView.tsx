@@ -415,7 +415,7 @@ export function AdminPlansSubscriptionsView() {
     if (subOverrideBranch.trim()) {
       const val = parseInt(subOverrideBranch, 10);
       if (isNaN(val) || val < 1) {
-        setModalApiError('Counter limit override must be a positive integer.');
+        setModalApiError('Kitchen limit override must be a positive integer.');
         setIsSubmitting(false);
         return;
       }
@@ -1071,7 +1071,7 @@ export function AdminPlansSubscriptionsView() {
             <span className="text-xs font-semibold text-slate-700 block">Default Resource Limits</span>
             <div className="grid grid-cols-3 gap-3">
               <Input
-                label="Counter Limit"
+                label="Kitchen Limit"
                 type="number"
                 min="0"
                 value={formBranchLimit}
@@ -1197,7 +1197,7 @@ export function AdminPlansSubscriptionsView() {
             <span className="text-xs font-semibold text-slate-700 block">Default Resource Limits</span>
             <div className="grid grid-cols-3 gap-3">
               <Input
-                label="Counter Limit"
+                label="Kitchen Limit"
                 type="number"
                 min="0"
                 value={formBranchLimit}

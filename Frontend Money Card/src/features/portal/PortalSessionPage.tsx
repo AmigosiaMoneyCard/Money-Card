@@ -447,7 +447,7 @@ export function PortalSessionPage() {
             <div className="flex-1 text-left">
               <p className="font-bold text-amber-900">Low Balance Notice</p>
               <p className="mt-0.5 text-amber-800">
-                Your wallet balance is {formatCurrency(sessionDetail.currentBalance)}. Top up at the counter to keep ordering without interruptions.
+                Your wallet balance is {formatCurrency(sessionDetail.currentBalance)}. Top up at the kitchen to keep ordering without interruptions.
               </p>
             </div>
           </div>

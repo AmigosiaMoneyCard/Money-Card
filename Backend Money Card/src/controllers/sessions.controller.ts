@@ -595,7 +595,7 @@ export async function returnSession(req: Request, res: Response) {
   }
 
   if (req.user?.role === 'STAFF' && !req.user.assignedBranchIds.includes(session.branchId)) {
-    return sendError(res, 403, 'RETURN_COUNTER_MISMATCH', 'This card must be returned at the counter where it was issued');
+    return sendError(res, 403, 'RETURN_COUNTER_MISMATCH', 'This card must be returned at the kitchen where it was issued');
   }
 
   if (session.status === SessionStatus.SETTLED) {
@@ -683,7 +683,7 @@ export async function refundSessionBalance(req: Request, res: Response) {
   }
 
   if (req.user?.role === 'STAFF' && !req.user.assignedBranchIds.includes(session.branchId)) {
-    return sendError(res, 403, 'RETURN_COUNTER_MISMATCH', 'This card must be returned at the counter where it was issued');
+    return sendError(res, 403, 'RETURN_COUNTER_MISMATCH', 'This card must be returned at the kitchen where it was issued');
   }
 
   const refundAmount = session.balance;

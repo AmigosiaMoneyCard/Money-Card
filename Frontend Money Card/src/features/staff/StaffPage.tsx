@@ -649,7 +649,7 @@ export function StaffPage() {
       branches
         .filter((b) => formBranchIds.includes(b.id))
         .map((b) => b.name)
-        .join(', ') || 'All Counters';
+        .join(', ') || 'All Kitchens';
     const loginUrl = `${window.location.origin}/login`;
 
     const text =
@@ -657,7 +657,7 @@ export function StaffPage() {
       `Name: ${formName.trim() || selectedStaff.name}\n` +
       `Phone: ${cleanPhone}\n` +
       `Password: ${pwdText}\n` +
-      `Counter: ${assignedBranchesText}\n` +
+      `Kitchen: ${assignedBranchesText}\n` +
       `Login URL: ${loginUrl}`;
 
     navigator.clipboard.writeText(text);
@@ -681,18 +681,18 @@ export function StaffPage() {
       branches
         .filter((b) => formBranchIds.includes(b.id))
         .map((b) => b.name)
-        .join(', ') || 'All Counters';
+        .join(', ') || 'All Kitchens';
     const loginUrl = `${window.location.origin}/login`;
 
     const message =
       `*Money Card Staff Credentials*\n\n` +
       `Hello ${formName.trim() || selectedStaff.name},\n\n` +
       `Here are your updated staff login credentials:\n\n` +
-      `*Counter:* ${assignedBranchesText}\n` +
+      `*Kitchen:* ${assignedBranchesText}\n` +
       `*Mobile Number:* ${cleanPhone}\n` +
       `*Password:* ${pwdText}\n\n` +
       `*POS Login Link:* ${loginUrl}\n\n` +
-      `Log in using your Mobile Number and Password to access your counter POS.`;
+      `Log in using your Mobile Number and Password to access your kitchen POS.`;
 
     const waUrl = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(message)}`;
     window.open(waUrl, '_blank', 'noopener,noreferrer');
@@ -894,9 +894,9 @@ export function StaffPage() {
   const formatStaffDisplayName = (name?: string, _assignedBranchIds?: string[], _fallbackCounterName?: string): string => {
     if (!name) return '';
     let cleaned = name.trim();
-    cleaned = cleaned.replace(/^(counter\s*)+manager\s*[-:]?\s*/i, '');
-    cleaned = cleaned.replace(/^counter\s*counter\s*manager\s*[-:]?\s*/i, '');
-    cleaned = cleaned.replace(/^counter\s*manager\s*[-:]?\s*/i, '');
+    cleaned = cleaned.replace(/^((counter|kitchen)\s*)+manager\s*[-:]?\s*/i, '');
+    cleaned = cleaned.replace(/^(counter|kitchen)\s*(counter|kitchen)\s*manager\s*[-:]?\s*/i, '');
+    cleaned = cleaned.replace(/^(counter|kitchen)\s*manager\s*[-:]?\s*/i, '');
     cleaned = cleaned.trim();
     if (!cleaned) return name.trim();
     return cleaned;
@@ -907,13 +907,13 @@ export function StaffPage() {
       return 'Kitchen Staff';
     }
     if (staff.permissions.includes('RECHARGE') || staff.permissions.includes('STAFF_MANAGE')) {
-      return 'Counter Manager';
+      return 'Kitchen Manager';
     }
     const hasMenu = staff.permissions.includes('PRODUCT_VIEW') || staff.permissions.includes('PRODUCT_MANAGE');
     if (hasMenu && !staff.permissions.includes('RECHARGE')) {
       return 'Kitchen Staff';
     }
-    return 'Counter Manager';
+    return 'Kitchen Manager';
   };
 
   const handleOpenStaffAudit = async (staff: Staff) => {
@@ -1127,7 +1127,7 @@ export function StaffPage() {
   const orgAdminColumns = [
     {
       key: 'counterName',
-      header: 'Counter Name',
+      header: 'Kitchen Name',
       className: 'w-1/2 min-w-[200px]',
       render: (group: CounterStaffGroup) => (
         <div className="flex items-center gap-2.5">
@@ -1205,7 +1205,7 @@ export function StaffPage() {
           <Badge
             variant="outline"
             className={
-              label === 'Counter Manager'
+              label === 'Kitchen Manager'
                 ? 'border-emerald-300 bg-emerald-50 text-emerald-700 font-semibold text-xs'
                 : 'border-blue-300 bg-blue-50 text-blue-700 font-semibold text-xs'
             }
@@ -1241,7 +1241,7 @@ export function StaffPage() {
               Edit
             </Button>
           )}
-          {getStaffRoleLabel(staff) === 'Counter Manager' && (
+          {getStaffRoleLabel(staff) === 'Kitchen Manager' && (
             <Button
               variant="outline"
               size="sm"
@@ -1292,7 +1292,7 @@ export function StaffPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           <input
             type="text"
-            placeholder={isCounterView ? "Search staff by name or phone..." : "Search counters or staff by name, phone..."}
+            placeholder={isCounterView ? "Search staff by name or phone..." : "Search kitchens or staff by name, phone..."}
             value={searchQuery}
             maxLength={30}
             onChange={(e) => setSearchQuery(e.target.value.slice(0, 30))}
@@ -1317,7 +1317,7 @@ export function StaffPage() {
             className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
           >
             <option value="ALL">All Roles</option>
-            <option value="MANAGER">Counter Managers</option>
+            <option value="MANAGER">Kitchen Managers</option>
             <option value="KITCHEN">Kitchen Staff</option>
           </select>
           <Button
@@ -1385,7 +1385,7 @@ export function StaffPage() {
         <EmptyState
           icon={<Users className="h-8 w-8 text-slate-500" />}
           title="No staff accounts yet"
-          description="Add your team members to grant POS cashier and counter access."
+          description="Add your team members to grant POS cashier and kitchen access."
           action={
             canManage ? (
               <Button variant="primary" onClick={() => handleOpenAdd()} leftIcon={<UserPlus className="h-4 w-4" />}>
@@ -1401,7 +1401,7 @@ export function StaffPage() {
           description={
             searchQuery || statusFilter !== 'ALL' || staffBranchFilter !== 'ALL'
               ? 'No staff members match the selected filters. Try adjusting your search query or filters.'
-              : `No staff members assigned to ${currentBranch ? currentBranch.name : 'this counter'}.`
+              : `No staff members assigned to ${currentBranch ? currentBranch.name : 'this kitchen'}.`
           }
           action={
             searchQuery || statusFilter !== 'ALL' || staffBranchFilter !== 'ALL' ? (
@@ -1469,7 +1469,7 @@ export function StaffPage() {
               }`}
             >
               <Building2 className="h-4 w-4" />
-              <span>Counters</span>
+              <span>Kitchens</span>
               <Badge variant="outline" className="text-[10px] ml-1">
                 {formBranchIds.length}
               </Badge>
@@ -1498,7 +1498,7 @@ export function StaffPage() {
                           : 'border-slate-200 hover:border-slate-300 bg-white'
                       }`}
                     >
-                      <span className="text-xs font-bold text-slate-900">Counter Manager</span>
+                      <span className="text-xs font-bold text-slate-900">Kitchen Manager</span>
                       <div
                         className={`h-4.5 w-4.5 rounded-full border flex items-center justify-center shrink-0 ${
                           formRoleType === 'MANAGER' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300'
@@ -1766,7 +1766,7 @@ export function StaffPage() {
               <div className="space-y-4">
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
-                    Cafeteria Counter Assignments
+                    Cafeteria Kitchen Assignments
                   </h4>
                 </div>
 
@@ -1934,12 +1934,12 @@ export function StaffPage() {
             {/* Information Grid */}
             <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
               <div className="flex items-center justify-between p-3.5 text-xs">
-                <span className="text-slate-500 font-medium">Assigned Counter</span>
+                <span className="text-slate-500 font-medium">Assigned Kitchen</span>
                 <span className="font-semibold text-slate-900">
                   {branches
                     .filter((b) => selectedStaff.assignedBranchIds.includes(b.id))
                     .map((b) => b.name)
-                    .join(', ') || 'All Counters'}
+                    .join(', ') || 'All Kitchens'}
                 </span>
               </div>
 
@@ -1998,7 +1998,7 @@ export function StaffPage() {
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                 <input
                   type="text"
-                  placeholder="Search counters (e.g. Main Cafeteria, Executive Lounge)..."
+                  placeholder="Search kitchens (e.g. Main Cafeteria, Executive Lounge)..."
                   value={modalCounterSearch}
                   maxLength={35}
                   onChange={(e) => setModalCounterSearch(e.target.value)}
@@ -2018,7 +2018,7 @@ export function StaffPage() {
 
               {otherMatchingCounters.length > 0 && (
                 <div className="flex items-center gap-1.5 flex-wrap px-1 text-[11px] text-slate-500">
-                  <span className="font-medium">Switch to counter:</span>
+                  <span className="font-medium">Switch to kitchen:</span>
                   {otherMatchingCounters.map((g) => (
                     <button
                       key={g.id}
@@ -2040,8 +2040,8 @@ export function StaffPage() {
             {selectedCounterGroup.staff.length === 0 ? (
               <div className="text-center py-8 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
                 <Users className="h-8 w-8 text-slate-400 mx-auto mb-2" />
-                <p className="text-xs font-semibold text-slate-700">No staff accounts assigned to this counter</p>
-                <p className="text-[11px] text-slate-500 mt-1">You can add staff members or assign existing staff to this counter.</p>
+                <p className="text-xs font-semibold text-slate-700">No staff accounts assigned to this kitchen</p>
+                <p className="text-[11px] text-slate-500 mt-1">You can add staff members or assign existing staff to this kitchen.</p>
                 {canManage && (
                   <Button
                     variant="primary"
@@ -2121,7 +2121,7 @@ export function StaffPage() {
                           Edit
                         </Button>
                       )}
-                      {getStaffRoleLabel(st) === 'Counter Manager' && (
+                      {getStaffRoleLabel(st) === 'Kitchen Manager' && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -2264,9 +2264,9 @@ export function StaffPage() {
                 </div>
                 <div>
                   <p className={`text-xs font-bold ${addTab === 'branches' ? 'text-emerald-700' : 'text-slate-700'}`}>
-                    2. Assign Counters
+                    2. Assign Kitchens
                   </p>
-                  <p className="text-[10px] text-slate-400">Counter Terminal</p>
+                  <p className="text-[10px] text-slate-400">Kitchen Terminal</p>
                 </div>
               </button>
             </div>
@@ -2274,7 +2274,7 @@ export function StaffPage() {
             <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-emerald-50/70 border border-emerald-200/80 text-xs text-emerald-900 mb-4">
               <Building2 className="h-4 w-4 text-emerald-600 shrink-0" />
               <span>
-                Adding staff member for counter: <strong>{scopedBranches[0]?.name || 'Current Counter'}</strong>
+                Adding staff member for kitchen: <strong>{scopedBranches[0]?.name || 'Current Kitchen'}</strong>
               </span>
             </div>
           )}
@@ -2300,7 +2300,7 @@ export function StaffPage() {
                           : 'border-slate-200 hover:border-slate-300 bg-white'
                       }`}
                     >
-                      <span className="text-xs font-bold text-slate-900">Counter Manager</span>
+                      <span className="text-xs font-bold text-slate-900">Kitchen Manager</span>
                       <div
                         className={`h-4.5 w-4.5 rounded-full border flex items-center justify-center shrink-0 ${
                           formRoleType === 'MANAGER' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300'
@@ -2400,8 +2400,8 @@ export function StaffPage() {
                 <div className="flex items-center justify-between pb-2">
                   <p className="text-xs text-slate-500">
                     {isCounterView
-                      ? 'Staff member will be automatically assigned to your counter terminal.'
-                      : 'Assign this staff member to one or more counters.'}
+                      ? 'Staff member will be automatically assigned to your kitchen terminal.'
+                      : 'Assign this staff member to one or more kitchens.'}
                   </p>
                   {!isCounterView && (
                     <div className="flex items-center gap-2">
@@ -2464,7 +2464,7 @@ export function StaffPage() {
                             </div>
                             <div>
                               <p className="font-semibold text-slate-800 text-xs">{b.name}</p>
-                              <span className="text-[10px] text-slate-400">Counter Terminal</span>
+                              <span className="text-[10px] text-slate-400">Kitchen Terminal</span>
                             </div>
                           </div>
                         </div>
@@ -2506,7 +2506,7 @@ export function StaffPage() {
                 }}
                 rightIcon={<ArrowRight className="h-4 w-4" />}
               >
-                Next: Assign Counters
+                Next: Assign Kitchens
               </Button>
             )}
 
@@ -2562,7 +2562,7 @@ export function StaffPage() {
 
           <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-500 font-medium">Assigned Counter:</span>
+              <span className="text-slate-500 font-medium">Assigned Kitchen:</span>
               <span className="font-semibold text-slate-900 text-sm flex items-center gap-1.5">
                 <Building2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                 {branches.filter((b) => createdStaffCredentials?.branchIds?.includes(b.id)).map((b) => b.name).join(', ') || 'Unassigned'}
@@ -2597,7 +2597,7 @@ export function StaffPage() {
               onClick={() => {
                 if (!createdStaffCredentials) return;
                 const assignedCounter = branches.filter((b) => createdStaffCredentials?.branchIds?.includes(b.id)).map((b) => b.name).join(', ') || 'Unassigned';
-                const text = `Staff Login Credentials:\nName: ${createdStaffCredentials.name}\nCounter: ${assignedCounter}\nPhone: ${createdStaffCredentials.phone}\nPassword: ${createdStaffCredentials.password}`;
+                const text = `Staff Login Credentials:\nName: ${createdStaffCredentials.name}\nKitchen: ${assignedCounter}\nPhone: ${createdStaffCredentials.phone}\nPassword: ${createdStaffCredentials.password}`;
                 navigator.clipboard.writeText(text);
                 notify.success('Credentials copied to clipboard!');
               }}
@@ -2613,7 +2613,7 @@ export function StaffPage() {
                 const cleanPhone = createdStaffCredentials.phone.replace(/\D/g, '');
                 const targetPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
                 const assignedCounter = branches.filter((b) => createdStaffCredentials?.branchIds?.includes(b.id)).map((b) => b.name).join(', ') || 'Unassigned';
-                const message = `Hello ${createdStaffCredentials.name},\n\nYour staff account for Money Card POS has been created!\n\n• Assigned Counter: ${assignedCounter}\n• Login Phone: ${createdStaffCredentials.phone}\n• Password: ${createdStaffCredentials.password}\n\nPlease open the Money Card POS App on your phone and log in with your phone number and password.`;
+                const message = `Hello ${createdStaffCredentials.name},\n\nYour staff account for Money Card POS has been created!\n\n• Assigned Kitchen: ${assignedCounter}\n• Login Phone: ${createdStaffCredentials.phone}\n• Password: ${createdStaffCredentials.password}\n\nPlease open the Money Card POS App on your phone and log in with your phone number and password.`;
                 const waUrl = `https://wa.me/${targetPhone}?text=${encodeURIComponent(message)}`;
                 window.open(waUrl, '_blank');
               }}

@@ -98,7 +98,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         await _authRepository.logout();
         state = const AuthState(
           status: AuthStatus.error,
-          errorMessage: 'This account is assigned to Counter Manager. Please select Counter Manager to log in.',
+          errorMessage: 'This account is assigned to Kitchen Manager. Please select Kitchen Manager to log in.',
         );
         return false;
       } else if (expectedRole == 'MANAGER' && user.isKitchenStaff) {

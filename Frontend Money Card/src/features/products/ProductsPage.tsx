@@ -127,7 +127,7 @@ function CounterStaffMenuView({
   if (!branch) {
     return (
       <div className="py-12 bg-white rounded-2xl border border-slate-200 text-center">
-        <p className="text-sm text-slate-500">No counter assigned to your account.</p>
+        <p className="text-sm text-slate-500">No kitchen assigned to your account.</p>
       </div>
     );
   }
@@ -165,7 +165,7 @@ function CounterStaffMenuView({
 
       {isLoading ? (
         <div className="py-12 bg-white rounded-2xl border border-slate-200">
-          <LoadingState message="Loading counter menu..." />
+          <LoadingState message="Loading kitchen menu..." />
         </div>
       ) : filtered.length === 0 ? (
         <div className="py-12 bg-white rounded-2xl border border-slate-200">
@@ -318,7 +318,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
         setBranches(bItems);
       }
     } catch {
-      notify.error('Failed to load counters data');
+      notify.error('Failed to load kitchens data');
     } finally {
       setIsLoading(false);
     }

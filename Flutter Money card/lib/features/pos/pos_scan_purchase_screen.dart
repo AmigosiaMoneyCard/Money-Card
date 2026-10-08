@@ -360,8 +360,8 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     if (currentBranch != null && session.branchId.isNotEmpty && session.branchId != currentBranch.id) {
       await AppDialog.show(
         context,
-        title: 'Return Not Allowed at this Counter',
-        message: 'This wallet was issued at another counter. Wallets can only be returned and settled at the counter where they were issued.',
+        title: 'Return Not Allowed at this Kitchen',
+        message: 'This wallet was issued at another kitchen. Wallets can only be returned and settled at the kitchen where they were issued.',
         confirmLabel: 'Understood',
       );
       return;
@@ -415,7 +415,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
           SnackBar(
             content: Text(
               isMismatch
-                  ? 'This wallet must be returned at the counter where it was issued.'
+                  ? 'This wallet must be returned at the kitchen where it was issued.'
                   : 'Settlement failed: $e',
             ),
             backgroundColor: AppColors.error,
@@ -1370,7 +1370,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    'Staff: ${t.staffName ?? 'Counter Staff'}',
+                                    'Staff: ${t.staffName ?? 'Kitchen Staff'}',
                                     style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
                                   ),
                                   Text(
@@ -1530,7 +1530,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Text(
-                              'Issued at another counter. Return/refund only at issuing counter.',
+                              'Issued at another kitchen. Return/refund only at issuing kitchen.',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -1728,8 +1728,8 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
     if (currentBranch != null && session.branchId.isNotEmpty && session.branchId != currentBranch.id) {
       await AppDialog.show(
         context,
-        title: 'Refund Not Allowed at this Counter',
-        message: 'This wallet was issued at another counter. Refunds can only be processed at the counter where the wallet was issued.',
+        title: 'Refund Not Allowed at this Kitchen',
+        message: 'This wallet was issued at another kitchen. Refunds can only be processed at the kitchen where the wallet was issued.',
         confirmLabel: 'Understood',
       );
       return;
@@ -1792,7 +1792,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
           SnackBar(
             content: Text(
               isMismatch
-                  ? 'This wallet must be returned at the counter where it was issued.'
+                  ? 'This wallet must be returned at the kitchen where it was issued.'
                   : 'Refund failed: $e',
             ),
             backgroundColor: AppColors.error,

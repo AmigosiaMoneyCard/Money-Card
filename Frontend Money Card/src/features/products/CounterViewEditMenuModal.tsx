@@ -58,7 +58,7 @@ export function CounterViewEditMenuModal({
         notify.error(res.error.message || 'Failed to load menu items');
       }
     } catch {
-      notify.error('Error fetching counter menu');
+      notify.error('Error fetching kitchen menu');
     } finally {
       setIsLoading(false);
     }
@@ -199,7 +199,7 @@ export function CounterViewEditMenuModal({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search items in this counter..."
+              placeholder="Search items in this kitchen..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full rounded-xl border border-slate-200 bg-white pl-8 pr-8 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
@@ -220,12 +220,12 @@ export function CounterViewEditMenuModal({
         {/* Menu Items Content */}
         {isLoading ? (
           <div className="py-8">
-            <LoadingState message="Loading counter menu..." />
+            <LoadingState message="Loading kitchen menu..." />
           </div>
         ) : filteredProducts.length === 0 ? (
           <div className="py-6">
             <EmptyState
-              title={searchQuery ? 'No matching items' : 'No items in this counter yet'}
+              title={searchQuery ? 'No matching items' : 'No items in this kitchen yet'}
               description={
                 searchQuery
                   ? 'Try changing your search term.'

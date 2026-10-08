@@ -165,7 +165,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Warning banner must be visible
-      expect(find.textContaining('This wallet was issued at another counter'), findsOneWidget);
+      expect(find.textContaining('This wallet was issued at another kitchen'), findsOneWidget);
 
       // Return button should be disabled
       final returnButton = tester.widget<ElevatedButton>(find.widgetWithText(ElevatedButton, 'Return'));

@@ -931,6 +931,7 @@ export interface MenuAnalyticsSectionProps {
 export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSectionProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isTableOpen, setIsTableOpen] = useState(true);
+  const [showCancelledOrders, setShowCancelledOrders] = useState(false);
 
   const cancelledOrders = analytics.cancelledOrdersCount ?? 0;
 
@@ -962,13 +963,24 @@ export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSection
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Cancelled Orders
             </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
-              <Ban className="h-4 w-4" />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowCancelledOrders((prev) => !prev)}
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 transition-colors cursor-pointer"
+                title={showCancelledOrders ? 'Hide Cancelled Orders' : 'Show Cancelled Orders'}
+              >
+                {showCancelledOrders ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                <span>{showCancelledOrders ? 'Hide' : 'Show'}</span>
+              </button>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+                <Ban className="h-4 w-4" />
+              </div>
             </div>
           </div>
           <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-slate-900">
-              {cancelledOrders} Orders
+              {showCancelledOrders ? `${cancelledOrders} Orders` : '••••••'}
             </p>
           </div>
         </Card>

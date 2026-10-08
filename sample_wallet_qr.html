@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sample Wallet QR - KD1IRUG9</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      background: #f8fafc;
+      color: #0f172a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    }
+    .header {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #059669;
+      margin-bottom: 8px;
+    }
+    .title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 4px;
+    }
+    .wallet-id {
+      display: inline-block;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 16px;
+      font-weight: 700;
+      color: #047857;
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      border-radius: 8px;
+      padding: 6px 14px;
+      margin-top: 8px;
+      margin-bottom: 24px;
+    }
+    .qr-container {
+      background: #ffffff;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px;
+      display: inline-block;
+      margin-bottom: 20px;
+    }
+    .qr-container img {
+      width: 220px;
+      height: 220px;
+      display: block;
+    }
+    .url-box {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 12px;
+      word-break: break-all;
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    .url-label {
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: 4px;
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+    .url-link {
+      color: #2563eb;
+      text-decoration: none;
+      font-family: ui-monospace, monospace;
+    }
+    .url-link:hover {
+      text-decoration: underline;
+    }
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .btn {
+      display: inline-block;
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.15s ease;
+    }
+    .btn-primary {
+      background: #059669;
+      color: #ffffff;
+      border: none;
+    }
+    .btn-primary:hover {
+      background: #047857;
+    }
+    .btn-secondary {
+      background: #ffffff;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+    }
+    .btn-secondary:hover {
+      background: #f8fafc;
+    }
+    .footer-note {
+      margin-top: 16px;
+      font-size: 12px;
+      color: #64748b;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">Money Card Customer Portal</div>
+    <h1 class="title">Sample Wallet Credential</h1>
+    <div class="wallet-id">Wallet ID: KD1IRUG9</div>
+
+    <div class="qr-container">
+      <img src="sample_wallet_qr_KD1IRUG9.png" alt="QR Code for Wallet KD1IRUG9" />
+    </div>
+
+    <div class="url-box">
+      <div class="url-label">PWA Destination URL:</div>
+      <a class="url-link" href="https://money-card-frontend-staging.vercel.app/c/KD1IRUG9" target="_blank" rel="noopener noreferrer">
+        https://money-card-frontend-staging.vercel.app/c/KD1IRUG9
+      </a>
+    </div>
+
+    <div class="actions">
+      <a class="btn btn-primary" href="https://money-card-frontend-staging.vercel.app/c/KD1IRUG9" target="_blank" rel="noopener noreferrer">
+        Open PWA Customer Portal
+      </a>
+      <button class="btn btn-secondary" onclick="window.print()">
+        Print Card QR
+      </button>
+    </div>
+
+    <div class="footer-note">
+      Scan with a smartphone camera to launch the Customer Portal PWA, or scan using the Flutter Mobile POS app to load the wallet.
+    </div>
+  </div>
+</body>
+</html>
