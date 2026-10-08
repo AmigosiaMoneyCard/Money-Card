@@ -1,108 +1,129 @@
-# Implementation Plan: Staff Deletion, Blocked Card Modal Title & Analytics Privacy Icon
+# Implementation Plan: Super Admin Organizations Renaming, Blocked Cards View Details Modal, and Unblock Simplification
 
-![UI Design Sketch](C:\Users\damie\.gemini\antigravity-ide\brain\c99edd16-0faf-4782-a7e1-399d96eb8a4b\analytics_icon_blocked_modal_sketch_1791461822467.jpg)
+![UI Design Sketch](C:\Users\damie\.gemini\antigravity-ide\brain\c99edd16-0faf-4782-a7e1-399d96eb8a4b\blocked_view_modal_organizations_sketch_1791465222430.jpg)
 
 ## 1. Overview & Requirements
-1. **Kitchen Admin Staff Deletion**:
-   - Kitchen Admin (role STAFF managing counter) must be able to delete counter staff members directly without confusion.
-   - Prevent the self-deletion trap where the Kitchen Admin's own account displayed a delete button that triggered 'Kitchen managers cannot delete their own account.'
-   - In Counter Staff table, add a direct Delete action button for counter team members, while marking the Kitchen Admin's own row as '(You)' with delete disabled/hidden.
-   - In Edit Staff modal, hide the Delete button when viewing own account.
 
-2. **Blocked Card Modal Renaming**:
-   - In `ResolveBlockedWalletModal.tsx`, change modal title from `Resolve Blocked Wallet: ${cardIdentifier}` to `Blocked: ${cardIdentifier}` (e.g. `Blocked: KD1NIICJY`).
+1. **Super Admin Organizations Renaming**:
+   - In Super Admin `OrganizationsPage.tsx`, rename header `Platform Cafeterias` to `Organizations`.
+   - Rename details modal title `Cafeteria Overview` to `Organization Overview`.
 
-3. **Analytics Impact of 'Transfer ₹X'**:
-   - Explanation of how card balance replacement works in analytics and which boxes are impacted:
-     - Transfer transaction is recorded as `TRANSFER` type with `TRANSFER` payment method.
-     - Cash and Revenue boxes (Money Added, Total Recharges, UPI Money, Cash in Drawer, Total Revenue): Unchanged (0 delta). Money was already collected during initial recharge; no new cash entered or left.
-     - Card Analytics: Blocked card remains BLOCKED / settled. New replacement card becomes ACTIVE with the ₹X balance. Blocked wallets count decreases by 1.
-     - If Cash/UPI Refund mode is chosen instead: Money Refunded increases by ₹X, Cash/UPI Out increases by ₹X, and Net Money Collected decreases by ₹X.
+2. **Blocked Wallet Analytics Inquiries & Parity**:
+   - **Replace Card (Transfer Balance)**:
+     - Migrates the locked balance to the new replacement physical card via `TRANSFER` transaction.
+     - Logs `CARD_REPLACED` event on source card and `CARD_ISSUED` on target card.
+     - **Blocked Returns Box**: In `analytics.controller.ts`, the `CARD_REPLACED` event tracks `Balance migrated: ₹X`. We ensure both `blockedReturnedCount` and `blockedReturnedAmount` accurately reflect the replaced card and its migrated balance.
+     - **Revenue / Recharges Boxes**: Unaffected (0 delta) to prevent double-counting of initial recharge money.
+   - **Cash / UPI Refund**:
+     - Settles the session with `TransactionType.REFUND_RETURN`.
+     - **Refund Analytics Box**: Reflects immediately in `Refunds` (`moneyRefunded`), `Cash Refunds` / `Cash Out` (or UPI Refunds), and reduces `Net Money Collected`.
 
-4. **Analytics Privacy Masked State (Replace '••••••' with Simple Icon)**:
-   - In `OrgAdminAnalyticsComponents.tsx`, `OrgAdminCardTracker.tsx`, and `SuperAdminDashboard.tsx`, replace the text `'••••••'` (which resembles a password input) with a clean, sleek `<EyeOff className="h-5 w-5 text-slate-300 inline-block align-middle" />` icon placeholder.
+3. **Blocked Cards Table 'View' Button & Details Modal**:
+   - In `BlockedWalletsTableView.tsx`, add a `[View]` button to the Actions column.
+   - Clicking `[View]` opens a dedicated modal titled `Blocked Wallet Details: <CardID>`.
+   - Displays all key card audit attributes in clean structured cards:
+     - **Customer**: Name and Phone number
+     - **Locked Balance**: Large formatted balance badge
+     - **Blocked Reason**: Full text of the block reason
+     - **Counter / Kitchen**: Assigned counter name (e.g. `Counter 1`)
+     - **Blocked By**: Staff or admin who blocked the card
+     - **Blocked Date**: Formatted date & time
+   - Streamline table columns for optimal readability and viewport fit.
+
+4. **Unblock Confirmation Modal Text Simplification**:
+   - In `BlockedWalletsTableView.tsx` Unblock modal, remove the sentence:
+     `Unblocking will restore the card to Active status and allow purchases and recharges to resume immediately.`
+   - Keep the clean confirmation header and key card parameters.
 
 ---
 
 ## 2. ASCII Wireframes
 
-### Wireframe 1: Counter Staff Table with Direct Delete and '(You)' Tag
+### Wireframe 1: Super Admin Organizations Page
 ```
-+--------------------------------------------------------------------------------------------------+
-| Kitchen Staff Management                                              [+ Add Team Member]       |
-+--------------------------------------------------------------------------------------------------+
-| Staff Name             | Phone Number   | Role            | Status    | Actions                  |
-+------------------------+----------------+-----------------+-----------+--------------------------+
-| Damien (You)           | +91 9876543210 | Kitchen Manager | [ACTIVE]  | [Edit]   [Summary]       |
-| Priya Sharma           | +91 9876543211 | Kitchen Staff   | [ACTIVE]  | [Edit]   [Summary] [Del] |
-| Rajesh Kumar           | +91 9876543212 | Kitchen Staff   | [ACTIVE]  | [Edit]   [Summary] [Del] |
-+--------------------------------------------------------------------------------------------------+
++------------------------------------------------------------------------------------+
+| Organizations                                                [+ Add Organization]  |
++------------------------------------------------------------------------------------+
+| Search organizations...                                                            |
++------------------------------------------------------------------------------------+
+| Organization Name       | Plan       | Status    | Counters | Created     | Actions|
+| Downtown Cafeteria      | Premium    | [ACTIVE]  | 3        | 12 Jan 2026 | [View] |
++------------------------------------------------------------------------------------+
 ```
 
-### Wireframe 2: Blocked Card Modal Title Renaming
+### Wireframe 2: Blocked Cards Table with View Button
+```
++------------------------------------------------------------------------------------------------------+
+| Blocked Wallets                                                                                      |
++------------------------------------------------------------------------------------------------------+
+| Wallet ID       | Customer             | Locked Bal | Actions                                        |
++-----------------+----------------------+------------+------------------------------------------------+
+| KD1NIICJY       | Rohan (+91 98765...) | ₹2,500     | [View]  [Unblock]  [Replace / Refund]  [History] |
+| MC-98124        | Priya (+91 98111...) | ₹120       | [View]  [Unblock]  [Replace / Refund]  [History] |
++------------------------------------------------------------------------------------------------------+
+```
+
+### Wireframe 3: Blocked Wallet Details Modal (Opened via [View] Button)
 ```
 +-----------------------------------------------------------------------+
-| Blocked: KD1NIICJY                                                [X] |
+| Blocked Wallet Details: KD1NIICJY                                 [X] |
 +-----------------------------------------------------------------------+
-|  LOCKED BALANCE                                       [CreditCard]    |
+|  CUSTOMER DETAILS                                                     |
+|  Rohan Sharma  (+91 9876543210)                                       |
++-----------------------------------------------------------------------+
+|  LOCKED BALANCE                                                       |
 |  ₹2,500                                                               |
-|  Rohan Sharma (+91 9876543210)                                        |
 +-----------------------------------------------------------------------+
-|  [  <-> Replace Card  ]          [  Cash / UPI Refund  ]              |
+|  BLOCKED REASON                                                       |
+|  Card physically damaged / magnetic stripe corrupted                  |
 +-----------------------------------------------------------------------+
-|  New Physical Card                                                    |
-|  [ Type card number or scan...                   ] [ Scan ]           |
-|                                                                       |
-|  Reason (Optional)                                                    |
-|  [ Damaged or lost card replaced                 ]                    |
+|  COUNTER / KITCHEN                                                    |
+|  Counter 1                                                            |
 +-----------------------------------------------------------------------+
-|  [ Cancel ]                                   [ Transfer ₹2,500 ]     |
+|  BLOCKED BY                               | BLOCKED DATE & TIME       |
+|  Counter Manager (Damien)                 | 08 Oct 2026, 04:30 PM     |
++-----------------------------------------------------------------------+
+|  [ Close ]              [ Unblock Card ]        [ Replace / Refund ]  |
 +-----------------------------------------------------------------------+
 ```
 
-### Wireframe 3: Analytics Privacy Masking (Icon instead of ••••••)
+### Wireframe 4: Simplified Unblock Card Modal
 ```
-Before:
-+-------------------------------+   +-------------------------------+
-| Total Recharges       [Wallet]|   | UPI Recharge     [CreditCard] |
-| ••••••                        |   | ••••••                        |
-+-------------------------------+   +-------------------------------+
-
-After (Sleek Privacy EyeOff Icon):
-+-------------------------------+   +-------------------------------+
-| Total Recharges       [Wallet]|   | UPI Recharge     [CreditCard] |
-| [EyeOff Icon]                 |   | [EyeOff Icon]                 |
-+-------------------------------+   +-------------------------------+
++-----------------------------------------------------------------------+
+| Unblock Card                                                      [X] |
++-----------------------------------------------------------------------+
+|  [Alert] Are you sure you want to unblock this card?                  |
++-----------------------------------------------------------------------+
+|  Wallet ID: KD1NIICJY                                                 |
+|  Locked Balance: ₹2,500                                               |
+|  Original Reason: Customer requested temporary hold                   |
++-----------------------------------------------------------------------+
+|  [ Cancel ]                                          [ Confirm Unblock]|
++-----------------------------------------------------------------------+
 ```
 
 ---
 
 ## 3. Worktree & File Changes
 
-1. `Frontend Money Card/src/features/cards/ResolveBlockedWalletModal.tsx`:
-   - Line 211: Rename `title={`Resolve Blocked Wallet: ${cardIdentifier}`}` to `title={`Blocked: ${cardIdentifier}`}`.
+1. `Frontend Money Card/src/features/organizations/OrganizationsPage.tsx`:
+   - Line 741: Change `Platform Cafeterias` to `Organizations`.
+   - Line 997: Change modal title `Cafeteria Overview` to `Organization Overview`.
 
-2. `Frontend Money Card/src/features/staff/CounterStaffPage.tsx`:
-   - In staff table actions column: Add direct `[Delete]` button (`Trash2`) for staff members where `staff.id !== user?.id`.
-   - In staff table name column: Add `(You)` badge for `staff.id === user?.id`.
-   - In `showStaffDetailsModal` footer: Only show `Delete Staff` button when `selectedStaff?.id !== user?.id`.
+2. `Frontend Money Card/src/features/cards/BlockedWalletsTableView.tsx`:
+   - Add `selectedCardForDetails` state to trigger the details modal.
+   - In table rows, add `[View]` button (`leftIcon={<Eye className="h-3.5 w-3.5" />}`).
+   - Render `Blocked Wallet Details` modal showing Customer, Locked Balance, Blocked Reason, Counter, Blocked By, Blocked Date.
+   - In Unblock Modal, remove the sentence `Unblocking will restore the card to Active status and allow purchases and recharges to resume immediately.`.
 
-3. `Frontend Money Card/src/features/analytics/OrgAdminAnalyticsComponents.tsx`:
-   - Replace occurrences of `'••••••'` with `<EyeOff className="h-5 w-5 text-slate-300 inline-block align-middle" />` for masked metric values.
-
-4. `Frontend Money Card/src/features/analytics/OrgAdminCardTracker.tsx`:
-   - Replace occurrences of `'••••••'` with `<EyeOff className="h-4 w-4 text-slate-300 inline-block align-middle" />`.
-
-5. `Frontend Money Card/src/features/dashboard/SuperAdminDashboard.tsx`:
-   - Replace occurrences of `'••••••'` in metric cards with `<EyeOff className="h-5 w-5 text-slate-300 inline-block align-middle" />`.
-
-6. `Backend Money Card/src/controllers/staff.controller.ts`:
-   - Ensure clear error handling for self-deletion check: `You cannot delete your own account.`.
+3. `Backend Money Card/src/controllers/cards.controller.ts`:
+   - Ensure `CARD_REPLACED` audit event reason includes `Balance migrated: ₹${lockedBalance.toFixed(2)}` so analytics `blockedReturnedAmount` parses it reliably.
 
 ---
 
 ## 4. Verification & Testing Plan
 - Run `npx tsc --noEmit` in `Frontend Money Card` to verify 0 type errors.
-- Run `npm test -- --run` in `Frontend Money Card` to verify all unit tests pass.
-- Verify modal title renders `Blocked: <cardIdentifier>`.
-- Verify hidden analytics metrics show the EyeOff icon cleanly.
+- Run `npm test -- --run` in `Frontend Money Card` to verify all 322 tests pass.
+- Run `npm test` in `Backend Money Card` to verify all 129 backend tests pass.
+- Verify modal title and page headers match the renamed labels.
+- Verify Unblock modal renders without the removed sentence.

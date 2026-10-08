@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   ArrowLeftRight,
+  Eye,
 } from 'lucide-react';
 import { ResolveBlockedWalletModal } from './ResolveBlockedWalletModal';
 
@@ -45,6 +46,7 @@ export function BlockedWalletsTableView({
   const [searchQuery, setSearchQuery] = useState('');
   const [cardToUnblock, setCardToUnblock] = useState<CardEntity | null>(null);
   const [cardToResolve, setCardToResolve] = useState<CardEntity | null>(null);
+  const [selectedCardForDetails, setSelectedCardForDetails] = useState<CardEntity | null>(null);
   const [isUnblocking, setIsUnblocking] = useState(false);
 
   const availableCardsList = useMemo(() => {
@@ -260,6 +262,15 @@ export function BlockedWalletsTableView({
                       {/* 7. Actions */}
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
                         <div className="inline-flex items-center gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedCardForDetails(card)}
+                            className="text-xs h-8 px-2.5 rounded-lg border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer shadow-2xs"
+                            leftIcon={<Eye className="h-3.5 w-3.5 text-slate-600" />}
+                          >
+                            View
+                          </Button>
 
                           {onOpenCustomerHistory && (
                             <Button
@@ -319,9 +330,6 @@ export function BlockedWalletsTableView({
               <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
               <div className="text-xs leading-relaxed">
                 <p className="font-bold">Are you sure you want to unblock this card?</p>
-                <p className="mt-1 text-amber-800">
-                  Unblocking will restore the card to Active status and allow purchases and recharges to resume immediately.
-                </p>
               </div>
             </div>
 
@@ -384,6 +392,145 @@ export function BlockedWalletsTableView({
           if (onRefresh) onRefresh();
         }}
       />
+
+      {/* ─── 6. Blocked Wallet Details Modal ─── */}
+      {selectedCardForDetails && (
+        <Modal
+          isOpen={Boolean(selectedCardForDetails)}
+          onClose={() => setSelectedCardForDetails(null)}
+          title={`Blocked Details: ${selectedCardForDetails.physicalCardNumber || selectedCardForDetails.qrToken || selectedCardForDetails.id}`}
+          size="md"
+        >
+          {(() => {
+            const card = selectedCardForDetails;
+            const customerName = card.activeSession?.customerName;
+            const customerPhone = card.activeSession?.customerPhone;
+            const lockedBal = card.activeSession?.balance || 0;
+            const branchName = getBranchName(card) || 'Counter 1';
+            const blocker = card.blockedBy || 'Administrator';
+            const reasonText = cleanBlockReasonDisplay(card.blockedReason, blocker);
+            const blockedDate = card.blockedAt || card.updatedAt || card.createdAt;
+
+            return (
+              <div className="space-y-3.5 text-xs">
+                {/* Locked Balance Card */}
+                <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-3.5 flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 block">
+                      Locked Balance
+                    </span>
+                    <span className="font-mono text-2xl font-black text-rose-950 leading-tight">
+                      {formatCurrency(lockedBal)}
+                    </span>
+                  </div>
+                  <div className="h-9 w-9 rounded-xl bg-white border border-rose-200 flex items-center justify-center text-rose-700 shadow-2xs">
+                    <CreditCard className="h-4 w-4" />
+                  </div>
+                </div>
+
+                {/* Customer Details */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                    Customer Details
+                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-slate-900 text-sm">
+                      {customerName || 'Unassigned Customer'}
+                    </span>
+                    {customerPhone && (
+                      <span className="font-mono text-xs text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
+                        +91 {customerPhone}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Blocked Reason */}
+                <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                    Blocked Reason
+                  </span>
+                  <p className="text-slate-800 font-medium leading-relaxed bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                    {reasonText}
+                  </p>
+                </div>
+
+                {/* Counter, Blocked By & Blocked Date */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-2.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-0.5">
+                      Counter
+                    </span>
+                    <span className="font-semibold text-slate-900 text-xs flex items-center gap-1">
+                      <Store className="h-3 w-3 text-slate-500" />
+                      {branchName}
+                    </span>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-2.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-0.5">
+                      Blocked By
+                    </span>
+                    <span className="font-semibold text-slate-900 text-xs truncate block">
+                      {blocker}
+                    </span>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-2.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-0.5">
+                      Blocked Date
+                    </span>
+                    <span className="font-semibold text-slate-900 text-xs block">
+                      {blockedDate ? formatDate(blockedDate) : '—'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Modal Footer with Actions */}
+                <ModalFooter className="flex items-center justify-between pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedCardForDetails(null)}
+                  >
+                    Close
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    {canUnblock && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => {
+                          const target = selectedCardForDetails;
+                          setSelectedCardForDetails(null);
+                          setCardToUnblock(target);
+                        }}
+                        leftIcon={<CheckCircle2 className="h-3.5 w-3.5" />}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                      >
+                        Unblock
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const target = selectedCardForDetails;
+                        setSelectedCardForDetails(null);
+                        setCardToResolve(target);
+                      }}
+                      className="border-blue-200 text-blue-700 bg-blue-50/60 hover:bg-blue-100 hover:border-blue-300 font-semibold"
+                      leftIcon={<ArrowLeftRight className="h-3.5 w-3.5 text-blue-600" />}
+                    >
+                      Replace / Refund
+                    </Button>
+                  </div>
+                </ModalFooter>
+              </div>
+            );
+          })()}
+        </Modal>
+      )}
     </div>
   );
 }

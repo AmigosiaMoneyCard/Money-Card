@@ -738,7 +738,7 @@ export function OrganizationsPage() {
       {/* ── Page Header ── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Platform Cafeterias</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Organizations</h1>
         </div>
 
         <div>
@@ -994,7 +994,7 @@ export function OrganizationsPage() {
           setShowDetailsModal(false);
           setIsEditingName(false);
         }}
-        title="Cafeteria Overview"
+        title="Organization Overview"
       >
         {selectedOrg && (
           <div className="space-y-6 py-2">

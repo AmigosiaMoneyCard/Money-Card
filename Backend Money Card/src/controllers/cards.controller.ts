@@ -770,7 +770,7 @@ export async function replaceCard(req: Request, res: Response) {
         performedByUserId: staffUserId || null,
         branchId: activeSession.branchId || null,
         branchName: activeSession.branch?.name || null,
-        reason: `Replaced by card ${targetCardNum}. ${reason}`,
+        reason: `Replaced by card ${targetCardNum}. Balance migrated: ₹${lockedBalance.toFixed(2)}. ${reason}`,
       },
     });
 
