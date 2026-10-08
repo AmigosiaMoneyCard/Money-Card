@@ -537,7 +537,7 @@ export function SuperAdminDashboard() {
                       <div className="font-mono text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
                         {showMoneyAdded
                           ? formatCurrency(analytics?.moneyAdded ?? analytics?.totalRechargeVolume ?? analytics?.rechargeVolume ?? 0)
-                          : '••••••'}
+                          : <EyeOff className="h-5 w-5 text-slate-300 inline-block align-middle" />}
                       </div>
                       <p className="mt-0.5 text-[11px] font-medium text-slate-400">
                         {`${analytics?.rechargeCount ?? 0} recharges`}
@@ -568,7 +568,7 @@ export function SuperAdminDashboard() {
                       <div className="font-mono text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
                         {showCancelled
                           ? formatCurrency(analytics?.cancelledTopUps ?? 0)
-                          : '••••••'}
+                          : <EyeOff className="h-5 w-5 text-amber-300 inline-block align-middle" />}
                       </div>
                       <p className="mt-0.5 text-[11px] font-medium text-slate-400">
                         {`${analytics?.cancelledTopUpsCount ?? 0} cancelled`}
@@ -599,7 +599,7 @@ export function SuperAdminDashboard() {
                       <div className="font-mono text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
                         {showRefunds
                           ? formatCurrency(analytics?.totalRefundVolume ?? analytics?.moneyRefunded ?? 0)
-                          : '••••••'}
+                          : <EyeOff className="h-5 w-5 text-rose-300 inline-block align-middle" />}
                       </div>
                       <p className="mt-0.5 text-[11px] font-medium text-slate-400">
                         {`${analytics?.refundCount ?? 0} refunds`}

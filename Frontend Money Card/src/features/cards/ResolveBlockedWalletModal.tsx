@@ -208,7 +208,7 @@ export function ResolveBlockedWalletModal({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title={`Resolve Blocked Wallet: ${cardIdentifier}`}
+      title={`Blocked: ${cardIdentifier}`}
       size="sm"
     >
       <div className="space-y-3.5 text-xs">

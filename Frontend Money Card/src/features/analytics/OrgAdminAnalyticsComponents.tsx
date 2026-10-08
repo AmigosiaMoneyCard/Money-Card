@@ -131,7 +131,7 @@ export function OrgAdminFinancialSection({
             </div>
             <div className="mt-2">
               <p className="font-mono text-2xl font-bold text-slate-900">
-                {showRecharges ? formatCurrency(moneyAdded) : '••••••'}
+                {showRecharges ? formatCurrency(moneyAdded) : <EyeOff className="h-5 w-5 text-slate-300 inline-block align-middle" />}
               </p>
             </div>
           </div>
@@ -148,7 +148,7 @@ export function OrgAdminFinancialSection({
             </div>
             <div className="mt-2">
               <p className="font-mono text-2xl font-bold text-purple-700">
-                {showRecharges ? formatCurrency(upiMoney) : '••••••'}
+                {showRecharges ? formatCurrency(upiMoney) : <EyeOff className="h-5 w-5 text-purple-300 inline-block align-middle" />}
               </p>
             </div>
           </div>
@@ -165,7 +165,7 @@ export function OrgAdminFinancialSection({
             </div>
             <div className="mt-2">
               <p className="font-mono text-2xl font-bold text-emerald-700">
-                {showRecharges ? formatCurrency(cashMoney) : '••••••'}
+                {showRecharges ? formatCurrency(cashMoney) : <EyeOff className="h-5 w-5 text-emerald-300 inline-block align-middle" />}
               </p>
             </div>
           </div>
@@ -200,7 +200,7 @@ export function OrgAdminFinancialSection({
           </div>
           <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-rose-600">
-              {showRefunds ? formatCurrency(moneyRefunded) : '••••••'}
+              {showRefunds ? formatCurrency(moneyRefunded) : <EyeOff className="h-5 w-5 text-rose-300 inline-block align-middle" />}
             </p>
           </div>
         </Card>
@@ -228,7 +228,7 @@ export function OrgAdminFinancialSection({
           </div>
           <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-amber-600">
-              {showCancelled ? formatCurrency(cancelledTopUps) : '••••••'}
+              {showCancelled ? formatCurrency(cancelledTopUps) : <EyeOff className="h-5 w-5 text-amber-300 inline-block align-middle" />}
             </p>
           </div>
         </Card>
@@ -256,7 +256,7 @@ export function OrgAdminFinancialSection({
           </div>
           <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-emerald-600">
-              {showRetained ? formatCurrency(retainedCardProfit) : '••••••'}
+              {showRetained ? formatCurrency(retainedCardProfit) : <EyeOff className="h-5 w-5 text-emerald-300 inline-block align-middle" />}
             </p>
           </div>
         </Card>
@@ -284,7 +284,7 @@ export function OrgAdminFinancialSection({
           </div>
           <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-blue-600">
-              {showBlockedReturns ? formatCurrency(blockedReturnedAmount) : '••••••'}
+              {showBlockedReturns ? formatCurrency(blockedReturnedAmount) : <EyeOff className="h-5 w-5 text-blue-300 inline-block align-middle" />}
             </p>
             <p className="mt-0.5 text-[11px] font-medium text-slate-400">
               {`${blockedReturnedCount} cards`}
@@ -1015,7 +1015,7 @@ export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSection
           </div>
           <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-slate-900">
-              {showCancelledOrders ? `${cancelledOrders} Orders` : '••••••'}
+              {showCancelledOrders ? `${cancelledOrders} Orders` : <EyeOff className="h-5 w-5 text-slate-300 inline-block align-middle" />}
             </p>
           </div>
         </Card>

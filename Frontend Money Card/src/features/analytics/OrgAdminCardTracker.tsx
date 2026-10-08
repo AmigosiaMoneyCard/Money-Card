@@ -83,7 +83,7 @@ export function OrgAdminCardTracker({
         </div>
         <div className="mt-2">
           <p className="font-mono text-2xl font-bold text-slate-900">
-            {showSettled ? closedCardsCount.toLocaleString() : '••••••'}
+            {showSettled ? closedCardsCount.toLocaleString() : <EyeOff className="h-5 w-5 text-slate-300 inline-block align-middle" />}
           </p>
         </div>
       </Card>
@@ -111,7 +111,7 @@ export function OrgAdminCardTracker({
         </div>
         <div className="mt-2">
           <p className="font-mono text-2xl font-bold text-rose-600">
-            {showBlocked ? blockedCount.toLocaleString() : '••••••'}
+            {showBlocked ? blockedCount.toLocaleString() : <EyeOff className="h-5 w-5 text-rose-300 inline-block align-middle" />}
           </p>
         </div>
       </Card>
@@ -139,7 +139,7 @@ export function OrgAdminCardTracker({
         </div>
         <div className="mt-2">
           <p className="font-mono text-2xl font-bold text-rose-600">
-            {showBlockedBalance ? formatCurrency(effectiveBlockedBalance) : '••••••'}
+            {showBlockedBalance ? formatCurrency(effectiveBlockedBalance) : <EyeOff className="h-5 w-5 text-rose-300 inline-block align-middle" />}
           </p>
         </div>
       </Card>
@@ -167,7 +167,7 @@ export function OrgAdminCardTracker({
         </div>
         <div className="mt-2">
           <p className="font-mono text-2xl font-bold text-amber-700">
-            {showZeroBalance ? zeroBalanceActiveCardsCount.toLocaleString() : '••••••'}
+            {showZeroBalance ? zeroBalanceActiveCardsCount.toLocaleString() : <EyeOff className="h-5 w-5 text-amber-300 inline-block align-middle" />}
           </p>
         </div>
       </Card>
@@ -195,7 +195,7 @@ export function OrgAdminCardTracker({
         </div>
         <div className="mt-2">
           <p className="font-mono text-2xl font-bold text-orange-700">
-            {showInactive ? inactiveCount.toLocaleString() : '••••••'}
+            {showInactive ? inactiveCount.toLocaleString() : <EyeOff className="h-5 w-5 text-orange-300 inline-block align-middle" />}
           </p>
         </div>
       </Card>

@@ -557,6 +557,11 @@ export function CounterStaffPage() {
             <User className="h-4 w-4" />
           </div>
           <span className="font-semibold text-slate-900 text-sm">{staff.name}</span>
+          {staff.id === user?.id && (
+            <Badge variant="outline" className="text-[10px] bg-slate-100 text-slate-600 border-slate-200 font-semibold px-1.5 py-0">
+              You
+            </Badge>
+          )}
         </div>
       ),
     },
@@ -640,6 +645,18 @@ export function CounterStaffPage() {
           >
             Summary
           </Button>
+          {canManage && staff.id !== user?.id && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleOpenDelete(staff)}
+              className="text-xs h-7 px-2 rounded-lg border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 transition-all shadow-2xs cursor-pointer"
+              leftIcon={<Trash2 className="h-3 w-3 text-rose-600" />}
+              title="Delete staff member"
+            >
+              Delete
+            </Button>
+          )}
         </div>
       ),
     },
@@ -1258,7 +1275,7 @@ export function CounterStaffPage() {
           )}
 
           <ModalFooter className="justify-between">
-            {canManage && selectedStaff ? (
+            {canManage && selectedStaff && selectedStaff.id !== user?.id ? (
               <Button
                 variant="outline"
                 type="button"

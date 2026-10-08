@@ -669,7 +669,7 @@ export async function deleteStaffMember(req: Request, res: Response) {
 
   if (req.user?.role === Role.STAFF) {
     if (user.id === req.user.id) {
-      return sendError(res, 400, 'CANNOT_DELETE_SELF', 'Kitchen managers cannot delete their own account.');
+      return sendError(res, 400, 'CANNOT_DELETE_SELF', 'You cannot delete your own account.');
     }
     const myBranches = await prisma.userBranch.findMany({
       where: { userId: req.user.id },
