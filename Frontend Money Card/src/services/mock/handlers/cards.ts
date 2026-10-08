@@ -383,6 +383,67 @@ export const mockCardsHandlers = {
     return createMockSuccess(card);
   },
 
+  // POST /api/v1/cards/:id/replace
+  async replaceCard(id: string, req: { targetCardId: string; reason?: string }): Promise<ApiResult<any>> {
+    await mockDelay();
+    const currentUser = mockAuthHandlers.getCurrentSessionUser();
+    if (!currentUser) return createMockError('UNAUTHORIZED', 'Authentication required');
+
+    const sourceCard = mockStore.cards.find((c) => c.id === id);
+    if (!sourceCard) return createMockError('CARD_NOT_FOUND', 'Source card not found');
+
+    const targetCard = mockStore.cards.find(
+      (c) => c.id === req.targetCardId || c.qrToken === req.targetCardId || c.physicalCardNumber === req.targetCardId,
+    );
+    if (!targetCard) return createMockError('CARD_NOT_FOUND', 'Target card not found');
+
+    const oldSession = sourceCard.activeSession;
+    const lockedBal = oldSession?.balance || 0;
+    const branchId = oldSession?.branchId || (currentUser as any).branchId || 'branch_001';
+    const oldCustName = oldSession?.customerName || 'Customer';
+    const oldCustPhone = oldSession?.customerPhone || null;
+
+    // Settle old card session
+    if (sourceCard.activeSession) {
+      sourceCard.activeSession.balance = 0;
+      sourceCard.activeSession = null;
+    }
+
+    // Activate new card
+    targetCard.status = 'ACTIVE';
+    targetCard.activeSession = {
+      id: mockStore.generateId('sess'),
+      balance: lockedBal,
+      branchId,
+      branchName: 'Main Branch',
+      sessionCardNumber: `${targetCard.physicalCardNumber || 'MC'}_1`,
+      cycleNumber: 1,
+      customerName: oldCustName,
+      customerPhone: oldCustPhone,
+      issuedAt: mockStore.getTimestamp(),
+    };
+
+    mockStore.customerHistoryEvents.unshift({
+      id: mockStore.generateId('evt'),
+      organizationId: sourceCard.organizationId,
+      branchId,
+      branchName: 'Main Branch',
+      cardId: sourceCard.id,
+      physicalCardNumber: sourceCard.physicalCardNumber || 'UNASSIGNED',
+      action: 'CARD_REPLACED' as any,
+      reason: `Replaced by card ${targetCard.physicalCardNumber || targetCard.qrToken}. Balance migrated: ₹${lockedBal.toFixed(2)}`,
+      performedByUserId: currentUser.id,
+      performedByName: currentUser.name,
+      createdAt: mockStore.getTimestamp(),
+    });
+
+    return createMockSuccess({
+      message: `Card replaced successfully with ₹${lockedBal.toFixed(2)} migrated.`,
+      sourceCard,
+      targetCard,
+    });
+  },
+
   // GET /api/v1/customer-history
   async getCustomerHistoryEvents(params?: any): Promise<ApiResult<PaginatedData<CustomerHistoryEvent>>> {
     await mockDelay();

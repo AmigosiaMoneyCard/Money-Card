@@ -17,10 +17,13 @@ import {
   History,
   CheckCircle2,
   AlertTriangle,
+  ArrowLeftRight,
 } from 'lucide-react';
+import { ResolveBlockedWalletModal } from './ResolveBlockedWalletModal';
 
 interface BlockedWalletsTableViewProps {
   cards: CardEntity[];
+  availableCards?: CardEntity[];
   branches?: Branch[];
   isLoading?: boolean;
   error?: string | null;
@@ -31,6 +34,7 @@ interface BlockedWalletsTableViewProps {
 
 export function BlockedWalletsTableView({
   cards,
+  availableCards,
   branches = [],
   isLoading = false,
   error = null,
@@ -40,7 +44,13 @@ export function BlockedWalletsTableView({
 }: BlockedWalletsTableViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [cardToUnblock, setCardToUnblock] = useState<CardEntity | null>(null);
+  const [cardToResolve, setCardToResolve] = useState<CardEntity | null>(null);
   const [isUnblocking, setIsUnblocking] = useState(false);
+
+  const availableCardsList = useMemo(() => {
+    if (availableCards && availableCards.length > 0) return availableCards;
+    return cards.filter((c) => c.status === 'AVAILABLE' && !c.activeSession);
+  }, [availableCards, cards]);
 
   // Map branches for quick lookup
   const branchMap = useMemo(() => {
@@ -249,14 +259,14 @@ export function BlockedWalletsTableView({
 
                       {/* 7. Actions */}
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                        <div className="inline-flex items-center gap-2">
+                        <div className="inline-flex items-center gap-1.5">
 
                           {onOpenCustomerHistory && (
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => onOpenCustomerHistory(card)}
-                              className="text-xs h-8 px-3 rounded-lg border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
+                              className="text-xs h-8 px-2.5 rounded-lg border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 font-medium cursor-pointer"
                               leftIcon={<History className="h-3.5 w-3.5 text-emerald-600" />}
                             >
                               Customer History
@@ -268,12 +278,23 @@ export function BlockedWalletsTableView({
                               variant="primary"
                               size="sm"
                               onClick={() => setCardToUnblock(card)}
-                              className="text-xs h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold cursor-pointer shadow-2xs"
+                              className="text-xs h-8 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold cursor-pointer shadow-2xs"
                               leftIcon={<CheckCircle2 className="h-3.5 w-3.5" />}
                             >
                               Unblock
                             </Button>
                           )}
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCardToResolve(card)}
+                            className="text-xs h-8 px-2.5 rounded-lg border-blue-200 text-blue-700 bg-blue-50/60 hover:bg-blue-100 hover:border-blue-300 font-semibold cursor-pointer shadow-2xs"
+                            leftIcon={<ArrowLeftRight className="h-3.5 w-3.5 text-blue-600" />}
+                            title="Replace card & transfer balance or refund in cash"
+                          >
+                            Replace / Refund
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -351,6 +372,18 @@ export function BlockedWalletsTableView({
           </div>
         </Modal>
       )}
+
+      {/* ─── 5. Resolve Blocked Wallet (Replace / Refund) Modal ─── */}
+      <ResolveBlockedWalletModal
+        isOpen={Boolean(cardToResolve)}
+        onClose={() => setCardToResolve(null)}
+        card={cardToResolve}
+        availableCards={availableCardsList}
+        onSuccess={() => {
+          setCardToResolve(null);
+          if (onRefresh) onRefresh();
+        }}
+      />
     </div>
   );
 }

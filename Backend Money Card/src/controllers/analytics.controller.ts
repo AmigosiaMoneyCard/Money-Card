@@ -352,7 +352,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
         ...(fromDate || toDate ? { issuedAt: dateFilter } : {}),
       },
       include: {
-        card: { select: { physicalCardNumber: true } },
+        card: { select: { physicalCardNumber: true, status: true } },
         branch: { select: { name: true } },
       },
       orderBy: { issuedAt: 'desc' },
@@ -953,6 +953,28 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       .reduce((acc, s) => acc + (s.balance || 0), 0)
       .toFixed(2),
   );
+
+  let blockedReturnedAmount = 0;
+  let blockedReturnedCount = 0;
+
+  historyEvents.forEach((ev) => {
+    if (ev.action === 'CARD_REPLACED') {
+      blockedReturnedCount++;
+      const match = ev.reason?.match(/Balance migrated:\s*₹?([\d.]+)/);
+      if (match && match[1]) {
+        blockedReturnedAmount += parseFloat(match[1]) || 0;
+      }
+    }
+  });
+
+  allSessions.forEach((s) => {
+    if (s.status === 'SETTLED' && (s as any).card?.status === 'BLOCKED' && (s.refundAmount || 0) > 0) {
+      blockedReturnedAmount += s.refundAmount || 0;
+      blockedReturnedCount++;
+    }
+  });
+  blockedReturnedAmount = Number(blockedReturnedAmount.toFixed(2));
+
   const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
 
   const cardItems = activeSessionsList.map((s) => {
@@ -1246,6 +1268,8 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     totalFloatBalance,
     blockedCardsCount,
     blockedBalance,
+    blockedReturnedAmount,
+    blockedReturnedCount,
 
     // Menu Analytics & Food Order Metrics
     foodOrdersCount,

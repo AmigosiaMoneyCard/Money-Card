@@ -2,9 +2,10 @@ import { Request, Response } from 'express';
 import { prisma } from '../config/database.js';
 import { sendError, sendSuccess } from '../utils/response.js';
 import { generateQrToken } from '../utils/crypto.js';
-import { CardStatus, CardAssignmentStatus, CardHistoryAction, SessionStatus } from '@prisma/client';
+import { CardStatus, CardAssignmentStatus, CardHistoryAction, SessionStatus, TransactionType } from '@prisma/client';
 import { getEffectiveLimits } from '../utils/limits.js';
 import { recordAuditLog } from '../services/auditLog.service.js';
+import { balanceStreamService } from '../services/balanceStream.service.js';
 
 export async function getCards(req: Request, res: Response) {
   const orgId = req.user?.organizationId;
@@ -605,6 +606,227 @@ export async function unblockCard(req: Request, res: Response) {
     card: updatedCard,
     auditEvent,
     message: `Card ${card.physicalCardNumber || card.qrToken} has been successfully unblocked.`,
+  });
+}
+
+export async function replaceCard(req: Request, res: Response) {
+  const { id } = req.params;
+  const { targetCardId, reason = 'Damaged/Lost card replaced' } = req.body || {};
+  const orgId = req.user?.organizationId;
+  const staffUserId = req.user?.id;
+  const staffName = req.user?.name || req.user?.email || 'Administrator';
+
+  if (!orgId) {
+    return sendError(res, 400, 'VALIDATION_ERROR', 'User has no associated organization');
+  }
+
+  if (!targetCardId) {
+    return sendError(res, 400, 'VALIDATION_ERROR', 'Target replacement card ID is required');
+  }
+
+  // 1. Fetch Source Card
+  const sourceCard = await prisma.card.findFirst({
+    where: { id, organizationId: orgId },
+    include: {
+      sessions: {
+        where: { status: 'ACTIVE' },
+        include: { branch: true },
+      },
+    },
+  });
+
+  if (!sourceCard) {
+    return sendError(res, 404, 'NOT_FOUND', 'Source card not found in your organization');
+  }
+
+  if (sourceCard.status !== CardStatus.BLOCKED) {
+    return sendError(res, 400, 'INVALID_STATUS', 'Only blocked cards can be replaced');
+  }
+
+  const activeSession = sourceCard.sessions[0];
+  if (!activeSession) {
+    return sendError(res, 400, 'NO_ACTIVE_SESSION', 'Source card has no active session to migrate');
+  }
+
+  // 2. Fetch Target Card
+  const targetCard = await prisma.card.findFirst({
+    where: {
+      organizationId: orgId,
+      OR: [
+        { id: targetCardId },
+        { qrToken: targetCardId },
+        { physicalCardNumber: targetCardId },
+      ],
+    },
+    include: {
+      sessions: {
+        where: { status: 'ACTIVE' },
+      },
+    },
+  });
+
+  if (!targetCard) {
+    return sendError(res, 404, 'TARGET_NOT_FOUND', 'Target replacement card not found in your organization');
+  }
+
+  if (targetCard.id === sourceCard.id) {
+    return sendError(res, 400, 'SAME_CARD', 'Target card cannot be the same as the source card');
+  }
+
+  if (targetCard.status !== CardStatus.AVAILABLE || targetCard.sessions.length > 0) {
+    return sendError(res, 400, 'TARGET_NOT_AVAILABLE', 'Target replacement card must be AVAILABLE and unassigned');
+  }
+
+  const lockedBalance = activeSession.balance;
+  const sourceCardNum = sourceCard.physicalCardNumber || sourceCard.qrToken;
+  const targetCardNum = targetCard.physicalCardNumber || targetCard.qrToken;
+
+  // 3. Atomic Migration
+  const result = await prisma.$transaction(async (tx) => {
+    // Settle old session
+    const settledOldSession = await tx.cardSession.update({
+      where: { id: activeSession.id },
+      data: {
+        balance: 0.0,
+        status: SessionStatus.SETTLED,
+        settledAt: new Date(),
+        settledByUserId: staffUserId,
+        refundAmount: 0.0,
+        retainedProfit: 0.0,
+      },
+    });
+
+    // Record audit event on source card
+    await tx.customerHistoryEvent.create({
+      data: {
+        organizationId: orgId,
+        cardId: sourceCard.id,
+        sessionId: activeSession.id,
+        customerName: activeSession.customerName || null,
+        customerPhone: activeSession.customerPhone || null,
+        physicalCardNumber: sourceCardNum,
+        action: CardHistoryAction.CARD_REPLACED,
+        previousStatus: sourceCard.status,
+        newStatus: CardStatus.BLOCKED,
+        performedByName: staffName,
+        performedByUserId: staffUserId || null,
+        branchId: activeSession.branchId || null,
+        branchName: activeSession.branch?.name || null,
+        reason: `Replaced by card ${targetCardNum}. ${reason}`,
+      },
+    });
+
+    // Create new session on target card
+    const sessionToken = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const newSession = await tx.cardSession.create({
+      data: {
+        organizationId: orgId,
+        branchId: activeSession.branchId,
+        cardId: targetCard.id,
+        sessionToken,
+        balance: lockedBalance,
+        status: SessionStatus.ACTIVE,
+        cycleNumber: 1,
+        sessionCardNumber: `${targetCard.physicalCardNumber || 'MC'}_1`,
+        customerName: activeSession.customerName || null,
+        customerPhone: activeSession.customerPhone || null,
+        issuedByUserId: staffUserId,
+        issuedAt: new Date(),
+      },
+    });
+
+    // Activate target card
+    const updatedTargetCard = await tx.card.update({
+      where: { id: targetCard.id },
+      data: {
+        status: CardStatus.ACTIVE,
+        assignmentStatus: CardAssignmentStatus.ASSIGNED,
+      },
+    });
+
+    // Record Transfer Transaction on new session
+    if (lockedBalance > 0) {
+      await tx.transaction.create({
+        data: {
+          sessionId: newSession.id,
+          branchId: activeSession.branchId,
+          staffUserId: staffUserId || null,
+          type: TransactionType.TRANSFER,
+          amount: lockedBalance,
+          balanceBefore: 0.0,
+          balanceAfter: lockedBalance,
+          paymentMethod: 'TRANSFER',
+          externalReference: `Transferred from ${sourceCardNum}`,
+        },
+      });
+    }
+
+    // Record audit event on target card
+    await tx.customerHistoryEvent.create({
+      data: {
+        organizationId: orgId,
+        cardId: targetCard.id,
+        sessionId: newSession.id,
+        customerName: activeSession.customerName || null,
+        customerPhone: activeSession.customerPhone || null,
+        physicalCardNumber: targetCardNum,
+        action: CardHistoryAction.CARD_ISSUED,
+        previousStatus: targetCard.status,
+        newStatus: CardStatus.ACTIVE,
+        performedByName: staffName,
+        performedByUserId: staffUserId || null,
+        branchId: activeSession.branchId || null,
+        branchName: activeSession.branch?.name || null,
+        reason: `Issued as replacement for ${sourceCardNum}. Balance migrated: ₹${lockedBalance.toFixed(2)}`,
+      },
+    });
+
+    return {
+      sourceCard,
+      targetCard: updatedTargetCard,
+      newSession,
+      migratedBalance: lockedBalance,
+    };
+  });
+
+  // Broadcast WebSocket/SSE balance updates
+  balanceStreamService.broadcastBalanceUpdate(activeSession.id, {
+    balance: 0.0,
+    status: SessionStatus.SETTLED,
+    type: 'RETURN_NO_REFUND',
+    amount: lockedBalance,
+    sessionId: activeSession.id,
+  });
+
+  balanceStreamService.mapSessionIdToToken(result.newSession.id, result.newSession.sessionToken);
+  balanceStreamService.broadcastBalanceUpdate(result.newSession.sessionToken, {
+    balance: lockedBalance,
+    status: SessionStatus.ACTIVE,
+    type: 'RECHARGE',
+    amount: lockedBalance,
+    sessionId: result.newSession.id,
+  });
+
+  await recordAuditLog({
+    organizationId: orgId,
+    userId: staffUserId,
+    userName: staffName,
+    action: 'CARD_REPLACED',
+    severity: 'INFO',
+    ipAddress: req.ip,
+    details: {
+      sourceCardId: sourceCard.id,
+      sourceCardNumber: sourceCardNum,
+      targetCardId: targetCard.id,
+      targetCardNumber: targetCardNum,
+      migratedBalance: lockedBalance,
+      reason,
+    },
+  });
+
+  return sendSuccess(res, {
+    message: `Card ${sourceCardNum} successfully replaced by ${targetCardNum} with ₹${lockedBalance.toFixed(2)} migrated.`,
+    ...result,
   });
 }
 

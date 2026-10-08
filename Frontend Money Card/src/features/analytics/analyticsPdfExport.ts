@@ -194,14 +194,17 @@ export function buildOrgAnalyticsJsPdf({
 
     curY += 22;
 
-    // Row 3: Follow-up Operations (3 cards)
+    // Row 3: Follow-up Operations (4 cards)
     const retainedProfit = analytics.retainedCardProfit ?? 0;
+    const blockedReturnedAmount = analytics.blockedReturnedAmount ?? 0;
+    const blockedReturnedCount = analytics.blockedReturnedCount ?? 0;
     const row3Kpis = [
       { label: 'Refunds', val: formatPdfCurrency(moneyRefunded), sub: 'Returned to customers' },
       { label: 'Cancelled', val: formatPdfCurrency(cancelledTopUps), sub: `${cancelledTopUpsCount} recharges reversed` },
       { label: 'Retained amount', val: formatPdfCurrency(retainedProfit), sub: 'Unreturned balances' },
+      { label: 'Blocked Returns', val: formatPdfCurrency(blockedReturnedAmount), sub: `${blockedReturnedCount} cards returned` },
     ];
-    const cardW3 = (contentWidth - 6) / 3;
+    const cardW3 = (contentWidth - 9) / 4;
 
     row3Kpis.forEach((kpi, idx) => {
       const x = margin + idx * (cardW3 + 3);

@@ -421,6 +421,7 @@ export function CounterStaffCardsView() {
       {walletTab === 'BLOCKED' ? (
         <BlockedWalletsTableView
           cards={blockedCardsList}
+          availableCards={allCards.filter((c) => c.status === 'AVAILABLE' && !c.activeSession)}
           branches={branches}
           isLoading={isLoading}
           error={error}

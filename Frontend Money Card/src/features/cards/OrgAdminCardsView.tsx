@@ -365,6 +365,7 @@ export function OrgAdminCardsView() {
       {cardsTab === 'BLOCKED' ? (
         <BlockedWalletsTableView
           cards={allCards}
+          availableCards={allCards.filter((c) => c.status === 'AVAILABLE' && !c.activeSession)}
           branches={branches}
           isLoading={isLoading}
           error={error}

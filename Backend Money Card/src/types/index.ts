@@ -9,7 +9,7 @@ export type CardStatus = 'AVAILABLE' | 'ACTIVE' | 'BLOCKED';
 
 export type SessionStatus = 'ACTIVE' | 'SETTLED';
 
-export type TransactionType = 'RECHARGE_CASH' | 'RECHARGE_UPI' | 'PURCHASE' | 'REFUND_RETURN';
+export type TransactionType = 'RECHARGE_CASH' | 'RECHARGE_UPI' | 'PURCHASE' | 'REFUND_RETURN' | 'TRANSFER';
 
 export type PaymentMethod =
   | 'CASH'

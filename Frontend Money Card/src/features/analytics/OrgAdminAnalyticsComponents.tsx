@@ -22,6 +22,7 @@ import {
   Ban,
   Search,
   ChevronDown,
+  RotateCcw,
 } from 'lucide-react';
 import { Card, StatCard, Badge, Button, Select, Modal, ModalFooter } from '@/components/ui';
 import { formatCurrency, formatDateTime } from '@/utils/formatters';
@@ -62,6 +63,8 @@ export function OrgAdminFinancialSection({
   const cancelledTopUps = analytics.cancelledTopUps ?? 0;
   const totalFoodSales = analytics.totalPurchaseVolume ?? analytics.salesVolume ?? 0;
   const retainedCardProfit = analytics.retainedCardProfit ?? 0;
+  const blockedReturnedAmount = analytics.blockedReturnedAmount ?? 0;
+  const blockedReturnedCount = analytics.blockedReturnedCount ?? 0;
 
   const upiMoney = analytics.upiMoney ?? upiRecharge;
   const cashMoney = analytics.cashMoney ?? cashRecharge;
@@ -70,6 +73,7 @@ export function OrgAdminFinancialSection({
   const [showRefunds, setShowRefunds] = useState(false);
   const [showCancelled, setShowCancelled] = useState(false);
   const [showRetained, setShowRetained] = useState(false);
+  const [showBlockedReturns, setShowBlockedReturns] = useState(false);
 
   return (
     <div className="space-y-4">
@@ -169,7 +173,7 @@ export function OrgAdminFinancialSection({
       </Card>
 
       {/* 3. Follow-up Metric Cards Below */}
-      <div className={`grid gap-4 sm:grid-cols-2 ${leadingCard ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
+      <div className={`grid gap-4 sm:grid-cols-2 ${leadingCard ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
         {/* Optional Leading Card (e.g. Organizations in Super Admin) */}
         {leadingCard}
 
@@ -253,6 +257,37 @@ export function OrgAdminFinancialSection({
           <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-emerald-600">
               {showRetained ? formatCurrency(retainedCardProfit) : '••••••'}
+            </p>
+          </div>
+        </Card>
+
+        {/* Blocked Returns */}
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Blocked Returns
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setShowBlockedReturns((prev) => !prev)}
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors cursor-pointer"
+                title={showBlockedReturns ? 'Hide Blocked Returns' : 'Show Blocked Returns'}
+              >
+                {showBlockedReturns ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                <span>{showBlockedReturns ? 'Hide' : 'Show'}</span>
+              </button>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                <RotateCcw className="h-4 w-4" />
+              </div>
+            </div>
+          </div>
+          <div className="mt-2">
+            <p className="font-mono text-2xl font-bold text-blue-600">
+              {showBlockedReturns ? formatCurrency(blockedReturnedAmount) : '••••••'}
+            </p>
+            <p className="mt-0.5 text-[11px] font-medium text-slate-400">
+              {`${blockedReturnedCount} cards`}
             </p>
           </div>
         </Card>

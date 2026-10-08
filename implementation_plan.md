@@ -138,14 +138,86 @@ This plan specifies changes across Web App (Frontend Money Card), Mobile POS (Fl
   - `Backend Money Card/src/controllers/sessions.controller.ts`
     - Update message: `This card must be returned at the kitchen where it was issued` (while preserving enum code `RETURN_COUNTER_MISMATCH`).
 
-## Verification Plan
-1. Web App:
-   - Run `npx tsc --noEmit` to confirm 0 type errors.
-   - Run `npm test -- --run` across all frontend tests (255+ passing).
-2. Mobile POS:
-   - Run `flutter analyze --no-pub` to confirm 0 issues.
-   - Run `flutter test` across all 186 Flutter tests (186/186 passing).
-3. Backend:
-   - Run `npm test` across all backend unit and integration tests (100 passing).
-4. Zero unrequested changes:
-   - Preserve database models, schema columns, internal iteration counters, and machine enum codes.
+---
+
+### 6. Subscription Change "Context Needed" Bug Fix & Renaming
+- **Backend Fix (`Backend Money Card/src/controllers/subscription.controller.ts`)**:
+  - In `createOrgPlanRequest`:
+    ```ts
+    let orgId = req.user?.organizationId || req.body?.organizationId || (req.headers['x-organization-id'] as string);
+    if (!orgId && req.user?.role === Role.SUPER_ADMIN) {
+      const defaultOrg = await prisma.organization.findFirst();
+      orgId = defaultOrg?.id;
+    }
+    if (!orgId) {
+      return sendError(res, 400, 'VALIDATION_ERROR', 'Organization context required');
+    }
+    ```
+  - In `renewOrgSubscription`: Apply the same fallback logic so renewals never fail with missing context.
+- **Frontend Input & Types (`Frontend Money Card/src/types/subscription.ts`, `realClient.ts`)**:
+  - Ensure `CreatePlanRequestInput` supports optional `organizationId?: string`.
+  - In `SubscriptionsPage.tsx`, pass `organizationId: user?.organizationId` in `createPlanRequest`.
+- **Renaming in `SubscriptionsPage.tsx`**:
+  - Modal title: Change from `"Contact Super Admin / Request Plan Change"` to `"Plan change"`.
+  - Modal submit button & banners: Rename labels from "Request Plan Change" to "Plan change".
+
+---
+
+### 7. Menu Management: Remove Color Codes
+- **Add Menu Modal (`Frontend Money Card/src/features/products/CounterAddProductModal.tsx`)**:
+  - Remove the "Food Type Selector (Clean Colored Dots, Zero Emojis)" section containing the Veg (green dot), Non-Veg (red dot), and Drink (blue dot) buttons.
+  - Simplify the form strictly to: Item Name, Price (₹), and optional description/category without color coding.
+- **View / Edit Menu Modal (`Frontend Money Card/src/features/products/CounterViewEditMenuModal.tsx`)**:
+  - Remove the colored dot indicator rendered next to product item names.
+- **Products Page (`Frontend Money Card/src/features/products/ProductsPage.tsx`)**:
+  - Remove the colored dot indicator rendered next to product item names in the main table list.
+
+---
+
+## Verification & Testing Plan
+### Automated & Unit Tests
+1. **Frontend Tests**:
+   - Run `npm test` in `Frontend Money Card` to verify existing tests and update mock test fixtures where label assertions changed (e.g. `Food Purchases` → `Sales`, `All Counters` → `All Kitchens`).
+2. **Backend Tests**:
+   - Verify `subscription.controller.ts` with valid and fallback `organizationId`.
+3. **Flutter Widget/Unit Tests**:
+   - Run `flutter test` in `Flutter Money card` to ensure string changes in POS and Analytics screens pass contract checks.
+
+### Manual Verification
+1. **Org Admin Dashboard**:
+   - Log in as Org Admin for organization "KJC".
+   - Confirm heading is "KJC Dashboard".
+2. **Navigation & Breadcrumbs**:
+   - Verify sidebar displays "Sales" and "Kitchens".
+   - Verify breadcrumbs and page titles reflect "Sales" and "Kitchens".
+3. **Analytics Eye/Show Feature**:
+   - Open Analytics as Super Admin, Org Admin, and Kitchen Admin.
+   - Verify only "Total Sales" and "Active Wallets" show values immediately.
+   - Verify all other cards show `••••••` with an Eye/Show button.
+   - Click "Show" on Recharges and Refunds; verify values unmask immediately.
+4. **Subscription Change**:
+   - In Org Admin Subscription page, click "Plan change" (renamed).
+   - Submit plan change request.
+   - Verify no "Context needed" error appears and request succeeds with toast confirmation.
+5. **Add Menu & Menu Item Display**:
+   - Open "Add Menu".
+   - Confirm color selector (green/red/blue dots) is gone.
+   - Add a product. Confirm created menu item row has no colored circle dot next to its name.
+
+---
+
+### 8. Blocked Wallet Resolution: Replace Card & Balance Transfer, Cash Refund, and Blocked Returns Analytics
+- **Backend**:
+  - Added `TRANSFER` to `TransactionType` enum and `CARD_REPLACED` to `CardHistoryAction` enum in Prisma schema.
+  - Implemented `POST /api/cards/:id/replace` endpoint:
+    - Atomically settles old blocked session, migrates locked balance to target available card, activates target card, creates `TRANSFER` ledger transaction, and logs `CARD_REPLACED` customer history audit event.
+  - Analytics: Added `blockedReturnedAmount` and `blockedReturnedCount` to `getOrgAnalytics` (and Super Admin analytics).
+  - Unit Tests: Added `card_replacement_transfer.test.ts` verifying isolation from sales/recharges and ledger integrity.
+- **Frontend**:
+  - Created `ResolveBlockedWalletModal.tsx` supporting:
+    - **Replace Card & Transfer**: Select from available stock, migrate locked balance, keep customer info linked.
+    - **Cash Refund & Close**: Refund locked balance in cash or UPI.
+  - In `BlockedWalletsTableView.tsx`: Added `[ Replace / Refund ]` button to Actions column next to `[ Unblock ]`.
+  - In `OrgAdminAnalyticsComponents.tsx`: Added balanced 4th card `Blocked Returns` to the Operations/Adjustments grid with on-demand Eye/Show toggle.
+  - In `analyticsPdfExport.ts`: Added `Blocked Returns` to exported PDF reports.
+
