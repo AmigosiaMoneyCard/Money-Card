@@ -39,10 +39,14 @@ export function QrResolutionPage() {
       const res = await apiService.userPortal.resolvePublicCard(activeToken);
 
       if (!res.success) {
-        if (res.error.code === 'CARD_BLOCKED') {
-          setErrorTitle('Wallet Blocked');
+        const errCode = (res.error?.code || '').toUpperCase();
+        const errMsg = (res.error?.message || '').toLowerCase();
+        const isBlocked = errCode.includes('BLOCK') || errMsg.includes('block');
+
+        if (isBlocked) {
+          setErrorTitle('Card Blocked');
           setErrorMessage(
-            res.error.message || 'This physical wallet has been blocked. Please visit cafeteria desk.',
+            res.error.message || 'This card has been blocked. Please visit cafeteria desk.',
           );
         } else if (res.error.code === 'SESSION_NOT_FOUND') {
           setErrorTitle('No Active Session');
@@ -83,10 +87,14 @@ export function QrResolutionPage() {
         if (isCancelled) return;
 
         if (!res.success) {
-          if (res.error.code === 'CARD_BLOCKED') {
-            setErrorTitle('Wallet Blocked');
+          const errCode = (res.error?.code || '').toUpperCase();
+          const errMsg = (res.error?.message || '').toLowerCase();
+          const isBlocked = errCode.includes('BLOCK') || errMsg.includes('block');
+
+          if (isBlocked) {
+            setErrorTitle('Card Blocked');
             setErrorMessage(
-              res.error.message || 'This physical wallet has been blocked. Please visit cafeteria desk.',
+              res.error.message || 'This card has been blocked. Please visit cafeteria desk.',
             );
           } else if (res.error.code === 'SESSION_NOT_FOUND') {
             setErrorTitle('No Active Session');

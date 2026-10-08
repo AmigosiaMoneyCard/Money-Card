@@ -252,11 +252,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
 
   Future<void> _handleBlockCard() async {
     final currentUser = ref.read(currentUserProvider);
-    final currentBranch = ref.read(currentBranchProvider);
     final blockerName = currentUser?.name ?? 'Staff';
-    final blockerRole = currentUser?.role ?? 'STAFF';
-    final branchName = currentBranch?.name ?? 'Main Branch';
-    final defaultBlockerStr = '$blockerName ($blockerRole - $branchName)';
 
     String selectedReason = 'Lost or Stolen Wallet';
     final additionalReasonCtrl = TextEditingController();
@@ -349,8 +345,8 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
     if (confirm == true) {
       final additional = additionalReasonCtrl.text.trim();
       final combinedReason = additional.isNotEmpty
-          ? '[Blocked by $defaultBlockerStr] $selectedReason: $additional'
-          : '[Blocked by $defaultBlockerStr] $selectedReason';
+          ? 'Blocked by $blockerName - $selectedReason: $additional'
+          : 'Blocked by $blockerName - $selectedReason';
 
       final success = await ref.read(cardDetailsNotifierProvider.notifier).blockCard(
             reason: combinedReason,

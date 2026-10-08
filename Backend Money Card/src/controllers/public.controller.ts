@@ -117,6 +117,15 @@ export async function getPublicSessionBalance(req: Request, res: Response) {
     return sendError(res, 404, 'NOT_FOUND', 'Session not found');
   }
 
+  if (session.card?.status === 'BLOCKED') {
+    return sendError(
+      res,
+      403,
+      'CARD_BLOCKED',
+      'This card has been blocked by store staff. Please visit cafeteria desk.',
+    );
+  }
+
   return sendSuccess(res, {
     sessionId: session.id,
     sessionToken: session.sessionToken,

@@ -175,7 +175,9 @@ export function OrgAdminDashboard() {
 
   // Remaining balance across active wallets
   const remainingWalletsBalance = useMemo(() => {
-    return cardsList.reduce((acc, c) => acc + (c.activeSession?.balance || 0), 0);
+    return cardsList
+      .filter((c) => c.status === 'ACTIVE')
+      .reduce((acc, c) => acc + (c.activeSession?.balance || 0), 0);
   }, [cardsList]);
 
   return (

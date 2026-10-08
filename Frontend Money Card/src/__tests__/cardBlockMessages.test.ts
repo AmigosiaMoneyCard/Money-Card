@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   buildCardBlockReason,
   formatBlockedCardMessage,
+  cleanBlockReasonDisplay,
   countWords,
   validateBlockReasonWordCount,
 } from '../utils/cardBlockMessages';
@@ -172,6 +173,37 @@ describe('cardBlockMessages business logic', () => {
       const res = validateBlockReasonWordCount(thirtyOneWords, 30);
       expect(res.wordCount).toBe(31);
       expect(res.isValid).toBe(false);
+    });
+  });
+
+  describe('cleanBlockReasonDisplay', () => {
+    it('formats exact user prompt string [Blocked by Manager (STAFF - Counter 1)] Lost or Stolen Wallet...', () => {
+      const input = '[Blocked by Manager (STAFF - Counter 1)] Lost or Stolen Wallet...';
+      const output = cleanBlockReasonDisplay(input);
+      expect(output).toBe('Blocked by Manager - Lost or Stolen Wallet');
+    });
+
+    it('formats exact string without dots [Blocked by Manager (STAFF - Counter 1)] Lost or Stolen Wallet', () => {
+      const input = '[Blocked by Manager (STAFF - Counter 1)] Lost or Stolen Wallet';
+      const output = cleanBlockReasonDisplay(input);
+      expect(output).toBe('Blocked by Manager - Lost or Stolen Wallet');
+    });
+
+    it('handles standalone reason with fallback blocker', () => {
+      const input = 'Lost or Stolen Wallet';
+      const output = cleanBlockReasonDisplay(input, 'Manager');
+      expect(output).toBe('Blocked by Manager - Lost or Stolen Wallet');
+    });
+
+    it('handles existing clean Blocked by Name - Reason format', () => {
+      const input = 'Blocked by Manager - Lost or Stolen Wallet';
+      const output = cleanBlockReasonDisplay(input);
+      expect(output).toBe('Blocked by Manager - Lost or Stolen Wallet');
+    });
+
+    it('handles null or empty reason with fallback blocker', () => {
+      expect(cleanBlockReasonDisplay(null, 'Manager')).toBe('Blocked by Manager - Security Locked');
+      expect(cleanBlockReasonDisplay('', null)).toBe('Security Locked');
     });
   });
 });

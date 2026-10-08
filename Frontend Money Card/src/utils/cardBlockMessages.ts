@@ -99,3 +99,49 @@ export function validateBlockReasonWordCount(text?: string | null, maxWords: num
     isValid: wordCount <= maxWords,
   };
 }
+
+/**
+ * Formats the blocked reason cleanly for display in tables:
+ * "Blocked by (counter manager name) - (Reason)"
+ * Strips brackets, removes role/branch metadata from the name, and eliminates ellipsis/dots.
+ */
+export function cleanBlockReasonDisplay(
+  rawReason?: string | null,
+  fallbackBlocker?: string | null,
+): string {
+  if (!rawReason || !rawReason.trim()) {
+    const blocker = fallbackBlocker?.trim();
+    return blocker ? `Blocked by ${blocker} - Security Locked` : 'Security Locked';
+  }
+
+  // Remove any trailing dots or ellipses (... or ....)
+  const clean = rawReason.trim().replace(/\.{2,}$/, '').trim();
+
+  // Pattern 1: [Blocked by Name (Role - Branch)] Reason: Notes or [Blocked by Name] Reason
+  const bracketMatch = clean.match(/^\[Blocked by ([^\]]+)\]\s*(.*)$/i);
+  if (bracketMatch) {
+    const rawBlocker = bracketMatch[1].trim();
+    const reasonPart = bracketMatch[2].trim().replace(/\.{2,}$/, '').trim();
+    const nameOnly = rawBlocker.replace(/\s*\([^)]*\)/g, '').trim() || fallbackBlocker?.trim() || 'Manager';
+    return reasonPart ? `Blocked by ${nameOnly} - ${reasonPart}` : `Blocked by ${nameOnly}`;
+  }
+
+  // Pattern 2: Already starts with "Blocked by "
+  const blockedByMatch = clean.match(/^Blocked by\s+([^:-]+)(?:\s*[-:]\s*(.*))?$/i);
+  if (blockedByMatch) {
+    const rawBlocker = blockedByMatch[1].trim();
+    const reasonPart = (blockedByMatch[2] || '').trim().replace(/\.{2,}$/, '').trim();
+    const nameOnly = rawBlocker.replace(/\s*\([^)]*\)/g, '').trim() || fallbackBlocker?.trim() || 'Manager';
+    return reasonPart ? `Blocked by ${nameOnly} - ${reasonPart}` : `Blocked by ${nameOnly}`;
+  }
+
+  // Pattern 3: Standalone reason (e.g. "Lost or Stolen Wallet")
+  const blocker = fallbackBlocker?.trim();
+  if (blocker) {
+    const cleanBlocker = blocker.replace(/\s*\([^)]*\)/g, '').trim();
+    return `Blocked by ${cleanBlocker} - ${clean}`;
+  }
+
+  return clean;
+}
+
