@@ -127,7 +127,7 @@ function CounterStaffMenuView({
   if (!branch) {
     return (
       <div className="py-12 bg-white rounded-2xl border border-slate-200 text-center">
-        <p className="text-sm text-slate-500">No counter assigned to your account.</p>
+        <p className="text-sm text-slate-500">No kitchen assigned to your account.</p>
       </div>
     );
   }
@@ -165,7 +165,7 @@ function CounterStaffMenuView({
 
       {isLoading ? (
         <div className="py-12 bg-white rounded-2xl border border-slate-200">
-          <LoadingState message="Loading counter menu..." />
+          <LoadingState message="Loading kitchen menu..." />
         </div>
       ) : filtered.length === 0 ? (
         <div className="py-12 bg-white rounded-2xl border border-slate-200">
@@ -186,8 +186,6 @@ function CounterStaffMenuView({
 
           {filtered.map((p) => {
             const isEditing = editingId === p.id;
-            const isVeg = Array.isArray(p.category) && p.category.some((c) => c.toLowerCase() === 'veg');
-            const isDrink = Array.isArray(p.category) && p.category.some((c) => c.toLowerCase() === 'drink' || c.toLowerCase() === 'beverage');
 
             if (isEditing) {
               return (
@@ -238,7 +236,6 @@ function CounterStaffMenuView({
             return (
               <div key={p.id} className="p-3 flex items-center justify-between hover:bg-slate-50/60">
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <span className={`inline-block h-2 w-2 rounded-full shrink-0 ${isDrink ? 'bg-amber-500' : isVeg ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                   <span className="font-semibold text-xs text-slate-900 truncate">{p.itemName}</span>
                 </div>
                 <div className="w-24 text-right pr-6">
@@ -321,7 +318,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
         setBranches(bItems);
       }
     } catch {
-      notify.error('Failed to load counters data');
+      notify.error('Failed to load kitchens data');
     } finally {
       setIsLoading(false);
     }
@@ -374,7 +371,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
         <input
           type="text"
-          placeholder="Search counters..."
+          placeholder="Search kitchens..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
@@ -384,16 +381,16 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
       {/* ─── Minimal Table (3 Columns Only) ─── */}
       {isLoading ? (
         <div className="py-12 bg-white rounded-2xl border border-slate-200/80">
-          <LoadingState message="Loading cafeteria counters..." />
+          <LoadingState message="Loading kitchens..." />
         </div>
       ) : filteredBranches.length === 0 ? (
         <div className="py-12 bg-white rounded-2xl border border-slate-200/80">
           <EmptyState
-            title={searchQuery ? 'No matching counters' : 'No counters found'}
+            title={searchQuery ? 'No matching kitchens' : 'No kitchens found'}
             description={
               searchQuery
                 ? 'Try adjusting your search query.'
-                : 'Counters configured in your organization will appear here.'
+                : 'Kitchens configured in your organization will appear here.'
             }
           />
         </div>
@@ -403,7 +400,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  <th className="py-3 px-4 w-1/2">Counter Name</th>
+                  <th className="py-3 px-4 w-1/2">Kitchen Name</th>
                   <th className="py-3 px-4 text-center w-36">Add Menu</th>
                   <th className="py-3 px-4 text-right w-44">View / Edit</th>
                 </tr>
@@ -415,7 +412,7 @@ export function ProductsPage({ defaultTab: _defaultTab }: ProductsPageProps = {}
                       key={branch.id}
                       className="hover:bg-slate-50/60 transition-colors"
                     >
-                      {/* 1. Counter Name */}
+                      {/* 1. Kitchen Name */}
                       <td className="py-3.5 px-4 w-1/2">
                         <div className="flex items-center gap-3">
                           <div className="h-8 w-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">

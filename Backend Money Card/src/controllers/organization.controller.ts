@@ -217,17 +217,17 @@ export async function createBranch(req: Request, res: Response) {
 
   const { name, location, phone, password } = req.body;
   if (!name || !name.trim()) {
-    return sendError(res, 400, 'VALIDATION_ERROR', 'Counter name is required');
+    return sendError(res, 400, 'VALIDATION_ERROR', 'Kitchen name is required');
   }
 
   const trimmedName = name.trim();
   if (trimmedName.length < 2 || trimmedName.length > 20) {
-    return sendError(res, 400, 'VALIDATION_ERROR', 'Counter name must be between 2 and 20 characters');
+    return sendError(res, 400, 'VALIDATION_ERROR', 'Kitchen name must be between 2 and 20 characters');
   }
 
   const nameRegex = /^[a-zA-Z0-9\s\-&]+$/;
   if (!nameRegex.test(trimmedName)) {
-    return sendError(res, 400, 'VALIDATION_ERROR', 'Counter name can only contain letters, numbers, spaces, hyphens, and ampersands');
+    return sendError(res, 400, 'VALIDATION_ERROR', 'Kitchen name can only contain letters, numbers, spaces, hyphens, and ampersands');
   }
 
   const rawDigits = phone ? String(phone).trim().replace(/\D/g, '') : undefined;
@@ -251,7 +251,7 @@ export async function createBranch(req: Request, res: Response) {
       res,
       409,
       'BRANCH_LIMIT_REACHED',
-      `Your organization has reached its counter limit of ${effectiveLimits.branchLimit}. Please upgrade your plan or request a custom limit override to create more counters.`,
+      `Your organization has reached its kitchen limit of ${effectiveLimits.branchLimit}. Please upgrade your plan or request a custom limit override to create more kitchens.`,
     );
   }
 
@@ -406,7 +406,7 @@ export async function createBranchesBatch(req: Request, res: Response) {
 
   const { branches } = req.body as BulkBranchesRequest;
   if (!Array.isArray(branches) || branches.length === 0) {
-    return sendError(res, 400, 'VALIDATION_ERROR', 'At least one counter is required');
+    return sendError(res, 400, 'VALIDATION_ERROR', 'At least one kitchen is required');
   }
 
   const [effectiveLimits, currentBranchCount] = await Promise.all([
@@ -419,7 +419,7 @@ export async function createBranchesBatch(req: Request, res: Response) {
       res,
       409,
       'BRANCH_LIMIT_REACHED',
-      `Your organization can only create ${effectiveLimits.branchLimit} counters in total. Currently at ${currentBranchCount}. Please upgrade your plan or request a custom limit override to create more counters.`,
+      `Your organization can only create ${effectiveLimits.branchLimit} kitchens in total. Currently at ${currentBranchCount}. Please upgrade your plan or request a custom limit override to create more kitchens.`,
     );
   }
 
@@ -430,11 +430,11 @@ export async function createBranchesBatch(req: Request, res: Response) {
     const item = branches[i];
     const name = item?.name?.trim();
     if (!name || name.length < 2 || name.length > 20) {
-      errors.push({ index: i, message: 'Counter name must be between 2 and 20 characters' });
+      errors.push({ index: i, message: 'Kitchen name must be between 2 and 20 characters' });
       continue;
     }
     if (!/^[a-zA-Z0-9\s\-&]+$/.test(name)) {
-      errors.push({ index: i, message: 'Counter name can only contain letters, numbers, spaces, hyphens, and ampersands' });
+      errors.push({ index: i, message: 'Kitchen name can only contain letters, numbers, spaces, hyphens, and ampersands' });
       continue;
     }
 
@@ -480,7 +480,7 @@ export async function createBranchesBatch(req: Request, res: Response) {
         name: result.name,
       });
     } catch (err: any) {
-      errors.push({ index: i, message: err?.message === 'BRANCH_LIMIT_REACHED' ? 'Counter limit reached' : 'Failed to create counter' });
+      errors.push({ index: i, message: err?.message === 'BRANCH_LIMIT_REACHED' ? 'Kitchen limit reached' : 'Failed to create kitchen' });
     }
   }
 
@@ -590,11 +590,11 @@ export async function updateBranch(req: Request, res: Response) {
   if (name !== undefined) {
     const trimmed = typeof name === 'string' ? name.trim() : '';
     if (trimmed.length < 2 || trimmed.length > 20) {
-      return sendError(res, 400, 'VALIDATION_ERROR', 'Counter name must be between 2 and 20 characters');
+      return sendError(res, 400, 'VALIDATION_ERROR', 'Kitchen name must be between 2 and 20 characters');
     }
     const nameRegex = /^[a-zA-Z0-9\s\-&]+$/;
     if (!nameRegex.test(trimmed)) {
-      return sendError(res, 400, 'VALIDATION_ERROR', 'Counter name can only contain letters, numbers, spaces, hyphens, and ampersands');
+      return sendError(res, 400, 'VALIDATION_ERROR', 'Kitchen name can only contain letters, numbers, spaces, hyphens, and ampersands');
     }
   }
 

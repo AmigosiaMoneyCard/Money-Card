@@ -50,7 +50,6 @@ export function SuperAdminDashboard() {
   const [selectedOrgId, setSelectedOrgId] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false);
@@ -443,7 +442,7 @@ export function SuperAdminDashboard() {
 
                   <div className="flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition-colors">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-slate-600">Active Counters</span>
+                      <span className="text-xs font-semibold text-slate-600">Active Kitchens</span>
                       <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
                         <Store className="h-4 w-4" />
                       </div>
@@ -453,7 +452,7 @@ export function SuperAdminDashboard() {
                         {activeCountersCount}
                       </div>
                       <p className="mt-0.5 text-[11px] font-medium text-slate-400">
-                        Active POS counters
+                        Active POS kitchens
                       </p>
                     </div>
                   </div>
@@ -490,6 +489,7 @@ export function SuperAdminDashboard() {
                   )}
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {/* Total Sales (Always visible) */}
                   <div className="flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition-colors">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-slate-600">Total Sales</span>
@@ -507,9 +507,10 @@ export function SuperAdminDashboard() {
                     </div>
                   </div>
 
+                  {/* Money Added */}
                   <div className="flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition-colors">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-slate-600">Recharge Amount</span>
+                      <span className="text-xs font-semibold text-slate-600">Money Added</span>
                       <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
                         <TrendingUp className="h-4 w-4" />
                       </div>
@@ -524,9 +525,10 @@ export function SuperAdminDashboard() {
                     </div>
                   </div>
 
+                  {/* Cancelled */}
                   <div className="flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition-colors">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-slate-600">Cancelled Recharges</span>
+                      <span className="text-xs font-semibold text-slate-600">Cancelled</span>
                       <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
                         <RotateCcw className="h-4 w-4" />
                       </div>
@@ -541,6 +543,7 @@ export function SuperAdminDashboard() {
                     </div>
                   </div>
 
+                  {/* Refunds */}
                   <div className="flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition-colors">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-slate-600">Refunds</span>

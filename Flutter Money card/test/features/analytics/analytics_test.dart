@@ -145,16 +145,18 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('₹24800.00'), findsOneWidget);
       expect(find.text('RECHARGE AMOUNT'), findsOneWidget);
       expect(find.text('Reset to Today'), findsOneWidget);
       expect(find.text('Apply'), findsOneWidget);
       expect(find.text('View PDF'), findsOneWidget);
-
-      await tester.drag(find.byType(ListView).first, const Offset(0, -300));
-      await tester.pumpAndSettle();
       expect(find.text('TOTAL SALES'), findsOneWidget);
       expect(find.text('₹18450.00'), findsOneWidget);
+
+      // Verify masked by default, then tap eye toggle to reveal recharge amount
+      expect(find.text('••••••'), findsWidgets);
+      await tester.tap(find.byIcon(Icons.visibility_off).first);
+      await tester.pumpAndSettle();
+      expect(find.text('₹24800.00'), findsOneWidget);
 
       // Verify tapping Reset to Today
       await tester.tap(find.text('Reset to Today'));
@@ -268,7 +270,7 @@ void main() {
       await tester.tap(find.text('Menu'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Food Sales'), findsOneWidget);
+      expect(find.text('Sales'), findsOneWidget);
       expect(find.text('Cancelled Orders'), findsOneWidget);
 
       // Tap Recharge Tab
@@ -278,7 +280,7 @@ void main() {
       expect(find.text('RECHARGE AMOUNT'), findsOneWidget);
       expect(find.text('WALLET REFUND'), findsOneWidget);
       expect(find.text('WALLET REFUND COUNT'), findsOneWidget);
-      expect(find.text('CANCELLED AMOUNT'), findsOneWidget);
+      expect(find.text('CANCELLED'), findsOneWidget);
       expect(find.text('CANCELLED COUNT'), findsOneWidget);
     });
   });

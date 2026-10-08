@@ -129,9 +129,9 @@ export function CounterStaffCardsView() {
 
   // ─── Branch / Counter Lookup Helper ──────────────────────────────
   const getBranchName = useCallback((branchId?: string | null) => {
-    if (!branchId) return 'Main Counter';
+    if (!branchId) return 'Main Kitchen';
     const found = branches.find((b) => b.id === branchId);
-    return found?.name || 'Counter';
+    return found?.name || 'Kitchen';
   }, [branches]);
 
   // ─── Fetch Cards & Branches ──────────────────────────────────────
@@ -421,6 +421,7 @@ export function CounterStaffCardsView() {
       {walletTab === 'BLOCKED' ? (
         <BlockedWalletsTableView
           cards={blockedCardsList}
+          availableCards={allCards.filter((c) => c.status === 'AVAILABLE' && !c.activeSession)}
           branches={branches}
           isLoading={isLoading}
           error={error}
@@ -986,7 +987,7 @@ export function CounterStaffCardsView() {
                 <p className="text-[11px] text-slate-400 mt-0.5">
                   {historySearchQuery
                     ? 'No sessions match your search criteria.'
-                    : 'No customer sessions recorded for this counter yet.'}
+                    : 'No customer sessions recorded for this kitchen yet.'}
                 </p>
               </div>
             ) : (
@@ -1163,7 +1164,7 @@ export function CounterStaffCardsView() {
         onClose={() => setCardToBlock(null)}
         card={cardToBlock}
         onSuccess={fetchCardsData}
-        currentUserName={user?.name || 'Counter Staff'}
+        currentUserName={user?.name || 'Kitchen Staff'}
       />
 
     </div>

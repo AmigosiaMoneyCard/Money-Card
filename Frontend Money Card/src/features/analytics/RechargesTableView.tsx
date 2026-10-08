@@ -199,7 +199,7 @@ export function RechargesTableView({ branchId }: RechargesTableViewProps) {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-slate-900">Cash Recharge</h3>
-                <p className="text-xs text-slate-500">Cash Register Counter</p>
+                <p className="text-xs text-slate-500">Cash Register Kitchen</p>
               </div>
             </div>
             <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
@@ -452,7 +452,7 @@ export function RechargesTableView({ branchId }: RechargesTableViewProps) {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-xs text-slate-600 whitespace-nowrap">
-                        {tx.staffName || 'Counter Staff'}
+                        {tx.staffName || 'Kitchen Staff'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {tx.isCancelled ? (

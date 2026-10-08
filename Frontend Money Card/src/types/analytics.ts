@@ -131,6 +131,8 @@ export interface AnalyticsOverview {
   cancelledOrdersVolume?: number;
   retainedCardProfit?: number;
   retainedProfitCount?: number;
+  blockedReturnedAmount?: number;
+  blockedReturnedCount?: number;
 
   // Menu Analytics & Food Order Metrics
   foodOrdersCount?: number;

@@ -187,7 +187,7 @@ export function OrgAdminCardsView() {
   // ─── Open Customer History per Card (for Blocked Wallets view) ───
   const handleOpenCardCustomerHistory = useCallback(async (card: CardEntity) => {
     const branchId = card.activeSession?.branchId || card.currentBranchId;
-    const branch = branches.find((b) => b.id === branchId) || ({ id: branchId || '', name: 'Cafeteria Counter' } as Branch);
+    const branch = branches.find((b) => b.id === branchId) || ({ id: branchId || '', name: 'Cafeteria Kitchen' } as Branch);
     setSelectedBranchForHistory(branch);
     setHistorySearchQuery(card.physicalCardNumber || card.qrToken || '');
     setIsLoadingSessions(true);
@@ -336,7 +336,7 @@ export function OrgAdminCardsView() {
               : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
-          <span>Cafeteria Counters</span>
+          <span>Kitchens</span>
           <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
             cardsTab === 'COUNTERS' ? 'bg-emerald-700 text-white' : 'bg-slate-200 text-slate-700'
           }`}>
@@ -365,6 +365,7 @@ export function OrgAdminCardsView() {
       {cardsTab === 'BLOCKED' ? (
         <BlockedWalletsTableView
           cards={allCards}
+          availableCards={allCards.filter((c) => c.status === 'AVAILABLE' && !c.activeSession)}
           branches={branches}
           isLoading={isLoading}
           error={error}
@@ -374,12 +375,12 @@ export function OrgAdminCardsView() {
         />
       ) : (
         <>
-          {/* ─── ONLY Search Bar: Search by counter name ─────────────────── */}
+          {/* ─── ONLY Search Bar: Search by kitchen name ─────────────────── */}
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search by counter name..."
+              placeholder="Search by kitchen name..."
               value={counterSearchQuery}
               onChange={(e) => setCounterSearchQuery(e.target.value)}
               className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-8 py-2 text-xs text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none"
@@ -396,23 +397,23 @@ export function OrgAdminCardsView() {
             )}
           </div>
 
-          {/* ─── Counter-Wise Table ─────────────────────────────────────── */}
+          {/* ─── Kitchen-Wise Table ─────────────────────────────────────── */}
           {error ? (
             <div className="py-12 bg-white rounded-2xl border border-rose-200">
               <ErrorState message={error} onRetry={fetchCardsData} />
             </div>
           ) : isLoading ? (
             <div className="py-12 bg-white rounded-2xl border border-slate-200/80">
-              <LoadingState message="Loading cafeteria counters..." />
+              <LoadingState message="Loading kitchens..." />
             </div>
           ) : filteredBranches.length === 0 ? (
             <div className="py-12 bg-white rounded-2xl border border-slate-200/80">
               <EmptyState
-                title={counterSearchQuery ? 'No matching counters' : 'No counters found'}
+                title={counterSearchQuery ? 'No matching kitchens' : 'No kitchens found'}
                 description={
                   counterSearchQuery
                     ? 'Try adjusting your search query.'
-                    : 'Counters configured in your organization will appear here.'
+                    : 'Kitchens configured in your organization will appear here.'
                 }
               />
             </div>
@@ -422,7 +423,7 @@ export function OrgAdminCardsView() {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                      <th className="py-3 px-4 w-1/2 min-w-[240px]">Counter Name</th>
+                      <th className="py-3 px-4 w-1/2 min-w-[240px]">Kitchen Name</th>
                       <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -530,7 +531,7 @@ export function OrgAdminCardsView() {
                 <p className="text-[11px] text-slate-400 mt-0.5">
                   {historySearchQuery
                     ? 'No sessions match your search criteria.'
-                    : 'No customer sessions recorded for this counter yet.'}
+                    : 'No customer sessions recorded for this kitchen yet.'}
                 </p>
               </div>
             ) : (

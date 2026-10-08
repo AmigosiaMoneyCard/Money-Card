@@ -415,7 +415,7 @@ export function AdminPlansSubscriptionsView() {
     if (subOverrideBranch.trim()) {
       const val = parseInt(subOverrideBranch, 10);
       if (isNaN(val) || val < 1) {
-        setModalApiError('Counter limit override must be a positive integer.');
+        setModalApiError('Kitchen limit override must be a positive integer.');
         setIsSubmitting(false);
         return;
       }
@@ -898,14 +898,14 @@ export function AdminPlansSubscriptionsView() {
             <div className="space-y-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">Cafeteria Subscriptions & Custom Limits</h2>
+                  <h2 className="text-lg font-bold text-slate-900">Organization Subscriptions & Custom Limits</h2>
                 </div>
               </div>
 
               {/* Search & Filters */}
               <div className="grid gap-3 sm:grid-cols-3">
                 <Input
-                  placeholder="Search cafeteria by name or ID..."
+                  placeholder="Search organization by name or ID..."
                   value={orgSearchQuery}
                   maxLength={30}
                   onChange={(e) => {
@@ -939,7 +939,7 @@ export function AdminPlansSubscriptionsView() {
               {filteredOrgs.length === 0 ? (
                 <EmptyState
                   icon={<Building2 className="h-8 w-8 text-slate-500" />}
-                  title="No cafeteria subscriptions found"
+                  title="No organization subscriptions found"
                   description="Try adjusting your search query or filter selection."
                 />
               ) : (
@@ -984,7 +984,7 @@ export function AdminPlansSubscriptionsView() {
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
                 <div className="w-full sm:w-80">
                   <Input
-                    placeholder="Search pending requests by cafeteria or plan..."
+                    placeholder="Search pending requests by organization or plan..."
                     value={requestSearchQuery}
                     maxLength={30}
                     onChange={(e) => setRequestSearchQuery(e.target.value)}
@@ -1002,7 +1002,7 @@ export function AdminPlansSubscriptionsView() {
                   description={
                     requestSearchQuery
                       ? 'No pending requests match your search.'
-                      : 'All caught up! There are no cafeteria plan change requests currently awaiting approval.'
+                      : 'All caught up! There are no organization plan change requests currently awaiting approval.'
                   }
                 />
               ) : (
@@ -1068,10 +1068,9 @@ export function AdminPlansSubscriptionsView() {
           </div>
 
           <div className="space-y-1.5">
-            <span className="text-xs font-semibold text-slate-700 block">Default Resource Limits</span>
             <div className="grid grid-cols-3 gap-3">
               <Input
-                label="Counter Limit"
+                label="Kitchen Limit"
                 type="number"
                 min="0"
                 value={formBranchLimit}
@@ -1117,7 +1116,7 @@ export function AdminPlansSubscriptionsView() {
       <Modal
         isOpen={showEditPlanModal}
         onClose={() => setShowEditPlanModal(false)}
-        title={`Edit / View Global Plan: ${selectedPlan?.name}`}
+        title={selectedPlan?.name || 'Plan Details'}
         size="lg"
       >
         <form onSubmit={handleEditPlanSubmit} className="space-y-4 py-2">
@@ -1128,22 +1127,20 @@ export function AdminPlansSubscriptionsView() {
             </div>
           )}
 
-          {/* Subscribed Tenants */}
+          {/* Subscribed Organizations */}
           <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3.5 space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Building2 className="h-4 w-4 text-emerald-600" />
                 <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Subscribed Tenants
+                  Subscribed Organization
                 </span>
               </div>
               <Badge variant="outline" className="font-semibold text-xs border-slate-300 bg-white">
-                {subscribedOrgsForSelectedPlan.length} Cafeterias
+                {subscribedOrgsForSelectedPlan.length} Organizations
               </Badge>
             </div>
-            {subscribedOrgsForSelectedPlan.length === 0 ? (
-              <p className="text-xs text-slate-500">No cafeterias currently subscribed to this plan.</p>
-            ) : (
+            {subscribedOrgsForSelectedPlan.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-0.5">
                 {subscribedOrgsForSelectedPlan.map((o) => (
                   <span
@@ -1194,10 +1191,9 @@ export function AdminPlansSubscriptionsView() {
           </div>
 
           <div className="space-y-1.5">
-            <span className="text-xs font-semibold text-slate-700 block">Default Resource Limits</span>
             <div className="grid grid-cols-3 gap-3">
               <Input
-                label="Counter Limit"
+                label="Kitchen Limit"
                 type="number"
                 min="0"
                 value={formBranchLimit}
@@ -1232,9 +1228,6 @@ export function AdminPlansSubscriptionsView() {
             </div>
           </div>
 
-          <p className="text-xs text-slate-400">
-            Note: Changing default limits updates the global template. Organization-specific overrides will remain intact.
-          </p>
 
           <ModalFooter className="flex items-center justify-between w-full pt-2">
             <Button
@@ -1444,7 +1437,7 @@ export function AdminPlansSubscriptionsView() {
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2 text-xs">
               <div className="flex justify-between items-center">
-                <span className="text-slate-500">Cafeteria:</span>
+                <span className="text-slate-500">Organization:</span>
                 <strong className="text-slate-900 text-sm">
                   {selectedRequest.organizationName || selectedRequest.organizationId}
                 </strong>

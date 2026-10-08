@@ -163,7 +163,7 @@ void main() {
 
       // Verify Greeting and Branch info
       expect(find.text('Hello, Alex'), findsOneWidget);
-      expect(find.text('Counter: Main Cafeteria'), findsOneWidget);
+      expect(find.text('Kitchen: Main Cafeteria'), findsOneWidget);
 
       // Verify Role Specification Banner
       expect(find.text('Manager'), findsOneWidget);

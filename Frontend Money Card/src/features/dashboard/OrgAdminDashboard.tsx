@@ -186,7 +186,9 @@ export function OrgAdminDashboard() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
-            {isCounterAdmin ? 'Counter Dashboard' : 'Organization Dashboard'}
+            {isCounterAdmin
+              ? `${user?.organizationName ? `${user.organizationName} Kitchen Dashboard` : 'Kitchen Dashboard'}`
+              : `${user?.organizationName ? `${user.organizationName} Dashboard` : 'Organization Dashboard'}`}
           </h1>
         </div>
       </div>
@@ -281,7 +283,7 @@ export function OrgAdminDashboard() {
       </div>
 
       {isLoading ? (
-        <LoadingState message="Loading cafeteria dashboard..." />
+        <LoadingState message="Loading organization dashboard..." />
       ) : error ? (
         <ErrorState title="Failed to load dashboard" message={error} onRetry={() => fetchOrgDashboardData(false)} />
       ) : (
@@ -299,7 +301,7 @@ export function OrgAdminDashboard() {
                   {/* Branch Scope Filter (Org Admin only) */}
                   {!isCounterAdmin && (
                     <div className="w-full sm:w-52">
-                      <label className="mb-1 block text-[11px] font-medium text-slate-600">Cafeteria Scope</label>
+                      <label className="mb-1 block text-[11px] font-medium text-slate-600">Kitchen Scope</label>
                       <Select
                         id="dashboard-branch-filter"
                         value={currentBranch?.id || ''}
@@ -313,7 +315,7 @@ export function OrgAdminDashboard() {
                           }
                         }}
                         options={[
-                          { value: '', label: 'All Cafeterias' },
+                          { value: '', label: 'All Kitchens' },
                           ...branches.map((b) => ({ value: b.id, label: b.name })),
                         ]}
                       />

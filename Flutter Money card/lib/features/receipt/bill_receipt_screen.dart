@@ -298,7 +298,7 @@ class _BillReceiptScreenState extends ConsumerState<BillReceiptScreen> {
                       _buildReceiptRow('Payment:', bill.paymentMethod),
                     if (bill.paymentReference != null && bill.paymentReference!.isNotEmpty)
                       _buildReceiptRow('UPI Reference:', bill.paymentReference!),
-                    _buildReceiptRow('Counter:', bill.branchName),
+                    _buildReceiptRow('Kitchen:', bill.branchName),
 
                     const SizedBox(height: 16),
                     _buildDashedLine(),

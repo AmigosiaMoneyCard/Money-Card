@@ -8,23 +8,23 @@ import {
 describe('Counter Management Strict Validation Tests', () => {
   describe('Counter Name Validation', () => {
     it('should reject empty or whitespace-only names', () => {
-      expect(validateCounterName('')).toBe('Counter name is required');
-      expect(validateCounterName('   ')).toBe('Counter name is required');
+      expect(validateCounterName('')).toBe('Kitchen name is required');
+      expect(validateCounterName('   ')).toBe('Kitchen name is required');
     });
 
     it('should reject names shorter than 2 characters or longer than 20 characters', () => {
-      expect(validateCounterName('A')).toBe('Counter name must be between 2 and 20 characters');
+      expect(validateCounterName('A')).toBe('Kitchen name must be between 2 and 20 characters');
       expect(validateCounterName('A'.repeat(21))).toBe(
-        'Counter name must be between 2 and 20 characters',
+        'Kitchen name must be between 2 and 20 characters',
       );
     });
 
     it('should reject names with disallowed special characters', () => {
       expect(validateCounterName('Counter #1')).toBe(
-        'Counter name can only contain letters, numbers, spaces, hyphens, and &',
+        'Kitchen name can only contain letters, numbers, spaces, hyphens, and &',
       );
       expect(validateCounterName('Juice <Bar>')).toBe(
-        'Counter name can only contain letters, numbers, spaces, hyphens, and &',
+        'Kitchen name can only contain letters, numbers, spaces, hyphens, and &',
       );
     });
 

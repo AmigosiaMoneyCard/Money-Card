@@ -26,8 +26,7 @@ class MoreScreen extends ConsumerWidget {
             if (context.canPop()) {
               context.pop();
             } else {
-              final isKitchen = user?.isKitchenStaff ?? false;
-              context.go(isKitchen ? '/app/kitchen' : '/app/home');
+              context.go('/app/home');
             }
           },
         ),
@@ -72,7 +71,7 @@ class MoreScreen extends ConsumerWidget {
                         ),
                       ),
                     Text(
-                      '${(user?.phone != null && user!.phone!.isNotEmpty) ? user.phone : (user?.email ?? '')} • ${user?.role ?? 'STAFF'}',
+                      '${(user?.phone != null && user!.phone!.isNotEmpty) ? user.phone : (user?.email ?? '')} • ${user?.nickname ?? user?.role ?? 'STAFF'}',
                       style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondaryLight,
@@ -80,7 +79,7 @@ class MoreScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: AppSpacing.xxs),
                     Text(
-                      'Active Counter: ${branch?.name ?? 'Not Assigned'}',
+                      'Active Kitchen: ${branch?.name ?? 'Not Assigned'}',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,

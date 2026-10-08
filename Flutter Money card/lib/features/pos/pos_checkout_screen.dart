@@ -973,7 +973,7 @@ class _PosCheckoutScreenState extends ConsumerState<PosCheckoutScreen> {
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    'Staff: ${t.staffName ?? 'Counter Staff'}',
+                                    'Staff: ${t.staffName ?? 'Kitchen Staff'}',
                                     style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
                                   ),
                                   Text(

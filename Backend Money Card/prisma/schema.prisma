@@ -58,6 +58,7 @@ enum TransactionType {
   RECHARGE_UPI
   PURCHASE
   REFUND_RETURN
+  TRANSFER
 }
 
 enum BillingInterval {
@@ -105,6 +106,7 @@ enum CardHistoryAction {
   CARD_ISSUED
   CARD_RETURNED
   CARD_DELETED
+  CARD_REPLACED
 }
 
 enum ProductStatus {

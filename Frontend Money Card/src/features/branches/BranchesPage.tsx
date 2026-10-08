@@ -83,16 +83,17 @@ export function SlideSwitch({
 export const validateCounterName = (name: string): string | null => {
   const trimmed = name.trim();
   if (!trimmed) {
-    return 'Counter name is required';
+    return 'Kitchen name is required';
   }
   if (trimmed.length < 2 || trimmed.length > 20) {
-    return 'Counter name must be between 2 and 20 characters';
+    return 'Kitchen name must be between 2 and 20 characters';
   }
   if (!/^[a-zA-Z0-9\s\-&]+$/.test(trimmed)) {
-    return 'Counter name can only contain letters, numbers, spaces, hyphens, and &';
+    return 'Kitchen name can only contain letters, numbers, spaces, hyphens, and &';
   }
   return null;
 };
+export const validateKitchenName = validateCounterName;
 
 export const validateMobileNumber = (phone: string): string | null => {
   let clean = phone.replace(/\D/g, '');
@@ -234,7 +235,7 @@ export function BranchesPage() {
       ]);
 
       if (!branchRes.success) {
-        setError(branchRes.error.message || 'Failed to load counters');
+        setError(branchRes.error.message || 'Failed to load kitchens');
         return;
       }
 
@@ -263,7 +264,7 @@ export function BranchesPage() {
         if (isCancelled) return;
 
         if (!branchRes.success) {
-          setError(branchRes.error.message || 'Failed to load counters');
+          setError(branchRes.error.message || 'Failed to load kitchens');
           return;
         }
 
@@ -345,17 +346,17 @@ export function BranchesPage() {
         if ((result.error.code as string) === 'PLAN_LIMIT_REACHED' || (result.error.code as string) === 'BRANCH_LIMIT_REACHED') {
           setModalApiError(
             result.error.message ||
-              'Counter limit reached for your active plan. Please upgrade your subscription to create more counters.',
+              'Kitchen limit reached for your active plan. Please upgrade your subscription to create more kitchens.',
           );
         } else {
-          setModalApiError(result.error.message || 'Failed to create counter');
+          setModalApiError(result.error.message || 'Failed to create kitchen');
         }
         return;
       }
 
       storePassword(result.data.id, effectivePassword, cleanPhone, result.data.manager?.id);
 
-      notify.success('Counter created successfully.');
+      notify.success('Kitchen created successfully.');
       setShowCreateModal(false);
       setBranchNameInput('');
       setBranchPhoneInput('');
@@ -381,7 +382,7 @@ export function BranchesPage() {
     if (!createdBranchCredentials) return;
     const loginUrl = `${window.location.origin}/login`;
     const textToCopy =
-      `Counter Name: ${createdBranchCredentials.name}\n` +
+      `Kitchen Name: ${createdBranchCredentials.name}\n` +
       `Phone Number: ${createdBranchCredentials.phone}\n` +
       `Password: ${createdBranchCredentials.password}\n` +
       `Login URL: ${loginUrl}`;
@@ -395,13 +396,13 @@ export function BranchesPage() {
     if (!createdBranchCredentials) return;
     const loginUrl = `${window.location.origin}/login`;
     const message =
-      `*Welcome to Money Card Counter Portal*\n\n` +
-      `Your counter account has been created successfully:\n\n` +
-      `• *Counter Name:* ${createdBranchCredentials.name}\n` +
+      `*Welcome to Money Card Kitchen Portal*\n\n` +
+      `Your kitchen account has been created successfully:\n\n` +
+      `• *Kitchen Name:* ${createdBranchCredentials.name}\n` +
       `• *Mobile Number:* ${createdBranchCredentials.phone}\n` +
       `• *Password:* ${createdBranchCredentials.password}\n\n` +
-      `*Counter Dashboard Link:* ${loginUrl}\n\n` +
-      `_Log in using your Mobile Number and Password to access your Counter Menu, Staff, and Analytics._`;
+      `*Kitchen Dashboard Link:* ${loginUrl}\n\n` +
+      `_Log in using your Mobile Number and Password to access your Kitchen Menu, Staff, and Analytics._`;
 
     const cleanPhone = createdBranchCredentials.phone.replace(/\D/g, '').slice(-10);
     const waUrl = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(message)}`;
@@ -476,7 +477,7 @@ export function BranchesPage() {
       const result = await apiService.branches.updateBranch(selectedBranch.id, updatePayload);
 
       if (!result.success) {
-        setViewEditApiError(result.error.message || 'Failed to update counter details');
+        setViewEditApiError(result.error.message || 'Failed to update kitchen details');
         return;
       }
 
@@ -484,12 +485,12 @@ export function BranchesPage() {
       setCurrentBranchPassword(pass);
       storePassword(selectedBranch.id, pass, editPhoneInput.trim(), selectedBranch.manager?.id);
 
-      notify.success('Counter details updated successfully');
+      notify.success('Kitchen details updated successfully');
       setShowViewEditModal(false);
       fetchBranches();
     } catch {
-      notify.error('Failed to update counter details');
-      return { success: false, message: 'Failed to update counter details' };
+      notify.error('Failed to update kitchen details');
+      return { success: false, message: 'Failed to update kitchen details' };
     } finally {
       setIsSubmitting(false);
     }
@@ -501,12 +502,12 @@ export function BranchesPage() {
     const loginUrl = `${window.location.origin}/login`;
     const passwordText = editPasswordInput.trim() || currentBranchPassword || 'Not set';
     const textToCopy =
-      `Counter Name: ${editNameInput.trim() || selectedBranch.name}\n` +
+      `Kitchen Name: ${editNameInput.trim() || selectedBranch.name}\n` +
       `Mobile Number: ${cleanPhone || 'Not set'}\n` +
       `Password: ${passwordText}\n` +
       `Login URL: ${loginUrl}`;
     navigator.clipboard.writeText(textToCopy);
-    notify.success('Counter credentials copied to clipboard');
+    notify.success('Kitchen credentials copied to clipboard');
   };
 
   const handleSendWhatsAppFromEdit = () => {
@@ -520,13 +521,13 @@ export function BranchesPage() {
     const loginUrl = `${window.location.origin}/login`;
     const passwordText = editPasswordInput.trim() || currentBranchPassword || '12345678';
     const message =
-      `*Money Card Counter Credentials*\n\n` +
-      `Here are your counter login details:\n\n` +
-      `• *Counter Name:* ${editNameInput.trim() || selectedBranch.name}\n` +
+      `*Money Card Kitchen Credentials*\n\n` +
+      `Here are your kitchen login details:\n\n` +
+      `• *Kitchen Name:* ${editNameInput.trim() || selectedBranch.name}\n` +
       `• *Mobile Number:* ${cleanPhone}\n` +
       `• *Password:* ${passwordText}\n\n` +
-      `*Counter Dashboard Link:* ${loginUrl}\n\n` +
-      `_Log in using your Mobile Number and Password to access your Counter Menu, Staff, and Analytics._`;
+      `*Kitchen Dashboard Link:* ${loginUrl}\n\n` +
+      `_Log in using your Mobile Number and Password to access your Kitchen Menu, Staff, and Analytics._`;
 
     const waUrl = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(message)}`;
     window.open(waUrl, '_blank', 'noopener,noreferrer');
@@ -544,7 +545,7 @@ export function BranchesPage() {
   const handleDirectStatusToggle = async (branch: Branch) => {
     const newStatus = branch.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     if (branch.status === 'ACTIVE' && activeBranchesCount <= 1) {
-      notify.error('Cannot disable this counter. A cafeteria must have at least one active counter.');
+      notify.error('Cannot disable this kitchen. An organization must have at least one active kitchen.');
       return;
     }
 
@@ -555,12 +556,12 @@ export function BranchesPage() {
       });
 
       if (!result.success) {
-        notify.error(result.error.message || 'Failed to update counter status');
+        notify.error(result.error.message || 'Failed to update kitchen status');
         return;
       }
 
       notify.success(
-        `Counter ${newStatus === 'ACTIVE' ? 'activated' : 'deactivated'} successfully`,
+        `Kitchen ${newStatus === 'ACTIVE' ? 'activated' : 'deactivated'} successfully`,
       );
 
       // If current selected branch was deactivated, recover gracefully
@@ -575,7 +576,7 @@ export function BranchesPage() {
 
       fetchBranches();
     } catch {
-      notify.error('An unexpected error occurred while updating counter status');
+      notify.error('An unexpected error occurred while updating kitchen status');
     } finally {
       setIsTogglingStatus(null);
     }
@@ -604,14 +605,14 @@ export function BranchesPage() {
         if ((result.error as any)?.code === 'DEPENDENT_RECORDS_EXIST' || (result.error as any)?.status === 409) {
           setDeleteApiConflict(true);
         }
-        setModalApiError(result.error.message || 'Failed to delete counter');
+        setModalApiError(result.error.message || 'Failed to delete kitchen');
         return;
       }
 
       notify.success(
         result.data?.archived
-          ? 'Counter deactivated to preserve historical accounting records'
-          : 'Counter deleted successfully',
+          ? 'Kitchen deactivated to preserve historical accounting records'
+          : 'Kitchen deleted successfully',
       );
       setShowDeleteModal(false);
       fetchBranches();
@@ -626,7 +627,7 @@ export function BranchesPage() {
   const columns = [
     {
       key: 'name',
-      header: 'Counter Name',
+      header: 'Kitchen Name',
       className: 'w-80 whitespace-nowrap',
       render: (branch: Branch) => (
         <div className="flex items-center gap-3">
@@ -678,7 +679,7 @@ export function BranchesPage() {
               checked={branch.status === 'ACTIVE'}
               disabled={isTogglingStatus === branch.id}
               onChange={() => handleDirectStatusToggle(branch)}
-              label={branch.status === 'ACTIVE' ? 'Active counter (click to deactivate)' : 'Inactive counter (click to activate)'}
+              label={branch.status === 'ACTIVE' ? 'Active kitchen (click to deactivate)' : 'Inactive kitchen (click to activate)'}
             />
           )}
           <Badge variant={branch.status === 'ACTIVE' ? 'success' : 'outline'} className="min-w-[65px] justify-center text-xs">
@@ -694,7 +695,7 @@ export function BranchesPage() {
       {/* Header Bar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Counters</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Kitchens</h1>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
@@ -704,7 +705,7 @@ export function BranchesPage() {
               onClick={handleOpenCreate}
               leftIcon={<Plus className="h-4 w-4" />}
             >
-              Add Counter
+              Add Kitchen
             </Button>
           )}
         </div>
@@ -713,9 +714,9 @@ export function BranchesPage() {
       {/* Plan Usage Indicator (if available) */}
       {orgOverview?.usage && (
         <div className="text-xs text-slate-600 font-medium">
-          Counter Usage:{' '}
+          Kitchen Usage:{' '}
           <strong className="text-slate-900">{orgOverview.usage.branchCount}</strong> /{' '}
-          {orgOverview.usage.branchLimit} counters created
+          {orgOverview.usage.branchLimit} kitchens created
         </div>
       )}
 
@@ -725,7 +726,7 @@ export function BranchesPage() {
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search counters by name..."
+            placeholder="Search kitchens by name..."
             value={searchQuery}
             maxLength={30}
             onChange={(e) => setSearchQuery(e.target.value.slice(0, 30))}
@@ -749,18 +750,18 @@ export function BranchesPage() {
 
       {/* Main Content */}
       {isLoading ? (
-        <LoadingState message="Loading counters..." />
+        <LoadingState message="Loading kitchens..." />
       ) : error ? (
         <ErrorState
-          title="Failed to load counters"
+          title="Failed to load kitchens"
           message={error}
           onRetry={fetchBranches}
         />
       ) : branches.length === 0 ? (
         <EmptyState
           icon={<Building2 className="h-8 w-8 text-slate-500" />}
-          title="No counters found"
-          description="Get started by adding your first operational counter."
+          title="No kitchens found"
+          description="Get started by adding your first operational kitchen."
           action={
             canManage ? (
               <Button variant="primary" onClick={handleOpenCreate} leftIcon={<Plus className="h-4 w-4" />}>
@@ -772,11 +773,11 @@ export function BranchesPage() {
       ) : filteredBranches.length === 0 ? (
         <EmptyState
           icon={<Building2 className="h-8 w-8 text-slate-500" />}
-          title="No matching counters"
+          title="No matching kitchens"
           description={
             searchQuery
-              ? `No counters match the name "${searchQuery}".`
-              : `No counters match the selected counter filter.`
+              ? `No kitchens match the name "${searchQuery}".`
+              : `No kitchens match the selected kitchen filter.`
           }
           action={
             searchQuery ? (
@@ -827,7 +828,7 @@ export function BranchesPage() {
                         disabled={isTogglingStatus === branch.id}
                         onChange={() => handleDirectStatusToggle(branch)}
                         size="sm"
-                        label={branch.status === 'ACTIVE' ? 'Active counter' : 'Inactive counter'}
+                        label={branch.status === 'ACTIVE' ? 'Active kitchen' : 'Inactive kitchen'}
                       />
                     )}
                     <Badge variant={branch.status === 'ACTIVE' ? 'success' : 'outline'} className="text-xs min-w-[55px] justify-center">
@@ -856,11 +857,11 @@ export function BranchesPage() {
         </>
       )}
 
-      {/* ── Create Counter Modal ───────────────────────────────────── */}
+      {/* ── Create Kitchen Modal ───────────────────────────────────── */}
       <Modal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        title="Create New Counter"
+        title="Create New Kitchen"
       >
         <form onSubmit={handleCreateSubmit} noValidate className="space-y-4">
           {modalApiError && (
@@ -872,7 +873,7 @@ export function BranchesPage() {
 
           <Input
             id="create-branch-name"
-            label="Counter Name"
+            label="Kitchen Name"
             placeholder="e.g. South Indian Express, Juice Bar, Bakery..."
             maxLength={20}
             value={branchNameInput}
@@ -931,7 +932,7 @@ export function BranchesPage() {
               Cancel
             </Button>
             <Button type="submit" variant="primary" isLoading={isSubmitting} disabled={isSubmitting}>
-              Create Counter
+              Create Kitchen
             </Button>
           </ModalFooter>
         </form>
@@ -944,7 +945,7 @@ export function BranchesPage() {
           setShowWhatsAppModal(false);
           setShowModalPassword(false);
         }}
-        title="Counter Created Successfully!"
+        title="Kitchen Created Successfully!"
         size="md"
       >
         <div className="space-y-4 py-1">
@@ -953,12 +954,12 @@ export function BranchesPage() {
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white">
                 <Check className="h-3.5 w-3.5" />
               </span>
-              <span>Counter Login Credentials</span>
+              <span>Kitchen Login Credentials</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div className="bg-white/95 p-2.5 rounded-lg border border-emerald-100 shadow-2xs">
-                <span className="text-slate-500 block text-[11px]">Counter Name</span>
+                <span className="text-slate-500 block text-[11px]">Kitchen Name</span>
                 <span className="font-semibold text-slate-800 text-sm">{createdBranchCredentials?.name}</span>
               </div>
               <div className="bg-white/95 p-2.5 rounded-lg border border-emerald-100 shadow-2xs">
@@ -1027,7 +1028,7 @@ export function BranchesPage() {
       <Modal
         isOpen={showViewEditModal}
         onClose={() => !isSubmitting && setShowViewEditModal(false)}
-        title="View / Edit Counter Details"
+        title="View / Edit Kitchen Details"
         size="lg"
       >
         <div className="space-y-5 py-1">
@@ -1043,7 +1044,7 @@ export function BranchesPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="edit-branch-name" className="block text-sm font-medium text-slate-700 mb-1">
-                  Counter Name <span className="text-rose-500">*</span>
+                  Kitchen Name <span className="text-rose-500">*</span>
                 </label>
                 <Input
                   id="edit-branch-name"
@@ -1179,7 +1180,7 @@ export function BranchesPage() {
                 leftIcon={<Trash2 className="h-4 w-4" />}
                 className="cursor-pointer"
               >
-                Delete Counter
+                Delete Kitchen
               </Button>
 
               {/* Far Right Side: Cancel & Save Changes */}
@@ -1210,7 +1211,7 @@ export function BranchesPage() {
       <Modal
         isOpen={showDeleteModal}
         onClose={() => !isSubmitting && setShowDeleteModal(false)}
-        title="Delete Counter"
+        title="Delete Kitchen"
         size="md"
       >
         <div className="space-y-4">
@@ -1218,7 +1219,7 @@ export function BranchesPage() {
             <div className="flex items-start gap-2.5 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
               <AlertCircle className="h-4 w-4 shrink-0 text-rose-500 mt-0.5" />
               <div className="space-y-1">
-                <p className="font-semibold">Cannot Delete Counter</p>
+                <p className="font-semibold">Cannot Delete Kitchen</p>
                 <p>{modalApiError}</p>
               </div>
             </div>
@@ -1234,7 +1235,7 @@ export function BranchesPage() {
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-2 text-xs text-amber-800">
               <p className="font-bold text-amber-700">Safe Deactivation Available</p>
               <p>
-                This counter cannot be permanently erased because customers have financial transactions recorded here. You can safely <strong>Deactivate</strong> it so it is hidden from operations while preserving all historical records.
+                This kitchen cannot be permanently erased because customers have financial transactions recorded here. You can safely <strong>Deactivate</strong> it so it is hidden from operations while preserving all historical records.
               </p>
             </div>
           )}
@@ -1262,7 +1263,7 @@ export function BranchesPage() {
                 onClick={() => handleDeleteSubmit(false)}
                 isLoading={isSubmitting}
               >
-                Delete Branch
+                Delete Kitchen
               </Button>
             )}
           </ModalFooter>

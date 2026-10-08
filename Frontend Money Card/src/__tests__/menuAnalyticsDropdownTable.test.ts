@@ -37,13 +37,12 @@ describe('Menu Analytics - All Ordered Menu Items Collapsible Dropdown Table', (
     },
   ];
 
-  it('starts open by default displaying all ordered dishes', () => {
-    let isTableOpen = true;
-    expect(isTableOpen).toBe(true);
+  it('starts collapsed by default to minimize initial render and read-write load', () => {
+    let isTableOpen = false;
+    expect(isTableOpen).toBe(false);
 
     const visibleItems = isTableOpen ? mockDemandItems : [];
-    expect(visibleItems).toHaveLength(4);
-    expect(visibleItems[0].productName).toBe('Chicken Biryani');
+    expect(visibleItems).toHaveLength(0);
   });
 
   it('collapses table content when toggled off', () => {

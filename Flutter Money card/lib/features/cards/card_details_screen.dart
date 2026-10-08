@@ -18,6 +18,8 @@ import '../../widgets/common/app_dialog.dart';
 import '../../widgets/common/section_header.dart';
 import '../../widgets/guards/permission_guard.dart';
 import '../../widgets/states/app_loading_view.dart';
+import '../../widgets/scanner/qr_scanner_view.dart';
+import '../../providers/api_providers.dart';
 
 class CardDetailsScreen extends ConsumerStatefulWidget {
   final String cardId;
@@ -387,6 +389,360 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
     }
   }
 
+  Future<void> _handleResolveBlockedCard(Card card, CardSession? activeSession) async {
+    final lockedBalance = activeSession?.balance ?? 0.0;
+    final cardIdentifier = card.physicalCardNumber.isNotEmpty ? card.physicalCardNumber : card.qrToken;
+    final newCardController = TextEditingController();
+    String selectedMode = 'REPLACE'; // 'REPLACE' or 'REFUND'
+    String selectedPaymentMethod = 'CASH'; // 'CASH' or 'UPI'
+    String? localError;
+    bool isSubmitting = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: !isSubmitting,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          return AlertDialog(
+            scrollable: true,
+            shape: const RoundedRectangleBorder(borderRadius: AppSpacing.roundedLg),
+            title: Row(
+              children: [
+                const Icon(Icons.published_with_changes, color: AppColors.primary, size: 22),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    'Resolve Blocked: $cardIdentifier',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            content: Container(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Locked Balance Banner
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceVariantLight,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.borderLight),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'LOCKED WALLET BALANCE',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.textSecondaryLight),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '₹${lockedBalance.toStringAsFixed(2)}',
+                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.primary),
+                        ),
+                        if (activeSession?.customerName != null && activeSession!.customerName!.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Customer: ${activeSession.customerName} ${activeSession.customerPhone != null ? "(${activeSession.customerPhone})" : ""}',
+                            style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+
+                  // Mode Selector Tabs (Green: Replace, Blue: Refund)
+                  Row(
+                    children: [
+                      // Green: Replace Card & Transfer
+                      Expanded(
+                        child: InkWell(
+                          onTap: () {
+                            setDialogState(() {
+                              selectedMode = 'REPLACE';
+                              localError = null;
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                            decoration: BoxDecoration(
+                              color: selectedMode == 'REPLACE' ? AppColors.success.withValues(alpha: 0.12) : AppColors.surfaceVariantLight,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: selectedMode == 'REPLACE' ? AppColors.success : AppColors.borderLight,
+                                width: selectedMode == 'REPLACE' ? 2 : 1,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.swap_horiz, size: 16, color: selectedMode == 'REPLACE' ? AppColors.success : AppColors.textSecondaryLight),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Replace Card',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: selectedMode == 'REPLACE' ? AppColors.success : AppColors.textSecondaryLight,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                const Text('Migrate Balance', style: TextStyle(fontSize: 9, color: AppColors.textSecondaryLight)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+
+                      // Blue: Cash Refund & Settle
+                      Expanded(
+                        child: InkWell(
+                          onTap: () {
+                            setDialogState(() {
+                              selectedMode = 'REFUND';
+                              localError = null;
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                            decoration: BoxDecoration(
+                              color: selectedMode == 'REFUND' ? Colors.blue.withValues(alpha: 0.12) : AppColors.surfaceVariantLight,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: selectedMode == 'REFUND' ? Colors.blue : AppColors.borderLight,
+                                width: selectedMode == 'REFUND' ? 2 : 1,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.payments_outlined, size: 16, color: selectedMode == 'REFUND' ? Colors.blue : AppColors.textSecondaryLight),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Cash Refund',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: selectedMode == 'REFUND' ? Colors.blue : AppColors.textSecondaryLight,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                const Text('Settle & Close', style: TextStyle(fontSize: 9, color: AppColors.textSecondaryLight)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+
+                  // Mode A Content: Replace Card & Scan QR / Enter Card
+                  if (selectedMode == 'REPLACE') ...[
+                    const Text('New Replacement Card', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: newCardController,
+                      decoration: InputDecoration(
+                        hintText: 'Enter new card # or scan QR',
+                        hintStyle: const TextStyle(fontSize: 12),
+                        isDense: true,
+                        prefixIcon: const Icon(Icons.credit_card, size: 18),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.qr_code_scanner, color: AppColors.primary),
+                          tooltip: 'Scan QR Code with Camera',
+                          onPressed: () async {
+                            final scanned = await Navigator.of(context).push<String>(
+                              MaterialPageRoute(
+                                builder: (scanCtx) => Scaffold(
+                                  appBar: AppBar(title: const Text('Scan Replacement Card')),
+                                  body: QrScannerView(
+                                    title: 'Scan Replacement Card',
+                                    prompt: 'Point camera at new physical card QR code',
+                                    onQrScanned: (token) {
+                                      Navigator.of(scanCtx).pop(token);
+                                    },
+                                  ),
+                                ),
+                              ),
+                            );
+                            if (scanned != null && scanned.isNotEmpty) {
+                              setDialogState(() {
+                                newCardController.text = scanned.trim();
+                              });
+                            }
+                          },
+                        ),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Scan camera QR or type card number. New cards will auto-register on the fly.',
+                      style: TextStyle(fontSize: 10, color: AppColors.textSecondaryLight),
+                    ),
+                  ],
+
+                  // Mode B Content: Cash Refund
+                  if (selectedMode == 'REFUND') ...[
+                    const Text('Payout Method', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: selectedPaymentMethod == 'CASH' ? Colors.blue.withValues(alpha: 0.1) : null,
+                              side: BorderSide(color: selectedPaymentMethod == 'CASH' ? Colors.blue : AppColors.borderLight),
+                            ),
+                            onPressed: () => setDialogState(() => selectedPaymentMethod = 'CASH'),
+                            child: const Text('Cash', style: TextStyle(fontSize: 12)),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: selectedPaymentMethod == 'UPI' ? Colors.purple.withValues(alpha: 0.1) : null,
+                              side: BorderSide(color: selectedPaymentMethod == 'UPI' ? Colors.purple : AppColors.borderLight),
+                            ),
+                            onPressed: () => setDialogState(() => selectedPaymentMethod = 'UPI'),
+                            child: const Text('UPI', style: TextStyle(fontSize: 12)),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Pay ₹${lockedBalance.toStringAsFixed(2)} back to customer from drawer and close wallet.',
+                      style: const TextStyle(fontSize: 10, color: AppColors.textSecondaryLight),
+                    ),
+                  ],
+
+                  // Error Display
+                  if (localError != null) ...[
+                    const SizedBox(height: 8),
+                    Text(localError!, style: const TextStyle(color: AppColors.error, fontSize: 11)),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSubmitting ? null : () => Navigator.of(ctx).pop(),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: selectedMode == 'REPLACE' ? AppColors.success : Colors.blue,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: isSubmitting
+                    ? null
+                    : () async {
+                        if (selectedMode == 'REPLACE') {
+                          final targetCard = newCardController.text.trim();
+                          if (targetCard.isEmpty) {
+                            setDialogState(() {
+                              localError = 'Please scan or enter a new card number.';
+                            });
+                            return;
+                          }
+                          setDialogState(() {
+                            isSubmitting = true;
+                            localError = null;
+                          });
+                          final success = await ref
+                              .read(cardDetailsNotifierProvider.notifier)
+                              .replaceCard(targetCardId: targetCard);
+                          if (success && mounted && ctx.mounted) {
+                            Navigator.of(ctx).pop();
+                            ref.read(cardListNotifierProvider.notifier).loadCards();
+                            ref.read(availableCardsNotifierProvider.notifier).loadAvailableCards();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Card replaced! ₹${lockedBalance.toStringAsFixed(2)} migrated to $targetCard.'),
+                                backgroundColor: AppColors.success,
+                              ),
+                            );
+                            ref.read(cardDetailsNotifierProvider.notifier).loadCardById(card.id);
+                          } else if (mounted && ctx.mounted) {
+                            setDialogState(() {
+                              isSubmitting = false;
+                              localError = ref.read(cardDetailsNotifierProvider).errorMessage ?? 'Failed to replace card';
+                            });
+                          }
+                        } else {
+                          // REFUND
+                          if (activeSession == null) {
+                            setDialogState(() {
+                              localError = 'No active session found to refund.';
+                            });
+                            return;
+                          }
+                          setDialogState(() {
+                            isSubmitting = true;
+                            localError = null;
+                          });
+                          try {
+                            final sessionRepo = ref.read(sessionRepositoryProvider);
+                            await sessionRepo.returnSession(
+                              activeSession.id,
+                              paymentMethod: selectedPaymentMethod,
+                            );
+                            if (mounted && ctx.mounted) {
+                              Navigator.of(ctx).pop();
+                              ref.read(cardListNotifierProvider.notifier).loadCards();
+                              ref.read(availableCardsNotifierProvider.notifier).loadAvailableCards();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Refunded ₹${lockedBalance.toStringAsFixed(2)} via $selectedPaymentMethod. Session closed.'),
+                                  backgroundColor: Colors.blue,
+                                ),
+                              );
+                              ref.read(cardDetailsNotifierProvider.notifier).loadCardById(card.id);
+                            }
+                          } catch (e) {
+                            if (mounted && ctx.mounted) {
+                              setDialogState(() {
+                                isSubmitting = false;
+                                localError = e.toString();
+                              });
+                            }
+                          }
+                        }
+                      },
+                child: isSubmitting
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : Text(selectedMode == 'REPLACE' ? 'Transfer & Issue' : 'Refund & Close'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -596,13 +952,25 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
 
           // Block / Unblock Actions
           if (isBlocked) ...[
+            if (activeSession != null && activeSession.balance > 0) ...[
+              const SizedBox(height: AppSpacing.sm),
+              PermissionGuard.single(
+                permission: AppPermission.cardIssue,
+                child: AppButton(
+                  label: 'Replace Card / Refund',
+                  icon: Icons.published_with_changes,
+                  backgroundColor: AppColors.primary,
+                  isLoading: cardState.isSubmitting,
+                  onPressed: cardState.isSubmitting ? null : () => _handleResolveBlockedCard(card, activeSession),
+                ),
+              ),
+            ],
             const SizedBox(height: AppSpacing.sm),
             PermissionGuard.single(
               permission: AppPermission.cardUnblock,
-              child: AppButton(
+              child: AppOutlinedButton(
                 label: 'Unblock Wallet',
                 icon: Icons.lock_open,
-                backgroundColor: AppColors.success,
                 isLoading: cardState.isSubmitting,
                 onPressed: cardState.isSubmitting ? null : _handleUnblockCard,
               ),

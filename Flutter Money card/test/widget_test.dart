@@ -23,6 +23,6 @@ void main() {
 
     // With no token, it should show the LoginScreen
     expect(find.text('MONEY CARD'), findsOneWidget);
-    expect(find.text('Counter Manager'), findsOneWidget);
+    expect(find.text('Staff Login'), findsOneWidget);
   });
 }

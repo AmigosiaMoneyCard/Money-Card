@@ -82,6 +82,7 @@ export function SubscriptionsPage() {
 }
 
 function OrgAdminSubscriptionsView() {
+  const { user } = useAuth();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [planRequests, setPlanRequests] = useState<PlanChangeRequest[]>([]);
@@ -215,7 +216,7 @@ function OrgAdminSubscriptionsView() {
   const handleOpenContactSuperAdmin = (targetPlan?: Plan) => {
     if (pendingRequest) {
       notify.warning(
-        'A cafeteria can only make one plan change request at a time. Please wait until your pending request is approved or rejected by Super Admin before submitting another request.'
+        'An organization can only make one plan change request at a time. Please wait until your pending request is approved or rejected by Super Admin before submitting another request.'
       );
       return;
     }
@@ -259,7 +260,7 @@ function OrgAdminSubscriptionsView() {
 
     if (pendingRequest) {
       setModalApiError(
-        'A cafeteria can only make one plan change request at a time. Please wait until your pending request is approved or rejected by Super Admin before submitting another request.'
+        'An organization can only make one plan change request at a time. Please wait until your pending request is approved or rejected by Super Admin before submitting another request.'
       );
       return;
     }
@@ -288,6 +289,7 @@ function OrgAdminSubscriptionsView() {
         requestedPlanId: selectedTarget.id,
         requestType: formRequestType,
         reason: formReason.trim() || undefined,
+        organizationId: user?.organizationId || undefined,
       });
 
       if (!res.success) {
@@ -422,7 +424,7 @@ function OrgAdminSubscriptionsView() {
                         Resource Limits & Usage
                       </span>
                       <div className="flex items-center justify-between text-slate-700">
-                        <span>Counters:</span>
+                        <span>Kitchens:</span>
                         <span className="font-mono text-sm font-bold text-slate-900">
                           {branchUsage} / <span className="text-emerald-700 font-extrabold">{branchLimit}</span>
                         </span>
@@ -573,7 +575,7 @@ function OrgAdminSubscriptionsView() {
                               Resource Limits {isCurrent ? '& Usage' : ''}
                             </span>
                             <div className="flex items-center justify-between text-slate-700">
-                              <span>Counters:</span>
+                              <span>Kitchens:</span>
                               {isCurrent ? (
                                 <span className="font-mono text-sm font-bold text-slate-900">
                                   {branchUsage} / <span className="text-emerald-700 font-extrabold">{branchLimit}</span>
@@ -677,11 +679,11 @@ function OrgAdminSubscriptionsView() {
         </div>
       )}
 
-      {/* ── Contact Super Admin / Request Plan Change Modal ── */}
+      {/* ── Plan Change Modal ── */}
       <Modal
         isOpen={showContactModal}
         onClose={() => setShowContactModal(false)}
-        title="Contact Super Admin / Request Plan Change"
+        title="Plan change"
       >
         <form onSubmit={handleContactSubmit} className="space-y-4 py-2">
           {formValidationError && (
@@ -700,7 +702,7 @@ function OrgAdminSubscriptionsView() {
 
           {/* Current Plan (Read-Only) */}
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-1 text-xs">
-            <span className="text-slate-500 font-semibold uppercase tracking-wider">Current Cafeteria Plan</span>
+            <span className="text-slate-500 font-semibold uppercase tracking-wider">Current Organization Plan</span>
             <div className="flex justify-between items-center pt-1">
               <span className="text-sm font-bold text-slate-900">{currentPlan?.name || 'Standard'}</span>
               <span className="font-mono text-emerald-700 font-bold">
@@ -773,7 +775,7 @@ function OrgAdminSubscriptionsView() {
               disabled={isSubmitting}
               leftIcon={<Send className="h-4 w-4" />}
             >
-              Submit Request to Super Admin
+              Plan change
             </Button>
           </ModalFooter>
         </form>

@@ -323,7 +323,7 @@ class _RechargesScreenState extends ConsumerState<RechargesScreen> {
                         ),
                         const SizedBox(height: 2),
                         const Text(
-                          'Cash in counter drawer',
+                          'Cash in kitchen drawer',
                           style: TextStyle(fontSize: 11, color: Color(0xFF059669)),
                         ),
                       ],
@@ -603,7 +603,7 @@ class _RechargesScreenState extends ConsumerState<RechargesScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Staff: ${tx.staffName ?? "Counter Staff"}',
+                              'Staff: ${tx.staffName ?? "Kitchen Staff"}',
                               style: const TextStyle(fontSize: 12, color: AppColors.textTertiaryLight),
                             ),
                             Text(

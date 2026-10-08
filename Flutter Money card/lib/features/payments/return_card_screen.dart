@@ -48,8 +48,8 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
     if (currentBranch != null && session.branchId.isNotEmpty && session.branchId != currentBranch.id) {
       await AppDialog.show(
         context,
-        title: 'Return Not Allowed at this Counter',
-        message: 'This wallet was issued at another counter. Wallets can only be returned and settled at the counter where they were issued.',
+        title: 'Return Not Allowed at this Kitchen',
+        message: 'This wallet was issued at another kitchen. Wallets can only be returned and settled at the kitchen where they were issued.',
         confirmLabel: 'Understood',
       );
       return;
@@ -84,8 +84,8 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
     if (currentBranch != null && session.branchId.isNotEmpty && session.branchId != currentBranch.id) {
       await AppDialog.show(
         context,
-        title: 'Return Not Allowed at this Counter',
-        message: 'This wallet was issued at another counter. Wallets can only be returned and settled at the counter where they were issued.',
+        title: 'Return Not Allowed at this Kitchen',
+        message: 'This wallet was issued at another kitchen. Wallets can only be returned and settled at the kitchen where they were issued.',
         confirmLabel: 'Understood',
       );
       return;
@@ -94,7 +94,7 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
     final confirmed = await AppDialog.show(
       context,
       title: 'Retain Profit Without Cash Refund',
-      message: 'Return physical card and keep remaining balance of ₹${session.balance.toStringAsFixed(2)} as counter profit? No cash will be deducted from your drawer.',
+      message: 'Return physical card and keep remaining balance of ₹${session.balance.toStringAsFixed(2)} as kitchen profit? No cash will be deducted from your drawer.',
       confirmLabel: 'Retain Profit & Return',
       cancelLabel: 'Cancel',
       isDestructive: false,
@@ -118,8 +118,8 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
     if (currentBranch != null && session.branchId.isNotEmpty && session.branchId != currentBranch.id) {
       await AppDialog.show(
         context,
-        title: 'Refund Not Allowed at this Counter',
-        message: 'This wallet was issued at another counter. Refunds can only be processed at the counter where the wallet was issued.',
+        title: 'Refund Not Allowed at this Kitchen',
+        message: 'This wallet was issued at another kitchen. Refunds can only be processed at the kitchen where the wallet was issued.',
         confirmLabel: 'Understood',
       );
       return;
@@ -180,7 +180,7 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
           SnackBar(
             content: Text(
               isMismatch
-                  ? 'This wallet must be returned at the counter where it was issued.'
+                  ? 'This wallet must be returned at the kitchen where it was issued.'
                   : 'Refund failed: $e',
             ),
             backgroundColor: AppColors.error,
@@ -291,7 +291,7 @@ class _ReturnCardScreenState extends ConsumerState<ReturnCardScreen> {
                     const SizedBox(width: AppSpacing.xs),
                     const Expanded(
                       child: Text(
-                        'This wallet was issued at another counter. Wallets can only be returned and refunded at the counter where they were issued.',
+                        'This wallet was issued at another kitchen. Wallets can only be returned and refunded at the kitchen where they were issued.',
                         style: TextStyle(
                           color: AppColors.textPrimaryLight,
                           fontSize: 13,

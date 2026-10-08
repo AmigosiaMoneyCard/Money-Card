@@ -24,6 +24,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   late String _startDate;
   late String _endDate;
 
+  bool _showRecharges = false;
+  bool _showRefunds = false;
+  bool _showRefundCount = false;
+  bool _showCancelled = false;
+  bool _showCancelledCount = false;
+
   static String _todayStr() {
     final now = DateTime.now();
     final y = now.year.toString().padLeft(4, '0');
@@ -286,7 +292,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                               : () => _openPdfPreview(
                                     context,
                                     analyticsState.analytics!,
-                                    currentBranch?.name ?? 'Main Cafeteria',
+                                    currentBranch?.name ?? 'Main Kitchen',
                                     analyticsState.selectedRange,
                                   ),
                           style: ElevatedButton.styleFrom(
@@ -365,7 +371,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     AnalyticsNotifier notifier,
   ) {
     if (state.isLoading) {
-      return const AppLoadingView(message: 'Loading counter analytics...');
+      return const AppLoadingView(message: 'Loading kitchen analytics...');
     }
 
     if (state.errorMessage != null) {
@@ -407,7 +413,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           SizedBox(height: 80),
           AppEmptyState(
             title: 'No Analytics Data',
-            description: 'No performance metrics available for this counter.',
+            description: 'No performance metrics available for this kitchen.',
             icon: Icons.bar_chart_outlined,
           ),
         ],
@@ -426,11 +432,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               Expanded(
                 child: _buildCompactMetricCard(
                   title: 'Recharge Amount',
-                  totalText: '₹${data.rechargeVolume.toStringAsFixed(2)}',
-                  line1Text: 'Cash: ₹${_formatCompactSubAmount(data.cashMoney)}',
-                  line2Text: 'UPI: ₹${_formatCompactSubAmount(data.upiMoney)}',
+                  totalText: _showRecharges ? '₹${data.rechargeVolume.toStringAsFixed(2)}' : '••••••',
+                  line1Text: _showRecharges ? 'Cash: ₹${_formatCompactSubAmount(data.cashMoney)}' : null,
+                  line2Text: _showRecharges ? 'UPI: ₹${_formatCompactSubAmount(data.upiMoney)}' : null,
                   icon: Icons.account_balance_wallet_outlined,
                   accentColor: AppColors.primaryDark,
+                  isMasked: !_showRecharges,
+                  onToggleMask: () => setState(() => _showRecharges = !_showRecharges),
                 ),
               ),
               const SizedBox(width: 10),
@@ -456,20 +464,24 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               Expanded(
                 child: _buildCompactMetricCard(
                   title: 'Wallet Refund',
-                  totalText: '₹${data.refundVolume.toStringAsFixed(2)}',
-                  line1Text: 'Cash: ₹${_formatCompactSubAmount(data.cashRefunds)}',
-                  line2Text: 'UPI: ₹${_formatCompactSubAmount(data.upiRefunds)}',
+                  totalText: _showRefunds ? '₹${data.refundVolume.toStringAsFixed(2)}' : '••••••',
+                  line1Text: _showRefunds ? 'Cash: ₹${_formatCompactSubAmount(data.cashRefunds)}' : null,
+                  line2Text: _showRefunds ? 'UPI: ₹${_formatCompactSubAmount(data.upiRefunds)}' : null,
                   icon: Icons.assignment_return_outlined,
                   accentColor: AppColors.error,
+                  isMasked: !_showRefunds,
+                  onToggleMask: () => setState(() => _showRefunds = !_showRefunds),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: _buildCompactMetricCard(
                   title: 'Wallet Refund Count',
-                  totalText: '${data.refundCount} Refunds',
+                  totalText: _showRefundCount ? '${data.refundCount} Refunds' : '••••••',
                   icon: Icons.keyboard_return,
                   accentColor: AppColors.warning,
+                  isMasked: !_showRefundCount,
+                  onToggleMask: () => setState(() => _showRefundCount = !_showRefundCount),
                 ),
               ),
             ],
@@ -477,26 +489,30 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         ),
         const SizedBox(height: 10),
 
-        // Row 3: Cancelled Amount & Cancelled Count (Cancelled Together)
+        // Row 3: Cancelled & Cancelled Count (Cancelled Together)
         IntrinsicHeight(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
                 child: _buildCompactMetricCard(
-                  title: 'Cancelled Amount',
-                  totalText: '₹${data.cancelledTopUps.toStringAsFixed(2)}',
+                  title: 'Cancelled',
+                  totalText: _showCancelled ? '₹${data.cancelledTopUps.toStringAsFixed(2)}' : '••••••',
                   icon: Icons.cancel_outlined,
                   accentColor: Colors.deepOrange,
+                  isMasked: !_showCancelled,
+                  onToggleMask: () => setState(() => _showCancelled = !_showCancelled),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: _buildCompactMetricCard(
                   title: 'Cancelled Count',
-                  totalText: '${data.cancelledTopUpsCount} Recharges',
+                  totalText: _showCancelledCount ? '${data.cancelledTopUpsCount} Recharges' : '••••••',
                   icon: Icons.money_off,
                   accentColor: Colors.brown,
+                  isMasked: !_showCancelledCount,
+                  onToggleMask: () => setState(() => _showCancelledCount = !_showCancelledCount),
                 ),
               ),
             ],
@@ -544,6 +560,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     String? line2Text,
     IconData? icon,
     Color accentColor = AppColors.primary,
+    bool isMasked = false,
+    VoidCallback? onToggleMask,
   }) {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -575,6 +593,17 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   softWrap: true,
                 ),
               ),
+              if (onToggleMask != null) ...[
+                const SizedBox(width: 4),
+                GestureDetector(
+                  onTap: onToggleMask,
+                  child: Icon(
+                    isMasked ? Icons.visibility_off : Icons.visibility,
+                    size: 16,
+                    color: AppColors.textSecondaryLight,
+                  ),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 6),
@@ -676,7 +705,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           SizedBox(height: 80),
           AppEmptyState(
             title: 'No Menu Analytics',
-            description: 'No menu performance metrics available for this counter.',
+            description: 'No menu performance metrics available for this kitchen.',
             icon: Icons.restaurant_menu_outlined,
           ),
         ],
@@ -696,7 +725,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             children: [
               Expanded(
                 child: _buildMenuSummaryCard(
-                  title: 'Food Sales',
+                  title: 'Sales',
                   value: '₹${data.purchaseVolume.toStringAsFixed(2)}',
                   subtitle: '${data.purchaseCount} orders placed',
                   icon: Icons.payments_outlined,

@@ -319,7 +319,7 @@ export function AdminPlansView() {
       header: 'Technical Limits',
       render: (plan: Plan) => (
         <div className="text-xs text-slate-600 space-y-0.5 font-mono">
-          <p>Counters: {plan.branchLimit}</p>
+          <p>Kitchens: {plan.branchLimit}</p>
           <p>Staff: {plan.staffLimit} | Wallets: {plan.cardLimit}</p>
         </div>
       ),
@@ -624,7 +624,7 @@ export function AdminPlansView() {
               id="create-branch-limit"
               type="number"
               min="0"
-              label="Max Counters"
+              label="Max Kitchens"
               value={formBranchLimit}
               onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') e.preventDefault(); }}
               onChange={(e) => {
@@ -729,7 +729,7 @@ export function AdminPlansView() {
               id="edit-branch-limit"
               type="number"
               min="0"
-              label="Max Counters"
+              label="Max Kitchens"
               value={formBranchLimit}
               onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') e.preventDefault(); }}
               onChange={(e) => {

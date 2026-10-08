@@ -221,7 +221,7 @@ function OrgActionMenu({
               className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer text-left"
             >
               <Trash2 className="h-4 w-4" />
-              <span>Delete Cafeteria</span>
+              <span>Delete Organizations</span>
             </button>
           </div>,
           document.body,
@@ -738,7 +738,7 @@ export function OrganizationsPage() {
       {/* ── Page Header ── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Platform Cafeterias</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Organizations</h1>
         </div>
 
         <div>
@@ -759,7 +759,7 @@ export function OrganizationsPage() {
         <div className="flex flex-wrap items-center gap-3">
           {/* Search */}
           <div className="w-full sm:w-72">
-            <label className="mb-1 block text-[11px] font-medium text-slate-600">Search Cafeteria</label>
+            <label className="mb-1 block text-[11px] font-medium text-slate-600">Search Organization</label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
@@ -867,7 +867,7 @@ export function OrganizationsPage() {
       <Modal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        title="Add New Cafeteria"
+        title="Add new organization"
       >
         <div className="space-y-4 py-2">
           {modalApiError && (
@@ -879,8 +879,8 @@ export function OrganizationsPage() {
 
           <Input
             id="create-org-name"
-            label="Cafeteria Name *"
-            placeholder="e.g. Acme Cafeteria"
+            label="Organization Name *"
+            placeholder="e.g. Acme Organization"
             maxLength={30}
             value={formName}
             onChange={(e) => {
@@ -894,9 +894,9 @@ export function OrganizationsPage() {
 
           <Input
             id="create-org-admin-email"
-            label="Org Admin Gmail Address *"
+            label="Organization Email *"
             type="email"
-            placeholder="e.g. cafeteria.admin@gmail.com"
+            placeholder="Org gmail"
             value={formAdminEmail}
             onChange={(e) => {
               setFormAdminEmail(e.target.value);
@@ -994,7 +994,7 @@ export function OrganizationsPage() {
           setShowDetailsModal(false);
           setIsEditingName(false);
         }}
-        title="Cafeteria Overview"
+        title="Organization Overview"
       >
         {selectedOrg && (
           <div className="space-y-6 py-2">
@@ -1256,18 +1256,18 @@ export function OrganizationsPage() {
             </div>
           )}
 
-          <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3.5 text-xs text-amber-200 space-y-1">
-            <p className="font-semibold">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3.5 text-xs text-slate-900 space-y-1">
+            <p className="font-semibold text-slate-900">
               Are you sure you want to reset the password for {selectedOrg?.adminUser?.name || 'Org Admin'}?
             </p>
-            <p className="text-amber-300/80">
+            <p className="text-slate-800">
               Setting a temporary password will require the Org Admin to create a new private password upon their next login.
             </p>
           </div>
 
           <div className="space-y-2 text-xs border border-slate-200 rounded-lg p-3 bg-slate-50">
             <div className="flex justify-between">
-              <span className="text-slate-600">Cafeteria:</span>
+              <span className="text-slate-600">Organization:</span>
               <span className="font-semibold text-slate-900">{selectedOrg?.name}</span>
             </div>
             <div className="flex justify-between">
@@ -1353,8 +1353,7 @@ export function OrganizationsPage() {
       <Modal
         isOpen={showDeleteModal}
         onClose={() => !isSubmitting && setShowDeleteModal(false)}
-        title="Delete Cafeteria"
-        description="Permanently remove cafeteria and all related data"
+        title="Delete Organizations"
         size="md"
       >
         <div className="space-y-4">
@@ -1368,16 +1367,13 @@ export function OrganizationsPage() {
             </div>
           )}
 
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-2">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm text-slate-800 font-medium">
               Are you sure you want to permanently delete{' '}
               <span className="text-emerald-700 font-bold font-mono">
                 {selectedOrgToDelete?.name}
               </span>
               ?
-            </p>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              This action cannot be undone. All branch locations, staff accounts, products, and registered smart cards belonging to this organization will be permanently deleted.
             </p>
           </div>
 

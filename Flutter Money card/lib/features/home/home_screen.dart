@@ -3,16 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
-import '../../core/constants/permission_constants.dart';
 import '../../providers/analytics_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/branch_provider.dart';
 import '../../providers/card_operations_provider.dart';
-import '../../providers/permission_provider.dart';
 import '../../providers/pos_cart_provider.dart';
 import '../../providers/session_operations_provider.dart';
 import '../../widgets/common/app_card.dart';
-import 'food_progress_widget.dart';
+// Reserved for future release: Kitchen food progress tracking
+// import 'food_progress_widget.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -53,7 +52,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final user = ref.watch(currentUserProvider);
     final currentBranch = ref.watch(currentBranchProvider);
     final sessionNotifier = ref.read(sessionListNotifierProvider.notifier);
-    final permissionChecker = ref.watch(permissionCheckerProvider);
 
     final analyticsState = ref.watch(analyticsNotifierProvider);
     final todayMetric = analyticsState.analytics;
@@ -91,7 +89,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                         Text(
                           currentBranch != null
-                              ? 'Counter: ${currentBranch.name}'
+                              ? 'Kitchen: ${currentBranch.name}'
                               : 'Ready to serve customers',
                           style: const TextStyle(
                             fontSize: 13,
@@ -111,11 +109,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
-                        user.role == 'STAFF'
-                            ? (permissionChecker.hasPermission(AppPermission.recharge)
-                                ? 'Manager'
-                                : 'Staff')
-                            : user.role,
+                        user.nickname,
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -191,9 +185,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
 
-              // Food Preparation Progress Widget (Live Kitchen KDS status)
-              const FoodPreparationProgressWidget(),
-              const SizedBox(height: AppSpacing.md),
+              // Reserved for future version release: Kitchen food progress tracking
+              // const FoodPreparationProgressWidget(),
+              // const SizedBox(height: AppSpacing.md),
 
               // 2b. Today at a Glance Summary Card (Clickable to Analytics)
               Material(

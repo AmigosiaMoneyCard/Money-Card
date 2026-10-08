@@ -160,7 +160,7 @@ export async function createStaffMember(req: Request, res: Response) {
     const myBranchIds = myBranches.map((b) => b.branchId);
 
     if (myBranchIds.length === 0) {
-      return sendError(res, 403, 'FORBIDDEN', 'No branch assigned to your counter account');
+      return sendError(res, 403, 'FORBIDDEN', 'No branch assigned to your kitchen account');
     }
 
     if (!resolvedBranchIds || !Array.isArray(resolvedBranchIds) || resolvedBranchIds.length === 0) {
@@ -168,7 +168,7 @@ export async function createStaffMember(req: Request, res: Response) {
     } else {
       const invalidBranch = resolvedBranchIds.some((bId: string) => !myBranchIds.includes(bId));
       if (invalidBranch) {
-        return sendError(res, 403, 'FORBIDDEN', 'Cannot assign staff to branches outside your counter scope');
+        return sendError(res, 403, 'FORBIDDEN', 'Cannot assign staff to branches outside your kitchen scope');
       }
     }
   }
@@ -370,7 +370,7 @@ export async function getStaffById(req: Request, res: Response) {
     const myBranchIds = new Set(myBranches.map((b) => b.branchId));
     const sharesBranch = staff.assignedBranches.some((b) => myBranchIds.has(b.branchId));
     if (!sharesBranch && staff.id !== req.user.id) {
-      return sendError(res, 403, 'FORBIDDEN', 'Cannot access staff member outside your counter scope');
+      return sendError(res, 403, 'FORBIDDEN', 'Cannot access staff member outside your kitchen scope');
     }
   }
 
@@ -430,13 +430,13 @@ export async function updateStaffMember(req: Request, res: Response) {
     const myBranchIds = myBranches.map((b) => b.branchId);
     const sharesBranch = staff.assignedBranches.some((b) => myBranchIds.includes(b.branchId));
     if (!sharesBranch && staff.id !== req.user.id) {
-      return sendError(res, 403, 'FORBIDDEN', 'Cannot manage staff member outside your counter scope');
+      return sendError(res, 403, 'FORBIDDEN', 'Cannot manage staff member outside your kitchen scope');
     }
 
     if (Array.isArray(targetBranches)) {
       const invalidBranch = targetBranches.some((bId: string) => !myBranchIds.includes(bId));
       if (invalidBranch) {
-        return sendError(res, 403, 'FORBIDDEN', 'Cannot assign staff to branches outside your counter scope');
+        return sendError(res, 403, 'FORBIDDEN', 'Cannot assign staff to branches outside your kitchen scope');
       }
     }
   }
@@ -529,11 +529,11 @@ export async function updateStaffBranches(req: Request, res: Response) {
     const myBranchIds = myBranches.map((b) => b.branchId);
     const sharesBranch = staff.assignedBranches.some((b) => myBranchIds.includes(b.branchId));
     if (!sharesBranch) {
-      return sendError(res, 403, 'FORBIDDEN', 'Cannot manage staff member outside your counter scope');
+      return sendError(res, 403, 'FORBIDDEN', 'Cannot manage staff member outside your kitchen scope');
     }
     const invalidBranch = targetBranchIds.some((bId: string) => !myBranchIds.includes(bId));
     if (invalidBranch) {
-      return sendError(res, 403, 'FORBIDDEN', 'Cannot assign staff to branches outside your counter scope');
+      return sendError(res, 403, 'FORBIDDEN', 'Cannot assign staff to branches outside your kitchen scope');
     }
   }
 
@@ -591,7 +591,7 @@ export async function updateStaffPermissions(req: Request, res: Response) {
     const myBranchIds = myBranches.map((b) => b.branchId);
     const sharesBranch = staff.assignedBranches.some((b) => myBranchIds.includes(b.branchId));
     if (!sharesBranch) {
-      return sendError(res, 403, 'FORBIDDEN', 'Cannot manage staff member outside your counter scope');
+      return sendError(res, 403, 'FORBIDDEN', 'Cannot manage staff member outside your kitchen scope');
     }
   }
 
@@ -669,7 +669,7 @@ export async function deleteStaffMember(req: Request, res: Response) {
 
   if (req.user?.role === Role.STAFF) {
     if (user.id === req.user.id) {
-      return sendError(res, 400, 'CANNOT_DELETE_SELF', 'Counter managers cannot delete their own account.');
+      return sendError(res, 400, 'CANNOT_DELETE_SELF', 'You cannot delete your own account.');
     }
     const myBranches = await prisma.userBranch.findMany({
       where: { userId: req.user.id },
@@ -680,7 +680,7 @@ export async function deleteStaffMember(req: Request, res: Response) {
       user.assignedBranches.length === 0 ||
       user.assignedBranches.some((b) => myBranchIds.includes(b.branchId));
     if (!sharesBranch) {
-      return sendError(res, 403, 'FORBIDDEN', 'Cannot delete staff member outside your counter scope');
+      return sendError(res, 403, 'FORBIDDEN', 'Cannot delete staff member outside your kitchen scope');
     }
   }
 
@@ -783,7 +783,7 @@ export async function changeStaffPassword(req: Request, res: Response) {
     const myBranchIds = myBranches.map((b) => b.branchId);
     const sharesBranch = staff.assignedBranches.some((b) => myBranchIds.includes(b.branchId));
     if (!sharesBranch && staff.id !== req.user.id) {
-      return sendError(res, 403, 'FORBIDDEN', 'Cannot change password for staff member outside your counter scope');
+      return sendError(res, 403, 'FORBIDDEN', 'Cannot change password for staff member outside your kitchen scope');
     }
   }
 

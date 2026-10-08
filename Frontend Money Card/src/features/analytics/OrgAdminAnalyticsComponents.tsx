@@ -12,6 +12,7 @@ import {
   ArrowUpDown,
   Building2,
   Eye,
+  EyeOff,
   Users,
   UserCheck,
   ArrowRight,
@@ -21,6 +22,7 @@ import {
   Ban,
   Search,
   ChevronDown,
+  RotateCcw,
 } from 'lucide-react';
 import { Card, StatCard, Badge, Button, Select, Modal, ModalFooter } from '@/components/ui';
 import { formatCurrency, formatDateTime } from '@/utils/formatters';
@@ -61,9 +63,17 @@ export function OrgAdminFinancialSection({
   const cancelledTopUps = analytics.cancelledTopUps ?? 0;
   const totalFoodSales = analytics.totalPurchaseVolume ?? analytics.salesVolume ?? 0;
   const retainedCardProfit = analytics.retainedCardProfit ?? 0;
+  const blockedReturnedAmount = analytics.blockedReturnedAmount ?? 0;
+  const blockedReturnedCount = analytics.blockedReturnedCount ?? 0;
 
   const upiMoney = analytics.upiMoney ?? upiRecharge;
   const cashMoney = analytics.cashMoney ?? cashRecharge;
+
+  const [showRecharges, setShowRecharges] = useState(false);
+  const [showRefunds, setShowRefunds] = useState(false);
+  const [showCancelled, setShowCancelled] = useState(false);
+  const [showRetained, setShowRetained] = useState(false);
+  const [showBlockedReturns, setShowBlockedReturns] = useState(false);
 
   return (
     <div className="space-y-4">
@@ -94,12 +104,26 @@ export function OrgAdminFinancialSection({
         padding="none"
         className="border-slate-200 bg-white shadow-xs overflow-hidden"
       >
+        <div className="bg-slate-50/70 border-b border-slate-100 px-4 py-2 flex items-center justify-between">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            Recharges
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowRecharges((prev) => !prev)}
+            className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 transition-colors cursor-pointer"
+            title={showRecharges ? 'Hide Recharges' : 'Show Recharges'}
+          >
+            {showRecharges ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            <span>{showRecharges ? 'Hide' : 'Show'}</span>
+          </button>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-100">
           {/* Recharge Total */}
           <div className="p-4 sm:p-5 flex flex-col justify-between">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Recharges
+                Total Recharges
               </span>
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
                 <Wallet className="h-4 w-4" />
@@ -107,7 +131,7 @@ export function OrgAdminFinancialSection({
             </div>
             <div className="mt-2">
               <p className="font-mono text-2xl font-bold text-slate-900">
-                {formatCurrency(moneyAdded)}
+                {showRecharges ? formatCurrency(moneyAdded) : <EyeOff className="h-5 w-5 text-slate-300 inline-block align-middle" />}
               </p>
             </div>
           </div>
@@ -124,7 +148,7 @@ export function OrgAdminFinancialSection({
             </div>
             <div className="mt-2">
               <p className="font-mono text-2xl font-bold text-purple-700">
-                {formatCurrency(upiMoney)}
+                {showRecharges ? formatCurrency(upiMoney) : <EyeOff className="h-5 w-5 text-purple-300 inline-block align-middle" />}
               </p>
             </div>
           </div>
@@ -141,7 +165,7 @@ export function OrgAdminFinancialSection({
             </div>
             <div className="mt-2">
               <p className="font-mono text-2xl font-bold text-emerald-700">
-                {formatCurrency(cashMoney)}
+                {showRecharges ? formatCurrency(cashMoney) : <EyeOff className="h-5 w-5 text-emerald-300 inline-block align-middle" />}
               </p>
             </div>
           </div>
@@ -149,8 +173,8 @@ export function OrgAdminFinancialSection({
       </Card>
 
       {/* 3. Follow-up Metric Cards Below */}
-      <div className={`grid gap-4 sm:grid-cols-2 ${leadingCard ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
-        {/* Optional Leading Card (e.g. Cafeterias in Super Admin) */}
+      <div className={`grid gap-4 sm:grid-cols-2 ${leadingCard ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
+        {/* Optional Leading Card (e.g. Organizations in Super Admin) */}
         {leadingCard}
 
         {/* Money Refunded */}
@@ -159,47 +183,111 @@ export function OrgAdminFinancialSection({
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Refunds
             </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
-              <ArrowUpDown className="h-4 w-4" />
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setShowRefunds((prev) => !prev)}
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer"
+                title={showRefunds ? 'Hide Refunds' : 'Show Refunds'}
+              >
+                {showRefunds ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                <span>{showRefunds ? 'Hide' : 'Show'}</span>
+              </button>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+                <ArrowUpDown className="h-4 w-4" />
+              </div>
             </div>
           </div>
           <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-rose-600">
-              {formatCurrency(moneyRefunded)}
+              {showRefunds ? formatCurrency(moneyRefunded) : <EyeOff className="h-5 w-5 text-rose-300 inline-block align-middle" />}
             </p>
           </div>
         </Card>
 
-        {/* Cancelled Recharged */}
+        {/* Cancelled */}
         <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Cancelled Recharged
+              Cancelled
             </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
-              <RefreshCw className="h-4 w-4" />
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setShowCancelled((prev) => !prev)}
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-colors cursor-pointer"
+                title={showCancelled ? 'Hide Cancelled' : 'Show Cancelled'}
+              >
+                {showCancelled ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                <span>{showCancelled ? 'Hide' : 'Show'}</span>
+              </button>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                <RefreshCw className="h-4 w-4" />
+              </div>
             </div>
           </div>
           <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-amber-600">
-              {formatCurrency(cancelledTopUps)}
+              {showCancelled ? formatCurrency(cancelledTopUps) : <EyeOff className="h-5 w-5 text-amber-300 inline-block align-middle" />}
             </p>
           </div>
         </Card>
 
-        {/* Retained Card Profit */}
+        {/* Retained amount */}
         <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Retained Profit
+              Retained amount
             </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-              <DollarSign className="h-4 w-4" />
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setShowRetained((prev) => !prev)}
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer"
+                title={showRetained ? 'Hide Retained amount' : 'Show Retained amount'}
+              >
+                {showRetained ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                <span>{showRetained ? 'Hide' : 'Show'}</span>
+              </button>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                <DollarSign className="h-4 w-4" />
+              </div>
             </div>
           </div>
           <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-emerald-600">
-              {formatCurrency(retainedCardProfit)}
+              {showRetained ? formatCurrency(retainedCardProfit) : <EyeOff className="h-5 w-5 text-emerald-300 inline-block align-middle" />}
+            </p>
+          </div>
+        </Card>
+
+        {/* Blocked Returns */}
+        <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Blocked Returns
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setShowBlockedReturns((prev) => !prev)}
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors cursor-pointer"
+                title={showBlockedReturns ? 'Hide Blocked Returns' : 'Show Blocked Returns'}
+              >
+                {showBlockedReturns ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                <span>{showBlockedReturns ? 'Hide' : 'Show'}</span>
+              </button>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                <RotateCcw className="h-4 w-4" />
+              </div>
+            </div>
+          </div>
+          <div className="mt-2">
+            <p className="font-mono text-2xl font-bold text-blue-600">
+              {showBlockedReturns ? formatCurrency(blockedReturnedAmount) : <EyeOff className="h-5 w-5 text-blue-300 inline-block align-middle" />}
+            </p>
+            <p className="mt-0.5 text-[11px] font-medium text-slate-400">
+              {`${blockedReturnedCount} cards`}
             </p>
           </div>
         </Card>
@@ -224,7 +312,7 @@ export function OrgAdminKpiCards({ analytics }: KpiCardsProps) {
         icon={<CreditCard className="h-5 w-5 text-blue-600" />}
       />
       <StatCard
-        label="Customer Float Balance"
+        label="Retained amount"
         value={formatCurrency(floatBalance)}
         icon={<Wallet className="h-5 w-5 text-amber-600" />}
       />
@@ -408,7 +496,7 @@ export function OrgAdminBranchComparison({
     <div className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg font-bold text-slate-900">Counter Performance Comparison</h2>
+          <h2 className="text-lg font-bold text-slate-900">Kitchen Performance Comparison</h2>
         </div>
 
         <div className="flex items-center gap-2">
@@ -460,7 +548,7 @@ export function OrgAdminBranchComparison({
           <table className="w-full text-left text-xs">
             <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-600">
               <tr>
-                <th className="py-3.5 pl-4 pr-3">Counter</th>
+                <th className="py-3.5 pl-4 pr-3">Kitchen</th>
                 <th className="px-3 py-3.5 text-right">Transactions</th>
                 <th className="px-3 py-3.5 text-right">Purchases</th>
                 <th className="px-3 py-3.5 text-right">Card Recharge</th>
@@ -877,7 +965,8 @@ export interface MenuAnalyticsSectionProps {
 
 export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSectionProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [isTableOpen, setIsTableOpen] = useState(true);
+  const [isTableOpen, setIsTableOpen] = useState(false);
+  const [showCancelledOrders, setShowCancelledOrders] = useState(false);
 
   const cancelledOrders = analytics.cancelledOrdersCount ?? 0;
 
@@ -909,13 +998,24 @@ export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSection
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Cancelled Orders
             </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
-              <Ban className="h-4 w-4" />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowCancelledOrders((prev) => !prev)}
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 transition-colors cursor-pointer"
+                title={showCancelledOrders ? 'Hide Cancelled Orders' : 'Show Cancelled Orders'}
+              >
+                {showCancelledOrders ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                <span>{showCancelledOrders ? 'Hide' : 'Show'}</span>
+              </button>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+                <Ban className="h-4 w-4" />
+              </div>
             </div>
           </div>
           <div className="mt-2">
             <p className="font-mono text-2xl font-bold text-slate-900">
-              {cancelledOrders} Orders
+              {showCancelledOrders ? `${cancelledOrders} Orders` : <EyeOff className="h-5 w-5 text-slate-300 inline-block align-middle" />}
             </p>
           </div>
         </Card>
@@ -1042,7 +1142,7 @@ export interface FoodPurchasesByCounterTableProps {
 export function FoodPurchasesByCounterTable({ purchases }: FoodPurchasesByCounterTableProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'cross'>('all');
-  const [isTableOpen, setIsTableOpen] = useState(true);
+  const [isTableOpen, setIsTableOpen] = useState(false);
 
   const filteredPurchases = useMemo(() => {
     return purchases.filter((p) => {
@@ -1072,14 +1172,14 @@ export function FoodPurchasesByCounterTable({ purchases }: FoodPurchasesByCounte
             <Building2 className="h-4 w-4" />
           </div>
           <h2 className="text-base font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
-            Food Purchases by Counter
+            Sales by Kitchen
           </h2>
           <Badge variant="default" className="text-xs font-semibold">
             {filteredPurchases.length} Orders
           </Badge>
           {crossCount > 0 && (
             <Badge variant="success" className="text-xs font-semibold">
-              {crossCount} Cross-Counter
+              {crossCount} Cross-Kitchen
             </Badge>
           )}
           <div className={`p-1 rounded text-slate-400 group-hover:text-slate-600 transition-transform duration-200 ${isTableOpen ? 'rotate-180' : 'rotate-0'}`}>
@@ -1097,7 +1197,7 @@ export function FoodPurchasesByCounterTable({ purchases }: FoodPurchasesByCounte
                 filterType === 'all' ? 'bg-white text-slate-900 shadow-2xs font-semibold' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              All Purchases
+              All Sales
             </button>
             <button
               type="button"
@@ -1106,7 +1206,7 @@ export function FoodPurchasesByCounterTable({ purchases }: FoodPurchasesByCounte
                 filterType === 'cross' ? 'bg-white text-emerald-700 shadow-2xs font-semibold' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Cross-Counter ({crossCount})
+              Cross-Kitchen ({crossCount})
             </button>
           </div>
 
@@ -1114,7 +1214,7 @@ export function FoodPurchasesByCounterTable({ purchases }: FoodPurchasesByCounte
             <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
             <input
               type="text"
-              placeholder="Search counter, card, or food..."
+              placeholder="Search kitchen, card, or food..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium"
@@ -1130,7 +1230,7 @@ export function FoodPurchasesByCounterTable({ purchases }: FoodPurchasesByCounte
               <tr>
                 <th scope="col" className="px-4 py-3">Date & Time</th>
                 <th scope="col" className="px-4 py-3">Card / Wallet</th>
-                <th scope="col" className="px-4 py-3">Issuing Counter</th>
+                <th scope="col" className="px-4 py-3">Issuing Kitchen</th>
                 <th scope="col" className="px-4 py-3">Purchased At</th>
                 <th scope="col" className="px-4 py-3">Food Items Purchased</th>
                 <th scope="col" className="px-4 py-3 text-right">Total Amount</th>
@@ -1158,7 +1258,7 @@ export function FoodPurchasesByCounterTable({ purchases }: FoodPurchasesByCounte
                         </span>
                         {purchase.isCrossCounter && (
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                            Cross-Counter
+                            Cross-Kitchen
                           </span>
                         )}
                       </div>
@@ -1184,7 +1284,7 @@ export function FoodPurchasesByCounterTable({ purchases }: FoodPurchasesByCounte
               ) : (
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
-                    No food purchases found matching the filter criteria.
+                    No sales found matching the filter criteria.
                   </td>
                 </tr>
               )}
@@ -1193,7 +1293,7 @@ export function FoodPurchasesByCounterTable({ purchases }: FoodPurchasesByCounte
         </div>
       ) : (
         <div className="text-xs text-slate-400 py-1">
-          Table collapsed. Tap Show or the header to view food purchases.
+          Table collapsed. Tap Show or the header to view sales.
         </div>
       )}
     </div>

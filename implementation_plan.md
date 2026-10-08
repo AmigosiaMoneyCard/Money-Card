@@ -1,152 +1,145 @@
-# Implementation Plan — Block Cards Support, Clean Blocked Reason Format, and Customer Portal Removal
-
-## Overview
-This plan implements three specific user requirements across the Money Card system:
-1. Blocked Reason Display: In Wallets & Customer History (Blocked Wallets table), instead of `[Blocked by Manager (STAFF - Counter 1)] Lost or Stolen Wallet...`, format it cleanly as `Blocked by (counter manager name) - (Reason)` without brackets, without role/branch clutter, and without ellipsis truncation (`...` or `....`).
-2. Customer Portal Removal: In Org Admin Wallets and Counter Admin Wallets & Customer History, remove all Customer Portal buttons (from top header and table row actions) so users go straight to wallet management actions.
-3. Card Blocking for Counter Admin and Org Admin: Add card blocking actions and an intuitive Block Wallet modal to both Counter Admin (`CounterStaffCardsView`) and Org Admin (`OrgAdminCardsView`) with full backend sync and mobile parity.
-
----
+# Implementation Plan: Super Admin Organizations and Subscriptions Terminology and UI Cleanup
 
 ## Visual UI Sketch
-![Wallets and Customer History Blocked Reason and Card Blocking](file:///C:/Users/damie/.gemini/antigravity-ide/brain/40124c13-8182-4da5-8dae-66d3097486e9/block_card_clean_reason_wallets_sketch_1791363462902.jpg)
 
----
+![Super Admin Organizations and Plans UI Sketch](file:///C:/Users/damie/.gemini/antigravity-ide/brain/c99edd16-0faf-4782-a7e1-399d96eb8a4b/superadmin_orgs_plans_sketch_1791491477798.jpg)
 
-## UI Layout & ASCII Wireframes
+## ASCII Wireframes
 
-### 1. Org Admin & Counter Admin Header (Customer Portal Removed)
+### 1. Super Admin Organizations Page - Toolbar and Row Actions
 ```
-+--------------------------------------------------------------------------------------------------------+
-| [Card Icon] Wallets & Customer History                                                  [ Refresh ]    |
-+--------------------------------------------------------------------------------------------------------+
-| [ Counters Tab ]  [ Blocked Wallets Tab (N) ]                                                          |
-+--------------------------------------------------------------------------------------------------------+
-```
-
-### 2. Counter Admin Live Active Cards Table (Customer Portal Removed, Block Wallet Added)
-```
-+--------------------------------------------------------------------------------------------------------+
-| Coupon/Card ID    Customer          Live Balance     Actions                                           |
-+--------------------------------------------------------------------------------------------------------+
-| KD1IRUG9          Alex Rivera       INR 450          [ History ] [ Analytics ] [ Details ] [ Block ]   |
-| KD1NIICJY                           INR 950          [ History ] [ Analytics ] [ Details ] [ Block ]   |
-+--------------------------------------------------------------------------------------------------------+
-```
-
-### 3. Org Admin Counter Overview (Customer Portal Removed)
-```
-+--------------------------------------------------------------------------------------------------------+
-| Cafeteria Counter    Active Wallets    Total Balance    Actions                                        |
-+--------------------------------------------------------------------------------------------------------+
-| Counter 1            12 Wallets        INR 5,400        [ History ] [ Analytics ] [ Details (12) ]     |
-+--------------------------------------------------------------------------------------------------------+
++----------------------------------------------------------------------------------------------------+
+| Organizations                                                          [+ Add Organization]        |
++----------------------------------------------------------------------------------------------------+
+| Search Organization                      Plan Scope             Status Scope       [Refresh]       |
+| [ Search by name or ID...        ]      [ All Plans      v ]   [ All Statuses v ]                  |
++----------------------------------------------------------------------------------------------------+
+| ORGANIZATION NAME        | ADMIN EMAIL           | KITCHENS | CARDS | STATUS   | ACTIONS           |
+| Demo Org 1               | admin@demo1.com       | 2        | 14    | ACTIVE   | [ v Action Menu ] |
++----------------------------------------------------------------------------------------------------+
+                                                                                 | Edit Details      |
+                                                                                 | Change Status     |
+                                                                                 | Reset Password    |
+                                                                                 |-------------------|
+                                                                                 | Delete Organizations |
+                                                                                 +-------------------+
 ```
 
-### 4. Org Admin Counter Wallet Details Modal (Block Wallet Action Added)
+### 2. "Add new organization" Modal
 ```
-+--------------------------------------------------------------------------------------------------------+
-| Wallet Details — Counter 1                                                                         [X] |
-+--------------------------------------------------------------------------------------------------------+
-| Card/Coupon ID    Status       Live Customer      Balance       Actions                                |
-+--------------------------------------------------------------------------------------------------------+
-| KD1IRUG9          Active       Alex Rivera        INR 450       [ Block Wallet ]                       |
-| KD1J2K3L          Available    —                  INR 0         [ Block Wallet ]                       |
-+--------------------------------------------------------------------------------------------------------+
-|                                                                                              [ Close ] |
-+--------------------------------------------------------------------------------------------------------+
-```
-
-### 5. Block Wallet Confirmation Modal
-```
-+--------------------------------------------------------------------------------------------------------+
-| [Shield Icon] Block Wallet KD1IRUG9                                                                [X] |
-+--------------------------------------------------------------------------------------------------------+
-| Are you sure you want to block this wallet? It will be disabled for purchases and recharges.          |
-|                                                                                                        |
-| Block Reason:                                                                                          |
-| [ Lost or Stolen Wallet                                                                            v ] |
-|                                                                                                        |
-| Additional Notes (Optional):                                                                           |
-| [ Enter optional details...                                                                          ] |
-|                                                                                                        |
-|                                                                     [ Cancel ]  [ Confirm Block ]      |
-+--------------------------------------------------------------------------------------------------------+
++------------------------------------------------------------------+
+| Add new organization                                         [X] |
++------------------------------------------------------------------+
+| Organization Name *                                              |
+| [ e.g. Acme Organization                                       ] |
+|                                                                  |
+| Organization Email *                                             |
+| [ Org gmail                                                    ] |
+|                                                                  |
+| Plan *                                                           |
+| [ Starter (₹999/monthly)                                     v ] |
+|                                                                  |
+|                                       [ Cancel ] [ Create Org ]  |
++------------------------------------------------------------------+
 ```
 
-### 6. Blocked Wallets Table (Customer Portal Removed, Clean Reason, No Ellipsis)
+### 3. "Delete Organizations" Modal (Streamlined)
 ```
-+---------------------------------------------------------------------------------------------------------------------------------------+
-| Wallet ID     Customer    Locked Balance   Blocked Reason                                 Blocked By   Blocked Date   Actions         |
-+---------------------------------------------------------------------------------------------------------------------------------------+
-| KD1NIICJY                 INR 950          Blocked by Manager - Lost or Stolen Wallet     Manager      7 Oct 2026     [ History ] [ Unblock ] |
-+---------------------------------------------------------------------------------------------------------------------------------------+
++------------------------------------------------------------------+
+| Delete Organizations                                         [X] |
++------------------------------------------------------------------+
+|                                                                  |
+|   Are you sure you want to permanently delete Demo Org 1?        |
+|                                                                  |
+|                                    [ Cancel ] [ Delete Org ]     |
++------------------------------------------------------------------+
 ```
 
----
+### 4. "Reset Org Admin Password" Modal (Legible Black Text)
+```
++------------------------------------------------------------------+
+| Reset Org Admin Password                                     [X] |
++------------------------------------------------------------------+
+| [!] Are you sure you want to reset the password for Demo Admin?  |
+|     Setting a temporary password will require the Org Admin to   |
+|     create a new private password upon their next login.         |
+|     (Rendered in crisp black/dark slate font)                    |
+|------------------------------------------------------------------|
+| Organization:  Demo Org 1                                        |
+| Admin Name:    Demo Org 1 Admin                                  |
+| Admin Email:   damienjosephmartin10@gmail.com                    |
+|------------------------------------------------------------------|
+| Temporary Password *                                             |
+| [ Min. 6 characters                                            ] |
+|                                                                  |
+|                                     [ Cancel ] [ Set Password ]  |
++------------------------------------------------------------------+
+```
 
-## Technical Design & Component Breakdown
+### 5. Plans and Subscriptions: Edit Plan Modal (Plan Name as Title)
+```
++------------------------------------------------------------------+
+| Starter                                                      [X] |
++------------------------------------------------------------------+
+| [icon] SUBSCRIBED ORGANIZATION              [ 0 Organizations ]  |
+|------------------------------------------------------------------|
+| Plan Name *                                                      |
+| [ Starter                                                      ] |
+|                                                                  |
+| Default Price (₹) *                      Billing Interval        |
+| [ 999                          ]        [ Monthly              v]|
+|                                                                  |
+| Kitchen Limit            Staff Limit             Card Limit      |
+| [ 3                 ]   [ 3                 ]   [ 50           ] |
+|                                                                  |
+| [ Delete Plan ]                         [ Cancel ] [ Save Plan ] |
++------------------------------------------------------------------+
+```
 
-### 1. Frontend: Blocked Reason Parsing & Display
-- File: `Frontend Money Card/src/features/cards/BlockedWalletsTableView.tsx`
-- File: `Frontend Money Card/src/utils/cardBlockMessages.ts`
-- Implementation:
-  - Create `cleanBlockReasonDisplay(rawReason?: string | null, blocker?: string | null): string`:
-    - Regex pattern match for legacy or Flutter bracketed strings: `^\[Blocked by ([^(\]]+)(?:\s*\([^)]*\))?\]\s*(.*)$`.
-    - Extract blocker name (`Manager`) and clean reason (`Lost or Stolen Wallet`).
-    - Format output: `Blocked by ${name} - ${reason}`.
-    - If raw reason does not have brackets:
-      - If already starts with `Blocked by `, clean any extra dots/spaces.
-      - If it is a standalone category (e.g. `Lost or Stolen Wallet`) and blocker is known, format as `Blocked by ${blocker} - ${rawReason}`.
-      - Strip any trailing ellipsis dots (`...` or `....`).
-  - In `BlockedWalletsTableView.tsx`:
-    - Remove `line-clamp-2` and `max-w-xs` from the `Blocked Reason` table cell so reasons are never truncated with dots.
-    - Remove the `Customer Portal` button from table row actions.
+### 6. Subscriptions Tab: Renamed Heading and Search Bar
+```
++----------------------------------------------------------------------------------------------------+
+| Organization Subscriptions & Custom Limits                                                         |
+|                                                                                                    |
+| [ Search organization by name or ID...   ]   [ All Plans v ]   [ All Statuses v ]                  |
+|                                                                                                    |
+| ORGANIZATION             | ASSIGNED PLAN     | BILLING   | USAGE LIMITS           | ACTIONS        |
+| Demo Org 1               | Starter           | Monthly   | 1/3 K, 2/3 S, 0/50 C   | [ Edit Limits ]|
++----------------------------------------------------------------------------------------------------+
+```
 
-### 2. Frontend: Remove Customer Portal Buttons
-- File: `Frontend Money Card/src/features/cards/OrgAdminCardsView.tsx`
-  - Remove top header `Customer Portal` button.
-  - Remove counter row action `Customer Portal` button.
-- File: `Frontend Money Card/src/features/cards/CounterStaffCardsView.tsx`
-  - Remove top header `Customer Portal` button.
-  - Remove live active card row action `Customer Portal` button.
-- File: `Frontend Money Card/src/features/cards/BlockedWalletsTableView.tsx`
-  - Remove `Customer Portal` button from action buttons.
+## Technical Changes
 
-### 3. Frontend: Enable Card Blocking for Counter Admin & Org Admin
-- Reusable / Integrated Modal: `BlockCardModal`
-  - State: `cardToBlock: CardEntity | null`, `blockReason: string`, `blockNotes: string`, `isSubmitting: boolean`.
-  - Reason options:
-    - `Lost or Stolen Wallet`
-    - `Damaged Card / Hardware Fault`
-    - `Suspicious Activity / Fraud`
-    - `Customer Request`
-    - `Staff Discretion`
-    - `Other Reason`
-  - Submit logic:
-    - Formats reason as `Blocked by ${userName} - ${blockReason}` (with notes appended if present).
-    - Calls `apiService.cards.blockCard(cardToBlock.id, finalReason)`.
-    - On success: notifies `Wallet ${identifier} blocked successfully.`, closes modal, reloads cards data.
-- Counter Admin Integration (`CounterStaffCardsView.tsx`):
-  - Add `Block Wallet` button to each live card row action list (`variant="outline"`, red hover, ban icon).
-  - Add `Block Wallet` button inside `selectedCardForDetails` (Wallet Details Modal) footer.
-- Org Admin Integration (`OrgAdminCardsView.tsx`):
-  - In `selectedBranchForDetails` modal (when Org Admin clicks `Wallet Details (N)` for any counter):
-    - Add `Actions` column to the table.
-    - Render `Block Wallet` button for active or available cards.
-    - Connect to `BlockCardModal` to block cards counter-wise.
+### File 1: `Frontend Money Card/src/features/organizations/OrganizationsPage.tsx`
+- Line 224: Update action menu button label from `<span>Delete Cafeteria</span>` to `<span>Delete Organizations</span>`.
+- Line 762: Update search label from `Search Cafeteria` to `Search Organization`.
+- Line 870: Update modal title from `Add New Cafeteria` to `Add new organization`.
+- Line 882: Update input label from `Cafeteria Name *` to `Organization Name *`.
+- Line 883: Update input placeholder from `e.g. Acme Cafeteria` to `e.g. Acme Organization`.
+- Line 897: Update input label from `Org Admin Gmail Address *` to `Organization Email *`.
+- Line 899: Update input placeholder from `e.g. cafeteria.admin@gmail.com` to `Org gmail`.
+- Line 1259-1265: In Reset Org Admin Password modal, change font color from yellow (`text-amber-200`, `text-amber-300/80`) to black (`text-slate-900`, `text-slate-800`), with clean light amber background/border styling.
+- Line 1270: Rename metadata row label from `Cafeteria:` to `Organization:`.
+- Line 1356: In Delete Organization Confirmation modal, change `title="Delete Cafeteria"` to `title="Delete Organizations"`.
+- Line 1357: Remove `description="Permanently remove cafeteria and all related data"`.
+- Lines 1379-1381: Remove `<p className="text-xs text-slate-600 leading-relaxed">This action cannot be undone. All branch locations, staff accounts, products, and registered smart cards belonging to this organization will be permanently deleted.</p>`, keeping only the direct confirmation question.
 
-### 4. Mobile POS Parity (Flutter)
-- File: `Flutter Money card/lib/features/cards/card_details_screen.dart`
-  - In `_handleBlockCard()`:
-    - Change combined reason formatting from `[Blocked by $defaultBlockerStr] $selectedReason` to `Blocked by $blockerName - $selectedReason` (and optional notes), removing brackets and role/counter parentheses.
+### File 2: `Frontend Money Card/src/features/subscriptions/AdminPlansSubscriptionsView.tsx`
+- Line 901: Rename section heading from `Cafeteria Subscriptions & Custom Limits` to `Organization Subscriptions & Custom Limits`.
+- Line 908: Rename search placeholder from `Search cafeteria by name or ID...` to `Search organization by name or ID...`.
+- Line 942: Update empty state title from `No cafeteria subscriptions found` to `No organization subscriptions found`.
+- Line 987: Rename search placeholder from `Search pending requests by cafeteria or plan...` to `Search pending requests by organization or plan...`.
+- Line 1005: Update empty state description to refer to `organization plan change requests`.
+- Line 1071: In Create New Plan modal, remove `<span className="text-xs font-semibold text-slate-700 block">Default Resource Limits</span>`.
+- Line 1120: In Edit Global Plan modal, change `title={'Edit / View Global Plan: ' + selectedPlan?.name}` to `title={selectedPlan?.name || 'Plan Details'}`.
+- Line 1137: Rename `Subscribed Tenants` to `Subscribed Organization`.
+- Line 1141: Update badge count text from `{subscribedOrgsForSelectedPlan.length} Cafeterias` to `{subscribedOrgsForSelectedPlan.length} Organizations`.
+- Line 1145: Remove `<p className="text-xs text-slate-500">No cafeterias currently subscribed to this plan.</p>`.
+- Line 1197: In Edit Global Plan modal, remove `<span className="text-xs font-semibold text-slate-700 block">Default Resource Limits</span>`.
+- Lines 1235-1237: In Edit Global Plan modal, remove `<p className="text-xs text-slate-400">Note: Changing default limits updates the global template. Organization-specific overrides will remain intact.</p>`.
+- Line 1447: In Review Plan Request modal, change `Cafeteria:` to `Organization:`.
 
----
-
-## Verification & Testing Plan
-1. Run TypeScript type checks (`npx tsc --noEmit` in `Frontend Money Card`).
-2. Run Frontend Vitest test suite (`npm test -- --run` in `Frontend Money Card`).
-3. Run Backend test suite (`npm test` in `Backend Money Card`).
-4. Run Flutter test suite (`flutter test` in `Flutter Money card`).
-5. Run Flutter analyzer (`flutter analyze --no-pub` in `Flutter Money card`).
-6. Verify zero horizontal overflow and mobile responsiveness on all modified screens.
+## Verification and Testing
+1. Run `npx tsc --noEmit` in `Frontend Money Card` to ensure zero TypeScript errors.
+2. Run `npm test -- --run` in `Frontend Money Card` to verify all test suites continue passing.
+3. Review git diff to ensure strict scope adherence and zero unrequested changes.

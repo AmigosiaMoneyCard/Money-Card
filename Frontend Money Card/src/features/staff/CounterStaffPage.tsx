@@ -24,7 +24,12 @@ import {
 import { DataTable } from '@/components/tables';
 import { notify, formatCurrency } from '@/utils';
 import { filterStaffActivities, calculateScopedStaffMetrics } from '@/features/analytics/staffActivityFilter';
-import { MANAGER_PERMISSIONS, KITCHEN_PERMISSIONS } from './constants';
+import {
+  OPERATIONAL_CAPABILITIES,
+  CAPABILITY_PRESETS,
+  capabilitiesToPermissions,
+  permissionsToCapabilities,
+} from './constants';
 import { UnauthorizedPage } from '@/features/auth';
 import {
   Users,
@@ -84,7 +89,7 @@ export function CounterStaffPage() {
   const [formEmail, setFormEmail] = useState('');
   const [formPassword, setFormPassword] = useState('');
   const [showAddPassword, setShowAddPassword] = useState(false);
-  const [formRoleType, setFormRoleType] = useState<'MANAGER' | 'KITCHEN'>('MANAGER');
+  const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>([...CAPABILITY_PRESETS.cashier_counter]);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [modalApiError, setModalApiError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -120,7 +125,7 @@ export function CounterStaffPage() {
 
   const activeBranchId = currentBranch?.id || user?.assignedBranchIds?.[0] || '';
   const activeBranch = branches.find((b) => b.id === activeBranchId) || currentBranch;
-  const activeBranchName = activeBranch?.name || currentBranch?.name || 'Counter';
+  const activeBranchName = activeBranch?.name || currentBranch?.name || 'Kitchen';
 
   // ── Fetch Staff & Branches ─────────────────────────────────
   const fetchStaffData = useCallback(async () => {
@@ -229,7 +234,7 @@ export function CounterStaffPage() {
     setFormEmail('');
     setFormPassword('');
     setShowAddPassword(false);
-    setFormRoleType('MANAGER');
+    setSelectedCapabilities([...CAPABILITY_PRESETS.cashier_counter]);
     setFormErrors({});
     setModalApiError(null);
     setShowAddModal(true);
@@ -268,8 +273,9 @@ export function CounterStaffPage() {
 
     setIsSubmitting(true);
     try {
-      const perms = formRoleType === 'KITCHEN' ? KITCHEN_PERMISSIONS : MANAGER_PERMISSIONS;
+      const perms = capabilitiesToPermissions(selectedCapabilities);
       const targetBranchIds = activeBranchId ? [activeBranchId] : [];
+      const computedRoleType = perms.includes('RECHARGE') ? 'MANAGER' : 'KITCHEN';
 
       const res = await apiService.staff.createStaff({
         name: trimmedName,
@@ -277,7 +283,7 @@ export function CounterStaffPage() {
         password: trimmedPassword,
         assignedBranchIds: targetBranchIds,
         permissions: perms,
-        staffType: formRoleType,
+        staffType: computedRoleType,
       });
 
       if (!res.success) {
@@ -309,11 +315,7 @@ export function CounterStaffPage() {
     setFormName(staff.name);
     setFormPhone(staff.phone || '');
     setFormEmail(staff.email || '');
-    const isKitchen =
-      staff.staffType === 'KITCHEN' ||
-      (!staff.permissions.includes('RECHARGE') &&
-        (staff.permissions.includes('PRODUCT_VIEW') || staff.permissions.includes('PRODUCT_MANAGE')));
-    setFormRoleType(isKitchen ? 'KITCHEN' : 'MANAGER');
+    setSelectedCapabilities(permissionsToCapabilities(staff.permissions));
     setFormErrors({});
     setModalApiError(null);
     setShowChangePasswordSection(false);
@@ -350,13 +352,14 @@ export function CounterStaffPage() {
 
     setIsSubmitting(true);
     try {
-      const perms = formRoleType === 'KITCHEN' ? KITCHEN_PERMISSIONS : MANAGER_PERMISSIONS;
+      const perms = capabilitiesToPermissions(selectedCapabilities);
+      const computedRoleType = perms.includes('RECHARGE') ? 'MANAGER' : 'KITCHEN';
       const res = await apiService.staff.updateStaff(selectedStaff.id, {
         name: trimmedName,
         phone: cleanPhone,
         email: formEmail.trim() || undefined,
         permissions: perms,
-        staffType: formRoleType,
+        staffType: computedRoleType,
       });
 
       if (!res.success) {
@@ -483,7 +486,7 @@ export function CounterStaffPage() {
       staffPerformanceList.find((p) => p.staffId === selectedStaffForAudit.id) || {
         staffId: selectedStaffForAudit.id,
         staffName: selectedStaffForAudit.name,
-        role: selectedStaffForAudit.staffType === 'KITCHEN' ? 'Kitchen Staff' : 'Counter Manager',
+        role: selectedStaffForAudit.staffType === 'KITCHEN' ? 'Kitchen Staff' : 'Kitchen Manager',
         status: selectedStaffForAudit.status,
         branchId: activeBranchId,
         branchName: activeBranchName,
@@ -542,7 +545,7 @@ export function CounterStaffPage() {
     return <UnauthorizedPage />;
   }
 
-  // ── Table Columns for Counter Staff ─────────────────────────
+  // ── Table Columns for Kitchen Staff ─────────────────────────
   const columns = [
     {
       key: 'name',
@@ -554,6 +557,11 @@ export function CounterStaffPage() {
             <User className="h-4 w-4" />
           </div>
           <span className="font-semibold text-slate-900 text-sm">{staff.name}</span>
+          {staff.id === user?.id && (
+            <Badge variant="outline" className="text-[10px] bg-slate-100 text-slate-600 border-slate-200 font-semibold px-1.5 py-0">
+              You
+            </Badge>
+          )}
         </div>
       ),
     },
@@ -585,7 +593,7 @@ export function CounterStaffPage() {
                 : 'border-blue-300 bg-blue-50 text-blue-700 font-semibold text-xs'
             }
           >
-            {isKitchen ? 'Kitchen Staff' : 'Counter Manager'}
+            {isKitchen ? 'Kitchen Staff' : 'Kitchen Manager'}
           </Badge>
         );
       },
@@ -637,6 +645,18 @@ export function CounterStaffPage() {
           >
             Summary
           </Button>
+          {canManage && staff.id !== user?.id && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleOpenDelete(staff)}
+              className="text-xs h-7 px-2 rounded-lg border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 transition-all shadow-2xs cursor-pointer"
+              leftIcon={<Trash2 className="h-3 w-3 text-rose-600" />}
+              title="Delete staff member"
+            >
+              Delete
+            </Button>
+          )}
         </div>
       ),
     },
@@ -693,7 +713,7 @@ export function CounterStaffPage() {
             className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
           >
             <option value="ALL">All Roles</option>
-            <option value="MANAGER">Counter Managers</option>
+            <option value="MANAGER">Kitchen Managers</option>
             <option value="KITCHEN">Kitchen Staff</option>
           </select>
           <Button
@@ -763,7 +783,7 @@ export function CounterStaffPage() {
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         title={`Add Team Member to ${activeBranchName}`}
-        size="md"
+        size="lg"
       >
         <form onSubmit={handleCreateStaff} noValidate className="space-y-4">
           {modalApiError && (
@@ -833,33 +853,99 @@ export function CounterStaffPage() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Role Type</label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setFormRoleType('MANAGER')}
-                className={`p-3 text-left rounded-xl border transition-all cursor-pointer ${
-                  formRoleType === 'MANAGER'
-                    ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div className="font-semibold text-xs text-slate-900">Counter Manager</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">Full POS, Cashier & Recharge access</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormRoleType('KITCHEN')}
-                className={`p-3 text-left rounded-xl border transition-all cursor-pointer ${
-                  formRoleType === 'KITCHEN'
-                    ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div className="font-semibold text-xs text-slate-900">Kitchen Staff</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">Menu, inventory & order viewing only</div>
-              </button>
+          {/* What can this team member do? (Operational Capabilities) */}
+          <div className="space-y-2.5 pt-1">
+            {/* Nickname: Manager or Staff */}
+            <div className="space-y-1.5 pt-1">
+              <label className="text-xs font-semibold text-slate-700">Nickname</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCapabilities((prev) =>
+                      prev.includes('recharge') ? prev : [...prev, 'recharge'],
+                    );
+                  }}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+                    selectedCapabilities.includes('recharge')
+                      ? 'border-emerald-600 bg-emerald-50/60 text-emerald-800 ring-2 ring-emerald-500/20 shadow-2xs'
+                      : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
+                  }`}
+                >
+                  <div
+                    className={`h-3 w-3 rounded-full border flex items-center justify-center shrink-0 ${
+                      selectedCapabilities.includes('recharge')
+                        ? 'border-emerald-600 bg-emerald-600'
+                        : 'border-slate-300'
+                    }`}
+                  >
+                    {selectedCapabilities.includes('recharge') && (
+                      <div className="h-1 w-1 rounded-full bg-white" />
+                    )}
+                  </div>
+                  <span>Manager</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCapabilities((prev) =>
+                      prev.filter((id) => id !== 'recharge'),
+                    );
+                  }}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+                    !selectedCapabilities.includes('recharge')
+                      ? 'border-emerald-600 bg-emerald-50/60 text-emerald-800 ring-2 ring-emerald-500/20 shadow-2xs'
+                      : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
+                  }`}
+                >
+                  <div
+                    className={`h-3 w-3 rounded-full border flex items-center justify-center shrink-0 ${
+                      !selectedCapabilities.includes('recharge')
+                        ? 'border-emerald-600 bg-emerald-600'
+                        : 'border-slate-300'
+                    }`}
+                  >
+                    {!selectedCapabilities.includes('recharge') && (
+                      <div className="h-1 w-1 rounded-full bg-white" />
+                    )}
+                  </div>
+                  <span>Staff</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Capabilities 6-Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[38vh] overflow-y-auto pr-0.5">
+              {OPERATIONAL_CAPABILITIES.map((cap) => {
+                const isSelected = selectedCapabilities.includes(cap.id);
+                return (
+                  <div
+                    key={cap.id}
+                    onClick={() => {
+                      setSelectedCapabilities((prev) =>
+                        prev.includes(cap.id) ? prev.filter((id) => id !== cap.id) : [...prev, cap.id],
+                      );
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2.5 ${
+                      isSelected
+                        ? 'border-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-500/30'
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => {}}
+                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer pointer-events-none shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-xs text-slate-900 leading-snug">{cap.label}</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">{cap.description}</div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -883,12 +969,12 @@ export function CounterStaffPage() {
       >
         <div className="space-y-4">
           <p className="text-xs text-slate-600">
-            Share these login credentials with <strong className="text-slate-900">{createdCredentials?.name}</strong> so they can log into the Counter POS app.
+            Share these login credentials with <strong className="text-slate-900">{createdCredentials?.name}</strong> so they can log into the Kitchen POS app.
           </p>
 
           <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-2 text-xs font-mono">
             <div className="flex justify-between">
-              <span className="text-slate-500 font-sans">Counter:</span>
+              <span className="text-slate-500 font-sans">Kitchen:</span>
               <span className="font-semibold text-slate-900">{createdCredentials?.counterName}</span>
             </div>
             <div className="flex justify-between">
@@ -922,7 +1008,7 @@ export function CounterStaffPage() {
               className="flex-1 text-xs"
               onClick={() => {
                 if (!createdCredentials) return;
-                const text = `Counter: ${createdCredentials.counterName}\nStaff: ${createdCredentials.name}\nLogin ID: ${createdCredentials.phone}\nPassword: ${createdCredentials.password}`;
+                const text = `Kitchen: ${createdCredentials.counterName}\nStaff: ${createdCredentials.name}\nLogin ID: ${createdCredentials.phone}\nPassword: ${createdCredentials.password}`;
                 navigator.clipboard.writeText(text);
                 setCopied(true);
                 setTimeout(() => setCopied(false), 2000);
@@ -960,7 +1046,7 @@ export function CounterStaffPage() {
         isOpen={showStaffDetailsModal}
         onClose={() => setShowStaffDetailsModal(false)}
         title={canManage ? `Staff Settings: ${selectedStaff?.name}` : `Staff Details: ${selectedStaff?.name}`}
-        size="md"
+        size="lg"
       >
         <form onSubmit={handleSaveStaffChanges} noValidate className="space-y-4">
           {modalApiError && (
@@ -997,35 +1083,111 @@ export function CounterStaffPage() {
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Role Type</label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                disabled={!canManage}
-                onClick={() => setFormRoleType('MANAGER')}
-                className={`p-3 text-left rounded-xl border transition-all cursor-pointer ${
-                  formRoleType === 'MANAGER'
-                    ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div className="font-semibold text-xs text-slate-900">Counter Manager</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">Full POS, Cashier & Recharge</div>
-              </button>
-              <button
-                type="button"
-                disabled={!canManage}
-                onClick={() => setFormRoleType('KITCHEN')}
-                className={`p-3 text-left rounded-xl border transition-all cursor-pointer ${
-                  formRoleType === 'KITCHEN'
-                    ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div className="font-semibold text-xs text-slate-900">Kitchen Staff</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">Menu & Order view only</div>
-              </button>
+          {/* What can this team member do? (Operational Capabilities) */}
+          <div className="space-y-2.5 pt-1">
+            {/* Nickname: Manager or Staff */}
+            <div className="space-y-1.5 pt-1">
+              <label className="text-xs font-semibold text-slate-700">Nickname</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  disabled={!canManage}
+                  onClick={() => {
+                    if (!canManage) return;
+                    setSelectedCapabilities((prev) =>
+                      prev.includes('recharge') ? prev : [...prev, 'recharge'],
+                    );
+                  }}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-semibold transition-all ${
+                    canManage ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'
+                  } ${
+                    selectedCapabilities.includes('recharge')
+                      ? 'border-emerald-600 bg-emerald-50/60 text-emerald-800 ring-2 ring-emerald-500/20 shadow-2xs'
+                      : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
+                  }`}
+                >
+                  <div
+                    className={`h-3 w-3 rounded-full border flex items-center justify-center shrink-0 ${
+                      selectedCapabilities.includes('recharge')
+                        ? 'border-emerald-600 bg-emerald-600'
+                        : 'border-slate-300'
+                    }`}
+                  >
+                    {selectedCapabilities.includes('recharge') && (
+                      <div className="h-1 w-1 rounded-full bg-white" />
+                    )}
+                  </div>
+                  <span>Manager</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!canManage}
+                  onClick={() => {
+                    if (!canManage) return;
+                    setSelectedCapabilities((prev) =>
+                      prev.filter((id) => id !== 'recharge'),
+                    );
+                  }}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-semibold transition-all ${
+                    canManage ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'
+                  } ${
+                    !selectedCapabilities.includes('recharge')
+                      ? 'border-emerald-600 bg-emerald-50/60 text-emerald-800 ring-2 ring-emerald-500/20 shadow-2xs'
+                      : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
+                  }`}
+                >
+                  <div
+                    className={`h-3 w-3 rounded-full border flex items-center justify-center shrink-0 ${
+                      !selectedCapabilities.includes('recharge')
+                        ? 'border-emerald-600 bg-emerald-600'
+                        : 'border-slate-300'
+                    }`}
+                  >
+                    {!selectedCapabilities.includes('recharge') && (
+                      <div className="h-1 w-1 rounded-full bg-white" />
+                    )}
+                  </div>
+                  <span>Staff</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Capabilities 6-Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[38vh] overflow-y-auto pr-0.5">
+              {OPERATIONAL_CAPABILITIES.map((cap) => {
+                const isSelected = selectedCapabilities.includes(cap.id);
+                return (
+                  <div
+                    key={cap.id}
+                    onClick={() => {
+                      if (!canManage) return;
+                      setSelectedCapabilities((prev) =>
+                        prev.includes(cap.id) ? prev.filter((id) => id !== cap.id) : [...prev, cap.id],
+                      );
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition-all ${
+                      canManage ? 'cursor-pointer' : 'opacity-70 cursor-not-allowed'
+                    } flex items-start gap-2.5 ${
+                      isSelected
+                        ? 'border-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-500/30'
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      disabled={!canManage}
+                      onChange={() => {}}
+                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer pointer-events-none shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-xs text-slate-900 leading-snug">{cap.label}</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">{cap.description}</div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -1113,7 +1275,7 @@ export function CounterStaffPage() {
           )}
 
           <ModalFooter className="justify-between">
-            {canManage && selectedStaff ? (
+            {canManage && selectedStaff && selectedStaff.id !== user?.id ? (
               <Button
                 variant="outline"
                 type="button"
@@ -1150,7 +1312,7 @@ export function CounterStaffPage() {
       >
         <div className="space-y-4">
           <p className="text-xs text-slate-600">
-            Are you sure you want to remove <strong className="text-slate-900">{staffToDelete?.name}</strong> from this counter? They will no longer be able to log into the POS terminal.
+            Are you sure you want to remove <strong className="text-slate-900">{staffToDelete?.name}</strong> from this kitchen? They will no longer be able to log into the POS terminal.
           </p>
 
           <ModalFooter>

@@ -409,6 +409,10 @@ export const realClient: typeof mockClient = {
       return handleApiCall(() => apiClient.post<Card>(`/v1/cards/${id}/unblock`));
     },
 
+    async replaceCard(id: string, req: { targetCardId: string; reason?: string }): Promise<ApiResult<any>> {
+      return handleApiCall(() => apiClient.post(`/v1/cards/${id}/replace`, req));
+    },
+
     async importCards(req: ImportCardsRequest): Promise<ApiResult<ImportCardsResponseData>> {
       return handleApiCall(() => apiClient.post<ImportCardsResponseData>('/v1/cards/batch', req));
     },
@@ -493,8 +497,13 @@ export const realClient: typeof mockClient = {
       return handleApiCall(() => apiClient.post(`/v1/card-sessions/${sessionId}/purchase`, req));
     },
 
-    async returnSession(sessionId: string): Promise<ApiResult<RefundResponseData>> {
-      return handleApiCall(() => apiClient.post<RefundResponseData>(`/v1/card-sessions/${sessionId}/return`));
+    async returnSession(
+      sessionId: string,
+      data?: { paymentMethod?: 'CASH' | 'UPI'; skipRefund?: boolean },
+    ): Promise<ApiResult<RefundResponseData>> {
+      return handleApiCall(() =>
+        apiClient.post<RefundResponseData>(`/v1/card-sessions/${sessionId}/return`, data),
+      );
     },
 
     async refundSession(sessionId: string): Promise<ApiResult<RefundResponseData>> {

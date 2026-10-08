@@ -127,7 +127,7 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
                     const SizedBox(width: AppSpacing.xs),
                     Expanded(
                       child: Text(
-                        'Counter: ${currentBranch?.name ?? "All Assigned Counters"}',
+                        'Kitchen: ${currentBranch?.name ?? "All Assigned Kitchens"}',
                         style: const TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
@@ -367,14 +367,14 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
                 : _selectedRange != 'All Time'
                     ? AppEmptyState(
                         title: 'No Sessions Found',
-                        description: 'No ${state.statusFilter == "ALL" ? "" : state.statusFilter.toLowerCase()} sessions found for $_selectedRange in ${branchName ?? "this counter"}.',
+                        description: 'No ${state.statusFilter == "ALL" ? "" : state.statusFilter.toLowerCase()} sessions found for $_selectedRange in ${branchName ?? "this kitchen"}.',
                         icon: Icons.calendar_today_outlined,
                       )
                     : AppEmptyState(
                         title: state.statusFilter == 'ACTIVE' ? 'No Active Sessions' : 'No Sessions Found',
                         description: state.statusFilter == 'ACTIVE'
-                            ? 'There are currently no active cafeteria card sessions in ${branchName ?? "this counter"}.'
-                            : 'No card sessions found for the selected filter in ${branchName ?? "this counter"}.',
+                            ? 'There are currently no active cafeteria card sessions in ${branchName ?? "this kitchen"}.'
+                            : 'No card sessions found for the selected filter in ${branchName ?? "this kitchen"}.',
                         icon: Icons.account_balance_wallet_outlined,
                       ),
           ],

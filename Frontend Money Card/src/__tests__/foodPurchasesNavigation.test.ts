@@ -11,7 +11,7 @@ describe('Food Purchases Navigation & Page Isolation Tests', () => {
 
     expect(purchaseItem).toBeDefined();
     expect(purchaseItem?.path).toBe('/food-purchases');
-    expect(purchaseItem?.label).toBe('Food Purchases');
+    expect(purchaseItem?.label).toBe('Sales');
     expect(purchaseItem?.permission).toBe('VIEW_ANALYTICS');
 
     // Second item under dashboard
@@ -27,7 +27,7 @@ describe('Food Purchases Navigation & Page Isolation Tests', () => {
 
     expect(purchaseItem).toBeDefined();
     expect(purchaseItem?.path).toBe('/food-purchases');
-    expect(purchaseItem?.label).toBe('Food Purchases');
+    expect(purchaseItem?.label).toBe('Sales');
     expect(purchaseItem?.permission).toBe('VIEW_ANALYTICS');
 
     // Second item under dashboard
