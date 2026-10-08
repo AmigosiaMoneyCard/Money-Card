@@ -88,6 +88,8 @@ class AuthUser {
       role == 'ORG_ADMIN' ||
       role == 'SUPER_ADMIN';
 
+  String get nickname => isManager ? 'Manager' : 'Staff';
+
   bool isAssignedToBranch(String branchId) {
     return assignedBranchIds.contains(branchId);
   }

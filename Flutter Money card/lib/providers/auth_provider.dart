@@ -80,7 +80,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     String? email,
     String? phone,
     required String password,
-    String? expectedRole,
   }) async {
     state = state.copyWith(
       status: AuthStatus.authenticating,
@@ -93,22 +92,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
         phone: phone?.trim(),
         password: password,
       );
-
-      if (expectedRole == 'KITCHEN' && !user.isKitchenStaff) {
-        await _authRepository.logout();
-        state = const AuthState(
-          status: AuthStatus.error,
-          errorMessage: 'This account is assigned to Kitchen Manager. Please select Kitchen Manager to log in.',
-        );
-        return false;
-      } else if (expectedRole == 'MANAGER' && user.isKitchenStaff) {
-        await _authRepository.logout();
-        state = const AuthState(
-          status: AuthStatus.error,
-          errorMessage: 'This account is assigned to Kitchen Staff. Please select Kitchen Staff to log in.',
-        );
-        return false;
-      }
 
       state = AuthState(
         status: AuthStatus.authenticated,
