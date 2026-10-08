@@ -31,21 +31,21 @@ export function FoodPurchasesPage() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-200 pb-5">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-            Food Purchases
+            Sales
           </h1>
         </div>
 
-        {/* Filter Controls: Cafeteria Filter + Custom Date Range + Actions */}
+        {/* Filter Controls: Kitchen Filter + Custom Date Range + Actions */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Cafeteria Filter (Org Admin only) */}
+          {/* Kitchen Filter (Org Admin only) */}
           {!isCounterStaff && (
             <div className="w-44 sm:w-52">
               <Select
-                id="food-purchases-cafeteria-filter"
+                id="sales-kitchen-filter"
                 value={branchFilter}
                 onChange={(e) => handleBranchChange(e.target.value)}
                 options={[
-                  { value: 'ALL', label: 'All Cafeterias' },
+                  { value: 'ALL', label: 'All Kitchens' },
                   ...branches.map((b) => ({ value: b.id, label: b.name })),
                 ]}
                 className="h-9 py-1.5 pl-3 pr-8 text-xs leading-normal font-medium"
@@ -59,7 +59,7 @@ export function FoodPurchasesPage() {
             <div className="flex items-center gap-1 pl-1.5 pr-1">
               <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
               <input
-                id="food-purchases-start-date"
+                id="sales-start-date"
                 type="date"
                 value={startDate}
                 onChange={(e) => handleStartDateChange(e.target.value)}
@@ -68,7 +68,7 @@ export function FoodPurchasesPage() {
               />
               <span className="text-xs text-slate-300 font-medium select-none">–</span>
               <input
-                id="food-purchases-end-date"
+                id="sales-end-date"
                 type="date"
                 value={endDate}
                 onChange={(e) => handleEndDateChange(e.target.value)}
@@ -93,8 +93,8 @@ export function FoodPurchasesPage() {
             <button
               type="button"
               onClick={() => fetchAnalytics()}
-              title="Refresh purchases data"
-              aria-label="Refresh purchases data"
+              title="Refresh sales data"
+              aria-label="Refresh sales data"
               className="h-7 w-7 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
             >
               <RefreshCw className="h-3.5 w-3.5" />
@@ -105,9 +105,9 @@ export function FoodPurchasesPage() {
 
       {/* ─── Main Content ─── */}
       {isLoading ? (
-        <LoadingState message="Loading food purchases..." />
+        <LoadingState message="Loading sales..." />
       ) : error ? (
-        <ErrorState title="Failed to load food purchases" message={error} onRetry={fetchAnalytics} />
+        <ErrorState title="Failed to load sales" message={error} onRetry={fetchAnalytics} />
       ) : (
         <FoodPurchasesByCounterTable purchases={purchases} />
       )}

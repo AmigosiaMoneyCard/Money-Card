@@ -24,7 +24,7 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
   },
   {
     id: 'food-purchases',
-    label: 'Food Purchases',
+    label: 'Sales',
     path: '/food-purchases',
     iconName: 'ShoppingBag',
     roles: ['ORG_ADMIN', 'STAFF'],
@@ -46,7 +46,7 @@ export const NAVIGATION_ITEMS: NavItemConfig[] = [
   },
   {
     id: 'branches',
-    label: 'Counters',
+    label: 'Kitchens',
     path: '/branches',
     iconName: 'Building2',
     roles: ['ORG_ADMIN'],

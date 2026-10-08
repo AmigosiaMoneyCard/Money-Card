@@ -148,7 +148,7 @@ export function SuperAdminAnalyticsView() {
 
   const activeOrgs = useMemo(() => orgs.filter((o) => o.status === 'ACTIVE'), [orgs]);
   const selectedOrg = useMemo(() => activeOrgs.find((o) => o.id === selectedOrgId), [activeOrgs, selectedOrgId]);
-  const cafeteriaDisplayName = selectedOrg ? selectedOrg.name : `${activeOrgs.length} Cafeterias`;
+  const cafeteriaDisplayName = selectedOrg ? selectedOrg.name : `${activeOrgs.length} Organizations`;
   const dateRangeLabel = startDate && endDate ? `${startDate} to ${endDate}` : 'Custom Range';
 
   // Helper to compile report options
@@ -160,7 +160,7 @@ export function SuperAdminAnalyticsView() {
       branches,
       selectedBranchName: cafeteriaDisplayName,
       dateRangeLabel,
-      organizationName: selectedOrg ? selectedOrg.name : 'Platform Cafeterias',
+      organizationName: selectedOrg ? selectedOrg.name : 'Platform Organizations',
       sections: overrideSections ?? pdfSections,
     };
   };
@@ -254,16 +254,16 @@ export function SuperAdminAnalyticsView() {
           </h1>
         </div>
 
-        {/* Filter Controls: Cafeteria Filter + Custom Date Range + Actions */}
+        {/* Filter Controls: Organization Filter + Custom Date Range + Actions */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Cafeteria Filter */}
+          {/* Organization Filter */}
           <div className="w-44 sm:w-52">
             <Select
-              id="analytics-cafeteria-filter"
+              id="analytics-organization-filter"
               value={selectedOrgId}
               onChange={(e) => setSelectedOrgId(e.target.value)}
               options={[
-                { value: '', label: 'All Cafeterias' },
+                { value: '', label: 'All Organizations' },
                 ...activeOrgs.map((o) => ({ value: o.id, label: o.name })),
               ]}
               className="h-9 py-1.5 pl-3 pr-8 text-xs leading-normal font-medium"
@@ -393,7 +393,7 @@ export function SuperAdminAnalyticsView() {
                 </div>
                 <div className="mt-2">
                   <p className="font-mono text-2xl font-bold text-slate-900">
-                    {selectedOrgId ? '1 Cafeteria' : `${activeOrgs.length} Cafeterias`}
+                    {selectedOrgId ? '1 Organization' : `${activeOrgs.length} Organizations`}
                   </p>
                 </div>
               </Card>

@@ -124,7 +124,11 @@ export async function getOrgPlanRequests(req: Request, res: Response) {
 }
 
 export async function createOrgPlanRequest(req: Request, res: Response) {
-  const orgId = req.user?.organizationId;
+  let orgId = req.user?.organizationId || req.body?.organizationId || (req.headers['x-organization-id'] as string);
+  if (!orgId && req.user?.role === Role.SUPER_ADMIN) {
+    const defaultOrg = await prisma.organization.findFirst();
+    orgId = defaultOrg?.id;
+  }
   if (!orgId) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'Organization context required');
   }
@@ -178,7 +182,11 @@ export async function createOrgPlanRequest(req: Request, res: Response) {
 }
 
 export async function renewOrgSubscription(req: Request, res: Response) {
-  const orgId = req.user?.organizationId;
+  let orgId = req.user?.organizationId || req.body?.organizationId || (req.headers['x-organization-id'] as string);
+  if (!orgId && req.user?.role === Role.SUPER_ADMIN) {
+    const defaultOrg = await prisma.organization.findFirst();
+    orgId = defaultOrg?.id;
+  }
   if (!orgId) {
     return sendError(res, 400, 'VALIDATION_ERROR', 'Organization context required');
   }

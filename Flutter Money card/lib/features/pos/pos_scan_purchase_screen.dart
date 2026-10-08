@@ -1685,7 +1685,7 @@ class _PosScanPurchaseScreenState extends ConsumerState<PosScanPurchaseScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Cancelled Recharges', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight, fontWeight: FontWeight.w600)),
+                              const Text('Cancelled', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight, fontWeight: FontWeight.w600)),
                               const SizedBox(height: 4),
                               Text(
                                 '${cancelledRecharges.length} times',

@@ -238,7 +238,6 @@ export function CounterViewEditMenuModal({
             {filteredProducts.map((product) => {
               const isEditing = editingItem?.id === product.id;
               const isConfirmingDelete = confirmDeleteId === product.id;
-              const foodType = getItemFoodType(product.category);
 
               if (isEditing) {
                 return (
@@ -246,8 +245,8 @@ export function CounterViewEditMenuModal({
                     key={product.id}
                     className="p-3 bg-emerald-50/40 space-y-2 border-l-4 border-emerald-500 transition-all"
                   >
-                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
-                      <div className="sm:col-span-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
+                      <div>
                         <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
                           Item Name
                         </label>
@@ -261,7 +260,7 @@ export function CounterViewEditMenuModal({
                         />
                       </div>
 
-                      <div className="sm:col-span-3">
+                      <div>
                         <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
                           Price (₹)
                         </label>
@@ -283,35 +282,6 @@ export function CounterViewEditMenuModal({
                           }}
                           className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-900 focus:border-emerald-600 focus:outline-hidden"
                         />
-                      </div>
-
-                      <div className="sm:col-span-4">
-                        <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
-                          Type
-                        </label>
-                        <div className="flex gap-1">
-                          {(['Veg', 'Non-Veg', 'Drink'] as const).map((t) => (
-                            <button
-                              key={t}
-                              type="button"
-                              onClick={() => setEditingItem({ ...editingItem, foodType: t })}
-                              className={`flex-1 py-1 px-1 rounded text-[10px] font-bold border ${
-                                editingItem.foodType === t
-                                  ? t === 'Veg'
-                                    ? 'border-emerald-500 bg-emerald-100 text-emerald-800'
-                                    : t === 'Non-Veg'
-                                    ? 'border-rose-500 bg-rose-100 text-rose-800'
-                                    : 'border-sky-500 bg-sky-100 text-sky-800'
-                                  : 'border-slate-200 bg-white text-slate-600'
-                              }`}
-                            >
-                              <span className="flex items-center gap-1.5">
-                                <span className={`h-2 w-2 rounded-full ${t === 'Veg' ? 'bg-emerald-600' : t === 'Non-Veg' ? 'bg-rose-600' : 'bg-sky-600'}`}></span>
-                                <span>{t === 'Veg' ? 'Veg' : t === 'Non-Veg' ? 'Non' : 'Drink'}</span>
-                              </span>
-                            </button>
-                          ))}
-                        </div>
                       </div>
                     </div>
 
@@ -347,15 +317,8 @@ export function CounterViewEditMenuModal({
                     product.status !== 'ACTIVE' ? 'opacity-60 bg-slate-50/40' : 'bg-white'
                   }`}
                 >
-                  {/* Left: Indicator + Name & Category */}
+                  {/* Left: Name & Category */}
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <span
-                      className={`h-2.5 w-2.5 rounded-full shrink-0 ${
-                        foodType === 'Veg' ? 'bg-emerald-600' : foodType === 'Non-Veg' ? 'bg-rose-600' : 'bg-sky-600'
-                      }`}
-                      title={foodType}
-                    />
-
                     <div className="min-w-0">
                       <p className="font-semibold text-xs text-slate-900 truncate">
                         {product.itemName}

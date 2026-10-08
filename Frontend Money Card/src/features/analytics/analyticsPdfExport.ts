@@ -44,7 +44,7 @@ export function buildOrgAnalyticsJsPdf({
   branches,
   selectedBranchName,
   dateRangeLabel,
-  organizationName = 'Cafeteria',
+  organizationName = 'Organization',
   sections,
 }: GenerateOrgPdfOptions): jsPDF {
   const doc = new jsPDF({
@@ -68,8 +68,8 @@ export function buildOrgAnalyticsJsPdf({
   const margin = 14;
   const contentWidth = pageWidth - margin * 2;
 
-  const rawOrgName = (organizationName || 'Cafeteria').trim();
-  const resolvedOrgHeader = /^cafeteria\b/i.test(rawOrgName) ? rawOrgName : `Cafeteria ${rawOrgName}`;
+  const rawOrgName = (organizationName || 'Organization').trim();
+  const resolvedOrgHeader = /^organization\b/i.test(rawOrgName) ? rawOrgName : `${rawOrgName}`;
 
   function drawPageHeader(isContinuation = false) {
     doc.setFillColor(15, 23, 42); // Slate-900
@@ -88,10 +88,10 @@ export function buildOrgAnalyticsJsPdf({
     doc.setFontSize(isContinuation ? 7.5 : 8);
     doc.setTextColor(148, 163, 184);
     if (isContinuation) {
-      const sub = `Counter Scope: ${selectedBranchName}  |  Period: ${dateRangeLabel}`;
+      const sub = `Kitchen Scope: ${selectedBranchName}  |  Period: ${dateRangeLabel}`;
       doc.text(sub, margin + contentWidth - 6, 21, { align: 'right' });
     } else {
-      const sub = `Scope: Cafeteria Admin  |  Generated: ${new Date().toLocaleString()}`;
+      const sub = `Scope: Organization Admin  |  Generated: ${new Date().toLocaleString()}`;
       doc.text(sub, margin + 6, 30);
     }
   }
@@ -113,7 +113,7 @@ export function buildOrgAnalyticsJsPdf({
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.setTextColor(51, 65, 85);
-  doc.text(`Cafeteria Scope: ${selectedBranchName}`, margin + 4, 44.5);
+  doc.text(`Kitchen Scope: ${selectedBranchName}`, margin + 4, 44.5);
   doc.text(`Date Range: ${dateRangeLabel}`, margin + 80, 44.5);
 
   let curY = 54;
@@ -198,8 +198,8 @@ export function buildOrgAnalyticsJsPdf({
     const retainedProfit = analytics.retainedCardProfit ?? 0;
     const row3Kpis = [
       { label: 'Refunds', val: formatPdfCurrency(moneyRefunded), sub: 'Returned to customers' },
-      { label: 'Cancelled Recharged', val: formatPdfCurrency(cancelledTopUps), sub: `${cancelledTopUpsCount} recharges reversed` },
-      { label: 'Retained Profit', val: formatPdfCurrency(retainedProfit), sub: 'Unreturned balances' },
+      { label: 'Cancelled', val: formatPdfCurrency(cancelledTopUps), sub: `${cancelledTopUpsCount} recharges reversed` },
+      { label: 'Retained amount', val: formatPdfCurrency(retainedProfit), sub: 'Unreturned balances' },
     ];
     const cardW3 = (contentWidth - 6) / 3;
 
@@ -364,7 +364,7 @@ export function buildOrgAnalyticsJsPdf({
     curY += 27;
   }
 
-  // ── Section 4: Counter Performance Comparison ──
+  // ── Section 4: Kitchen Performance Comparison ──
   if (effectiveSections.includeBranchComparison) {
     if (hasAnySection) {
       curY = addNewPage();
@@ -374,7 +374,7 @@ export function buildOrgAnalyticsJsPdf({
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(15, 23, 42);
-    doc.text(`${sectionCounter}. Counter Performance Comparison`, margin, curY);
+    doc.text(`${sectionCounter}. Kitchen Performance Comparison`, margin, curY);
     sectionCounter++;
 
     const branchData = analytics.branchPerformance || [];
@@ -392,7 +392,7 @@ export function buildOrgAnalyticsJsPdf({
       productsSoldCount: 0,
     }));
 
-    // Top Performing Counter Highlight Banner
+    // Top Performing Kitchen Highlight Banner
     if (rows.length > 0) {
       const sortedByRev = [...rows].sort((a, b) => (b.totalRevenue ?? 0) - (a.totalRevenue ?? 0));
       const topCounter = sortedByRev[0];
@@ -404,7 +404,7 @@ export function buildOrgAnalyticsJsPdf({
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(8);
         doc.setTextColor(6, 95, 70);
-        doc.text(`★  ${topCounter.branchName} — Top Performing Counter`, margin + 4, curY + 8);
+        doc.text(`★  ${topCounter.branchName} — Top Performing Kitchen`, margin + 4, curY + 8);
 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(7.5);
@@ -425,7 +425,7 @@ export function buildOrgAnalyticsJsPdf({
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7);
     doc.setTextColor(51, 65, 85);
-    doc.text('Counter Name', margin + 2, tableY + 5);
+    doc.text('Kitchen Name', margin + 2, tableY + 5);
     doc.text('Txns', margin + 44, tableY + 5, { align: 'right' });
     doc.text('Purchases', margin + 66, tableY + 5, { align: 'right' });
     doc.text('Cash Rchg', margin + 88, tableY + 5, { align: 'right' });
@@ -446,7 +446,7 @@ export function buildOrgAnalyticsJsPdf({
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(7);
         doc.setTextColor(51, 65, 85);
-        doc.text('Counter Name (Cont.)', margin + 2, curY + 5);
+        doc.text('Kitchen Name (Cont.)', margin + 2, curY + 5);
         doc.text('Txns', margin + 44, curY + 5, { align: 'right' });
         doc.text('Purchases', margin + 66, curY + 5, { align: 'right' });
         doc.text('Cash Rchg', margin + 88, curY + 5, { align: 'right' });
@@ -504,7 +504,7 @@ export function buildOrgAnalyticsJsPdf({
       { label: 'Busiest Peak Hour', val: peakData.comparison.busiestHour || '13:00' },
       { label: 'Peak Hours Volume', val: formatPdfCurrency(peakData.comparison.peakVolume || 0) },
       { label: 'Peak Transactions', val: (peakData.comparison.peakTransactions || 0).toLocaleString() },
-      { label: 'Busiest Counter', val: peakData.comparison.busiestBranchName || selectedBranchName },
+      { label: 'Busiest Kitchen', val: peakData.comparison.busiestBranchName || selectedBranchName },
     ];
 
     const cardW4 = (contentWidth - 9) / 4;
@@ -800,7 +800,7 @@ export function buildOrgAnalyticsJsPdf({
     }
   }
 
-  // ── Section: Food Purchases by Counter ──
+  // ── Section: Sales by Kitchen ──
   if (effectiveSections.includeFoodDemand && analytics.foodPurchasesByCounter && analytics.foodPurchasesByCounter.length > 0) {
     if (hasAnySection && curY > 210) {
       curY = addNewPage();
@@ -810,7 +810,7 @@ export function buildOrgAnalyticsJsPdf({
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(15, 23, 42);
-    doc.text(`${sectionCounter}. Food Purchases by Counter`, margin, curY);
+    doc.text(`${sectionCounter}. Sales by Kitchen`, margin, curY);
     sectionCounter++;
 
     const purchasesTableY = curY + 2;
@@ -822,7 +822,7 @@ export function buildOrgAnalyticsJsPdf({
     doc.setFontSize(7);
     doc.setTextColor(51, 65, 85);
     doc.text('Card ID', margin + 2, purchasesTableY + 5);
-    doc.text('Issuing Counter', margin + 35, purchasesTableY + 5);
+    doc.text('Issuing Kitchen', margin + 35, purchasesTableY + 5);
     doc.text('Purchased At', margin + 75, purchasesTableY + 5);
     doc.text('Food Items', margin + 115, purchasesTableY + 5);
     doc.text('Total Amount', margin + 180, purchasesTableY + 5, { align: 'right' });
@@ -840,7 +840,7 @@ export function buildOrgAnalyticsJsPdf({
         doc.setFontSize(7);
         doc.setTextColor(51, 65, 85);
         doc.text('Card ID (Cont.)', margin + 2, curY + 5);
-        doc.text('Issuing Counter', margin + 35, curY + 5);
+        doc.text('Issuing Kitchen', margin + 35, curY + 5);
         doc.text('Purchased At', margin + 75, curY + 5);
         doc.text('Food Items', margin + 115, curY + 5);
         doc.text('Total Amount', margin + 180, curY + 5, { align: 'right' });
@@ -1104,8 +1104,8 @@ function drawPlatformPdfPage1(
       (params.organizations.filter((o) => Boolean(o.adminUser)).length || params.organizations.length);
 
     const topKpis = [
-      { label: 'Total Cafeterias', val: `${params.totalOrganizations} Cafeterias` },
-      { label: 'Cafeteria Admins', val: `${totalAdminsCount} Admins` },
+      { label: 'Total Organizations', val: `${params.totalOrganizations} Organizations` },
+      { label: 'Organization Admins', val: `${totalAdminsCount} Admins` },
       { label: 'Active Subscriptions', val: `${params.activeSubscriptions} Active` },
       { label: 'Subscription Revenue', val: `${formatPdfCurrency(params.totalGatewayRevenue)} / mo` },
     ];
@@ -1144,7 +1144,7 @@ function drawPlatformPdfPage1(
     doc.setFontSize(7.5);
     doc.setTextColor(21, 128, 61);
     doc.text(
-      `Tenant Cafeterias: ${params.totalOrganizations} Online  \u2022  Active Admins: ${totalAdminsCount}  \u2022  Recurring MRR: ${formatPdfCurrency(params.totalGatewayRevenue)} / mo`,
+      `Tenant Organizations: ${params.totalOrganizations} Online  \u2022  Active Admins: ${totalAdminsCount}  \u2022  Recurring MRR: ${formatPdfCurrency(params.totalGatewayRevenue)} / mo`,
       margin + 4,
       curY + 13,
     );
@@ -1211,7 +1211,7 @@ function drawPlatformPdfPage2(
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(15, 23, 42);
-    doc.text('2. Platform Cafeterias Performance', margin, curOrgY);
+    doc.text('2. Platform Organizations Performance', margin, curOrgY);
 
     const orgTableY = curOrgY + 4;
     doc.setFillColor(241, 245, 249);
@@ -1221,7 +1221,7 @@ function drawPlatformPdfPage2(
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
     doc.setTextColor(51, 65, 85);
-    doc.text('Cafeteria Name', margin + 3, orgTableY + 5);
+    doc.text('Organization Name', margin + 3, orgTableY + 5);
     doc.text('Subscribed Plan', margin + 55, orgTableY + 5);
     doc.text('Status', margin + 88, orgTableY + 5);
     doc.text('Quota Utilization', margin + 115, orgTableY + 5);
@@ -1271,7 +1271,7 @@ function drawPlatformPdfPage2(
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(15, 23, 42);
-    doc.text('4. Counter Performance', margin, branchSecY);
+    doc.text('4. Kitchen Performance', margin, branchSecY);
 
     const brTableY = branchSecY + 4;
     doc.setFillColor(241, 245, 249);
@@ -1281,8 +1281,8 @@ function drawPlatformPdfPage2(
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
     doc.setTextColor(51, 65, 85);
-    doc.text('Counter Name', margin + 3, brTableY + 5);
-    doc.text('Cafeteria', margin + 48, brTableY + 5);
+    doc.text('Kitchen Name', margin + 3, brTableY + 5);
+    doc.text('Organization', margin + 48, brTableY + 5);
     doc.text('Txns', margin + 90, brTableY + 5);
     doc.text('Purchases', margin + 108, brTableY + 5);
     doc.text('Recharges', margin + 130, brTableY + 5);
@@ -1598,7 +1598,7 @@ export function buildPlatformAnalyticsJsPdf(params: GeneratePlatformAnalyticsPdf
     hasAnySection = true;
     preparePage(
       'MONEY CARD - SUPER ADMIN ANALYTICS REPORT',
-      `Platform Cafeterias Performance  |  Generated: ${generatedTime}`,
+      `Platform Organizations Performance  |  Generated: ${generatedTime}`,
     );
     drawPlatformPdfPage2(doc, params, effectiveSections, margin, contentWidth);
   }

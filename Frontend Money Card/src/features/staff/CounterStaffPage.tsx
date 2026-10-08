@@ -120,7 +120,7 @@ export function CounterStaffPage() {
 
   const activeBranchId = currentBranch?.id || user?.assignedBranchIds?.[0] || '';
   const activeBranch = branches.find((b) => b.id === activeBranchId) || currentBranch;
-  const activeBranchName = activeBranch?.name || currentBranch?.name || 'Counter';
+  const activeBranchName = activeBranch?.name || currentBranch?.name || 'Kitchen';
 
   // ── Fetch Staff & Branches ─────────────────────────────────
   const fetchStaffData = useCallback(async () => {
@@ -483,7 +483,7 @@ export function CounterStaffPage() {
       staffPerformanceList.find((p) => p.staffId === selectedStaffForAudit.id) || {
         staffId: selectedStaffForAudit.id,
         staffName: selectedStaffForAudit.name,
-        role: selectedStaffForAudit.staffType === 'KITCHEN' ? 'Kitchen Staff' : 'Counter Manager',
+        role: selectedStaffForAudit.staffType === 'KITCHEN' ? 'Kitchen Staff' : 'Kitchen Manager',
         status: selectedStaffForAudit.status,
         branchId: activeBranchId,
         branchName: activeBranchName,
@@ -542,7 +542,7 @@ export function CounterStaffPage() {
     return <UnauthorizedPage />;
   }
 
-  // ── Table Columns for Counter Staff ─────────────────────────
+  // ── Table Columns for Kitchen Staff ─────────────────────────
   const columns = [
     {
       key: 'name',
@@ -585,7 +585,7 @@ export function CounterStaffPage() {
                 : 'border-blue-300 bg-blue-50 text-blue-700 font-semibold text-xs'
             }
           >
-            {isKitchen ? 'Kitchen Staff' : 'Counter Manager'}
+            {isKitchen ? 'Kitchen Staff' : 'Kitchen Manager'}
           </Badge>
         );
       },
@@ -693,7 +693,7 @@ export function CounterStaffPage() {
             className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
           >
             <option value="ALL">All Roles</option>
-            <option value="MANAGER">Counter Managers</option>
+            <option value="MANAGER">Kitchen Managers</option>
             <option value="KITCHEN">Kitchen Staff</option>
           </select>
           <Button
@@ -845,7 +845,7 @@ export function CounterStaffPage() {
                     : 'border-slate-200 hover:border-slate-300'
                 }`}
               >
-                <div className="font-semibold text-xs text-slate-900">Counter Manager</div>
+                <div className="font-semibold text-xs text-slate-900">Kitchen Manager</div>
                 <div className="text-[11px] text-slate-500 mt-0.5">Full POS, Cashier & Recharge access</div>
               </button>
               <button
@@ -883,12 +883,12 @@ export function CounterStaffPage() {
       >
         <div className="space-y-4">
           <p className="text-xs text-slate-600">
-            Share these login credentials with <strong className="text-slate-900">{createdCredentials?.name}</strong> so they can log into the Counter POS app.
+            Share these login credentials with <strong className="text-slate-900">{createdCredentials?.name}</strong> so they can log into the Kitchen POS app.
           </p>
 
           <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 space-y-2 text-xs font-mono">
             <div className="flex justify-between">
-              <span className="text-slate-500 font-sans">Counter:</span>
+              <span className="text-slate-500 font-sans">Kitchen:</span>
               <span className="font-semibold text-slate-900">{createdCredentials?.counterName}</span>
             </div>
             <div className="flex justify-between">
@@ -922,7 +922,7 @@ export function CounterStaffPage() {
               className="flex-1 text-xs"
               onClick={() => {
                 if (!createdCredentials) return;
-                const text = `Counter: ${createdCredentials.counterName}\nStaff: ${createdCredentials.name}\nLogin ID: ${createdCredentials.phone}\nPassword: ${createdCredentials.password}`;
+                const text = `Kitchen: ${createdCredentials.counterName}\nStaff: ${createdCredentials.name}\nLogin ID: ${createdCredentials.phone}\nPassword: ${createdCredentials.password}`;
                 navigator.clipboard.writeText(text);
                 setCopied(true);
                 setTimeout(() => setCopied(false), 2000);
@@ -1010,7 +1010,7 @@ export function CounterStaffPage() {
                     : 'border-slate-200 hover:border-slate-300'
                 }`}
               >
-                <div className="font-semibold text-xs text-slate-900">Counter Manager</div>
+                <div className="font-semibold text-xs text-slate-900">Kitchen Manager</div>
                 <div className="text-[11px] text-slate-500 mt-0.5">Full POS, Cashier & Recharge</div>
               </button>
               <button
@@ -1150,7 +1150,7 @@ export function CounterStaffPage() {
       >
         <div className="space-y-4">
           <p className="text-xs text-slate-600">
-            Are you sure you want to remove <strong className="text-slate-900">{staffToDelete?.name}</strong> from this counter? They will no longer be able to log into the POS terminal.
+            Are you sure you want to remove <strong className="text-slate-900">{staffToDelete?.name}</strong> from this kitchen? They will no longer be able to log into the POS terminal.
           </p>
 
           <ModalFooter>

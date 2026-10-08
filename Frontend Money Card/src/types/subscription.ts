@@ -106,6 +106,7 @@ export interface CreatePlanRequestInput {
   requestedPlanId: string;
   requestType: PlanRequestType;
   reason?: string;
+  organizationId?: string;
 }
 
 export interface ReviewPlanRequestInput {

@@ -12,8 +12,6 @@ interface CounterAddProductModalProps {
   onSuccess: () => void;
 }
 
-type FoodType = 'Veg' | 'Non-Veg' | 'Drink';
-
 export function CounterAddProductModal({
   isOpen,
   onClose,
@@ -22,7 +20,6 @@ export function CounterAddProductModal({
 }: CounterAddProductModalProps) {
   const [itemName, setItemName] = useState('');
   const [price, setPrice] = useState('');
-  const [foodType, setFoodType] = useState<FoodType>('Veg');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -32,7 +29,6 @@ export function CounterAddProductModal({
     if (isOpen) {
       setItemName('');
       setPrice('');
-      setFoodType('Veg');
       setApiError(null);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
@@ -59,12 +55,10 @@ export function CounterAddProductModal({
     setApiError(null);
 
     try {
-      const categories: string[] = [foodType];
-
       const res = await apiService.products.createProduct({
         itemName: trimmedName,
         price: Math.round(numPrice),
-        category: categories,
+        category: ['General'],
         branchId: branch.id,
         status: 'ACTIVE',
       });
@@ -143,53 +137,6 @@ export function CounterAddProductModal({
               disabled={isSubmitting}
               className="w-full rounded-xl border border-slate-200 bg-white pl-7 pr-3 py-2 text-sm font-semibold text-slate-900 placeholder-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-hidden"
             />
-          </div>
-        </div>
-
-        {/* Food Type Selector (Clean Colored Dots, Zero Emojis) */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-            Type
-          </label>
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={() => setFoodType('Veg')}
-              className={`flex items-center justify-center gap-2 py-2 px-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
-                foodType === 'Veg'
-                  ? 'border-emerald-500 bg-emerald-50 text-emerald-800 shadow-2xs'
-                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              <span className="h-2 w-2 rounded-full bg-emerald-600"></span>
-              <span>Veg</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setFoodType('Non-Veg')}
-              className={`flex items-center justify-center gap-2 py-2 px-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
-                foodType === 'Non-Veg'
-                  ? 'border-rose-500 bg-rose-50 text-rose-800 shadow-2xs'
-                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              <span className="h-2 w-2 rounded-full bg-rose-600"></span>
-              <span>Non-Veg</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setFoodType('Drink')}
-              className={`flex items-center justify-center gap-2 py-2 px-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
-                foodType === 'Drink'
-                  ? 'border-sky-500 bg-sky-50 text-sky-800 shadow-2xs'
-                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              <span className="h-2 w-2 rounded-full bg-sky-600"></span>
-              <span>Drink</span>
-            </button>
           </div>
         </div>
 
