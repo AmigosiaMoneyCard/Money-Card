@@ -1,74 +1,57 @@
-# Implementation Plan — Set Collapsible Tables to Default Collapsed
+# Implementation Plan — Streamline Blocked Wallets Table
 
-Set the default state of collapsible dropdown tables in the Web Admin dashboard to collapsed (closed) on initial page load, requiring the user to click to drop down and inspect details, reducing initial rendering overhead and read-write load.
+Streamline the Blocked Wallets table on the Cards / Wallets page by removing redundant columns (`Customer`, `Locked Balance`, `Blocked Reason`, `Blocked By`, `Blocked Date`) and the counter name subtitle under the Wallet ID. Also remove the `Unblock` and `Replace / Refund` buttons from table rows, keeping only `View` (and `Customer History`) because all comprehensive wallet information and resolution actions already exist inside the `View` modal.
 
-![Default Collapsed Tables UI](file:///C:/Users/damie/.gemini/antigravity-ide/brain/c99edd16-0faf-4782-a7e1-399d96eb8a4b/collapsed_tables_default_ui_1791467350056.jpg)
+![Streamlined Blocked Wallets Table and View Modal](file:///C:/Users/damie/.gemini/antigravity-ide/brain/c99edd16-0faf-4782-a7e1-399d96eb8a4b/blocked_table_streamlined_sketch_1791468563704.jpg)
 
 ## ASCII Wireframes
 
-### 1. All Ordered Menu Items Table (Default Collapsed)
+### 1. Streamlined Blocked Wallets Table
 ```
 +---------------------------------------------------------------------------------+
-| All Ordered Menu Items                                [Search dish...]  [Show v]|
-| 24 dishes sold across counters                                                  |
+| Blocked Wallets (4)                                     [Search blocked card...]|
 +---------------------------------------------------------------------------------+
-(Table body hidden by default until user clicks Show or types in search box)
-
-When Expanded:
-+---------------------------------------------------------------------------------+
-| All Ordered Menu Items                                [Search dish...]  [Hide ^]|
-| 24 dishes sold across counters                                                  |
-+---------------------------------------------------------------------------------+
-| Dish Name & Category       | Units Sold | Revenue (INR) | Avg Price             |
-|----------------------------|------------|---------------|-----------------------|
-| Chicken Biryani            | 142        | Rs. 28,400    | Rs. 200               |
-| Paneer Butter Masala       | 98         | Rs. 14,700    | Rs. 150               |
+| WALLET ID                                                             | ACTIONS |
+|-----------------------------------------------------------------------|---------|
+| [Card] KD1NIICJY                                 [View] [Customer History]      |
+| [Card] KD1DG3Z8J                                 [View] [Customer History]      |
+| [Card] MC004                                     [View] [Customer History]      |
 +---------------------------------------------------------------------------------+
 ```
 
-### 2. Food Purchases by Counter Table (Default Collapsed)
+### 2. Blocked Wallet Details Modal (Opened via [View] Button)
 ```
 +---------------------------------------------------------------------------------+
-| Food Purchases by Kitchen Counter                                         [ v ] |
-| Cross-counter sales volume breakdown                                            |
+| Blocked Details: KD1NIICJY                                                  [X] |
 +---------------------------------------------------------------------------------+
-(Table body hidden by default until user clicks dropdown toggle)
-
-When Expanded:
+| LOCKED BALANCE                                                                  |
+| Rs. 2,500                                                                       |
 +---------------------------------------------------------------------------------+
-| Food Purchases by Kitchen Counter                                         [ ^ ] |
-| Cross-counter sales volume breakdown                                            |
+| CUSTOMER DETAILS                                                                |
+| Rahul Sharma                                                     +91 9876543210 |
 +---------------------------------------------------------------------------------+
-| Kitchen Counter    | Orders | Items Sold | Net Sales (INR) | Revenue Share      |
-|--------------------|--------|------------|-----------------|--------------------|
-| Main Counter       | 312    | 650        | Rs. 65,400      | 62.4%              |
-| Beverages Counter  | 188    | 240        | Rs. 18,200      | 17.4%              |
+| BLOCKED REASON                                                                  |
+| Lost card reported by cardholder                                                |
++---------------------------------------------------------------------------------+
+| COUNTER             | BLOCKED BY                    | BLOCKED DATE              |
+| Counter 1           | Damien Martin                 | 04 Oct 2026, 10:30 AM     |
++---------------------------------------------------------------------------------+
+| [Close]                                            [Unblock] [Replace / Refund] |
 +---------------------------------------------------------------------------------+
 ```
 
-### 3. Counter Overview Breakdown (Default Collapsed Accordion)
-```
-+---------------------------------------------------------------------------------+
-| Counter 1: Main Counter                                   [Edit] [View Details v] |
-| Staff: 3 Members | Menu: 18 Items | Valuation: Rs. 45,000 | Status: All Stocked |
-+---------------------------------------------------------------------------------+
-(Deep-dive staff list & menu stock grid hidden until clicking View Details)
-```
+## Proposed Changes
 
-## Technical Changes
-
-1. [OrgAdminAnalyticsComponents.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/analytics/OrgAdminAnalyticsComponents.tsx):
-   - In `OrgAdminProductDemandTable` (line 968): change `useState(true)` to `useState(false)`. Retain auto-expansion when `searchDishTerm` is entered.
-   - In `FoodPurchasesByCounterTable` (line 1145): change `useState(true)` to `useState(false)`.
-
-2. [AllBranchesOverviewModal.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/branches/AllBranchesOverviewModal.tsx):
-   - Confirm `expandedBranchIds` defaults to `new Set()` (closed) so each counter row displays `[View Details]` by default without pre-expanding deep-dive details.
-
-3. [menuAnalyticsDropdownTable.test.ts](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/__tests__/menuAnalyticsDropdownTable.test.ts):
-   - Update tests to assert default `isTableOpen = false` state and verify user toggle and auto-expansion behavior.
+1. [BlockedWalletsTableView.tsx](file:///D:/Money%20Card%20Project/Frontend%20Money%20Card/src/features/cards/BlockedWalletsTableView.tsx):
+   - Table Headers: Remove `Customer`, `Locked Balance`, `Blocked Reason`, `Blocked By`, and `Blocked Date` `<th>` elements. Keep only `Wallet ID` and `Actions`.
+   - Table Rows:
+     - Under `Wallet ID`: Remove `{branchName && (<span ...>{branchName}</span>)}` so only the card identifier with icon is displayed.
+     - Remove the 5 redundant `<td>` columns (`Customer`, `Locked Balance`, `Blocked Reason`, `Blocked By`, `Blocked Date`).
+     - In `Actions` `<td>`: Remove the `Unblock` button and `Replace / Refund` button. Retain the `View` button and optional `Customer History` button.
+     - Adjust table container styling so it is lightweight without needing `min-w-[700px]`.
+   - Blocked Wallet Details Modal (`Blocked Details: <WalletID>`): Retain full rich view containing Locked Balance, Customer Details, Blocked Reason, Counter, Blocked By, Blocked Date, Unblock action, and Replace / Refund action.
 
 ## Verification Plan
 
-- Run frontend tests: `npm test -- --run src/__tests__/menuAnalyticsDropdownTable.test.ts`
-- Run full frontend test suite: `npm test -- --run` (all tests passing)
-- Run typecheck: `npx tsc --noEmit` (0 errors)
+- Run frontend typecheck: `npx tsc --noEmit` (0 errors)
+- Run frontend tests: `npm test -- --run` (all 43 test files, 322 tests passing)

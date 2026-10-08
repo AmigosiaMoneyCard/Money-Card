@@ -176,90 +176,32 @@ export function BlockedWalletsTableView({
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[700px]">
+            <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                   <th className="py-3 px-4">Wallet ID</th>
-                  <th className="py-3 px-4">Customer</th>
-                  <th className="py-3 px-4">Locked Balance</th>
-                  <th className="py-3 px-4">Blocked Reason</th>
-                  <th className="py-3 px-4">Blocked By</th>
-                  <th className="py-3 px-4">Blocked Date</th>
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
                 {filteredCards.map((card) => {
                   const cardIdentifier = card.physicalCardNumber || card.qrToken || card.id;
-                  const customerName = card.activeSession?.customerName;
-                  const customerPhone = card.activeSession?.customerPhone;
-                  const lockedBal = card.activeSession?.balance || 0;
-                  const branchName = getBranchName(card);
-                  const blocker = card.blockedBy || 'Administrator';
-                  const reasonText = cleanBlockReasonDisplay(card.blockedReason, blocker);
-                  const blockedDate = card.blockedAt || card.updatedAt || card.createdAt;
 
                   return (
                     <tr key={card.id} className="hover:bg-slate-50/60 transition-colors">
-                      {/* 1. Wallet ID */}
+                      {/* Wallet ID */}
                       <td className="py-3.5 px-4 font-mono font-semibold text-slate-900">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2.5">
                           <div className="h-7 w-7 rounded-lg bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 shrink-0">
                             <CreditCard className="h-3.5 w-3.5" />
                           </div>
-                          <div>
-                            <span className="font-mono font-bold text-slate-900 block">
-                              {cardIdentifier}
-                            </span>
-                            {branchName && (
-                              <span className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
-                                <Store className="h-2.5 w-2.5" />
-                                {branchName}
-                              </span>
-                            )}
-                          </div>
+                          <span className="font-mono font-bold text-slate-900">
+                            {cardIdentifier}
+                          </span>
                         </div>
                       </td>
 
-                      {/* 2. Customer */}
-                      <td className="py-3.5 px-4">
-                        {customerName ? (
-                          <div>
-                            <span className="font-semibold text-slate-900 block">
-                              {customerName}
-                            </span>
-                            {customerPhone && (
-                              <span className="text-[11px] text-slate-400 font-mono mt-0.5 block">
-                                {customerPhone}
-                              </span>
-                            )}
-                          </div>
-                        ) : null}
-                      </td>
-
-                      {/* 3. Locked Balance */}
-                      <td className="py-3.5 px-4 font-mono font-bold text-slate-900">
-                        {formatCurrency(lockedBal)}
-                      </td>
-
-                      {/* 4. Blocked Reason */}
-                      <td className="py-3.5 px-4">
-                        <span className="text-slate-700 text-xs leading-relaxed" title={reasonText}>
-                          {reasonText}
-                        </span>
-                      </td>
-
-                      {/* 5. Blocked By */}
-                      <td className="py-3.5 px-4 text-slate-600">
-                        <span className="font-medium text-slate-800 block">{blocker}</span>
-                      </td>
-
-                      {/* 6. Blocked Date */}
-                      <td className="py-3.5 px-4 text-slate-500 font-medium">
-                        {blockedDate ? formatDate(blockedDate) : '—'}
-                      </td>
-
-                      {/* 7. Actions */}
+                      {/* Actions */}
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
                         <div className="inline-flex items-center gap-1.5">
                           <Button
@@ -283,29 +225,6 @@ export function BlockedWalletsTableView({
                               Customer History
                             </Button>
                           )}
-
-                          {canUnblock && (
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              onClick={() => setCardToUnblock(card)}
-                              className="text-xs h-8 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold cursor-pointer shadow-2xs"
-                              leftIcon={<CheckCircle2 className="h-3.5 w-3.5" />}
-                            >
-                              Unblock
-                            </Button>
-                          )}
-
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCardToResolve(card)}
-                            className="text-xs h-8 px-2.5 rounded-lg border-blue-200 text-blue-700 bg-blue-50/60 hover:bg-blue-100 hover:border-blue-300 font-semibold cursor-pointer shadow-2xs"
-                            leftIcon={<ArrowLeftRight className="h-3.5 w-3.5 text-blue-600" />}
-                            title="Replace card & transfer balance or refund in cash"
-                          >
-                            Replace / Refund
-                          </Button>
                         </div>
                       </td>
                     </tr>
