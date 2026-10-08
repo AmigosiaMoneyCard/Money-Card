@@ -9,7 +9,8 @@ import {
   CreditCard,
   AlertCircle,
   CheckCircle2,
-  Search,
+  QrCode,
+  Sparkles,
 } from 'lucide-react';
 
 interface ResolveBlockedWalletModalProps {
@@ -29,6 +30,7 @@ export function ResolveBlockedWalletModal({
 }: ResolveBlockedWalletModalProps) {
   const [resolutionMode, setResolutionMode] = useState<'REPLACE' | 'REFUND'>('REPLACE');
   const [selectedTargetCardId, setSelectedTargetCardId] = useState('');
+  const [targetCardInput, setTargetCardInput] = useState('');
   const [targetCardSearch, setTargetCardSearch] = useState('');
   const [refundPaymentMethod, setRefundPaymentMethod] = useState<'CASH' | 'UPI'>('CASH');
   const [reasonNotes, setReasonNotes] = useState('Damaged or lost card replaced');
@@ -40,7 +42,7 @@ export function ResolveBlockedWalletModal({
   const customerName = card?.activeSession?.customerName;
   const customerPhone = card?.activeSession?.customerPhone;
 
-  // Filter available cards
+  // Filter available cards for dropdown
   const filteredAvailableCards = useMemo(() => {
     const list = availableCards.filter(
       (c) => c.id !== card?.id && c.status === 'AVAILABLE' && !c.activeSession
@@ -54,10 +56,20 @@ export function ResolveBlockedWalletModal({
     });
   }, [availableCards, card?.id, targetCardSearch]);
 
+  const effectiveTargetCardNumber = useMemo(() => {
+    if (targetCardInput.trim()) return targetCardInput.trim().toUpperCase();
+    if (selectedTargetCardId) {
+      const found = availableCards.find((c) => c.id === selectedTargetCardId);
+      return found?.physicalCardNumber || found?.qrToken || 'Selected Card';
+    }
+    return '';
+  }, [targetCardInput, selectedTargetCardId, availableCards]);
+
   const handleClose = () => {
     if (isSubmitting) return;
     setSubmitError(null);
     setSelectedTargetCardId('');
+    setTargetCardInput('');
     setTargetCardSearch('');
     onClose();
   };
@@ -67,15 +79,16 @@ export function ResolveBlockedWalletModal({
     setSubmitError(null);
 
     if (resolutionMode === 'REPLACE') {
-      if (!selectedTargetCardId) {
-        setSubmitError('Please select an available replacement card.');
+      const targetIdentifier = targetCardInput.trim() || selectedTargetCardId;
+      if (!targetIdentifier) {
+        setSubmitError('Please scan, enter a card number, or select an available card.');
         return;
       }
 
       setIsSubmitting(true);
       try {
         const res = await apiService.cards.replaceCard(card.id, {
-          targetCardId: selectedTargetCardId,
+          targetCardId: targetIdentifier,
           reason: reasonNotes,
         });
 
@@ -102,7 +115,9 @@ export function ResolveBlockedWalletModal({
 
       setIsSubmitting(true);
       try {
-        const res = await apiService.sessions.returnSession(card.activeSession.id);
+        const res = await apiService.sessions.returnSession(card.activeSession.id, {
+          paymentMethod: refundPaymentMethod,
+        });
         if (res.success) {
           notify.success(
             `Wallet ${cardIdentifier} settled. ${formatCurrency(lockedBalance)} refunded via ${refundPaymentMethod}.`
@@ -156,7 +171,7 @@ export function ResolveBlockedWalletModal({
             Choose Resolution Method
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {/* Mode A: Replace Card & Transfer Balance */}
+            {/* Mode A: Replace Card & Transfer Balance (Green Theme) */}
             <button
               type="button"
               onClick={() => {
@@ -165,25 +180,31 @@ export function ResolveBlockedWalletModal({
               }}
               className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                 resolutionMode === 'REPLACE'
-                  ? 'border-emerald-600 bg-emerald-50/50 shadow-xs ring-1 ring-emerald-600'
+                  ? 'border-emerald-500 bg-emerald-50/60 shadow-xs ring-2 ring-emerald-500/20'
                   : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50'
               }`}
             >
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
-                  <ArrowLeftRight className={`h-4 w-4 ${resolutionMode === 'REPLACE' ? 'text-emerald-700' : 'text-slate-500'}`} />
-                  Replace Card & Transfer
-                </span>
-                {resolutionMode === 'REPLACE' && (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                )}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                    <ArrowLeftRight className={`h-4 w-4 ${resolutionMode === 'REPLACE' ? 'text-emerald-700' : 'text-slate-500'}`} />
+                    Replace Card & Transfer
+                  </span>
+                  {resolutionMode === 'REPLACE' && (
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed mb-2">
+                  Issue a new card and migrate {formatCurrency(lockedBalance)} so customer can keep using it.
+                </p>
               </div>
-              <p className="text-[11px] text-slate-500 leading-relaxed">
-                Issue a new card and migrate {formatCurrency(lockedBalance)} so customer can keep using it.
-              </p>
+              <div className="pt-2 border-t border-emerald-100 flex items-center gap-1 text-[10px] font-semibold text-emerald-700">
+                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span>Reflects in Blocked Returns</span>
+              </div>
             </button>
 
-            {/* Mode B: Cash Refund */}
+            {/* Mode B: Cash Refund (Blue Theme) */}
             <button
               type="button"
               onClick={() => {
@@ -192,64 +213,106 @@ export function ResolveBlockedWalletModal({
               }}
               className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                 resolutionMode === 'REFUND'
-                  ? 'border-rose-600 bg-rose-50/50 shadow-xs ring-1 ring-rose-600'
+                  ? 'border-sky-500 bg-sky-50/60 shadow-xs ring-2 ring-sky-500/20'
                   : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50'
               }`}
             >
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
-                  <Banknote className={`h-4 w-4 ${resolutionMode === 'REFUND' ? 'text-rose-700' : 'text-slate-500'}`} />
-                  Cash Refund & Settle
-                </span>
-                {resolutionMode === 'REFUND' && (
-                  <CheckCircle2 className="h-4 w-4 text-rose-600" />
-                )}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                    <Banknote className={`h-4 w-4 ${resolutionMode === 'REFUND' ? 'text-sky-700' : 'text-slate-500'}`} />
+                    Cash Refund & Settle
+                  </span>
+                  {resolutionMode === 'REFUND' && (
+                    <CheckCircle2 className="h-4 w-4 text-sky-600" />
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed mb-2">
+                  Pay {formatCurrency(lockedBalance)} back to customer in cash and close this wallet.
+                </p>
               </div>
-              <p className="text-[11px] text-slate-500 leading-relaxed">
-                Pay {formatCurrency(lockedBalance)} back to customer in cash and close this wallet.
-              </p>
+              <div className="pt-2 border-t border-sky-100 flex items-center gap-1 text-[10px] font-semibold text-sky-700">
+                <span className="inline-block w-2 h-2 rounded-full bg-sky-500"></span>
+                <span>Reflects in Refunds</span>
+              </div>
             </button>
           </div>
         </div>
 
-        {/* ── 3. Mode A: Select Target Card Details ── */}
+        {/* ── 3. Mode A: Select or Scan Target Card Details (Green) ── */}
         {resolutionMode === 'REPLACE' && (
-          <div className="space-y-3 rounded-xl border border-emerald-100 bg-emerald-50/30 p-3.5">
+          <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50/40 p-3.5">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Select Available New Card to Assign
-              </label>
-              {filteredAvailableCards.length === 0 ? (
-                <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs">
-                  <p className="font-semibold">No available unassigned cards found.</p>
-                  <p className="text-[11px] mt-0.5 text-amber-700">
-                    Please import or register available cards at this counter first.
-                  </p>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-bold text-slate-800">
+                  New Physical Card to Assign
+                </label>
+                <span className="text-[10px] text-emerald-700 font-medium flex items-center gap-1">
+                  <Sparkles className="h-3 w-3" /> Auto-registers if new
+                </span>
+              </div>
+
+              {/* Direct Scanner or Card Number Input */}
+              <div className="relative mb-2">
+                <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-emerald-600">
+                  <QrCode className="h-4 w-4" />
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Filter available cards by number..."
-                      value={targetCardSearch}
-                      onChange={(e) => setTargetCardSearch(e.target.value)}
-                      className="w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-600"
-                    />
-                  </div>
+                <input
+                  type="text"
+                  placeholder="Scan QR or type card number (e.g. MC-1001)..."
+                  value={targetCardInput}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setTargetCardInput(val);
+                    // If matches an available card, select it
+                    const matched = availableCards.find(
+                      (c) =>
+                        (c.physicalCardNumber && c.physicalCardNumber.toUpperCase() === val.trim().toUpperCase()) ||
+                        c.qrToken === val.trim()
+                    );
+                    if (matched) {
+                      setSelectedTargetCardId(matched.id);
+                    } else if (val.trim()) {
+                      setSelectedTargetCardId('');
+                    }
+                  }}
+                  className="w-full rounded-lg border border-emerald-300 bg-white pl-9 pr-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 placeholder:font-sans placeholder:text-slate-400"
+                  autoFocus
+                />
+              </div>
+
+              {/* Or Select from Available Dropdown */}
+              {filteredAvailableCards.length > 0 ? (
+                <div className="space-y-1.5 pt-1">
+                  <span className="text-[11px] text-slate-500 block">
+                    Or choose from unassigned cards in stock ({filteredAvailableCards.length} available):
+                  </span>
                   <select
                     value={selectedTargetCardId}
-                    onChange={(e) => setSelectedTargetCardId(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-mono font-medium text-slate-900 focus:outline-none focus:border-emerald-600"
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      setSelectedTargetCardId(id);
+                      const found = availableCards.find((c) => c.id === id);
+                      if (found) {
+                        setTargetCardInput(found.physicalCardNumber || found.qrToken || '');
+                      }
+                    }}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-mono text-slate-800 focus:outline-none focus:border-emerald-600"
                   >
-                    <option value="">-- Choose New Card ({filteredAvailableCards.length} available) --</option>
+                    <option value="">-- Choose from stock --</option>
                     {filteredAvailableCards.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.physicalCardNumber ? `Card ${c.physicalCardNumber}` : `QR Token ${c.qrToken}`}
+                        {c.physicalCardNumber ? `Card ${c.physicalCardNumber}` : `QR ${c.qrToken}`}
                       </option>
                     ))}
                   </select>
+                </div>
+              ) : (
+                <div className="p-2.5 rounded-lg bg-emerald-100/60 border border-emerald-200 text-emerald-900 text-[11px] flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <span>
+                    No pre-registered cards needed! Type or scan any new physical card number above and it will be issued automatically.
+                  </span>
                 </div>
               )}
             </div>
@@ -275,9 +338,7 @@ export function ResolveBlockedWalletModal({
               <div className="flex justify-between">
                 <span>To New Card:</span>
                 <span className="font-mono font-bold text-emerald-700">
-                  {selectedTargetCardId
-                    ? availableCards.find((c) => c.id === selectedTargetCardId)?.physicalCardNumber || 'Selected Card'
-                    : 'Not selected'}
+                  {effectiveTargetCardNumber || 'Not entered yet'}
                 </span>
               </div>
               <div className="flex justify-between border-t border-slate-100 pt-1 font-bold text-slate-900">
@@ -288,9 +349,9 @@ export function ResolveBlockedWalletModal({
           </div>
         )}
 
-        {/* ── 4. Mode B: Cash Refund Details ── */}
+        {/* ── 4. Mode B: Cash Refund Details (Blue) ── */}
         {resolutionMode === 'REFUND' && (
-          <div className="space-y-3 rounded-xl border border-rose-100 bg-rose-50/30 p-3.5">
+          <div className="space-y-3 rounded-xl border border-sky-200 bg-sky-50/40 p-3.5">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Payout Payment Method
@@ -301,7 +362,7 @@ export function ResolveBlockedWalletModal({
                   onClick={() => setRefundPaymentMethod('CASH')}
                   className={`flex-1 py-1.5 px-3 rounded-lg border text-xs font-semibold transition-colors ${
                     refundPaymentMethod === 'CASH'
-                      ? 'border-rose-600 bg-rose-600 text-white'
+                      ? 'border-sky-600 bg-sky-600 text-white shadow-xs'
                       : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                   }`}
                 >
@@ -312,7 +373,7 @@ export function ResolveBlockedWalletModal({
                   onClick={() => setRefundPaymentMethod('UPI')}
                   className={`flex-1 py-1.5 px-3 rounded-lg border text-xs font-semibold transition-colors ${
                     refundPaymentMethod === 'UPI'
-                      ? 'border-purple-600 bg-purple-600 text-white'
+                      ? 'border-purple-600 bg-purple-600 text-white shadow-xs'
                       : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                   }`}
                 >
@@ -321,13 +382,13 @@ export function ResolveBlockedWalletModal({
               </div>
             </div>
 
-            <div className="rounded-lg bg-white border border-rose-200 p-2.5 text-[11px] text-slate-600 space-y-1">
+            <div className="rounded-lg bg-white border border-sky-200 p-2.5 text-[11px] text-slate-600 space-y-1">
               <div className="flex justify-between">
                 <span>Amount to Hand Over:</span>
-                <span className="font-mono font-bold text-rose-700 text-sm">{formatCurrency(lockedBalance)}</span>
+                <span className="font-mono font-bold text-sky-700 text-sm">{formatCurrency(lockedBalance)}</span>
               </div>
               <p className="text-[10px] text-slate-500 mt-1">
-                This will settle the session, reduce the float balance by {formatCurrency(lockedBalance)}, and record a cash refund in analytics.
+                This will settle the session, reduce the float balance by {formatCurrency(lockedBalance)}, and record a cash refund in the <strong>Refunds</strong> analytics card.
               </p>
             </div>
           </div>
@@ -346,17 +407,22 @@ export function ResolveBlockedWalletModal({
         <Button variant="outline" size="sm" onClick={handleClose} disabled={isSubmitting}>
           Cancel
         </Button>
-        <Button
-          variant={resolutionMode === 'REPLACE' ? 'primary' : 'danger'}
-          size="sm"
+        <button
+          type="button"
           onClick={handleSubmit}
-          isLoading={isSubmitting}
-          disabled={resolutionMode === 'REPLACE' && (!selectedTargetCardId || filteredAvailableCards.length === 0)}
+          disabled={isSubmitting || (resolutionMode === 'REPLACE' && !effectiveTargetCardNumber)}
+          className={`px-4 py-2 rounded-lg text-xs font-bold text-white transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+            resolutionMode === 'REPLACE'
+              ? 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 shadow-sm'
+              : 'bg-sky-600 hover:bg-sky-700 active:bg-sky-800 shadow-sm'
+          }`}
         >
-          {resolutionMode === 'REPLACE'
+          {isSubmitting
+            ? 'Processing...'
+            : resolutionMode === 'REPLACE'
             ? `Transfer ${formatCurrency(lockedBalance)} & Issue Card`
             : `Refund ${formatCurrency(lockedBalance)} & Close`}
-        </Button>
+        </button>
       </ModalFooter>
     </Modal>
   );

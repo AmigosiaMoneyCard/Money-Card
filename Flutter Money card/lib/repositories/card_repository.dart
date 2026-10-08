@@ -50,4 +50,16 @@ class CardRepository {
   Future<Card> unblockCard(String id) async {
     return _cardService.unblockCard(id);
   }
+
+  Future<Map<String, dynamic>> replaceCard({
+    required String cardId,
+    required String targetCardId,
+    String? reason,
+  }) async {
+    return _cardService.replaceCard(
+      cardId: cardId,
+      targetCardId: targetCardId,
+      reason: reason,
+    );
+  }
 }

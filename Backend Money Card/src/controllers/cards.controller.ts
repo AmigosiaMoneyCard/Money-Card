@@ -649,7 +649,7 @@ export async function replaceCard(req: Request, res: Response) {
   }
 
   // 2. Fetch Target Card
-  const targetCard = await prisma.card.findFirst({
+  let targetCard = await prisma.card.findFirst({
     where: {
       organizationId: orgId,
       OR: [
@@ -666,7 +666,65 @@ export async function replaceCard(req: Request, res: Response) {
   });
 
   if (!targetCard) {
-    return sendError(res, 404, 'TARGET_NOT_FOUND', 'Target replacement card not found in your organization');
+    const rawTargetInput = String(targetCardId || '').trim();
+    if (!rawTargetInput) {
+      return sendError(res, 400, 'VALIDATION_ERROR', 'Target replacement card ID or number is required');
+    }
+    const cleanTargetNum = rawTargetInput.toUpperCase();
+
+    // Check if card belongs to another organization
+    const existingOtherOrg = await prisma.card.findFirst({
+      where: {
+        OR: [
+          { qrToken: rawTargetInput },
+          { physicalCardNumber: cleanTargetNum },
+        ],
+      },
+      include: { organization: { select: { id: true, name: true } } },
+    });
+
+    if (existingOtherOrg && existingOtherOrg.organizationId !== orgId) {
+      return sendError(
+        res,
+        400,
+        'CARD_ORGANIZATION_MISMATCH',
+        `This card is registered to another organization (${existingOtherOrg.organization?.name || 'Other'}).`,
+      );
+    }
+
+    if (existingOtherOrg && existingOtherOrg.organizationId === orgId) {
+      targetCard = existingOtherOrg as any;
+    } else {
+      // Auto-create on the fly within organization limits
+      const [effectiveLimits, currentCardCount] = await Promise.all([
+        getEffectiveLimits(orgId),
+        prisma.card.count({ where: { organizationId: orgId } }),
+      ]);
+
+      if (currentCardCount >= effectiveLimits.cardLimit) {
+        return sendError(
+          res,
+          409,
+          'CARD_LIMIT_REACHED',
+          `Organization reached limit of ${effectiveLimits.cardLimit} cards. Upgrade plan to register more cards.`,
+        );
+      }
+
+      targetCard = await prisma.card.create({
+        data: {
+          organizationId: orgId,
+          physicalCardNumber: cleanTargetNum,
+          qrToken: rawTargetInput,
+          assignmentStatus: CardAssignmentStatus.ASSIGNED,
+          status: CardStatus.AVAILABLE,
+        },
+        include: {
+          sessions: {
+            where: { status: 'ACTIVE' },
+          },
+        },
+      });
+    }
   }
 
   if (targetCard.id === sourceCard.id) {

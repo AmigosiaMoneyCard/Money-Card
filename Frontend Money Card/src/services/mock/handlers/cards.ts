@@ -392,10 +392,24 @@ export const mockCardsHandlers = {
     const sourceCard = mockStore.cards.find((c) => c.id === id);
     if (!sourceCard) return createMockError('CARD_NOT_FOUND', 'Source card not found');
 
-    const targetCard = mockStore.cards.find(
+    let targetCard = mockStore.cards.find(
       (c) => c.id === req.targetCardId || c.qrToken === req.targetCardId || c.physicalCardNumber === req.targetCardId,
     );
-    if (!targetCard) return createMockError('CARD_NOT_FOUND', 'Target card not found');
+    if (!targetCard) {
+      const cleanNum = String(req.targetCardId || '').trim().toUpperCase();
+      targetCard = {
+        id: mockStore.generateId('card'),
+        organizationId: sourceCard.organizationId,
+        physicalCardNumber: cleanNum,
+        qrToken: cleanNum,
+        assignmentStatus: 'ASSIGNED',
+        status: 'AVAILABLE',
+        currentBranchId: (currentUser as any).branchId || null,
+        createdAt: mockStore.getTimestamp(),
+        updatedAt: mockStore.getTimestamp(),
+      };
+      mockStore.cards.push(targetCard);
+    }
 
     const oldSession = sourceCard.activeSession;
     const lockedBal = oldSession?.balance || 0;

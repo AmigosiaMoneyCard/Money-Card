@@ -17,6 +17,7 @@ class ApiEndpoints {
   static String cardById(String id) => '/cards/$id';
   static String blockCard(String id) => '/cards/$id/block';
   static String unblockCard(String id) => '/cards/$id/unblock';
+  static String replaceCard(String id) => '/cards/$id/replace';
   static const String cardsImport = '/cards/import';
   static const String cardsImportTemplate = '/cards/import/template';
 

@@ -424,6 +424,37 @@ class CardDetailsNotifier extends StateNotifier<CardDetailsState> {
     }
   }
 
+  /// Replace blocked card and migrate balance to target card
+  Future<bool> replaceCard({
+    required String targetCardId,
+    String? reason,
+  }) async {
+    if (state.card == null || state.isSubmitting) return false;
+
+    state = state.copyWith(isSubmitting: true, errorMessage: null);
+    try {
+      await _cardRepository.replaceCard(
+        cardId: state.card!.id,
+        targetCardId: targetCardId,
+        reason: reason,
+      );
+      state = state.copyWith(
+        isSubmitting: false,
+        successMessage: 'Wallet successfully replaced and balance migrated.',
+      );
+      return true;
+    } on ApiException catch (e) {
+      state = state.copyWith(isSubmitting: false, errorMessage: e.message);
+      return false;
+    } catch (_) {
+      state = state.copyWith(
+        isSubmitting: false,
+        errorMessage: 'Failed to replace wallet. Please try again.',
+      );
+      return false;
+    }
+  }
+
   void setResolvedCard(Card card, CardSession? session) {
     state = CardDetailsState(
       card: card,

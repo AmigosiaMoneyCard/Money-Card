@@ -92,4 +92,20 @@ class CardService {
       fromJson: (data) => Card.fromJson(data as Map<String, dynamic>),
     );
   }
+
+  /// Replace blocked card and migrate balance (POST /api/v1/cards/:id/replace)
+  Future<Map<String, dynamic>> replaceCard({
+    required String cardId,
+    required String targetCardId,
+    String? reason,
+  }) async {
+    return _apiService.post<Map<String, dynamic>>(
+      ApiEndpoints.replaceCard(cardId),
+      data: {
+        'targetCardId': targetCardId,
+        if (reason != null && reason.isNotEmpty) 'reason': reason,
+      },
+      fromJson: (data) => data as Map<String, dynamic>,
+    );
+  }
 }

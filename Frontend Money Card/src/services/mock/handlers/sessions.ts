@@ -422,7 +422,10 @@ export const mockSessionsHandlers = {
     });
   },
 
-  async returnSession(sessionId: string): Promise<ApiResult<RefundResponseData>> {
+  async returnSession(
+    sessionId: string,
+    _data?: { paymentMethod?: 'CASH' | 'UPI'; skipRefund?: boolean },
+  ): Promise<ApiResult<RefundResponseData>> {
     return this.refundSession(sessionId);
   },
 

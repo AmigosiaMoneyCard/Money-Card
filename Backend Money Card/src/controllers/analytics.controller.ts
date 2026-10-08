@@ -966,13 +966,6 @@ export async function getOrgAnalytics(req: Request, res: Response) {
       }
     }
   });
-
-  allSessions.forEach((s) => {
-    if (s.status === 'SETTLED' && (s as any).card?.status === 'BLOCKED' && (s.refundAmount || 0) > 0) {
-      blockedReturnedAmount += s.refundAmount || 0;
-      blockedReturnedCount++;
-    }
-  });
   blockedReturnedAmount = Number(blockedReturnedAmount.toFixed(2));
 
   const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
