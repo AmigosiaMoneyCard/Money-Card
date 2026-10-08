@@ -37,8 +37,6 @@ import {
   TrendingUp,
   ShoppingBag,
   RotateCcw,
-  Eye,
-  EyeOff,
 } from 'lucide-react';
 
 export function SuperAdminDashboard() {
@@ -52,11 +50,6 @@ export function SuperAdminDashboard() {
   const [selectedOrgId, setSelectedOrgId] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-
-  const [showMoneyAdded, setShowMoneyAdded] = useState(false);
-  const [showRefunds, setShowRefunds] = useState(false);
-  const [showCancelled, setShowCancelled] = useState(false);
-
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isAnalyticsLoading, setIsAnalyticsLoading] = useState(false);
@@ -514,30 +507,17 @@ export function SuperAdminDashboard() {
                     </div>
                   </div>
 
-                  {/* Money Added (Masked with Eye button) */}
+                  {/* Money Added */}
                   <div className="flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition-colors">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-slate-600">Money Added</span>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setShowMoneyAdded((prev) => !prev)}
-                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors cursor-pointer"
-                          title={showMoneyAdded ? 'Hide Money Added' : 'Show Money Added'}
-                        >
-                          {showMoneyAdded ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                          <span>{showMoneyAdded ? 'Hide' : 'Show'}</span>
-                        </button>
-                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-                          <TrendingUp className="h-4 w-4" />
-                        </div>
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                        <TrendingUp className="h-4 w-4" />
                       </div>
                     </div>
                     <div className="mt-2">
                       <div className="font-mono text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-                        {showMoneyAdded
-                          ? formatCurrency(analytics?.moneyAdded ?? analytics?.totalRechargeVolume ?? analytics?.rechargeVolume ?? 0)
-                          : <EyeOff className="h-5 w-5 text-slate-300 inline-block align-middle" />}
+                        {formatCurrency(analytics?.moneyAdded ?? analytics?.totalRechargeVolume ?? analytics?.rechargeVolume ?? 0)}
                       </div>
                       <p className="mt-0.5 text-[11px] font-medium text-slate-400">
                         {`${analytics?.rechargeCount ?? 0} recharges`}
@@ -545,30 +525,17 @@ export function SuperAdminDashboard() {
                     </div>
                   </div>
 
-                  {/* Cancelled (Masked with Eye button) */}
+                  {/* Cancelled */}
                   <div className="flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition-colors">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-slate-600">Cancelled</span>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setShowCancelled((prev) => !prev)}
-                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-colors cursor-pointer"
-                          title={showCancelled ? 'Hide Cancelled' : 'Show Cancelled'}
-                        >
-                          {showCancelled ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                          <span>{showCancelled ? 'Hide' : 'Show'}</span>
-                        </button>
-                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
-                          <RotateCcw className="h-4 w-4" />
-                        </div>
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+                        <RotateCcw className="h-4 w-4" />
                       </div>
                     </div>
                     <div className="mt-2">
                       <div className="font-mono text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-                        {showCancelled
-                          ? formatCurrency(analytics?.cancelledTopUps ?? 0)
-                          : <EyeOff className="h-5 w-5 text-amber-300 inline-block align-middle" />}
+                        {formatCurrency(analytics?.cancelledTopUps ?? 0)}
                       </div>
                       <p className="mt-0.5 text-[11px] font-medium text-slate-400">
                         {`${analytics?.cancelledTopUpsCount ?? 0} cancelled`}
@@ -576,30 +543,17 @@ export function SuperAdminDashboard() {
                     </div>
                   </div>
 
-                  {/* Refunds (Masked with Eye button) */}
+                  {/* Refunds */}
                   <div className="flex flex-col justify-between rounded-xl border border-slate-200/90 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition-colors">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-slate-600">Refunds</span>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setShowRefunds((prev) => !prev)}
-                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer"
-                          title={showRefunds ? 'Hide Refunds' : 'Show Refunds'}
-                        >
-                          {showRefunds ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                          <span>{showRefunds ? 'Hide' : 'Show'}</span>
-                        </button>
-                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-                          <RefreshCw className="h-4 w-4" />
-                        </div>
+                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                        <RefreshCw className="h-4 w-4" />
                       </div>
                     </div>
                     <div className="mt-2">
                       <div className="font-mono text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-                        {showRefunds
-                          ? formatCurrency(analytics?.totalRefundVolume ?? analytics?.moneyRefunded ?? 0)
-                          : <EyeOff className="h-5 w-5 text-rose-300 inline-block align-middle" />}
+                        {formatCurrency(analytics?.totalRefundVolume ?? analytics?.moneyRefunded ?? 0)}
                       </div>
                       <p className="mt-0.5 text-[11px] font-medium text-slate-400">
                         {`${analytics?.refundCount ?? 0} refunds`}
