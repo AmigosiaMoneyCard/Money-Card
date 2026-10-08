@@ -1,99 +1,85 @@
-# Implementation Plan: Granular Operational Capabilities with Merged Card Management for Add & Edit Team Member
+# Implementation Plan: Nickname Buttons (Manager & Staff) in Staff Creation
 
-![Add Team Member Capabilities UI Mockup](C:/Users/damie/.gemini/antigravity-ide/brain/c99edd16-0faf-4782-a7e1-399d96eb8a4b/add_team_member_merged_cards_sketch_1791452600613.jpg)
+Replace the verbose header ('What can this team member do?'), mobile POS badge, and quick preset buttons with two clean selection buttons for Nickname: 'Manager' and 'Staff'.
 
-## User Request Summary
-In Org Admin and Counter Admin staff management ("Add Team Member to Counter/Kitchen 1" and edit staff modals), replace the rigid two-button selection ("Kitchen Manager" vs "Kitchen Staff") with 6 granular operational capabilities. Merge "Issue & Return Cards" and "Block & Unblock Cards" into a single unified capability: "Card Management". Use "Billing" for order taking and sales.
+---
 
-## Technical Design and Architectural Breakdown
+## Visual Design Reference
 
-### 1. Six Unified Operational Capabilities
-In `Frontend Money Card/src/features/staff/constants.ts`, define the 6 operational capabilities:
-- **Billing** (`PURCHASE`): Can scan cards, take customer food orders, and deduct payment from wallets. Automatically includes `PRODUCT_VIEW`, `CARD_VIEW`, `SESSION_VIEW`.
-- **Recharge Cards** (`RECHARGE`): Can top-up card balances using Cash or UPI. Automatically includes `CARD_VIEW` and `SESSION_VIEW`.
-- **Refund Transactions** (`REFUND`): Can refund completed customer purchase transactions. Automatically includes `SESSION_VIEW`.
-- **Card Management** (`CARD_ISSUE`, `CARD_RETURN`, `CARD_BLOCK`, `CARD_UNBLOCK`): Merged card operations to issue new cards, settle card returns, and block or unblock cards. Automatically includes `CARD_VIEW`.
-- **Menu & Products** (`PRODUCT_VIEW`, `PRODUCT_MANAGE`): Can view food items and update menu prices or availability.
-- **View Analytics & Reports** (`VIEW_ANALYTICS`, `VIEW_REPORTS`): Can view counter revenue metrics and export audit reports. Automatically includes `BRANCH_VIEW` and `STAFF_VIEW`.
+![Nickname Buttons UI Sketch](C:/Users/damie/.gemini/antigravity-ide/brain/c99edd16-0faf-4782-a7e1-399d96eb8a4b/nickname_manager_staff_buttons_sketch_1791456286018.jpg)
 
-### 2. Quick Presets and Dynamic Mobile Nickname Indication
-Provide quick preset selection chips for convenience while allowing full custom toggling:
-- **Billing Counter**: Selects Billing and Menu & Products.
-- **Cashier / Recharge Counter**: Selects Recharge Cards, Billing, Card Management, and Refund Transactions.
-- **Full Access**: Selects all 6 capabilities.
-- **Custom**: Active when custom selections are made.
-Below the toggles, a dynamic badge indicates the resulting mobile app role:
-- If Recharge Cards is selected: Displays "Mobile POS Nickname: Manager".
-- If Recharge Cards is not selected: Displays "Mobile POS Nickname: Staff".
+---
 
-### 3. Modal Form Updates
-- In `CounterStaffPage.tsx`:
-  - Update `showAddModal` ("Add Team Member to [Counter/Kitchen Name]"): Replace the two "Role Type" buttons with the 6 operational capability cards.
-  - Update `showStaffDetailsModal` ("Staff Details & Edit"): Replace the two "Role Type" buttons with the 6 operational capability cards pre-populated from the staff member's active permissions.
-  - Update `handleCreateStaff` and `handleSaveStaffChanges` to map the selected capability IDs to the required permissions array.
-- In `StaffPage.tsx`:
-  - Update `showAddModal` ("Add Staff Member") and `showStaffDetailsModal` ("Staff Details & Permissions"): Replace the two "Role Type" buttons with the 6 operational capability cards.
-  - Automatically persist the selected granular permissions on creation and updates.
+## ASCII Layout Wireframe
 
-## ASCII Wireframes
-
-### Add / Edit Team Member Modal
 ```
-+-----------------------------------------------------------------+
-| Add Team Member to Central Kitchen                          [X] |
-| Mobile POS Nickname: Manager                                    |
-+-----------------------------------------------------------------+
-| Staff Name *                                                    |
-| [ Jane Doe                                                    ] |
-|                                                                 |
-| Mobile Number (Login ID) *               Login Password *       |
-| [ 9876543210               ]             [ ********       (o) ] |
-|                                                                 |
-| What can this team member do?                                   |
-| Quick Presets: [Billing Counter] [Cashier Counter] [Full Access]|
-|                                                                 |
-| +-----------------------------+ +-----------------------------+ |
-| | [x] Billing                 | | [x] Recharge Cards          | |
-| |     Take orders and deduct  | |     Cash and UPI top-up     | |
-| +-----------------------------+ +-----------------------------+ |
-| +-----------------------------+ +-----------------------------+ |
-| | [x] Refund Transactions     | | [x] Card Management         | |
-| |     Process order refunds   | |     Issue, return, block/   | |
-| |                             | |     unblock cards           | |
-| +-----------------------------+ +-----------------------------+ |
-| +-----------------------------+ +-----------------------------+ |
-| | [x] Menu & Products         | | [x] View Analytics          | |
-| |     Manage menu items       | |     Access performance      | |
-| |                             | |     reports                 | |
-| +-----------------------------+ +-----------------------------+ |
-|                                                                 |
-|                                     [ Cancel ]  [ Create Staff ]|
-+-----------------------------------------------------------------+
++-----------------------------------------------------------------------+
+| Add Team Member to Counter 1                                          |
++-----------------------------------------------------------------------+
+| Name                                                                  |
+| [ e.g. John Cashier                                                 ] |
+|                                                                       |
+| Phone                                                                 |
+| [ 9876543210                                                        ] |
+|                                                                       |
+| Password                                                              |
+| [ ******                                                            ] |
+|                                                                       |
+| Nickname                                                              |
+| +-----------------------------+   +---------------------------------+ |
+| | [●] Manager                 |   | [ ] Staff                       | |
+| +-----------------------------+   +---------------------------------+ |
+|                                                                       |
+| Operational Capabilities:                                             |
+| +-----------------------------+   +---------------------------------+ |
+| | [x] Billing                 |   | [x] Recharge Cards              | |
+| | Take orders & deduct balance|   | Cash and UPI top-up             | |
+| +-----------------------------+   +---------------------------------+ |
+| | [ ] Refund Transactions     |   | [x] Card Management             | |
+| | Process transaction refunds |   | Issue, return, block & unblock  | |
+| +-----------------------------+   +---------------------------------+ |
+| | [ ] Menu and Products       |   | [ ] View Analytics              | |
+| | Manage menu items & prices  |   | Performance reports & metrics   | |
+| +-----------------------------+   +---------------------------------+ |
+|                                                                       |
+| [ Cancel ]                                     [ Add Staff Member ]   |
++-----------------------------------------------------------------------+
 ```
 
-## Detailed File Modifications
+---
 
-1. `Frontend Money Card/src/features/staff/constants.ts`:
-   - Define `OPERATIONAL_CAPABILITIES` with 6 options (Billing, Recharge Cards, Refund Transactions, Card Management, Menu & Products, View Analytics & Reports).
-   - Export helper functions:
-     - `capabilitiesToPermissions(capabilityIds: string[]): Permission[]`
-     - `permissionsToCapabilities(permissions: Permission[]): string[]`
+## Technical Design & Behavior
 
-2. `Frontend Money Card/src/features/staff/CounterStaffPage.tsx`:
-   - Replace `formRoleType` state with `selectedCapabilities` state (`string[]`).
-   - Replace the two role buttons in "Add Team Member" modal with the 6 `OPERATIONAL_CAPABILITIES` selection cards and quick preset chips.
-   - Replace the two role buttons in "Edit Staff Details" modal with the 6 `OPERATIONAL_CAPABILITIES` selection cards.
-   - Update `handleCreateStaff` and `handleSaveStaffChanges` to send the resolved permissions.
+1. **Remove Old Top Elements**:
+   - Remove label `What can this team member do?`.
+   - Remove badge `Mobile POS Nickname: Manager / Staff`.
+   - Remove preset buttons `Quick Presets: Cashier Counter, Billing Counter, Full Access`.
 
-3. `Frontend Money Card/src/features/staff/StaffPage.tsx`:
-   - Replace the two role buttons in "Add Staff Member" modal and "Staff Details & Permissions" modal with the 6 `OPERATIONAL_CAPABILITIES` selection cards.
-   - Keep permissions synchronized with the selected capabilities.
+2. **Add Nickname Selector (2 Buttons)**:
+   - Section header: `Nickname` (text-xs font-semibold text-slate-700).
+   - Two equal-width buttons in a 2-column grid:
+     - `Manager`:
+       - Active state: Emerald border, emerald light tint background, emerald indicator or text.
+       - Click behavior: Sets active nickname to `'Manager'`, ensures `recharge` capability is selected (which signals Manager role in mobile app).
+     - `Staff`:
+       - Active state: Emerald border, emerald light tint background, emerald indicator or text.
+       - Click behavior: Sets active nickname to `'Staff'`, removes `recharge` capability (which signals Staff role in mobile app).
+   - Dynamic binding with Capability Cards:
+     - Clicking `Recharge Cards` in the capabilities grid toggles between `Manager` (if recharge is enabled) and `Staff` (if recharge is disabled).
+     - Alternatively, clicking the `Manager` button activates Manager and toggles recharge on; clicking `Staff` button activates Staff and toggles recharge off.
 
-4. `Frontend Money Card/src/__tests__/`:
-   - Run Vitest suite (`npm test -- --run`) and TypeScript check (`npx tsc --noEmit`) to verify zero regressions.
+3. **Affected Files**:
+   - `Frontend Money Card/src/features/staff/CounterStaffPage.tsx`:
+     - Add Staff Modal (`showAddModal`): replace top header & presets with 2 nickname buttons.
+     - Edit Staff Modal (`showStaffDetailsModal`): replace top header & presets with 2 nickname buttons.
+   - `Frontend Money Card/src/features/staff/StaffPage.tsx`:
+     - Add Staff Modal (`showAddModal`): replace top header & presets with 2 nickname buttons.
+     - Edit Staff Modal (`showStaffModal`): replace top header & presets with 2 nickname buttons.
 
-## Verification and Quality Checks
-1. Run `npx tsc --noEmit` in `Frontend Money Card`.
-2. Run `npm test -- --run` in `Frontend Money Card`.
-3. Verify responsive layout for mobile viewport compatibility on modals.
-4. Verify zero emojis across all code, labels, and text.
+---
+
+## Verification & Validation
+
+1. Type check: Execute `npx tsc --noEmit` in `Frontend Money Card`.
+2. Unit tests: Execute `npm test -- --run` in `Frontend Money Card`.
+3. Mobile parity: Verify Mobile POS builds and operates seamlessly.

@@ -838,61 +838,64 @@ export function CounterStaffPage() {
 
           {/* What can this team member do? (Operational Capabilities) */}
           <div className="space-y-2.5 pt-1">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
-              <label className="text-xs font-semibold text-slate-700">What can this team member do?</label>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] text-slate-500">Mobile POS Nickname:</span>
-                <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+            {/* Nickname: Manager or Staff */}
+            <div className="space-y-1.5 pt-1">
+              <label className="text-xs font-semibold text-slate-700">Nickname</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCapabilities((prev) =>
+                      prev.includes('recharge') ? prev : [...prev, 'recharge'],
+                    );
+                  }}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                     selectedCapabilities.includes('recharge')
-                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                      : 'bg-blue-100 text-blue-800 border border-blue-300'
+                      ? 'border-emerald-600 bg-emerald-50/60 text-emerald-800 ring-2 ring-emerald-500/20 shadow-2xs'
+                      : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
                   }`}
                 >
-                  {selectedCapabilities.includes('recharge') ? 'Manager' : 'Staff'}
-                </span>
-              </div>
-            </div>
+                  <div
+                    className={`h-3 w-3 rounded-full border flex items-center justify-center shrink-0 ${
+                      selectedCapabilities.includes('recharge')
+                        ? 'border-emerald-600 bg-emerald-600'
+                        : 'border-slate-300'
+                    }`}
+                  >
+                    {selectedCapabilities.includes('recharge') && (
+                      <div className="h-1 w-1 rounded-full bg-white" />
+                    )}
+                  </div>
+                  <span>Manager</span>
+                </button>
 
-            {/* Quick Presets */}
-            <div className="flex flex-wrap items-center gap-1.5 pb-1">
-              <span className="text-[11px] font-medium text-slate-500 mr-1">Quick Presets:</span>
-              <button
-                type="button"
-                onClick={() => setSelectedCapabilities([...CAPABILITY_PRESETS.cashier_counter])}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                  selectedCapabilities.length === CAPABILITY_PRESETS.cashier_counter.length &&
-                  CAPABILITY_PRESETS.cashier_counter.every((c) => selectedCapabilities.includes(c))
-                    ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
-                }`}
-              >
-                Cashier Counter
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedCapabilities([...CAPABILITY_PRESETS.billing_counter])}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                  selectedCapabilities.length === CAPABILITY_PRESETS.billing_counter.length &&
-                  CAPABILITY_PRESETS.billing_counter.every((c) => selectedCapabilities.includes(c))
-                    ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
-                }`}
-              >
-                Billing Counter
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedCapabilities([...CAPABILITY_PRESETS.full_access])}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                  selectedCapabilities.length === CAPABILITY_PRESETS.full_access.length &&
-                  CAPABILITY_PRESETS.full_access.every((c) => selectedCapabilities.includes(c))
-                    ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
-                }`}
-              >
-                Full Access
-              </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCapabilities((prev) =>
+                      prev.filter((id) => id !== 'recharge'),
+                    );
+                  }}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+                    !selectedCapabilities.includes('recharge')
+                      ? 'border-emerald-600 bg-emerald-50/60 text-emerald-800 ring-2 ring-emerald-500/20 shadow-2xs'
+                      : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
+                  }`}
+                >
+                  <div
+                    className={`h-3 w-3 rounded-full border flex items-center justify-center shrink-0 ${
+                      !selectedCapabilities.includes('recharge')
+                        ? 'border-emerald-600 bg-emerald-600'
+                        : 'border-slate-300'
+                    }`}
+                  >
+                    {!selectedCapabilities.includes('recharge') && (
+                      <div className="h-1 w-1 rounded-full bg-white" />
+                    )}
+                  </div>
+                  <span>Staff</span>
+                </button>
+              </div>
             </div>
 
             {/* Capabilities 6-Grid */}
@@ -1065,64 +1068,73 @@ export function CounterStaffPage() {
 
           {/* What can this team member do? (Operational Capabilities) */}
           <div className="space-y-2.5 pt-1">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
-              <label className="text-xs font-semibold text-slate-700">What can this team member do?</label>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] text-slate-500">Mobile POS Nickname:</span>
-                <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+            {/* Nickname: Manager or Staff */}
+            <div className="space-y-1.5 pt-1">
+              <label className="text-xs font-semibold text-slate-700">Nickname</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  disabled={!canManage}
+                  onClick={() => {
+                    if (!canManage) return;
+                    setSelectedCapabilities((prev) =>
+                      prev.includes('recharge') ? prev : [...prev, 'recharge'],
+                    );
+                  }}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-semibold transition-all ${
+                    canManage ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'
+                  } ${
                     selectedCapabilities.includes('recharge')
-                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                      : 'bg-blue-100 text-blue-800 border border-blue-300'
+                      ? 'border-emerald-600 bg-emerald-50/60 text-emerald-800 ring-2 ring-emerald-500/20 shadow-2xs'
+                      : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
                   }`}
                 >
-                  {selectedCapabilities.includes('recharge') ? 'Manager' : 'Staff'}
-                </span>
+                  <div
+                    className={`h-3 w-3 rounded-full border flex items-center justify-center shrink-0 ${
+                      selectedCapabilities.includes('recharge')
+                        ? 'border-emerald-600 bg-emerald-600'
+                        : 'border-slate-300'
+                    }`}
+                  >
+                    {selectedCapabilities.includes('recharge') && (
+                      <div className="h-1 w-1 rounded-full bg-white" />
+                    )}
+                  </div>
+                  <span>Manager</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!canManage}
+                  onClick={() => {
+                    if (!canManage) return;
+                    setSelectedCapabilities((prev) =>
+                      prev.filter((id) => id !== 'recharge'),
+                    );
+                  }}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-semibold transition-all ${
+                    canManage ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'
+                  } ${
+                    !selectedCapabilities.includes('recharge')
+                      ? 'border-emerald-600 bg-emerald-50/60 text-emerald-800 ring-2 ring-emerald-500/20 shadow-2xs'
+                      : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
+                  }`}
+                >
+                  <div
+                    className={`h-3 w-3 rounded-full border flex items-center justify-center shrink-0 ${
+                      !selectedCapabilities.includes('recharge')
+                        ? 'border-emerald-600 bg-emerald-600'
+                        : 'border-slate-300'
+                    }`}
+                  >
+                    {!selectedCapabilities.includes('recharge') && (
+                      <div className="h-1 w-1 rounded-full bg-white" />
+                    )}
+                  </div>
+                  <span>Staff</span>
+                </button>
               </div>
             </div>
-
-            {/* Quick Presets */}
-            {canManage && (
-              <div className="flex flex-wrap items-center gap-1.5 pb-1">
-                <span className="text-[11px] font-medium text-slate-500 mr-1">Quick Presets:</span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedCapabilities([...CAPABILITY_PRESETS.cashier_counter])}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                    selectedCapabilities.length === CAPABILITY_PRESETS.cashier_counter.length &&
-                    CAPABILITY_PRESETS.cashier_counter.every((c) => selectedCapabilities.includes(c))
-                      ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
-                  }`}
-                >
-                  Cashier Counter
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedCapabilities([...CAPABILITY_PRESETS.billing_counter])}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                    selectedCapabilities.length === CAPABILITY_PRESETS.billing_counter.length &&
-                    CAPABILITY_PRESETS.billing_counter.every((c) => selectedCapabilities.includes(c))
-                      ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
-                  }`}
-                >
-                  Billing Counter
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedCapabilities([...CAPABILITY_PRESETS.full_access])}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                    selectedCapabilities.length === CAPABILITY_PRESETS.full_access.length &&
-                    CAPABILITY_PRESETS.full_access.every((c) => selectedCapabilities.includes(c))
-                      ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
-                  }`}
-                >
-                  Full Access
-                </button>
-              </div>
-            )}
 
             {/* Capabilities 6-Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[38vh] overflow-y-auto pr-0.5">
