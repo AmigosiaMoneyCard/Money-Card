@@ -8,7 +8,6 @@ import { usePermissions, useBranch, useAuth } from '@/hooks';
 import type {
   Staff,
   Branch,
-  Permission,
   OrganizationOverview,
   StaffPerformanceMetric,
   StaffActivityItem,
@@ -26,7 +25,12 @@ import {
 import { DataTable } from '@/components/tables';
 import { notify, formatCurrency } from '@/utils';
 import { filterStaffActivities, calculateScopedStaffMetrics } from '@/features/analytics/staffActivityFilter';
-import { MANAGER_PERMISSIONS, KITCHEN_PERMISSIONS } from './constants';
+import {
+  OPERATIONAL_CAPABILITIES,
+  CAPABILITY_PRESETS,
+  capabilitiesToPermissions,
+  permissionsToCapabilities,
+} from './constants';
 import { UnauthorizedPage } from '@/features/auth';
 import {
   Users,
@@ -256,14 +260,15 @@ export function StaffPage() {
 
   // ── Form & Selection State ────────────────────────────────
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
-  const [formRoleType, setFormRoleType] = useState<'MANAGER' | 'KITCHEN'>('MANAGER');
   const [formName, setFormName] = useState('');
   const [formPhone, setFormPhone] = useState('');
   const [formEmail, setFormEmail] = useState('');
   const [formPassword, setFormPassword] = useState('');
   const [showAddPassword, setShowAddPassword] = useState(false);
   const [formBranchIds, setFormBranchIds] = useState<string[]>([]);
-  const [formPermissions, setFormPermissions] = useState<Permission[]>([]);
+  const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>([
+    ...CAPABILITY_PRESETS.cashier_counter,
+  ]);
 
   // ── Staff Performance & Operational Audit State ───────────
   const [selectedStaffForAudit, setSelectedStaffForAudit] = useState<Staff | null>(null);
@@ -452,8 +457,7 @@ export function StaffPage() {
       ? scopedBranches.map((b) => b.id)
       : branches.map((b) => b.id);
     setFormBranchIds(defaultBranchIds);
-    setFormRoleType('MANAGER');
-    setFormPermissions([...MANAGER_PERMISSIONS]);
+    setSelectedCapabilities([...CAPABILITY_PRESETS.cashier_counter]);
     setFormErrors({});
     setModalApiError(null);
     setAddTab('basic');
@@ -509,10 +513,8 @@ export function StaffPage() {
 
     try {
       const clean10Phone = formPhone.trim().replace(/\D/g, '').slice(-10);
-      const finalPermissions =
-        formRoleType === 'MANAGER'
-          ? [...MANAGER_PERMISSIONS]
-          : [...KITCHEN_PERMISSIONS];
+      const finalPermissions = capabilitiesToPermissions(selectedCapabilities);
+      const computedStaffType = selectedCapabilities.includes('recharge') ? 'MANAGER' : 'KITCHEN';
 
       const res = await apiService.staff.createStaff({
         name: formName.trim(),
@@ -520,8 +522,8 @@ export function StaffPage() {
         password: formPassword.trim(),
         email: formEmail.trim() ? formEmail.trim().toLowerCase() : undefined,
         assignedBranchIds: formBranchIds,
-        permissions: Array.from(finalPermissions),
-        staffType: formRoleType,
+        permissions: finalPermissions,
+        staffType: computedStaffType,
       });
 
       if (!res.success) {
@@ -565,9 +567,7 @@ export function StaffPage() {
     setFormPhone(staff.phone || '');
     setFormEmail(staff.email || '');
     setFormBranchIds(staff.assignedBranchIds);
-    setFormPermissions(staff.permissions);
-    const isKitchen = getStaffRoleLabel(staff) === 'Kitchen Staff';
-    setFormRoleType(isKitchen ? 'KITCHEN' : 'MANAGER');
+    setSelectedCapabilities(permissionsToCapabilities(staff.permissions));
     setStaffTab(initialTab);
     setFormErrors({});
     setModalApiError(null);
@@ -767,11 +767,13 @@ export function StaffPage() {
     setIsSubmitting(true);
 
     try {
+      const perms = capabilitiesToPermissions(selectedCapabilities);
+      const computedStaffType = selectedCapabilities.includes('recharge') ? 'MANAGER' : 'KITCHEN';
       const res = await apiService.staff.updateStaff(selectedStaff.id, {
         name: formName.trim(),
         phone: cleanPhone || undefined,
-        permissions: formPermissions,
-        staffType: formRoleType,
+        permissions: perms,
+        staffType: computedStaffType,
       });
 
       if (!res.success) {
@@ -866,13 +868,15 @@ export function StaffPage() {
     setIsSubmitting(true);
 
     try {
+      const perms = capabilitiesToPermissions(selectedCapabilities);
+      const computedStaffType = selectedCapabilities.includes('recharge') ? 'MANAGER' : 'KITCHEN';
       const res = await apiService.staff.updateStaff(selectedStaff.id, {
         name: formName.trim(),
         phone: formPhone.trim().replace(/\D/g, '').slice(-10) || undefined,
         email: formEmail.trim() || undefined,
         assignedBranchIds: formBranchIds,
-        permissions: formPermissions,
-        staffType: formRoleType,
+        permissions: perms,
+        staffType: computedStaffType,
       });
 
       if (!res.success) {
@@ -1481,55 +1485,102 @@ export function StaffPage() {
             {/* ── TAB 1: OVERVIEW (PROFILE & INTEGRATED SECURITY) ── */}
             {staffTab === 'overview' && (
               <div className="space-y-4 py-1">
-                {/* Role Switcher: Manager vs Kitchen Staff (2 separate boxes with just the name) */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-700">Staff Role & Permissions</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      disabled={!canManage || isSubmitting}
-                      onClick={() => {
-                        setFormRoleType('MANAGER');
-                        setFormPermissions([...MANAGER_PERMISSIONS]);
-                      }}
-                      className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-                        formRoleType === 'MANAGER'
-                          ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20 shadow-2xs'
-                          : 'border-slate-200 hover:border-slate-300 bg-white'
-                      }`}
-                    >
-                      <span className="text-xs font-bold text-slate-900">Kitchen Manager</span>
-                      <div
-                        className={`h-4.5 w-4.5 rounded-full border flex items-center justify-center shrink-0 ${
-                          formRoleType === 'MANAGER' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300'
+                {/* What can this team member do? (Operational Capabilities) */}
+                <div className="space-y-2.5 pt-1">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
+                    <label className="text-xs font-semibold text-slate-700">What can this team member do?</label>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] text-slate-500">Mobile POS Nickname:</span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          selectedCapabilities.includes('recharge')
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            : 'bg-blue-100 text-blue-800 border border-blue-300'
                         }`}
                       >
-                        {formRoleType === 'MANAGER' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
-                      </div>
-                    </button>
+                        {selectedCapabilities.includes('recharge') ? 'Manager' : 'Staff'}
+                      </span>
+                    </div>
+                  </div>
 
-                    <button
-                      type="button"
-                      disabled={!canManage || isSubmitting}
-                      onClick={() => {
-                        setFormRoleType('KITCHEN');
-                        setFormPermissions([...KITCHEN_PERMISSIONS]);
-                      }}
-                      className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-                        formRoleType === 'KITCHEN'
-                          ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20 shadow-2xs'
-                          : 'border-slate-200 hover:border-slate-300 bg-white'
-                      }`}
-                    >
-                      <span className="text-xs font-bold text-slate-900">Kitchen Staff</span>
-                      <div
-                        className={`h-4.5 w-4.5 rounded-full border flex items-center justify-center shrink-0 ${
-                          formRoleType === 'KITCHEN' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300'
+                  {/* Quick Presets */}
+                  {canManage && (
+                    <div className="flex flex-wrap items-center gap-1.5 pb-1">
+                      <span className="text-[11px] font-medium text-slate-500 mr-1">Quick Presets:</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCapabilities([...CAPABILITY_PRESETS.cashier_counter])}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                          selectedCapabilities.length === CAPABILITY_PRESETS.cashier_counter.length &&
+                          CAPABILITY_PRESETS.cashier_counter.every((c) => selectedCapabilities.includes(c))
+                            ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
                         }`}
                       >
-                        {formRoleType === 'KITCHEN' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
-                      </div>
-                    </button>
+                        Cashier Counter
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCapabilities([...CAPABILITY_PRESETS.billing_counter])}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                          selectedCapabilities.length === CAPABILITY_PRESETS.billing_counter.length &&
+                          CAPABILITY_PRESETS.billing_counter.every((c) => selectedCapabilities.includes(c))
+                            ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                        }`}
+                      >
+                        Billing Counter
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCapabilities([...CAPABILITY_PRESETS.full_access])}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                          selectedCapabilities.length === CAPABILITY_PRESETS.full_access.length &&
+                          CAPABILITY_PRESETS.full_access.every((c) => selectedCapabilities.includes(c))
+                            ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                        }`}
+                      >
+                        Full Access
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Capabilities 6-Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[38vh] overflow-y-auto pr-0.5">
+                    {OPERATIONAL_CAPABILITIES.map((cap) => {
+                      const isSelected = selectedCapabilities.includes(cap.id);
+                      return (
+                        <div
+                          key={cap.id}
+                          onClick={() => {
+                            if (!canManage || isSubmitting) return;
+                            setSelectedCapabilities((prev) =>
+                              prev.includes(cap.id) ? prev.filter((id) => id !== cap.id) : [...prev, cap.id],
+                            );
+                          }}
+                          className={`p-2.5 rounded-xl border text-left transition-all ${
+                            canManage && !isSubmitting ? 'cursor-pointer' : 'opacity-70 cursor-not-allowed'
+                          } flex items-start gap-2.5 ${
+                            isSelected
+                              ? 'border-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-500/30'
+                              : 'border-slate-200 hover:border-slate-300 bg-white'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            disabled={!canManage || isSubmitting}
+                            onChange={() => {}}
+                            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer pointer-events-none shrink-0"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="font-semibold text-xs text-slate-900 leading-snug">{cap.label}</div>
+                            <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">{cap.description}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -2284,53 +2335,100 @@ export function StaffPage() {
             {/* ── STEP 1: BASIC INFO ── */}
             {addTab === 'basic' && (
               <div className="space-y-4">
-                {/* Role Type Selection: Manager vs Kitchen Staff (2 separate boxes with just the name) */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-700">Staff Role & Mobile App Mode</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormRoleType('MANAGER');
-                        setFormPermissions([...MANAGER_PERMISSIONS]);
-                      }}
-                      className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-                        formRoleType === 'MANAGER'
-                          ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20 shadow-2xs'
-                          : 'border-slate-200 hover:border-slate-300 bg-white'
-                      }`}
-                    >
-                      <span className="text-xs font-bold text-slate-900">Kitchen Manager</span>
-                      <div
-                        className={`h-4.5 w-4.5 rounded-full border flex items-center justify-center shrink-0 ${
-                          formRoleType === 'MANAGER' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300'
+                {/* What can this team member do? (Operational Capabilities) */}
+                <div className="space-y-2.5 pt-1">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
+                    <label className="text-xs font-semibold text-slate-700">What can this team member do?</label>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] text-slate-500">Mobile POS Nickname:</span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          selectedCapabilities.includes('recharge')
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            : 'bg-blue-100 text-blue-800 border border-blue-300'
                         }`}
                       >
-                        {formRoleType === 'MANAGER' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
-                      </div>
-                    </button>
+                        {selectedCapabilities.includes('recharge') ? 'Manager' : 'Staff'}
+                      </span>
+                    </div>
+                  </div>
 
+                  {/* Quick Presets */}
+                  <div className="flex flex-wrap items-center gap-1.5 pb-1">
+                    <span className="text-[11px] font-medium text-slate-500 mr-1">Quick Presets:</span>
                     <button
                       type="button"
-                      onClick={() => {
-                        setFormRoleType('KITCHEN');
-                        setFormPermissions([...KITCHEN_PERMISSIONS]);
-                      }}
-                      className={`flex items-center justify-between p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-                        formRoleType === 'KITCHEN'
-                          ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20 shadow-2xs'
-                          : 'border-slate-200 hover:border-slate-300 bg-white'
+                      onClick={() => setSelectedCapabilities([...CAPABILITY_PRESETS.cashier_counter])}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                        selectedCapabilities.length === CAPABILITY_PRESETS.cashier_counter.length &&
+                        CAPABILITY_PRESETS.cashier_counter.every((c) => selectedCapabilities.includes(c))
+                          ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
                       }`}
                     >
-                      <span className="text-xs font-bold text-slate-900">Kitchen Staff</span>
-                      <div
-                        className={`h-4.5 w-4.5 rounded-full border flex items-center justify-center shrink-0 ${
-                          formRoleType === 'KITCHEN' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300'
-                        }`}
-                      >
-                        {formRoleType === 'KITCHEN' && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
-                      </div>
+                      Cashier Counter
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCapabilities([...CAPABILITY_PRESETS.billing_counter])}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                        selectedCapabilities.length === CAPABILITY_PRESETS.billing_counter.length &&
+                        CAPABILITY_PRESETS.billing_counter.every((c) => selectedCapabilities.includes(c))
+                          ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                      }`}
+                    >
+                      Billing Counter
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCapabilities([...CAPABILITY_PRESETS.full_access])}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                        selectedCapabilities.length === CAPABILITY_PRESETS.full_access.length &&
+                        CAPABILITY_PRESETS.full_access.every((c) => selectedCapabilities.includes(c))
+                          ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                      }`}
+                    >
+                      Full Access
+                    </button>
+                  </div>
+
+                  {/* Capabilities 6-Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[38vh] overflow-y-auto pr-0.5">
+                    {OPERATIONAL_CAPABILITIES.map((cap) => {
+                      const isSelected = selectedCapabilities.includes(cap.id);
+                      return (
+                        <div
+                          key={cap.id}
+                          onClick={() => {
+                            if (isSubmitting) return;
+                            setSelectedCapabilities((prev) =>
+                              prev.includes(cap.id) ? prev.filter((id) => id !== cap.id) : [...prev, cap.id],
+                            );
+                          }}
+                          className={`p-2.5 rounded-xl border text-left transition-all ${
+                            !isSubmitting ? 'cursor-pointer' : 'opacity-70 cursor-not-allowed'
+                          } flex items-start gap-2.5 ${
+                            isSelected
+                              ? 'border-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-500/30'
+                              : 'border-slate-200 hover:border-slate-300 bg-white'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            disabled={isSubmitting}
+                            onChange={() => {}}
+                            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer pointer-events-none shrink-0"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="font-semibold text-xs text-slate-900 leading-snug">{cap.label}</div>
+                            <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">{cap.description}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 

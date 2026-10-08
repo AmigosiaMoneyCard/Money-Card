@@ -1,131 +1,99 @@
-# Implementation Plan: Unified Staff Role with RBAC and Deferred Food Tracking in Mobile App
+# Implementation Plan: Granular Operational Capabilities with Merged Card Management for Add & Edit Team Member
 
-![Mobile Staff RBAC UI Mockup](C:/Users/damie/.gemini/antigravity-ide/brain/c99edd16-0faf-4782-a7e1-399d96eb8a4b/mobile_staff_rbac_ui_sketch_1791450193672.jpg)
+![Add Team Member Capabilities UI Mockup](C:/Users/damie/.gemini/antigravity-ide/brain/c99edd16-0faf-4782-a7e1-399d96eb8a4b/add_team_member_merged_cards_sketch_1791452600613.jpg)
 
 ## User Request Summary
-Consolidate the mobile app role system into one universal role: Staff. Remove the pre-login role selector (Kitchen Manager vs Kitchen Staff). All authorization will be governed strictly by Role-Based Access Control (RBAC). Comment out the food tracking system of the manager and the kitchen staff order queue subsystem for future version releases. Dynamically determine the display nickname as Manager or Staff based on RBAC permissions.
+In Org Admin and Counter Admin staff management ("Add Team Member to Counter/Kitchen 1" and edit staff modals), replace the rigid two-button selection ("Kitchen Manager" vs "Kitchen Staff") with 6 granular operational capabilities. Merge "Issue & Return Cards" and "Block & Unblock Cards" into a single unified capability: "Card Management". Use "Billing" for order taking and sales.
 
 ## Technical Design and Architectural Breakdown
 
-### 1. Unified Staff Login Experience
-Currently, `login_screen.dart` forces the user into `LoginRoleMode.selectRole` where they choose between two role cards (Kitchen Manager and Kitchen Staff). Once selected, `auth_provider.dart` checks `expectedRole == 'KITCHEN'` vs `'MANAGER'` and throws a rejection error if the user logs into the wrong box.
-Changes:
-- In `login_screen.dart`: Remove `LoginRoleMode.selectRole` and role selection cards. Present a clean, unified Staff Login interface directly with Phone Number and Password inputs.
-- In `auth_provider.dart`: Remove `expectedRole` argument and validation checks. Any active staff member can log in directly without artificial client-side role filtering.
+### 1. Six Unified Operational Capabilities
+In `Frontend Money Card/src/features/staff/constants.ts`, define the 6 operational capabilities:
+- **Billing** (`PURCHASE`): Can scan cards, take customer food orders, and deduct payment from wallets. Automatically includes `PRODUCT_VIEW`, `CARD_VIEW`, `SESSION_VIEW`.
+- **Recharge Cards** (`RECHARGE`): Can top-up card balances using Cash or UPI. Automatically includes `CARD_VIEW` and `SESSION_VIEW`.
+- **Refund Transactions** (`REFUND`): Can refund completed customer purchase transactions. Automatically includes `SESSION_VIEW`.
+- **Card Management** (`CARD_ISSUE`, `CARD_RETURN`, `CARD_BLOCK`, `CARD_UNBLOCK`): Merged card operations to issue new cards, settle card returns, and block or unblock cards. Automatically includes `CARD_VIEW`.
+- **Menu & Products** (`PRODUCT_VIEW`, `PRODUCT_MANAGE`): Can view food items and update menu prices or availability.
+- **View Analytics & Reports** (`VIEW_ANALYTICS`, `VIEW_REPORTS`): Can view counter revenue metrics and export audit reports. Automatically includes `BRANCH_VIEW` and `STAFF_VIEW`.
 
-### 2. Commenting Food Tracking and Kitchen Staff Order Subsystem for Future Release
-As requested, do not delete these features; comment them out cleanly with comments indicating they are reserved for future version releases:
-- In `home_screen.dart`: Comment out `FoodPreparationProgressWidget` invocation with a comment: `// Reserved for future version release: Kitchen food progress tracking`.
-- In `app_router.dart`:
-  - Comment out the auto-redirect to `/app/kitchen` for `user.isKitchenStaff`. All authenticated staff route directly to `/app/home`.
-  - Comment out `/app/orders-tracker` route (`LiveOrderTrackerScreen`).
-  - Comment out `/app/kitchen` route (`KitchenOrdersScreen`).
-- In `staff_app_shell.dart`:
-  - Comment out the `isKitchen` bottom navigation branch (Kitchen Orders / Menu). All staff navigate using the standard Staff bottom navigation bar: Home, Wallets, Menu, and Analytics (visible if user has manager/analytics permissions).
-- In `more_screen.dart`:
-  - Replace the back button redirect logic (`user.isKitchenStaff ? '/app/kitchen' : '/app/home'`) to always route to `/app/home`.
+### 2. Quick Presets and Dynamic Mobile Nickname Indication
+Provide quick preset selection chips for convenience while allowing full custom toggling:
+- **Billing Counter**: Selects Billing and Menu & Products.
+- **Cashier / Recharge Counter**: Selects Recharge Cards, Billing, Card Management, and Refund Transactions.
+- **Full Access**: Selects all 6 capabilities.
+- **Custom**: Active when custom selections are made.
+Below the toggles, a dynamic badge indicates the resulting mobile app role:
+- If Recharge Cards is selected: Displays "Mobile POS Nickname: Manager".
+- If Recharge Cards is not selected: Displays "Mobile POS Nickname: Staff".
 
-### 3. Dynamic Nickname Resolution (Manager vs Staff)
-In `auth_user.dart`:
-- Add getter `String get nickname => isManager ? 'Manager' : 'Staff';`
-- `isManager` checks if the staff member has `AppPermission.recharge` or administrative permissions (`ORG_ADMIN`, `SUPER_ADMIN`, `STAFF_MANAGE`, `BRANCH_MANAGE`). If true, nickname is `Manager`; otherwise, `Staff`.
-In `home_screen.dart`:
-- Display `user.nickname` in the greeting badge chip next to the staff member's name.
-In `more_screen.dart`:
-- In the staff profile summary card, display `user.nickname` alongside their contact details (e.g. `9876543210 • Manager`).
-In `staff_app_shell.dart`:
-- The user profile menu popover displays the staff member name and nickname.
-
-### 4. Updating Mobile Widget Tests
-In `test/features/auth/login_screen_test.dart`:
-- Update widget tests from expecting the two role selection cards to directly validating the single-form Staff Login view, validation error states, and credential inputs.
+### 3. Modal Form Updates
+- In `CounterStaffPage.tsx`:
+  - Update `showAddModal` ("Add Team Member to [Counter/Kitchen Name]"): Replace the two "Role Type" buttons with the 6 operational capability cards.
+  - Update `showStaffDetailsModal` ("Staff Details & Edit"): Replace the two "Role Type" buttons with the 6 operational capability cards pre-populated from the staff member's active permissions.
+  - Update `handleCreateStaff` and `handleSaveStaffChanges` to map the selected capability IDs to the required permissions array.
+- In `StaffPage.tsx`:
+  - Update `showAddModal` ("Add Staff Member") and `showStaffDetailsModal` ("Staff Details & Permissions"): Replace the two "Role Type" buttons with the 6 operational capability cards.
+  - Automatically persist the selected granular permissions on creation and updates.
 
 ## ASCII Wireframes
 
-### Unified Staff Login Screen
+### Add / Edit Team Member Modal
 ```
-+---------------------------------------------------+
-|                                                   |
-|                    ( [==] )                       |
-|                   MONEY CARD                      |
-|                   Staff Login                     |
-|                                                   |
-|   Phone Number                                    |
-|   [ 10-digit mobile number                      ] |
-|                                                   |
-|   Password                                        |
-|   [ ********                                (o) ] |
-|                                                   |
-|   +-------------------------------------------+   |
-|   |                  Login                    |   |
-|   +-------------------------------------------+   |
-|                                                   |
-+---------------------------------------------------+
-```
-
-### Unified Staff Dashboard Screen (Manager vs Staff RBAC)
-```
-+---------------------------------------------------+
-| [==] Money Card   [Kitchen: Central Kitchen]  (P) |
-+---------------------------------------------------+
-| Hello, Alex                   [ Manager / Staff ] |
-| Kitchen: Central Kitchen                          |
-|                                                   |
-| +-----------------------------------------------+ |
-| |                                               | |
-| |                   [ Q R ]                     | |
-| |               SCAN QR WALLET                  | |
-| |      Scan wallet to start purchase/recharge   | |
-| |                                               | |
-| +-----------------------------------------------+ |
-|                                                   |
-| [ Today's Sales: Rs 14,250 | Orders: 64 ]         |
-|                                                   |
-| Quick Actions:                                    |
-| [ + Issue Card ]  [ Return Card ]  [ Search Card] |
-|                                                   |
-| +-----------------------------------------------+ |
-| | [Home]    [Wallets]    [Menu]    [Analytics*] | |
-| +-----------------------------------------------+ |
-+---------------------------------------------------+
-(* Analytics tab conditionally visible based on RBAC permissions)
++-----------------------------------------------------------------+
+| Add Team Member to Central Kitchen                          [X] |
+| Mobile POS Nickname: Manager                                    |
++-----------------------------------------------------------------+
+| Staff Name *                                                    |
+| [ Jane Doe                                                    ] |
+|                                                                 |
+| Mobile Number (Login ID) *               Login Password *       |
+| [ 9876543210               ]             [ ********       (o) ] |
+|                                                                 |
+| What can this team member do?                                   |
+| Quick Presets: [Billing Counter] [Cashier Counter] [Full Access]|
+|                                                                 |
+| +-----------------------------+ +-----------------------------+ |
+| | [x] Billing                 | | [x] Recharge Cards          | |
+| |     Take orders and deduct  | |     Cash and UPI top-up     | |
+| +-----------------------------+ +-----------------------------+ |
+| +-----------------------------+ +-----------------------------+ |
+| | [x] Refund Transactions     | | [x] Card Management         | |
+| |     Process order refunds   | |     Issue, return, block/   | |
+| |                             | |     unblock cards           | |
+| +-----------------------------+ +-----------------------------+ |
+| +-----------------------------+ +-----------------------------+ |
+| | [x] Menu & Products         | | [x] View Analytics          | |
+| |     Manage menu items       | |     Access performance      | |
+| |                             | |     reports                 | |
+| +-----------------------------+ +-----------------------------+ |
+|                                                                 |
+|                                     [ Cancel ]  [ Create Staff ]|
++-----------------------------------------------------------------+
 ```
 
 ## Detailed File Modifications
 
-1. `Flutter Money card/lib/models/auth_user.dart`:
-   - Add `String get nickname => isManager ? 'Manager' : 'Staff';`.
+1. `Frontend Money Card/src/features/staff/constants.ts`:
+   - Define `OPERATIONAL_CAPABILITIES` with 6 options (Billing, Recharge Cards, Refund Transactions, Card Management, Menu & Products, View Analytics & Reports).
+   - Export helper functions:
+     - `capabilitiesToPermissions(capabilityIds: string[]): Permission[]`
+     - `permissionsToCapabilities(permissions: Permission[]): string[]`
 
-2. `Flutter Money card/lib/features/auth/login_screen.dart`:
-   - Remove `LoginRoleMode.selectRole` and `_buildRoleSelectionView`.
-   - Render direct login form under Money Card brand header with "Staff Login" subtitle.
-   - Remove back button on login form since there is no multi-step role selection.
+2. `Frontend Money Card/src/features/staff/CounterStaffPage.tsx`:
+   - Replace `formRoleType` state with `selectedCapabilities` state (`string[]`).
+   - Replace the two role buttons in "Add Team Member" modal with the 6 `OPERATIONAL_CAPABILITIES` selection cards and quick preset chips.
+   - Replace the two role buttons in "Edit Staff Details" modal with the 6 `OPERATIONAL_CAPABILITIES` selection cards.
+   - Update `handleCreateStaff` and `handleSaveStaffChanges` to send the resolved permissions.
 
-3. `Flutter Money card/lib/providers/auth_provider.dart`:
-   - Remove `expectedRole` parameter from `login()` method.
-   - Remove role mismatch error guards so any staff member logs in cleanly.
+3. `Frontend Money Card/src/features/staff/StaffPage.tsx`:
+   - Replace the two role buttons in "Add Staff Member" modal and "Staff Details & Permissions" modal with the 6 `OPERATIONAL_CAPABILITIES` selection cards.
+   - Keep permissions synchronized with the selected capabilities.
 
-4. `Flutter Money card/lib/features/home/home_screen.dart`:
-   - Comment out `FoodPreparationProgressWidget` invocation with future release comment.
-   - Bind greeting chip to `user.nickname`.
-
-5. `Flutter Money card/lib/routing/app_router.dart`:
-   - Comment out `/app/orders-tracker` and `/app/kitchen` routes.
-   - Remove `user.isKitchenStaff` redirect check from `/login` and `/app` route handlers so all staff navigate to `/app/home`.
-
-6. `Flutter Money card/lib/widgets/shell/staff_app_shell.dart`:
-   - Comment out `isKitchen` branch from bottom navigation destinations and tap handling.
-   - All staff use standard Staff bottom navigation with RBAC-gated tabs.
-
-7. `Flutter Money card/lib/features/more/more_screen.dart`:
-   - Display `user.nickname` in profile card.
-   - Route back button to `/app/home`.
-
-8. `Flutter Money card/test/features/auth/login_screen_test.dart`:
-   - Update tests to reflect direct single-screen Staff Login.
+4. `Frontend Money Card/src/__tests__/`:
+   - Run Vitest suite (`npm test -- --run`) and TypeScript check (`npx tsc --noEmit`) to verify zero regressions.
 
 ## Verification and Quality Checks
-1. Run `flutter test` autonomously.
-2. Run `flutter analyze --no-pub` autonomously.
-3. Validate zero emojis across all modified files.
-4. Verify responsive layout and RBAC permissions gating.
+1. Run `npx tsc --noEmit` in `Frontend Money Card`.
+2. Run `npm test -- --run` in `Frontend Money Card`.
+3. Verify responsive layout for mobile viewport compatibility on modals.
+4. Verify zero emojis across all code, labels, and text.

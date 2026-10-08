@@ -24,7 +24,12 @@ import {
 import { DataTable } from '@/components/tables';
 import { notify, formatCurrency } from '@/utils';
 import { filterStaffActivities, calculateScopedStaffMetrics } from '@/features/analytics/staffActivityFilter';
-import { MANAGER_PERMISSIONS, KITCHEN_PERMISSIONS } from './constants';
+import {
+  OPERATIONAL_CAPABILITIES,
+  CAPABILITY_PRESETS,
+  capabilitiesToPermissions,
+  permissionsToCapabilities,
+} from './constants';
 import { UnauthorizedPage } from '@/features/auth';
 import {
   Users,
@@ -84,7 +89,7 @@ export function CounterStaffPage() {
   const [formEmail, setFormEmail] = useState('');
   const [formPassword, setFormPassword] = useState('');
   const [showAddPassword, setShowAddPassword] = useState(false);
-  const [formRoleType, setFormRoleType] = useState<'MANAGER' | 'KITCHEN'>('MANAGER');
+  const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>([...CAPABILITY_PRESETS.cashier_counter]);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [modalApiError, setModalApiError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -229,7 +234,7 @@ export function CounterStaffPage() {
     setFormEmail('');
     setFormPassword('');
     setShowAddPassword(false);
-    setFormRoleType('MANAGER');
+    setSelectedCapabilities([...CAPABILITY_PRESETS.cashier_counter]);
     setFormErrors({});
     setModalApiError(null);
     setShowAddModal(true);
@@ -268,8 +273,9 @@ export function CounterStaffPage() {
 
     setIsSubmitting(true);
     try {
-      const perms = formRoleType === 'KITCHEN' ? KITCHEN_PERMISSIONS : MANAGER_PERMISSIONS;
+      const perms = capabilitiesToPermissions(selectedCapabilities);
       const targetBranchIds = activeBranchId ? [activeBranchId] : [];
+      const computedRoleType = perms.includes('RECHARGE') ? 'MANAGER' : 'KITCHEN';
 
       const res = await apiService.staff.createStaff({
         name: trimmedName,
@@ -277,7 +283,7 @@ export function CounterStaffPage() {
         password: trimmedPassword,
         assignedBranchIds: targetBranchIds,
         permissions: perms,
-        staffType: formRoleType,
+        staffType: computedRoleType,
       });
 
       if (!res.success) {
@@ -309,11 +315,7 @@ export function CounterStaffPage() {
     setFormName(staff.name);
     setFormPhone(staff.phone || '');
     setFormEmail(staff.email || '');
-    const isKitchen =
-      staff.staffType === 'KITCHEN' ||
-      (!staff.permissions.includes('RECHARGE') &&
-        (staff.permissions.includes('PRODUCT_VIEW') || staff.permissions.includes('PRODUCT_MANAGE')));
-    setFormRoleType(isKitchen ? 'KITCHEN' : 'MANAGER');
+    setSelectedCapabilities(permissionsToCapabilities(staff.permissions));
     setFormErrors({});
     setModalApiError(null);
     setShowChangePasswordSection(false);
@@ -350,13 +352,14 @@ export function CounterStaffPage() {
 
     setIsSubmitting(true);
     try {
-      const perms = formRoleType === 'KITCHEN' ? KITCHEN_PERMISSIONS : MANAGER_PERMISSIONS;
+      const perms = capabilitiesToPermissions(selectedCapabilities);
+      const computedRoleType = perms.includes('RECHARGE') ? 'MANAGER' : 'KITCHEN';
       const res = await apiService.staff.updateStaff(selectedStaff.id, {
         name: trimmedName,
         phone: cleanPhone,
         email: formEmail.trim() || undefined,
         permissions: perms,
-        staffType: formRoleType,
+        staffType: computedRoleType,
       });
 
       if (!res.success) {
@@ -763,7 +766,7 @@ export function CounterStaffPage() {
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         title={`Add Team Member to ${activeBranchName}`}
-        size="md"
+        size="lg"
       >
         <form onSubmit={handleCreateStaff} noValidate className="space-y-4">
           {modalApiError && (
@@ -833,33 +836,96 @@ export function CounterStaffPage() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Role Type</label>
-            <div className="grid grid-cols-2 gap-2">
+          {/* What can this team member do? (Operational Capabilities) */}
+          <div className="space-y-2.5 pt-1">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
+              <label className="text-xs font-semibold text-slate-700">What can this team member do?</label>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-slate-500">Mobile POS Nickname:</span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    selectedCapabilities.includes('recharge')
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      : 'bg-blue-100 text-blue-800 border border-blue-300'
+                  }`}
+                >
+                  {selectedCapabilities.includes('recharge') ? 'Manager' : 'Staff'}
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Presets */}
+            <div className="flex flex-wrap items-center gap-1.5 pb-1">
+              <span className="text-[11px] font-medium text-slate-500 mr-1">Quick Presets:</span>
               <button
                 type="button"
-                onClick={() => setFormRoleType('MANAGER')}
-                className={`p-3 text-left rounded-xl border transition-all cursor-pointer ${
-                  formRoleType === 'MANAGER'
-                    ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20'
-                    : 'border-slate-200 hover:border-slate-300'
+                onClick={() => setSelectedCapabilities([...CAPABILITY_PRESETS.cashier_counter])}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                  selectedCapabilities.length === CAPABILITY_PRESETS.cashier_counter.length &&
+                  CAPABILITY_PRESETS.cashier_counter.every((c) => selectedCapabilities.includes(c))
+                    ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
                 }`}
               >
-                <div className="font-semibold text-xs text-slate-900">Kitchen Manager</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">Full POS, Cashier & Recharge access</div>
+                Cashier Counter
               </button>
               <button
                 type="button"
-                onClick={() => setFormRoleType('KITCHEN')}
-                className={`p-3 text-left rounded-xl border transition-all cursor-pointer ${
-                  formRoleType === 'KITCHEN'
-                    ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20'
-                    : 'border-slate-200 hover:border-slate-300'
+                onClick={() => setSelectedCapabilities([...CAPABILITY_PRESETS.billing_counter])}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                  selectedCapabilities.length === CAPABILITY_PRESETS.billing_counter.length &&
+                  CAPABILITY_PRESETS.billing_counter.every((c) => selectedCapabilities.includes(c))
+                    ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
                 }`}
               >
-                <div className="font-semibold text-xs text-slate-900">Kitchen Staff</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">Menu, inventory & order viewing only</div>
+                Billing Counter
               </button>
+              <button
+                type="button"
+                onClick={() => setSelectedCapabilities([...CAPABILITY_PRESETS.full_access])}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                  selectedCapabilities.length === CAPABILITY_PRESETS.full_access.length &&
+                  CAPABILITY_PRESETS.full_access.every((c) => selectedCapabilities.includes(c))
+                    ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                }`}
+              >
+                Full Access
+              </button>
+            </div>
+
+            {/* Capabilities 6-Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[38vh] overflow-y-auto pr-0.5">
+              {OPERATIONAL_CAPABILITIES.map((cap) => {
+                const isSelected = selectedCapabilities.includes(cap.id);
+                return (
+                  <div
+                    key={cap.id}
+                    onClick={() => {
+                      setSelectedCapabilities((prev) =>
+                        prev.includes(cap.id) ? prev.filter((id) => id !== cap.id) : [...prev, cap.id],
+                      );
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2.5 ${
+                      isSelected
+                        ? 'border-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-500/30'
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => {}}
+                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer pointer-events-none shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-xs text-slate-900 leading-snug">{cap.label}</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">{cap.description}</div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -960,7 +1026,7 @@ export function CounterStaffPage() {
         isOpen={showStaffDetailsModal}
         onClose={() => setShowStaffDetailsModal(false)}
         title={canManage ? `Staff Settings: ${selectedStaff?.name}` : `Staff Details: ${selectedStaff?.name}`}
-        size="md"
+        size="lg"
       >
         <form onSubmit={handleSaveStaffChanges} noValidate className="space-y-4">
           {modalApiError && (
@@ -997,35 +1063,102 @@ export function CounterStaffPage() {
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Role Type</label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                disabled={!canManage}
-                onClick={() => setFormRoleType('MANAGER')}
-                className={`p-3 text-left rounded-xl border transition-all cursor-pointer ${
-                  formRoleType === 'MANAGER'
-                    ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div className="font-semibold text-xs text-slate-900">Kitchen Manager</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">Full POS, Cashier & Recharge</div>
-              </button>
-              <button
-                type="button"
-                disabled={!canManage}
-                onClick={() => setFormRoleType('KITCHEN')}
-                className={`p-3 text-left rounded-xl border transition-all cursor-pointer ${
-                  formRoleType === 'KITCHEN'
-                    ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-500/20'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div className="font-semibold text-xs text-slate-900">Kitchen Staff</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">Menu & Order view only</div>
-              </button>
+          {/* What can this team member do? (Operational Capabilities) */}
+          <div className="space-y-2.5 pt-1">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
+              <label className="text-xs font-semibold text-slate-700">What can this team member do?</label>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-slate-500">Mobile POS Nickname:</span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    selectedCapabilities.includes('recharge')
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      : 'bg-blue-100 text-blue-800 border border-blue-300'
+                  }`}
+                >
+                  {selectedCapabilities.includes('recharge') ? 'Manager' : 'Staff'}
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Presets */}
+            {canManage && (
+              <div className="flex flex-wrap items-center gap-1.5 pb-1">
+                <span className="text-[11px] font-medium text-slate-500 mr-1">Quick Presets:</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCapabilities([...CAPABILITY_PRESETS.cashier_counter])}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                    selectedCapabilities.length === CAPABILITY_PRESETS.cashier_counter.length &&
+                    CAPABILITY_PRESETS.cashier_counter.every((c) => selectedCapabilities.includes(c))
+                      ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                  }`}
+                >
+                  Cashier Counter
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCapabilities([...CAPABILITY_PRESETS.billing_counter])}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                    selectedCapabilities.length === CAPABILITY_PRESETS.billing_counter.length &&
+                    CAPABILITY_PRESETS.billing_counter.every((c) => selectedCapabilities.includes(c))
+                      ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                  }`}
+                >
+                  Billing Counter
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCapabilities([...CAPABILITY_PRESETS.full_access])}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                    selectedCapabilities.length === CAPABILITY_PRESETS.full_access.length &&
+                    CAPABILITY_PRESETS.full_access.every((c) => selectedCapabilities.includes(c))
+                      ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                  }`}
+                >
+                  Full Access
+                </button>
+              </div>
+            )}
+
+            {/* Capabilities 6-Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[38vh] overflow-y-auto pr-0.5">
+              {OPERATIONAL_CAPABILITIES.map((cap) => {
+                const isSelected = selectedCapabilities.includes(cap.id);
+                return (
+                  <div
+                    key={cap.id}
+                    onClick={() => {
+                      if (!canManage) return;
+                      setSelectedCapabilities((prev) =>
+                        prev.includes(cap.id) ? prev.filter((id) => id !== cap.id) : [...prev, cap.id],
+                      );
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition-all ${
+                      canManage ? 'cursor-pointer' : 'opacity-70 cursor-not-allowed'
+                    } flex items-start gap-2.5 ${
+                      isSelected
+                        ? 'border-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-500/30'
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      disabled={!canManage}
+                      onChange={() => {}}
+                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer pointer-events-none shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-xs text-slate-900 leading-snug">{cap.label}</div>
+                      <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">{cap.description}</div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 

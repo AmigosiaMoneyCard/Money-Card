@@ -152,4 +152,90 @@ export const KITCHEN_PERMISSIONS: Permission[] = [
   'SESSION_VIEW',
 ];
 
+// ── Operational Capabilities (Billing, Recharge, Refunds, Card Management, Menu, Analytics) ──
+export interface OperationalCapabilityConfig {
+  id: string;
+  label: string;
+  description: string;
+  permissions: Permission[];
+}
+
+export const OPERATIONAL_CAPABILITIES: OperationalCapabilityConfig[] = [
+  {
+    id: 'billing',
+    label: 'Billing',
+    description: 'Take food orders and deduct balance',
+    permissions: ['PURCHASE', 'PRODUCT_VIEW', 'CARD_VIEW', 'SESSION_VIEW'],
+  },
+  {
+    id: 'recharge',
+    label: 'Recharge Cards',
+    description: 'Cash and UPI top-up',
+    permissions: ['RECHARGE', 'CARD_VIEW', 'SESSION_VIEW'],
+  },
+  {
+    id: 'refund',
+    label: 'Refund Transactions',
+    description: 'Process transaction refunds',
+    permissions: ['REFUND', 'SESSION_VIEW'],
+  },
+  {
+    id: 'card_management',
+    label: 'Card Management',
+    description: 'Issue, return, block and unblock cards',
+    permissions: ['CARD_ISSUE', 'CARD_RETURN', 'CARD_BLOCK', 'CARD_UNBLOCK', 'CARD_VIEW'],
+  },
+  {
+    id: 'menu_products',
+    label: 'Menu and Products',
+    description: 'Manage menu items and prices',
+    permissions: ['PRODUCT_VIEW', 'PRODUCT_MANAGE'],
+  },
+  {
+    id: 'view_analytics',
+    label: 'View Analytics',
+    description: 'Access performance reports and metrics',
+    permissions: ['VIEW_ANALYTICS', 'VIEW_REPORTS', 'BRANCH_VIEW', 'STAFF_VIEW'],
+  },
+];
+
+export const CAPABILITY_PRESETS = {
+  billing_counter: ['billing', 'menu_products'],
+  cashier_counter: ['billing', 'recharge', 'card_management', 'refund'],
+  full_access: ['billing', 'recharge', 'refund', 'card_management', 'menu_products', 'view_analytics'],
+};
+
+export function capabilitiesToPermissions(capabilityIds: string[]): Permission[] {
+  const permsSet = new Set<Permission>();
+  for (const capId of capabilityIds) {
+    const found = OPERATIONAL_CAPABILITIES.find((c) => c.id === capId);
+    if (found) {
+      found.permissions.forEach((p) => permsSet.add(p));
+    }
+  }
+  return Array.from(permsSet);
+}
+
+export function permissionsToCapabilities(permissions: Permission[]): string[] {
+  const caps: string[] = [];
+  if (permissions.includes('PURCHASE')) caps.push('billing');
+  if (permissions.includes('RECHARGE')) caps.push('recharge');
+  if (permissions.includes('REFUND')) caps.push('refund');
+  if (
+    permissions.includes('CARD_ISSUE') ||
+    permissions.includes('CARD_RETURN') ||
+    permissions.includes('CARD_BLOCK') ||
+    permissions.includes('CARD_UNBLOCK')
+  ) {
+    caps.push('card_management');
+  }
+  if (permissions.includes('PRODUCT_VIEW') || permissions.includes('PRODUCT_MANAGE')) {
+    caps.push('menu_products');
+  }
+  if (permissions.includes('VIEW_ANALYTICS') || permissions.includes('VIEW_REPORTS')) {
+    caps.push('view_analytics');
+  }
+  return caps;
+}
+
 
