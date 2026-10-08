@@ -675,7 +675,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                           final success = await ref
                               .read(cardDetailsNotifierProvider.notifier)
                               .replaceCard(targetCardId: targetCard);
-                          if (success && mounted) {
+                          if (success && mounted && ctx.mounted) {
                             Navigator.of(ctx).pop();
                             ref.read(cardListNotifierProvider.notifier).loadCards();
                             ref.read(availableCardsNotifierProvider.notifier).loadAvailableCards();
@@ -686,7 +686,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                               ),
                             );
                             ref.read(cardDetailsNotifierProvider.notifier).loadCardById(card.id);
-                          } else if (mounted) {
+                          } else if (mounted && ctx.mounted) {
                             setDialogState(() {
                               isSubmitting = false;
                               localError = ref.read(cardDetailsNotifierProvider).errorMessage ?? 'Failed to replace card';
@@ -710,7 +710,7 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                               activeSession.id,
                               paymentMethod: selectedPaymentMethod,
                             );
-                            if (mounted) {
+                            if (mounted && ctx.mounted) {
                               Navigator.of(ctx).pop();
                               ref.read(cardListNotifierProvider.notifier).loadCards();
                               ref.read(availableCardsNotifierProvider.notifier).loadAvailableCards();
@@ -722,8 +722,8 @@ class _CardDetailsScreenState extends ConsumerState<CardDetailsScreen> {
                               );
                               ref.read(cardDetailsNotifierProvider.notifier).loadCardById(card.id);
                             }
-                          } catch (e: any) {
-                            if (mounted) {
+                          } catch (e) {
+                            if (mounted && ctx.mounted) {
                               setDialogState(() {
                                 isSubmitting = false;
                                 localError = e.toString();
