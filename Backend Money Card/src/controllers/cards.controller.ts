@@ -727,6 +727,10 @@ export async function replaceCard(req: Request, res: Response) {
     }
   }
 
+  if (!targetCard) {
+    return sendError(res, 404, 'TARGET_CARD_NOT_FOUND', 'Target replacement card could not be found or registered');
+  }
+
   if (targetCard.id === sourceCard.id) {
     return sendError(res, 400, 'SAME_CARD', 'Target card cannot be the same as the source card');
   }
