@@ -3,14 +3,17 @@ import type { Card as CardEntity } from '@/types';
 import { Modal, ModalFooter, Button } from '@/components/ui';
 import { formatCurrency, notify } from '@/utils';
 import { apiService } from '@/services/api';
+import { CameraQrScanner } from '@/components/scanner/CameraQrScanner';
 import {
   ArrowLeftRight,
   Banknote,
   CreditCard,
   AlertCircle,
   CheckCircle2,
-  QrCode,
+  Camera,
+  Keyboard,
   Sparkles,
+  RotateCcw,
 } from 'lucide-react';
 
 interface ResolveBlockedWalletModalProps {
@@ -21,6 +24,41 @@ interface ResolveBlockedWalletModalProps {
   onSuccess: () => void;
 }
 
+function extractWalletToken(raw: string): string {
+  let clean = raw.trim();
+  if (clean.toLowerCase().startsWith('mc:')) {
+    clean = clean.substring(3).trim();
+  }
+  if (clean.includes('/c/')) {
+    clean = clean.split('/c/')[1].split('?')[0].split('#')[0].trim();
+  } else if (clean.startsWith('http://') || clean.startsWith('https://')) {
+    try {
+      const url = new URL(clean);
+      const param =
+        url.searchParams.get('wallet') ||
+        url.searchParams.get('card') ||
+        url.searchParams.get('token') ||
+        url.searchParams.get('qr');
+      if (param) {
+        clean = param.trim();
+      } else {
+        const segs = url.pathname.split('/').filter(Boolean);
+        if (segs.length > 0) {
+          clean = segs[segs.length - 1].trim();
+        }
+      }
+    } catch {
+      // fallback
+    }
+  }
+  try {
+    clean = decodeURIComponent(clean);
+  } catch {
+    // fallback
+  }
+  return clean.toUpperCase();
+}
+
 export function ResolveBlockedWalletModal({
   isOpen,
   onClose,
@@ -29,9 +67,11 @@ export function ResolveBlockedWalletModal({
   onSuccess,
 }: ResolveBlockedWalletModalProps) {
   const [resolutionMode, setResolutionMode] = useState<'REPLACE' | 'REFUND'>('REPLACE');
+  const [cardEntryMethod, setCardEntryMethod] = useState<'TYPE' | 'SCAN'>('TYPE');
   const [selectedTargetCardId, setSelectedTargetCardId] = useState('');
   const [targetCardInput, setTargetCardInput] = useState('');
   const [targetCardSearch, setTargetCardSearch] = useState('');
+  const [scannedFeedback, setScannedFeedback] = useState<string | null>(null);
   const [refundPaymentMethod, setRefundPaymentMethod] = useState<'CASH' | 'UPI'>('CASH');
   const [reasonNotes, setReasonNotes] = useState('Damaged or lost card replaced');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -71,7 +111,31 @@ export function ResolveBlockedWalletModal({
     setSelectedTargetCardId('');
     setTargetCardInput('');
     setTargetCardSearch('');
+    setScannedFeedback(null);
+    setCardEntryMethod('TYPE');
     onClose();
+  };
+
+  const handleCameraScan = (scannedText: string) => {
+    const clean = extractWalletToken(scannedText);
+    if (!clean) return;
+
+    setTargetCardInput(clean);
+    setScannedFeedback(`Scanned: ${clean}`);
+    setCardEntryMethod('TYPE');
+
+    // Check if matches available cards
+    const matched = availableCards.find(
+      (c) =>
+        (c.physicalCardNumber && c.physicalCardNumber.toUpperCase() === clean) ||
+        (c.qrToken && c.qrToken.toUpperCase() === clean)
+    );
+    if (matched) {
+      setSelectedTargetCardId(matched.id);
+    } else {
+      setSelectedTargetCardId('');
+    }
+    notify.success(`Card ${clean} captured!`);
   };
 
   const handleSubmit = async () => {
@@ -87,10 +151,29 @@ export function ResolveBlockedWalletModal({
 
       setIsSubmitting(true);
       try {
-        const res = await apiService.cards.replaceCard(card.id, {
+        let res = await apiService.cards.replaceCard(card.id, {
           targetCardId: targetIdentifier,
           reason: reasonNotes,
         });
+
+        // If target replacement card is not yet registered in database, auto-create it and retry immediately
+        if (
+          !res.success &&
+          ((res.error?.code as string) === 'TARGET_NOT_FOUND' ||
+            res.error?.message?.toLowerCase().includes('not found') ||
+            res.error?.message?.toLowerCase().includes('target replacement card'))
+        ) {
+          const createRes = await apiService.cards.createCard({
+            physicalCardNumber: targetIdentifier.toUpperCase(),
+          });
+
+          if (createRes.success && createRes.data) {
+            res = await apiService.cards.replaceCard(card.id, {
+              targetCardId: createRes.data.id || targetIdentifier.toUpperCase(),
+              reason: reasonNotes,
+            });
+          }
+        }
 
         if (res.success) {
           notify.success(
@@ -243,7 +326,7 @@ export function ResolveBlockedWalletModal({
         {resolutionMode === 'REPLACE' && (
           <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50/40 p-3.5">
             <div>
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between mb-2">
                 <label className="text-xs font-bold text-slate-800">
                   New Physical Card to Assign
                 </label>
@@ -252,34 +335,126 @@ export function ResolveBlockedWalletModal({
                 </span>
               </div>
 
-              {/* Direct Scanner or Card Number Input */}
-              <div className="relative mb-2">
-                <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-emerald-600">
-                  <QrCode className="h-4 w-4" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Scan QR or type card number (e.g. MC-1001)..."
-                  value={targetCardInput}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setTargetCardInput(val);
-                    // If matches an available card, select it
-                    const matched = availableCards.find(
-                      (c) =>
-                        (c.physicalCardNumber && c.physicalCardNumber.toUpperCase() === val.trim().toUpperCase()) ||
-                        c.qrToken === val.trim()
-                    );
-                    if (matched) {
-                      setSelectedTargetCardId(matched.id);
-                    } else if (val.trim()) {
-                      setSelectedTargetCardId('');
-                    }
+              {/* ── Entry Method Switcher: [Type] vs [Scan with Camera] ── */}
+              <div className="flex items-center gap-1.5 p-1 bg-white rounded-lg border border-emerald-200 mb-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCardEntryMethod('TYPE');
                   }}
-                  className="w-full rounded-lg border border-emerald-300 bg-white pl-9 pr-3 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 placeholder:font-sans placeholder:text-slate-400"
-                  autoFocus
-                />
+                  className={`flex-1 py-1 px-2.5 rounded-md text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                    cardEntryMethod === 'TYPE'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  <Keyboard className="h-3.5 w-3.5" />
+                  <span>Type / USB Scanner</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCardEntryMethod('SCAN');
+                  }}
+                  className={`flex-1 py-1 px-2.5 rounded-md text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                    cardEntryMethod === 'SCAN'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  <Camera className="h-3.5 w-3.5" />
+                  <span>Scan with Camera</span>
+                </button>
               </div>
+
+              {/* ── Option 1: Live Camera Scanner ── */}
+              {cardEntryMethod === 'SCAN' && (
+                <div className="rounded-xl border border-emerald-300 bg-white p-3 space-y-2 mb-2 text-center animate-in fade-in">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-bold text-emerald-900 flex items-center gap-1">
+                      <Camera className="h-4 w-4 text-emerald-600" />
+                      Live Camera QR Scanner
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setCardEntryMethod('TYPE')}
+                      className="text-[11px] text-slate-500 hover:text-slate-800 underline"
+                    >
+                      Switch to Typing
+                    </button>
+                  </div>
+                  <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-950 flex justify-center max-h-56">
+                    <CameraQrScanner
+                      isActive={cardEntryMethod === 'SCAN'}
+                      onScan={(text) => handleCameraScan(text)}
+                      className="w-full"
+                    />
+                  </div>
+                  <p className="text-[10px] text-slate-500">
+                    Hold the new physical card up to your webcam. The QR code will scan automatically.
+                  </p>
+                </div>
+              )}
+
+              {/* ── Option 2: Type / USB Barcode Scanner Input ── */}
+              {cardEntryMethod === 'TYPE' && (
+                <div className="space-y-1.5 mb-2">
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-emerald-600">
+                      <Keyboard className="h-4 w-4" />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Type card number (e.g. KDVSUURS)..."
+                      value={targetCardInput}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setTargetCardInput(val);
+                        setScannedFeedback(null);
+                        // Check if matches available cards
+                        const matched = availableCards.find(
+                          (c) =>
+                            (c.physicalCardNumber && c.physicalCardNumber.toUpperCase() === val.trim().toUpperCase()) ||
+                            c.qrToken === val.trim()
+                        );
+                        if (matched) {
+                          setSelectedTargetCardId(matched.id);
+                        } else if (val.trim()) {
+                          setSelectedTargetCardId('');
+                        }
+                      }}
+                      className="w-full rounded-lg border border-emerald-300 bg-white pl-9 pr-20 py-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 placeholder:font-sans placeholder:text-slate-400"
+                      autoFocus
+                    />
+                    {/* Quick Button to Launch Camera */}
+                    <button
+                      type="button"
+                      onClick={() => setCardEntryMethod('SCAN')}
+                      className="absolute inset-y-1 right-1 px-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-md text-[11px] font-bold flex items-center gap-1 border border-emerald-200 transition-colors"
+                      title="Open Camera Scanner"
+                    >
+                      <Camera className="h-3 w-3" />
+                      <span>Scan</span>
+                    </button>
+                  </div>
+
+                  {scannedFeedback && (
+                    <div className="flex items-center justify-between px-2.5 py-1 bg-emerald-100/70 border border-emerald-300 rounded-md text-[11px] text-emerald-800">
+                      <span className="font-mono font-bold">{scannedFeedback}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTargetCardInput('');
+                          setScannedFeedback(null);
+                        }}
+                        className="text-emerald-700 hover:text-emerald-900 flex items-center gap-0.5 text-[10px]"
+                      >
+                        <RotateCcw className="h-3 w-3" /> Clear
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Or Select from Available Dropdown */}
               {filteredAvailableCards.length > 0 ? (
@@ -295,6 +470,7 @@ export function ResolveBlockedWalletModal({
                       const found = availableCards.find((c) => c.id === id);
                       if (found) {
                         setTargetCardInput(found.physicalCardNumber || found.qrToken || '');
+                        setScannedFeedback(null);
                       }
                     }}
                     className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-mono text-slate-800 focus:outline-none focus:border-emerald-600"
@@ -311,7 +487,7 @@ export function ResolveBlockedWalletModal({
                 <div className="p-2.5 rounded-lg bg-emerald-100/60 border border-emerald-200 text-emerald-900 text-[11px] flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
                   <span>
-                    No pre-registered cards needed! Type or scan any new physical card number above and it will be issued automatically.
+                    No pre-registered cards needed! Type or scan any physical card and it will be assigned automatically.
                   </span>
                 </div>
               )}
