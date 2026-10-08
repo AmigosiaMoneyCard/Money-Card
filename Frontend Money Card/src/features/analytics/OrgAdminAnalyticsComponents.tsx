@@ -965,7 +965,7 @@ export interface MenuAnalyticsSectionProps {
 
 export function OrgAdminMenuAnalyticsSection({ analytics }: MenuAnalyticsSectionProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [isTableOpen, setIsTableOpen] = useState(true);
+  const [isTableOpen, setIsTableOpen] = useState(false);
   const [showCancelledOrders, setShowCancelledOrders] = useState(false);
 
   const cancelledOrders = analytics.cancelledOrdersCount ?? 0;
@@ -1142,7 +1142,7 @@ export interface FoodPurchasesByCounterTableProps {
 export function FoodPurchasesByCounterTable({ purchases }: FoodPurchasesByCounterTableProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'cross'>('all');
-  const [isTableOpen, setIsTableOpen] = useState(true);
+  const [isTableOpen, setIsTableOpen] = useState(false);
 
   const filteredPurchases = useMemo(() => {
     return purchases.filter((p) => {
