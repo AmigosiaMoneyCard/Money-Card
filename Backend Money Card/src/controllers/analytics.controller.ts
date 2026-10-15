@@ -299,7 +299,7 @@ export async function getOrgAnalytics(req: Request, res: Response) {
         card: { select: { physicalCardNumber: true, status: true } },
         branch: { select: { name: true } },
         transactions: {
-          select: { id: true, amount: true, type: true, createdAt: true },
+          select: { id: true, amount: true, type: true, createdAt: true, items: true },
         },
       },
     }),
@@ -981,9 +981,12 @@ export async function getOrgAnalytics(req: Request, res: Response) {
     let lastUsedAt = s.issuedAt ? s.issuedAt.toISOString() : undefined;
 
     s.transactions.forEach((t) => {
+      const isCancelled = Boolean((t.items as any)?.isCancelled);
       const tType = String(t.type || '').toUpperCase();
       if (tType.includes('RECHARGE') || tType === 'ISSUANCE') {
-        totalRecharged += t.amount;
+        if (!isCancelled) {
+          totalRecharged += t.amount;
+        }
       } else if (tType === 'PURCHASE') {
         totalSpent += t.amount;
       } else if (tType.includes('REFUND')) {
