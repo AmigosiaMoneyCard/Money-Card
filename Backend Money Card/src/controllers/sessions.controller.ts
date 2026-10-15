@@ -696,18 +696,18 @@ export async function refundSessionBalance(req: Request, res: Response) {
       },
     });
 
-    const txRecord = await tx.transaction.create({
-      data: {
-        sessionId: session.id,
-        branchId: session.branchId,
-        staffUserId: req.user?.id,
-        type: TransactionType.REFUND_RETURN,
-        amount: refundAmount,
-        balanceBefore: refundAmount,
-        balanceAfter: 0.0,
-        paymentMethod: selectedPaymentMethod,
-      },
-    });
+      const txRecord = await tx.transaction.create({
+        data: {
+          sessionId: session.id,
+          branchId: session.branchId,
+          staffUserId: req.user?.id,
+          type: TransactionType.REFUND_RETURN,
+          amount: refundAmount,
+          balanceBefore: refundAmount,
+          balanceAfter: 0.0,
+          paymentMethod: selectedPaymentMethod,
+        },
+      });
 
     return { session: updatedSession, refundAmount, transaction: txRecord };
   });

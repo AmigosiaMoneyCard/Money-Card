@@ -754,6 +754,31 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           totalAmount: Number(tx.amount.toFixed(2)),
         });
       }
+    } else if (txType === 'REFUND_RETURN' || txType.includes('REFUND') || txType.includes('RETURN')) {
+      const pMethod = String(tx.paymentMethod || '').toUpperCase();
+      if (isThisBranch) {
+        totalRefundVolume += tx.amount;
+        totalRefundCount++;
+        if (pMethod === 'UPI') {
+          upiRefunds += tx.amount;
+          upiRefundCount++;
+        } else {
+          cashRefunds += tx.amount;
+          cashRefundCount++;
+        }
+      }
+      if (bm) {
+        bm.transactionCount++;
+        bm.refundCount++;
+        bm.refundVolume += tx.amount;
+        if (pMethod === 'UPI') {
+          bm.upiRefunds += tx.amount;
+          bm.upiRefundCount++;
+        } else {
+          bm.cashRefunds += tx.amount;
+          bm.cashRefundCount++;
+        }
+      }
     } else if (txType === 'RECHARGE_CASH' || paymentMethod === 'CASH' || paymentMethod === 'CARD' || txType === 'CASH') {
       if (isThisBranch) {
         totalRechargeVolume += tx.amount;
@@ -820,31 +845,6 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           bm.moneyAdded += tx.amount;
           bm.cashMoney += tx.amount;
           bm.cashCount++;
-        }
-      }
-    } else if (txType.includes('REFUND') || txType.includes('RETURN') || txType.includes('SETTLE')) {
-      const pMethod = String(tx.paymentMethod || '').toUpperCase();
-      if (isThisBranch) {
-        totalRefundVolume += tx.amount;
-        totalRefundCount++;
-        if (pMethod === 'UPI') {
-          upiRefunds += tx.amount;
-          upiRefundCount++;
-        } else {
-          cashRefunds += tx.amount;
-          cashRefundCount++;
-        }
-      }
-      if (bm) {
-        bm.transactionCount++;
-        bm.refundCount++;
-        bm.refundVolume += tx.amount;
-        if (pMethod === 'UPI') {
-          bm.upiRefunds += tx.amount;
-          bm.upiRefundCount++;
-        } else {
-          bm.cashRefunds += tx.amount;
-          bm.cashRefundCount++;
         }
       }
     }
@@ -1118,6 +1118,22 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           customerName: custName,
           customerPhone: custPhone,
         });
+      } else if (txType === 'REFUND_RETURN' || txType.includes('REFUND') || txType.includes('RETURN')) {
+        refundCount++;
+        refundVolume += tx.amount;
+        activities.push({
+          id: `act_tx_${tx.id}`,
+          type: 'REFUND',
+          title: 'Customer Refund Processed',
+          description: `Processed refund of ₹${tx.amount}`,
+          amount: tx.amount,
+          branchId: tx.branchId,
+          branchName: bName,
+          timestamp: tx.createdAt.toISOString(),
+          cardNumber: cardNum,
+          customerName: custName,
+          customerPhone: custPhone,
+        });
       } else if (txType === 'RECHARGE_CASH' || pMethod === 'CASH' || pMethod === 'CARD' || txType === 'CASH') {
         cardRechargeCount++;
         cardRechargeVolume += tx.amount;
@@ -1148,22 +1164,6 @@ export async function getOrgAnalytics(req: Request, res: Response) {
           branchName: bName,
           timestamp: tx.createdAt.toISOString(),
           paymentMethod: 'UPI',
-          cardNumber: cardNum,
-          customerName: custName,
-          customerPhone: custPhone,
-        });
-      } else if (txType.includes('REFUND') || txType.includes('RETURN')) {
-        refundCount++;
-        refundVolume += tx.amount;
-        activities.push({
-          id: `act_tx_${tx.id}`,
-          type: 'REFUND',
-          title: 'Customer Refund Processed',
-          description: `Processed refund of ₹${tx.amount}`,
-          amount: tx.amount,
-          branchId: tx.branchId,
-          branchName: bName,
-          timestamp: tx.createdAt.toISOString(),
           cardNumber: cardNum,
           customerName: custName,
           customerPhone: custPhone,
