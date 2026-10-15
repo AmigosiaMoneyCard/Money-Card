@@ -104,10 +104,12 @@ export function StaffPage() {
   const [staffTab, setStaffTab] = useState<'overview' | 'branches'>('overview');
 
   // ── Counter Staff Grouping State ───────────────────────────
-  const [selectedCounterGroup, setSelectedCounterGroup] = useState<CounterStaffGroup | null>(null);
+  const [selectedCounterGroupId, setSelectedCounterGroupId] = useState<string | null>(null);
   const [showCounterStaffModal, setShowCounterStaffModal] = useState(false);
   const [modalCounterSearch, setModalCounterSearch] = useState('');
   const [togglingStaffId, setTogglingStaffId] = useState<string | null>(null);
+  const [showAssignExistingModal, setShowAssignExistingModal] = useState(false);
+  const [assigningStaffId, setAssigningStaffId] = useState<string | null>(null);
 
   const handleOpenStaffDetails = (staff: Staff) => {
     setSelectedStaff(staff);
@@ -115,7 +117,7 @@ export function StaffPage() {
   };
 
   const handleOpenCounterStaff = (group: CounterStaffGroup) => {
-    setSelectedCounterGroup(group);
+    setSelectedCounterGroupId(group.id);
     setModalCounterSearch('');
     setShowCounterStaffModal(true);
   };
@@ -130,16 +132,6 @@ export function StaffPage() {
       prev.map((s) => (s.id === staff.id ? { ...s, status: newStatus } : s)),
     );
     setSelectedStaff((prev) => (prev && prev.id === staff.id ? { ...prev, status: newStatus } : prev));
-    if (selectedCounterGroup) {
-      setSelectedCounterGroup((prev) =>
-        prev
-          ? {
-              ...prev,
-              staff: prev.staff.map((s) => (s.id === staff.id ? { ...s, status: newStatus } : s)),
-            }
-          : null,
-      );
-    }
 
     try {
       const res = await apiService.staff.updateStaff(staff.id, { status: newStatus });
@@ -148,16 +140,6 @@ export function StaffPage() {
           prev.map((s) => (s.id === staff.id ? { ...s, status: staff.status } : s)),
         );
         setSelectedStaff((prev) => (prev && prev.id === staff.id ? { ...prev, status: staff.status } : prev));
-        if (selectedCounterGroup) {
-          setSelectedCounterGroup((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  staff: prev.staff.map((s) => (s.id === staff.id ? { ...s, status: staff.status } : s)),
-                }
-              : null,
-          );
-        }
         notify.error(res.error.message || 'Failed to change staff status');
         return;
       }
@@ -285,11 +267,12 @@ export function StaffPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // ── Fetch Staff, Analytics & Organization Branches ─────────
+  // ── Fetch Staff, Analytics & Organization Branches ─────────
   const fetchStaffData = useCallback(async () => {
     setError(null);
     try {
       const [staffRes, branchRes, orgRes, analyticsRes] = await Promise.all([
-        apiService.staff.getStaff({ search: searchQuery }),
+        apiService.staff.getStaff(),
         apiService.branches.getBranches(),
         apiService.organizations.getOrganization(),
         apiService.analytics.getOverview(),
@@ -316,44 +299,11 @@ export function StaffPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [searchQuery]);
+  }, []);
 
   useEffect(() => {
-    let isCancelled = false;
-    const load = async () => {
-      setError(null);
-      try {
-        const [staffRes, branchRes, orgRes, analyticsRes] = await Promise.all([
-          apiService.staff.getStaff({ search: searchQuery }),
-          apiService.branches.getBranches(),
-          apiService.organizations.getOrganization(),
-          apiService.analytics.getOverview(),
-        ]);
-        if (isCancelled) return;
-
-        if (!staffRes.success) {
-          setError(staffRes.error.message || 'Failed to load staff list');
-          return;
-        }
-
-        setStaffList(staffRes.data.items);
-        if (branchRes.success) setBranches(branchRes.data.items);
-        if (orgRes.success) setOrgOverview(orgRes.data);
-        if (analyticsRes.success && analyticsRes.data.staffPerformance) {
-          setStaffPerformanceList(analyticsRes.data.staffPerformance);
-        }
-      } catch {
-        if (!isCancelled) setError('Unable to connect to the server. Please try again.');
-      } finally {
-        if (!isCancelled) setIsLoading(false);
-      }
-    };
-
-    load();
-    return () => {
-      isCancelled = true;
-    };
-  }, [searchQuery]);
+    fetchStaffData();
+  }, [fetchStaffData]);
 
   // ── Instant Client-Side Filtered Staff ────────────────────
   const filteredStaff = useMemo(() => {
@@ -362,8 +312,6 @@ export function StaffPage() {
       ? currentBranch?.id || user?.assignedBranchIds?.[0]
       : staffBranchFilter !== 'ALL'
       ? staffBranchFilter
-      : currentBranch && currentBranch.id && currentBranch.id !== 'ALL'
-      ? currentBranch.id
       : 'ALL';
 
     if (activeBranchId && activeBranchId !== 'ALL') {
@@ -436,8 +384,62 @@ export function StaffPage() {
       }
     });
 
+    // Also include Unassigned Staff group if any genuine staff are not assigned to any existing branch
+    if (!isCounterView) {
+      const unassigned = filteredStaff.filter(
+        (s) =>
+          !Array.isArray(s.assignedBranchIds) ||
+          s.assignedBranchIds.length === 0 ||
+          !s.assignedBranchIds.some((bId) => branches.some((b) => b.id === bId)),
+      );
+      if (unassigned.length > 0 || (q && 'unassigned staff'.includes(q))) {
+        groups.push({
+          id: 'unassigned',
+          counterName: 'Unassigned Staff',
+          staff: unassigned,
+        });
+      }
+    }
+
     return groups;
   }, [branches, scopedBranches, filteredStaff, staffList, isCounterView, staffBranchFilter, searchQuery, statusFilter]);
+
+  // Derive selectedCounterGroup dynamically from counterStaffGroups so modal is always reactive
+  const selectedCounterGroup = useMemo<CounterStaffGroup | null>(() => {
+    if (!selectedCounterGroupId) return null;
+    return counterStaffGroups.find((g) => g.id === selectedCounterGroupId) || null;
+  }, [counterStaffGroups, selectedCounterGroupId]);
+
+  // Available staff that can be assigned to the currently open kitchen modal
+  const availableStaffToAssign = useMemo(() => {
+    if (!selectedCounterGroup || selectedCounterGroup.id === 'unassigned') return [];
+    return staffList.filter(
+      (s) =>
+        s.status === 'ACTIVE' &&
+        (!Array.isArray(s.assignedBranchIds) || !s.assignedBranchIds.includes(selectedCounterGroup.id)),
+    );
+  }, [staffList, selectedCounterGroup]);
+
+  // One-click assign staff member to currently open kitchen modal
+  const handleAssignStaffToCurrentKitchen = async (staffMember: Staff) => {
+    if (!selectedCounterGroup || selectedCounterGroup.id === 'unassigned') return;
+    setAssigningStaffId(staffMember.id);
+    try {
+      const currentBranches = staffMember.assignedBranchIds || [];
+      const newBranches = Array.from(new Set([...currentBranches, selectedCounterGroup.id]));
+      const res = await apiService.staff.updateStaffBranches(staffMember.id, newBranches);
+      if (!res.success) {
+        notify.error(res.error.message || 'Failed to assign staff member');
+        return;
+      }
+      notify.success(`${formatStaffDisplayName(staffMember.name)} assigned to ${selectedCounterGroup.counterName}`);
+      await fetchStaffData();
+    } catch {
+      notify.error('An unexpected error occurred while assigning staff member.');
+    } finally {
+      setAssigningStaffId(null);
+    }
+  };
 
   // If user lacks STAFF_VIEW permission, block access
   if (!canView) {
@@ -1135,10 +1137,33 @@ export function StaffPage() {
       className: 'w-1/2 min-w-[200px]',
       render: (group: CounterStaffGroup) => (
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <div
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
+              group.id === 'unassigned'
+                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+            }`}
+          >
             <Building2 className="h-4 w-4" />
           </div>
-          <span className="font-semibold text-slate-900 text-sm">Staff - {group.counterName}</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-slate-900 text-sm">
+              {group.id === 'unassigned'
+                ? group.counterName
+                : `Staff - ${group.counterName.replace(/^Staff\s*-\s*/i, '')}`}
+            </span>
+            <span
+              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                group.staff.length > 0
+                  ? group.id === 'unassigned'
+                    ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                    : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                  : 'bg-slate-100 text-slate-500 border border-slate-200'
+              }`}
+            >
+              {group.staff.length} {group.staff.length === 1 ? 'member' : 'members'}
+            </span>
+          </div>
         </div>
       ),
     },
@@ -1148,7 +1173,7 @@ export function StaffPage() {
       className: 'w-36 text-center',
       render: (group: CounterStaffGroup) => (
         <div className="flex items-center justify-center">
-          {canManage && (
+          {canManage && group.id !== 'unassigned' && (
             <Button
               variant="outline"
               size="sm"
@@ -2045,9 +2070,16 @@ export function StaffPage() {
         isOpen={showCounterStaffModal}
         onClose={() => {
           setShowCounterStaffModal(false);
+          setSelectedCounterGroupId(null);
           setModalCounterSearch('');
         }}
-        title={selectedCounterGroup ? `Staff - ${selectedCounterGroup.counterName}` : 'Staff Details'}
+        title={
+          selectedCounterGroup
+            ? selectedCounterGroup.id === 'unassigned'
+              ? 'Unassigned Staff Members'
+              : `Staff - ${selectedCounterGroup.counterName.replace(/^Staff\s*-\s*/i, '')}`
+            : 'Staff Details'
+        }
         size="2xl"
       >
         {selectedCounterGroup && (
@@ -2084,7 +2116,7 @@ export function StaffPage() {
                       key={g.id}
                       type="button"
                       onClick={() => {
-                        setSelectedCounterGroup(g);
+                        setSelectedCounterGroupId(g.id);
                         setModalCounterSearch('');
                       }}
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 font-medium cursor-pointer transition-colors"
@@ -2100,22 +2132,43 @@ export function StaffPage() {
             {selectedCounterGroup.staff.length === 0 ? (
               <div className="text-center py-8 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
                 <Users className="h-8 w-8 text-slate-400 mx-auto mb-2" />
-                <p className="text-xs font-semibold text-slate-700">No staff accounts assigned to this kitchen</p>
-                <p className="text-[11px] text-slate-500 mt-1">You can add staff members or assign existing staff to this kitchen.</p>
-                {canManage && (
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => {
-                      setShowCounterStaffModal(false);
-                      setModalCounterSearch('');
-                      handleOpenAdd();
-                    }}
-                    leftIcon={<UserPlus className="h-3.5 w-3.5" />}
-                    className="mt-3 text-xs"
-                  >
-                    Add Staff Member
-                  </Button>
+                <p className="text-xs font-semibold text-slate-700">
+                  {selectedCounterGroup.id === 'unassigned'
+                    ? 'No unassigned staff members'
+                    : 'No staff accounts assigned to this kitchen'}
+                </p>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  {selectedCounterGroup.id === 'unassigned'
+                    ? 'All staff accounts are currently assigned to cafeteria kitchens.'
+                    : 'You can add staff members or assign existing staff to this kitchen.'}
+                </p>
+                {canManage && selectedCounterGroup.id !== 'unassigned' && (
+                  <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => {
+                        setShowCounterStaffModal(false);
+                        setModalCounterSearch('');
+                        handleOpenAdd(selectedCounterGroup.id);
+                      }}
+                      leftIcon={<UserPlus className="h-3.5 w-3.5" />}
+                      className="text-xs"
+                    >
+                      Add Staff Member
+                    </Button>
+                    {availableStaffToAssign.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowAssignExistingModal(true)}
+                        leftIcon={<Plus className="h-3.5 w-3.5 text-emerald-600" />}
+                        className="text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                      >
+                        Assign Existing Staff ({availableStaffToAssign.length})
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
             ) : displayedModalStaff.length === 0 ? (
@@ -2147,7 +2200,7 @@ export function StaffPage() {
                          </div>
                          <div className="flex items-center gap-2.5 text-xs text-slate-500 mt-0.5 flex-wrap">
                            <span className="font-medium text-slate-600">
-                             {selectedCounterGroup ? getStaffRoleLabel(st) : getStaffRoleLabel(st)}
+                             {getStaffRoleLabel(st)}
                            </span>
                            {st.phone && <span className="font-mono text-slate-500">• {st.phone}</span>}
                          </div>
@@ -2173,12 +2226,12 @@ export function StaffPage() {
                           size="sm"
                           onClick={() => {
                             setShowCounterStaffModal(false);
-                            handleOpenStaffModal(st, 'overview');
+                            handleOpenStaffModal(st, selectedCounterGroup.id === 'unassigned' ? 'branches' : 'overview');
                           }}
                           leftIcon={<Edit2 className="h-3 w-3" />}
                           className="text-xs h-7.5 px-2.5 font-medium cursor-pointer"
                         >
-                          Edit
+                          {selectedCounterGroup.id === 'unassigned' ? 'Assign Kitchen' : 'Edit'}
                         </Button>
                       )}
                       {getStaffRoleLabel(st) === 'Kitchen Manager' && (
@@ -2240,28 +2293,118 @@ export function StaffPage() {
                 size="sm"
                 onClick={() => {
                   setShowCounterStaffModal(false);
+                  setSelectedCounterGroupId(null);
                   setModalCounterSearch('');
                 }}
               >
                 Close
               </Button>
               {canManage && (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  leftIcon={<UserPlus className="h-3.5 w-3.5" />}
-                  onClick={() => {
-                    setShowCounterStaffModal(false);
-                    setModalCounterSearch('');
-                    handleOpenAdd();
-                  }}
-                >
-                  Add Staff Member
-                </Button>
+                <div className="flex items-center gap-2">
+                  {availableStaffToAssign.length > 0 && selectedCounterGroup.id !== 'unassigned' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAssignExistingModal(true)}
+                      leftIcon={<Plus className="h-3.5 w-3.5 text-emerald-600" />}
+                      className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 text-xs"
+                    >
+                      Assign Existing Staff ({availableStaffToAssign.length})
+                    </Button>
+                  )}
+                  {selectedCounterGroup.id !== 'unassigned' && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      leftIcon={<UserPlus className="h-3.5 w-3.5" />}
+                      onClick={() => {
+                        setShowCounterStaffModal(false);
+                        setModalCounterSearch('');
+                        handleOpenAdd(selectedCounterGroup.id);
+                      }}
+                      className="text-xs"
+                    >
+                      Add Staff Member
+                    </Button>
+                  )}
+                </div>
               )}
             </ModalFooter>
           </div>
         )}
+      </Modal>
+
+      {/* ── ASSIGN EXISTING STAFF MODAL ── */}
+      <Modal
+        isOpen={showAssignExistingModal}
+        onClose={() => setShowAssignExistingModal(false)}
+        title={`Assign Staff to ${selectedCounterGroup ? selectedCounterGroup.counterName.replace(/^Staff\s*-\s*/i, '') : 'Kitchen'}`}
+        size="lg"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-slate-600">
+            Select an existing staff member from your organization to assign them to{' '}
+            <strong className="text-slate-900">{selectedCounterGroup?.counterName}</strong>.
+          </p>
+
+          <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+            {availableStaffToAssign.map((staffMember) => {
+              const isAssignedElsewhere = Array.isArray(staffMember.assignedBranchIds) && staffMember.assignedBranchIds.length > 0;
+              const assignedBranchNames = isAssignedElsewhere
+                ? branches
+                    .filter((b) => staffMember.assignedBranchIds.includes(b.id))
+                    .map((b) => b.name)
+                    .join(', ')
+                : 'Unassigned';
+
+              return (
+                <div
+                  key={staffMember.id}
+                  className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white hover:border-emerald-300 transition-all gap-2"
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 font-bold text-xs border border-emerald-200">
+                      {formatStaffDisplayName(staffMember.name).charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-slate-900 text-xs truncate">
+                        {formatStaffDisplayName(staffMember.name)}
+                      </p>
+                      <div className="flex items-center gap-2 text-[11px] text-slate-500 flex-wrap">
+                        <span className="font-medium text-slate-600">{getStaffRoleLabel(staffMember)}</span>
+                        {staffMember.phone && <span>• {staffMember.phone}</span>}
+                        <span className="text-slate-300">•</span>
+                        <span className={isAssignedElsewhere ? 'text-slate-500' : 'text-amber-600 font-medium'}>
+                          {assignedBranchNames || 'Unassigned'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={assigningStaffId === staffMember.id}
+                    isLoading={assigningStaffId === staffMember.id}
+                    onClick={async () => {
+                      await handleAssignStaffToCurrentKitchen(staffMember);
+                      setShowAssignExistingModal(false);
+                    }}
+                    className="text-xs px-3 py-1.5"
+                  >
+                    Assign
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+
+          <ModalFooter>
+            <Button variant="outline" size="sm" onClick={() => setShowAssignExistingModal(false)}>
+              Close
+            </Button>
+          </ModalFooter>
+        </div>
       </Modal>
 
       {/* ── 2. ADD STAFF MEMBER MODAL (TABBED STEPPER UX) ── */}
