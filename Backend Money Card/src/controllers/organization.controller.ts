@@ -41,6 +41,9 @@ export async function getOrganizationProfile(req: Request, res: Response) {
         role: Role.STAFF,
         isCounterAccount: false,
         status: { not: UserStatus.DEACTIVATED },
+        NOT: {
+          name: { startsWith: 'Staff - ' },
+        },
       },
     }),
     prisma.card.count({ where: { organizationId: orgId } }),

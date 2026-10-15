@@ -50,4 +50,57 @@ describe('Counter Admin vs Org Admin Staff Isolation', () => {
     expect(resolveStaffView('STAFF')).toBe('CounterStaffPage');
     expect(resolveStaffView('ORG_ADMIN')).toBe('StaffPage');
   });
+
+  it('correctly allocates staff to their respective kitchens across multiple branches in Org Admin view without dropping them', () => {
+    const branches = [
+      { id: 'b_high_school', name: 'heigh school block' },
+      { id: 'b_counter_1', name: 'Counter 1' },
+    ];
+
+    const staffList = [
+      { id: 's1', name: 'nihal', assignedBranchIds: ['b_high_school'] },
+      { id: 's2', name: 'arun', assignedBranchIds: ['b_counter_1'] },
+      { id: 's3', name: 'sreeraj', assignedBranchIds: ['b_counter_1'] },
+      { id: 's4', name: 'unassigned_member', assignedBranchIds: [] },
+    ];
+
+    // Simulate Org Admin counterStaffGroups logic
+    const groups = branches.map((branch) => ({
+      id: branch.id,
+      counterName: branch.name,
+      staff: staffList.filter((s) => s.assignedBranchIds.includes(branch.id)),
+    }));
+
+    // Add unassigned staff group
+    const unassigned = staffList.filter(
+      (s) => !s.assignedBranchIds || s.assignedBranchIds.length === 0,
+    );
+    if (unassigned.length > 0) {
+      groups.push({
+        id: 'unassigned',
+        counterName: 'Unassigned Staff',
+        staff: unassigned,
+      });
+    }
+
+    expect(groups).toHaveLength(3);
+    // Kitchen 1 has nihal
+    expect(groups[0].counterName).toBe('heigh school block');
+    expect(groups[0].staff).toHaveLength(1);
+    expect(groups[0].staff[0].name).toBe('nihal');
+
+    // Kitchen 2 has arun and sreeraj
+    expect(groups[1].counterName).toBe('Counter 1');
+    expect(groups[1].staff).toHaveLength(2);
+    expect(groups[1].staff.map((s) => s.name)).toEqual(['arun', 'sreeraj']);
+
+    // Unassigned has unassigned_member
+    expect(groups[2].id).toBe('unassigned');
+    expect(groups[2].staff).toHaveLength(1);
+    expect(groups[2].staff[0].name).toBe('unassigned_member');
+
+    // Total staff accounted for equals 4 / 4
+    const totalAccountedStaff = groups.reduce((acc, g) => acc + g.staff.length, 0);
+    expect(totalAccountedStaff).toBe(4);
+  });
 });

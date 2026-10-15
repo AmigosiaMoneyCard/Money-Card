@@ -236,6 +236,9 @@ export async function createStaffMember(req: Request, res: Response) {
         role: Role.STAFF,
         isCounterAccount: false,
         status: { not: UserStatus.DEACTIVATED },
+        NOT: {
+          name: { startsWith: 'Staff - ' },
+        },
       },
     }),
   ]);
@@ -282,6 +285,9 @@ export async function createStaffMember(req: Request, res: Response) {
         role: Role.STAFF,
         isCounterAccount: false,
         status: { not: UserStatus.DEACTIVATED },
+        NOT: {
+          name: { startsWith: 'Staff - ' },
+        },
       },
     });
     if (countInTx >= effectiveLimits.staffLimit) {
