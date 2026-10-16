@@ -42,31 +42,41 @@ export function OrgAdminCardTracker({
   const [showInactive, setShowInactive] = useState(false);
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
       {/* Card 1: Active Wallets (Always visible) */}
-      <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Active Wallets
-          </span>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
-            <CreditCard className="h-4 w-4" />
+      <Card padding="sm" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between h-full">
+        <div>
+          <div className="flex items-start justify-between gap-2 min-h-[2.5rem]">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 leading-tight min-w-0 flex-1">
+              Active Wallets
+            </span>
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+              <CreditCard className="h-4 w-4" />
+            </div>
           </div>
+          <div className="mt-2.5 flex items-center min-h-[22px]" />
         </div>
-        <div className="mt-2">
-          <p className="font-mono text-2xl font-bold text-slate-900">
-            {totalInCirculation.toLocaleString()}
-          </p>
+        <div className="mt-4 pt-2.5 border-t border-slate-100/80">
+          <div className="h-8 flex items-center">
+            <p className="font-mono text-2xl font-bold text-slate-900 flex items-center">
+              {totalInCirculation.toLocaleString()}
+            </p>
+          </div>
         </div>
       </Card>
 
       {/* Card 2: Settled Wallets */}
-      <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Settled Wallets
-          </span>
-          <div className="flex items-center gap-1.5">
+      <Card padding="sm" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between h-full">
+        <div>
+          <div className="flex items-start justify-between gap-2 min-h-[2.5rem]">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 leading-tight min-w-0 flex-1">
+              Settled Wallets
+            </span>
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+              <CheckCircle2 className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2.5 flex items-center min-h-[22px]">
             <button
               type="button"
               onClick={() => setShowSettled((prev) => !prev)}
@@ -76,25 +86,29 @@ export function OrgAdminCardTracker({
               {showSettled ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
               <span>{showSettled ? 'Hide' : 'Show'}</span>
             </button>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-              <CheckCircle2 className="h-4 w-4" />
-            </div>
           </div>
         </div>
-        <div className="mt-2">
-          <p className="font-mono text-2xl font-bold text-slate-900">
-            {showSettled ? closedCardsCount.toLocaleString() : <EyeOff className="h-5 w-5 text-slate-300 inline-block align-middle" />}
-          </p>
+        <div className="mt-4 pt-2.5 border-t border-slate-100/80">
+          <div className="h-8 flex items-center">
+            <p className="font-mono text-2xl font-bold text-slate-900 flex items-center">
+              {showSettled ? closedCardsCount.toLocaleString() : <EyeOff className="h-5 w-5 text-slate-300" />}
+            </p>
+          </div>
         </div>
       </Card>
 
       {/* Card 3: Blocked Wallets */}
-      <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Blocked Wallets
-          </span>
-          <div className="flex items-center gap-1.5">
+      <Card padding="sm" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between h-full">
+        <div>
+          <div className="flex items-start justify-between gap-2 min-h-[2.5rem]">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 leading-tight min-w-0 flex-1">
+              Blocked Wallets
+            </span>
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+              <ShieldAlert className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2.5 flex items-center min-h-[22px]">
             <button
               type="button"
               onClick={() => setShowBlocked((prev) => !prev)}
@@ -104,25 +118,29 @@ export function OrgAdminCardTracker({
               {showBlocked ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
               <span>{showBlocked ? 'Hide' : 'Show'}</span>
             </button>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
-              <ShieldAlert className="h-4 w-4" />
-            </div>
           </div>
         </div>
-        <div className="mt-2">
-          <p className="font-mono text-2xl font-bold text-rose-600">
-            {showBlocked ? blockedCount.toLocaleString() : <EyeOff className="h-5 w-5 text-rose-300 inline-block align-middle" />}
-          </p>
+        <div className="mt-4 pt-2.5 border-t border-slate-100/80">
+          <div className="h-8 flex items-center">
+            <p className="font-mono text-2xl font-bold text-rose-600 flex items-center">
+              {showBlocked ? blockedCount.toLocaleString() : <EyeOff className="h-5 w-5 text-rose-300" />}
+            </p>
+          </div>
         </div>
       </Card>
 
       {/* Card 4: Blocked Balance */}
-      <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Blocked Balance
-          </span>
-          <div className="flex items-center gap-1.5">
+      <Card padding="sm" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between h-full">
+        <div>
+          <div className="flex items-start justify-between gap-2 min-h-[2.5rem]">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 leading-tight min-w-0 flex-1">
+              Blocked Balance
+            </span>
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+              <Lock className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2.5 flex items-center min-h-[22px]">
             <button
               type="button"
               onClick={() => setShowBlockedBalance((prev) => !prev)}
@@ -132,25 +150,29 @@ export function OrgAdminCardTracker({
               {showBlockedBalance ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
               <span>{showBlockedBalance ? 'Hide' : 'Show'}</span>
             </button>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
-              <Lock className="h-4 w-4" />
-            </div>
           </div>
         </div>
-        <div className="mt-2">
-          <p className="font-mono text-2xl font-bold text-rose-600">
-            {showBlockedBalance ? formatCurrency(effectiveBlockedBalance) : <EyeOff className="h-5 w-5 text-rose-300 inline-block align-middle" />}
-          </p>
+        <div className="mt-4 pt-2.5 border-t border-slate-100/80">
+          <div className="h-8 flex items-center">
+            <p className="font-mono text-2xl font-bold text-rose-600 flex items-center">
+              {showBlockedBalance ? formatCurrency(effectiveBlockedBalance) : <EyeOff className="h-5 w-5 text-rose-300" />}
+            </p>
+          </div>
         </div>
       </Card>
 
       {/* Card 5: Zero Balance Wallets */}
-      <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Zero Balance Wallets
-          </span>
-          <div className="flex items-center gap-1.5">
+      <Card padding="sm" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between h-full">
+        <div>
+          <div className="flex items-start justify-between gap-2 min-h-[2.5rem]">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 leading-tight min-w-0 flex-1">
+              Zero Balance Wallets
+            </span>
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+              <AlertCircle className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2.5 flex items-center min-h-[22px]">
             <button
               type="button"
               onClick={() => setShowZeroBalance((prev) => !prev)}
@@ -160,25 +182,29 @@ export function OrgAdminCardTracker({
               {showZeroBalance ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
               <span>{showZeroBalance ? 'Hide' : 'Show'}</span>
             </button>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
-              <AlertCircle className="h-4 w-4" />
-            </div>
           </div>
         </div>
-        <div className="mt-2">
-          <p className="font-mono text-2xl font-bold text-amber-700">
-            {showZeroBalance ? zeroBalanceActiveCardsCount.toLocaleString() : <EyeOff className="h-5 w-5 text-amber-300 inline-block align-middle" />}
-          </p>
+        <div className="mt-4 pt-2.5 border-t border-slate-100/80">
+          <div className="h-8 flex items-center">
+            <p className="font-mono text-2xl font-bold text-amber-700 flex items-center">
+              {showZeroBalance ? zeroBalanceActiveCardsCount.toLocaleString() : <EyeOff className="h-5 w-5 text-amber-300" />}
+            </p>
+          </div>
         </div>
       </Card>
 
       {/* Card 6: Inactive Wallets */}
-      <Card padding="md" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Inactive Wallets
-          </span>
-          <div className="flex items-center gap-1.5">
+      <Card padding="sm" className="border-slate-200 bg-white shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between h-full">
+        <div>
+          <div className="flex items-start justify-between gap-2 min-h-[2.5rem]">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 leading-tight min-w-0 flex-1">
+              Inactive Wallets
+            </span>
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
+              <Clock className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="mt-2.5 flex items-center min-h-[22px]">
             <button
               type="button"
               onClick={() => setShowInactive((prev) => !prev)}
@@ -188,15 +214,14 @@ export function OrgAdminCardTracker({
               {showInactive ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
               <span>{showInactive ? 'Hide' : 'Show'}</span>
             </button>
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
-              <Clock className="h-4 w-4" />
-            </div>
           </div>
         </div>
-        <div className="mt-2">
-          <p className="font-mono text-2xl font-bold text-orange-700">
-            {showInactive ? inactiveCount.toLocaleString() : <EyeOff className="h-5 w-5 text-orange-300 inline-block align-middle" />}
-          </p>
+        <div className="mt-4 pt-2.5 border-t border-slate-100/80">
+          <div className="h-8 flex items-center">
+            <p className="font-mono text-2xl font-bold text-orange-700 flex items-center">
+              {showInactive ? inactiveCount.toLocaleString() : <EyeOff className="h-5 w-5 text-orange-300" />}
+            </p>
+          </div>
         </div>
       </Card>
     </div>
