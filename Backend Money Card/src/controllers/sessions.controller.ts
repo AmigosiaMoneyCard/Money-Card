@@ -606,57 +606,93 @@ export async function returnSession(req: Request, res: Response) {
   const isSkipRefund = Boolean(skipRefund);
   const selectedPaymentMethod = paymentMethod === 'UPI' ? 'UPI' : 'CASH';
 
-  const refundAmount = isSkipRefund ? 0.0 : session.balance;
-  const retainedProfit = isSkipRefund ? session.balance : 0.0;
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Re-read inside transaction for current balance and status
+      const currentSession = await tx.cardSession.findUniqueOrThrow({
+        where: { id },
+      });
 
-  const result = await prisma.$transaction(async (tx) => {
-    const settledSession = await tx.cardSession.update({
-      where: { id },
-      data: {
+      if (currentSession.status === SessionStatus.SETTLED) {
+        throw new Error('ALREADY_SETTLED');
+      }
+
+      const refundAmount = isSkipRefund ? 0.0 : currentSession.balance;
+      const retainedProfit = isSkipRefund ? currentSession.balance : 0.0;
+      const settledAt = new Date();
+
+      // 2. Atomic conditional update: update ONLY IF session is still ACTIVE
+      const updateResult = await tx.cardSession.updateMany({
+        where: {
+          id,
+          status: SessionStatus.ACTIVE,
+        },
+        data: {
+          balance: 0.0,
+          status: SessionStatus.SETTLED,
+          settledAt,
+          settledByUserId: req.user?.id,
+          refundAmount,
+          retainedProfit,
+        },
+      });
+
+      if (updateResult.count === 0) {
+        throw new Error('ALREADY_SETTLED');
+      }
+
+      // 3. Create refund record only after atomic update succeeds
+      if (refundAmount > 0) {
+        await tx.transaction.create({
+          data: {
+            sessionId: session.id,
+            branchId: session.branchId,
+            staffUserId: req.user?.id,
+            type: TransactionType.REFUND_RETURN,
+            amount: refundAmount,
+            balanceBefore: currentSession.balance,
+            balanceAfter: 0.0,
+            paymentMethod: selectedPaymentMethod,
+          },
+        });
+      }
+
+      if (session.cardId) {
+        // Reset card status to AVAILABLE
+        await tx.card.update({
+          where: { id: session.cardId },
+          data: { status: CardStatus.AVAILABLE },
+        });
+      }
+
+      const settledSession = {
+        ...currentSession,
         balance: 0.0,
         status: SessionStatus.SETTLED,
-        settledAt: new Date(),
+        settledAt,
         settledByUserId: req.user?.id,
         refundAmount,
         retainedProfit,
-      },
+      };
+
+      return { session: settledSession, refundAmount, retainedProfit };
     });
 
-    if (refundAmount > 0) {
-      await tx.transaction.create({
-        data: {
-          sessionId: session.id,
-          branchId: session.branchId,
-          staffUserId: req.user?.id,
-          type: TransactionType.REFUND_RETURN,
-          amount: refundAmount,
-          balanceBefore: session.balance,
-          balanceAfter: 0.0,
-          paymentMethod: selectedPaymentMethod,
-        },
-      });
+    balanceStreamService.broadcastBalanceUpdate(session.id, {
+      balance: 0.0,
+      status: SessionStatus.SETTLED,
+      type: isSkipRefund ? 'RETURN_NO_REFUND' : 'REFUND',
+      amount: result.refundAmount,
+      sessionId: session.id,
+    });
+
+    return sendSuccess(res, result);
+  } catch (err: any) {
+    if (err.message === 'ALREADY_SETTLED') {
+      return sendError(res, 400, 'ALREADY_SETTLED', 'Session is already settled and refunded');
     }
-
-    if (session.cardId) {
-      // Reset card status to AVAILABLE
-      await tx.card.update({
-        where: { id: session.cardId },
-        data: { status: CardStatus.AVAILABLE },
-      });
-    }
-
-    return { session: settledSession, refundAmount, retainedProfit };
-  });
-
-  balanceStreamService.broadcastBalanceUpdate(session.id, {
-    balance: 0.0,
-    status: SessionStatus.SETTLED,
-    type: isSkipRefund ? 'RETURN_NO_REFUND' : 'REFUND',
-    amount: refundAmount,
-    sessionId: session.id,
-  });
-
-  return sendSuccess(res, result);
+    return sendError(res, 500, 'SETTLEMENT_FAILED', err.message || 'Failed to settle session');
+  }
 }
 
 export async function refundSessionBalance(req: Request, res: Response) {
@@ -686,15 +722,38 @@ export async function refundSessionBalance(req: Request, res: Response) {
     return sendError(res, 403, 'RETURN_COUNTER_MISMATCH', 'This card must be returned at the kitchen where it was issued');
   }
 
-  const refundAmount = session.balance;
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Re-read inside transaction for current balance and status
+      const currentSession = await tx.cardSession.findUniqueOrThrow({
+        where: { id },
+      });
 
-  const result = await prisma.$transaction(async (tx) => {
-    const updatedSession = await tx.cardSession.update({
-      where: { id },
-      data: {
-        balance: 0.0,
-      },
-    });
+      if (currentSession.status !== SessionStatus.ACTIVE) {
+        throw new Error('INVALID_STATE');
+      }
+
+      if (currentSession.balance <= 0) {
+        throw new Error('ALREADY_REFUNDED');
+      }
+
+      const refundAmount = currentSession.balance;
+
+      // 2. Atomic update: update ONLY IF session is still ACTIVE and balance > 0
+      const updateResult = await tx.cardSession.updateMany({
+        where: {
+          id,
+          status: SessionStatus.ACTIVE,
+          balance: { gt: 0 },
+        },
+        data: {
+          balance: 0.0,
+        },
+      });
+
+      if (updateResult.count === 0) {
+        throw new Error('ALREADY_REFUNDED');
+      }
 
       const txRecord = await tx.transaction.create({
         data: {
@@ -709,18 +768,32 @@ export async function refundSessionBalance(req: Request, res: Response) {
         },
       });
 
-    return { session: updatedSession, refundAmount, transaction: txRecord };
-  });
+      const updatedSession = {
+        ...currentSession,
+        balance: 0.0,
+      };
 
-  balanceStreamService.broadcastBalanceUpdate(session.id, {
-    balance: 0.0,
-    status: session.status,
-    type: 'REFUND',
-    amount: refundAmount,
-    sessionId: session.id,
-  });
+      return { session: updatedSession, refundAmount, transaction: txRecord };
+    });
 
-  return sendSuccess(res, result);
+    balanceStreamService.broadcastBalanceUpdate(session.id, {
+      balance: 0.0,
+      status: session.status,
+      type: 'REFUND',
+      amount: result.refundAmount,
+      sessionId: session.id,
+    });
+
+    return sendSuccess(res, result);
+  } catch (err: any) {
+    if (err.message === 'ALREADY_REFUNDED' || err.message === 'NO_BALANCE') {
+      return sendError(res, 400, 'ALREADY_REFUNDED', 'Session balance has already been refunded');
+    }
+    if (err.message === 'INVALID_STATE') {
+      return sendError(res, 400, 'INVALID_STATE', 'Cannot refund an inactive or settled session');
+    }
+    return sendError(res, 500, 'REFUND_FAILED', err.message || 'Failed to refund session balance');
+  }
 }
 
 export async function cancelRecharge(req: Request, res: Response) {
